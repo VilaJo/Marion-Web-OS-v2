@@ -1,0 +1,14 @@
+# Marion Web OS - Dependencies
+flask>=3.0.0
+flask-cors>=4.0.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+Pillow>=10.0.0
+google-genai>=0.3.0
+python-dateutil>=2.8.0
+
+# Security / Encryption
+cryptography>=42.0.0
+
+# Optional
+segno>=1.6.0

@@ -5,6 +5,7 @@ import re
 import time
 import urllib.parse
 import requests
+import secrets
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, Response, send_from_directory, redirect, session
 from flask_cors import CORS
@@ -22,6 +23,14 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate
 
+# Security / Encryption
+from crypto_utils import (
+    generate_salt, hash_password, verify_password,
+    encrypt_to_file, decrypt_from_file,
+    encrypt_sensitive_fields, decrypt_sensitive_fields,
+    migrate_json_to_encrypted
+)
+
 # Optional: dateutil for better date parsing
 try:
     from dateutil import parser as date_parser
@@ -38,7 +47,19 @@ load_dotenv('.env.local')
 app = Flask(__name__, static_folder='.dist')
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.secret_key = os.urandom(24)  # For session management
-CORS(app, supports_credentials=True) 
+
+# CORS restrictif - uniquement localhost
+CORS(app, 
+     origins=["http://127.0.0.1:5003", "http://localhost:5003"],
+     supports_credentials=True)
+
+# --- Authentication Configuration ---
+AUTH_FILE = None  # Set after DESKTOP_PATH is defined
+active_sessions = {}  # {token: {"expiry": timestamp, "password": str}}
+SESSION_DURATION = 8 * 60 * 60  # 8 heures
+MAX_LOGIN_ATTEMPTS = 10
+login_attempts = {}  # {ip: {"count": int, "reset_time": timestamp}}
+current_password = None  # Mot de passe en memoire pour le chiffrement 
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -92,12 +113,8 @@ def refresh_google_token(email: str) -> bool:
                 oauth_tokens[email]['refresh_token'] = new_tokens['refresh_token']
             oauth_tokens[email]['expires_in'] = new_tokens.get('expires_in')
             
-            # Persist updated tokens
-            tokens_file = Path.home() / "Desktop" / "Marion Web OS Database" / ".oauth_tokens.json"
-            try:
-                with open(tokens_file, 'w') as f:
-                    json.dump(oauth_tokens, f)
-            except: pass
+            # Persist updated tokens (chiffre si auth configuree)
+            save_oauth_tokens_encrypted()
             
             return True
     except Exception as e:
@@ -135,6 +152,9 @@ def get_valid_google_token(email: str) -> str | None:
 # --- File System Config ---
 USER_HOME = Path.home()
 DESKTOP_PATH = USER_HOME / "Desktop" / "Marion Web OS Database"
+AUTH_FILE = DESKTOP_PATH / ".marion_auth.json"
+OAUTH_TOKENS_ENC = DESKTOP_PATH / ".oauth_tokens.enc"
+OAUTH_TOKENS_JSON = DESKTOP_PATH / ".oauth_tokens.json"  # Legacy
 
 def init_db_structure():
     if not DESKTOP_PATH.exists():
@@ -161,7 +181,257 @@ def init_db_structure():
 
 init_db_structure()
 
-# Load OAuth tokens from file on startup
+# --- Authentication Middleware ---
+@app.before_request
+def require_auth():
+    """Middleware d'authentification - verifie le token sur chaque requete"""
+    global current_password
+    
+    # Endpoints publics (pas d'auth requise)
+    public_paths = [
+        '/api/auth/check',
+        '/api/auth/setup', 
+        '/api/auth/login',
+    ]
+    
+    # Static files et assets
+    if request.path.startswith('/.dist') or request.path.startswith('/assets'):
+        return None
+    
+    # Verifier si c'est un endpoint public
+    if any(request.path == p for p in public_paths):
+        return None
+    
+    # La page d'accueil (index.html) est toujours accessible
+    if request.path == '/' or (not request.path.startswith('/api/') and '.' not in request.path):
+        return None
+    
+    # Verifier si l'auth est configuree
+    if not AUTH_FILE.exists():
+        # Pas encore configure, autoriser l'acces
+        return None
+    
+    # Verifier le token de session
+    token = request.headers.get('X-Marion-Token')
+    if not token:
+        return jsonify({"error": "Non authentifie", "code": "NO_TOKEN"}), 401
+    
+    if token not in active_sessions:
+        return jsonify({"error": "Session invalide", "code": "INVALID_TOKEN"}), 401
+    
+    session_data = active_sessions[token]
+    if session_data["expiry"] < time.time():
+        del active_sessions[token]
+        return jsonify({"error": "Session expiree", "code": "EXPIRED"}), 401
+    
+    # Mettre a jour le mot de passe en memoire pour le chiffrement
+    current_password = session_data.get("password")
+    
+    return None
+
+
+def check_rate_limit(ip: str) -> bool:
+    """Verifie le rate limiting pour les tentatives de login"""
+    now = time.time()
+    
+    if ip in login_attempts:
+        data = login_attempts[ip]
+        if data["reset_time"] < now:
+            # Reset apres 1 minute
+            login_attempts[ip] = {"count": 0, "reset_time": now + 60}
+            return True
+        if data["count"] >= MAX_LOGIN_ATTEMPTS:
+            return False
+    else:
+        login_attempts[ip] = {"count": 0, "reset_time": now + 60}
+    
+    return True
+
+
+def increment_login_attempt(ip: str):
+    """Incremente le compteur de tentatives"""
+    if ip in login_attempts:
+        login_attempts[ip]["count"] += 1
+
+
+# --- Authentication Endpoints ---
+@app.route('/api/auth/check')
+def auth_check():
+    """Verifie si l'authentification est configuree"""
+    is_configured = AUTH_FILE.exists()
+    
+    # Verifier si une session est active
+    token = request.headers.get('X-Marion-Token')
+    is_authenticated = False
+    
+    if token and token in active_sessions:
+        if active_sessions[token]["expiry"] > time.time():
+            is_authenticated = True
+    
+    return jsonify({
+        "configured": is_configured,
+        "authenticated": is_authenticated
+    })
+
+
+@app.route('/api/auth/setup', methods=['POST'])
+def auth_setup():
+    """Configure le mot de passe initial"""
+    global current_password
+    
+    # Verifier si deja configure
+    if AUTH_FILE.exists():
+        return jsonify({"error": "Deja configure"}), 400
+    
+    data = request.get_json()
+    password = data.get('password', '')
+    
+    # Validation du mot de passe
+    if len(password) < 6:
+        return jsonify({"error": "Mot de passe trop court (min 6 caracteres)"}), 400
+    
+    # Generer salt et hasher le mot de passe
+    salt = generate_salt()
+    password_hash = hash_password(password, salt)
+    
+    # Sauvegarder
+    auth_data = {
+        "salt": base64.b64encode(salt).decode(),
+        "password_hash": password_hash,
+        "created_at": datetime.now().isoformat()
+    }
+    
+    with open(AUTH_FILE, 'w') as f:
+        json.dump(auth_data, f)
+    
+    # Creer une session
+    token = secrets.token_urlsafe(32)
+    active_sessions[token] = {
+        "expiry": time.time() + SESSION_DURATION,
+        "password": password
+    }
+    current_password = password
+    
+    # Migrer les donnees existantes vers le format chiffre
+    migrate_existing_data(password)
+    
+    return jsonify({
+        "success": True,
+        "token": token,
+        "message": "Mot de passe configure"
+    })
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    """Connexion avec mot de passe"""
+    global current_password
+    
+    # Rate limiting
+    client_ip = request.remote_addr
+    if not check_rate_limit(client_ip):
+        return jsonify({"error": "Trop de tentatives. Reessayez dans 1 minute."}), 429
+    
+    # Verifier si configure
+    if not AUTH_FILE.exists():
+        return jsonify({"error": "Non configure", "code": "NOT_CONFIGURED"}), 400
+    
+    data = request.get_json()
+    password = data.get('password', '')
+    
+    # Charger les donnees d'auth
+    try:
+        with open(AUTH_FILE, 'r') as f:
+            auth_data = json.load(f)
+    except Exception:
+        return jsonify({"error": "Erreur de lecture"}), 500
+    
+    salt = base64.b64decode(auth_data["salt"])
+    stored_hash = auth_data["password_hash"]
+    
+    # Verifier le mot de passe
+    if not verify_password(password, salt, stored_hash):
+        increment_login_attempt(client_ip)
+        return jsonify({"error": "Mot de passe incorrect"}), 401
+    
+    # Creer une session
+    token = secrets.token_urlsafe(32)
+    active_sessions[token] = {
+        "expiry": time.time() + SESSION_DURATION,
+        "password": password
+    }
+    current_password = password
+    
+    # Charger les tokens OAuth chiffres
+    load_oauth_tokens_encrypted(password)
+    
+    return jsonify({
+        "success": True,
+        "token": token
+    })
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    """Deconnexion"""
+    global current_password
+    
+    token = request.headers.get('X-Marion-Token')
+    if token and token in active_sessions:
+        del active_sessions[token]
+    
+    current_password = None
+    
+    return jsonify({"success": True})
+
+
+def migrate_existing_data(password: str):
+    """Migre les donnees existantes vers le format chiffre"""
+    global oauth_tokens
+    
+    # Migrer les tokens OAuth
+    if OAUTH_TOKENS_JSON.exists() and not OAUTH_TOKENS_ENC.exists():
+        try:
+            with open(OAUTH_TOKENS_JSON, 'r') as f:
+                tokens_data = json.load(f)
+            
+            if encrypt_to_file(tokens_data, password, OAUTH_TOKENS_ENC):
+                # Supprimer l'ancien fichier
+                OAUTH_TOKENS_JSON.unlink()
+                print("Tokens OAuth migres vers format chiffre", file=sys.stderr)
+                oauth_tokens = tokens_data
+        except Exception as e:
+            print(f"Erreur migration tokens: {e}", file=sys.stderr)
+
+
+def load_oauth_tokens_encrypted(password: str):
+    """Charge les tokens OAuth depuis le fichier chiffre"""
+    global oauth_tokens
+    
+    if OAUTH_TOKENS_ENC.exists():
+        try:
+            tokens_data = decrypt_from_file(OAUTH_TOKENS_ENC, password)
+            if tokens_data:
+                oauth_tokens = tokens_data
+                print(f"Tokens OAuth charges (chiffres): {list(oauth_tokens.keys())}", file=sys.stderr)
+        except ValueError as e:
+            print(f"Erreur dechiffrement tokens: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"Erreur chargement tokens: {e}", file=sys.stderr)
+
+
+def save_oauth_tokens_encrypted():
+    """Sauvegarde les tokens OAuth dans le fichier chiffre"""
+    global oauth_tokens, current_password
+    
+    if current_password and oauth_tokens:
+        try:
+            encrypt_to_file(oauth_tokens, current_password, OAUTH_TOKENS_ENC)
+        except Exception as e:
+            print(f"Erreur sauvegarde tokens: {e}", file=sys.stderr)
+
+
+# Load OAuth tokens from file on startup (legacy support)
 def load_oauth_tokens():
     global oauth_tokens
     tokens_file = DESKTOP_PATH / ".oauth_tokens.json"
@@ -223,19 +493,57 @@ def get_project_progress(project_path, tasks=None):
         final_progress = folder_progress
     return min(final_progress, 100)
 
+# Sensitive fields to encrypt in project data
+SENSITIVE_PROJECT_FIELDS = ['credentials', 'privateNotes']
+
 def load_project_data(project_path):
+    """Load project data and decrypt sensitive fields if auth is configured"""
+    global current_password
     json_path = project_path / ".99_Admin" / "project.json"
     if json_path.exists():
         try:
-            with open(json_path, 'r') as f: return json.load(f)
-        except: pass
+            with open(json_path, 'r') as f: 
+                data = json.load(f)
+            
+            # Decrypt sensitive fields if auth is configured and password available
+            if current_password and AUTH_FILE.exists():
+                try:
+                    # Load salt from auth file
+                    with open(AUTH_FILE, 'r') as f:
+                        auth_data = json.load(f)
+                    salt = base64.b64decode(auth_data["salt"])
+                    
+                    data = decrypt_sensitive_fields(data, current_password, salt, SENSITIVE_PROJECT_FIELDS)
+                except Exception as e:
+                    print(f"Warning: Could not decrypt sensitive fields: {e}", file=sys.stderr)
+            
+            return data
+        except Exception as e:
+            print(f"Error loading project data: {e}", file=sys.stderr)
     return {}
 
 def save_project_data_file(project_path, data):
+    """Save project data and encrypt sensitive fields if auth is configured"""
+    global current_password
     admin_path = project_path / ".99_Admin"
     if not admin_path.exists(): os.makedirs(admin_path)
     json_path = admin_path / "project.json"
-    with open(json_path, 'w') as f: json.dump(data, f, indent=2)
+    
+    data_to_save = data.copy()
+    
+    # Encrypt sensitive fields if auth is configured and password available
+    if current_password and AUTH_FILE.exists():
+        try:
+            # Load salt from auth file
+            with open(AUTH_FILE, 'r') as f:
+                auth_data = json.load(f)
+            salt = base64.b64decode(auth_data["salt"])
+            
+            data_to_save = encrypt_sensitive_fields(data_to_save, current_password, salt, SENSITIVE_PROJECT_FIELDS)
+        except Exception as e:
+            print(f"Warning: Could not encrypt sensitive fields: {e}", file=sys.stderr)
+    
+    with open(json_path, 'w') as f: json.dump(data_to_save, f, indent=2)
 
 def save_avatar_file(project_path, data_url):
     try:
@@ -2179,12 +2487,8 @@ def google_oauth_callback():
             "user_info": user_info
         }
         
-        # Save tokens to file for persistence
-        tokens_file = DESKTOP_PATH / ".oauth_tokens.json"
-        try:
-            with open(tokens_file, 'w') as f:
-                json.dump(oauth_tokens, f)
-        except: pass
+        # Save tokens to file for persistence (chiffre si auth configuree)
+        save_oauth_tokens_encrypted()
         
         return f"""
         <html><body>

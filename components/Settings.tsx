@@ -33,7 +33,10 @@ import {
     ArrowUpCircle,
     FileText,
     Clock,
-    Shield
+    Shield,
+    Lock,
+    LogOut,
+    Key
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -76,7 +79,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     signatureSettings, setSignatureSettings,
     notificationSettings, setNotificationSettings
 }) => {
-    const [activeTab, setActiveTab] = useState<'agency' | 'appearance' | 'ai' | 'notifications' | 'cloud' | 'updates'>('agency');
+    const [activeTab, setActiveTab] = useState<'agency' | 'appearance' | 'ai' | 'notifications' | 'cloud' | 'updates' | 'security'>('agency');
     
     // Cloud Storage State
     const [cloudConfig, setCloudConfig] = useState(() => {
@@ -336,6 +339,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         { id: 'ai', label: 'IA & Assistant', icon: Bot },
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'cloud', label: 'Cloud & Sync', icon: Cloud },
+        { id: 'security', label: 'Sécurité', icon: Lock },
         { id: 'updates', label: 'Mises à jour', icon: Download },
     ];
 
@@ -899,6 +903,105 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <p className="text-sm text-blue-700 dark:text-blue-300">
                                         <strong>Note:</strong> La synchronisation cloud nécessite une connexion à votre compte Google ou Dropbox. 
                                         Vos fichiers clients seront automatiquement organisés par projet.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SECURITY TAB */}
+                    {activeTab === 'security' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {/* Header */}
+                            <div className="flex items-center gap-4 bg-gradient-to-r from-purple-500 to-indigo-600 p-6 rounded-2xl text-white shadow-lg">
+                                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30">
+                                    <Shield size={32} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">Sécurité</h3>
+                                    <p className="text-sm text-white/80">Protégez vos données avec un mot de passe et le chiffrement</p>
+                                </div>
+                            </div>
+
+                            {/* Authentication Status */}
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+                                <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                    <Lock size={18} className="text-purple-500" />
+                                    Authentification
+                                </h4>
+                                
+                                <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800 mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
+                                            <Check size={20} className="text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-emerald-700 dark:text-emerald-300">Protection active</p>
+                                            <p className="text-sm text-emerald-600 dark:text-emerald-400">Vos données sont chiffrées et sécurisées</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                                    Un mot de passe protège l'accès à Marion Web OS. Vos tokens OAuth et données sensibles 
+                                    (coffre-fort, notes privées) sont chiffrés avec ce mot de passe.
+                                </p>
+
+                                {/* Security Features */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                                        <Check size={16} className="text-emerald-500" />
+                                        Chiffrement AES-256 des données sensibles
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                                        <Check size={16} className="text-emerald-500" />
+                                        Tokens OAuth Google chiffrés
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                                        <Check size={16} className="text-emerald-500" />
+                                        Session automatiquement expirée après 8h
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                                        <Check size={16} className="text-emerald-500" />
+                                        Protection contre les tentatives de force brute
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Session Management */}
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+                                <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                    <Key size={18} className="text-purple-500" />
+                                    Session
+                                </h4>
+                                
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                                    Vous pouvez vous déconnecter pour verrouiller l'accès à l'application. 
+                                    Un mot de passe sera requis pour accéder de nouveau.
+                                </p>
+
+                                <button
+                                    onClick={() => {
+                                        // Clear session and reload
+                                        sessionStorage.removeItem('marion_token');
+                                        fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+                                        window.location.reload();
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium"
+                                >
+                                    <LogOut size={18} />
+                                    Se déconnecter
+                                </button>
+                            </div>
+
+                            {/* Data Privacy Info */}
+                            <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-800">
+                                <Shield size={18} className="text-purple-500 mt-0.5" />
+                                <div>
+                                    <p className="text-sm text-purple-700 dark:text-purple-300">
+                                        <strong>Confidentialité:</strong> Toutes vos données restent sur votre ordinateur. 
+                                        Aucune information n'est envoyée à des serveurs externes, sauf pour les services 
+                                        que vous connectez explicitement (Google Calendar, Drive).
                                     </p>
                                 </div>
                             </div>

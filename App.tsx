@@ -25,6 +25,22 @@ import { SplashScreen } from './components/SplashScreen';
 import { NotificationCenterPanel, ToastItem } from './components/NotificationSystem';
 import { QuickNotes } from './components/QuickNotes';
 import { generateBriefing } from './services/geminiService';
+import { LoginScreen } from './components/LoginScreen';
+import { apiFetch } from './services/api';
+
+// --- Authentication Context ---
+// Global auth token for API calls
+let globalAuthToken: string | null = null;
+
+export const getAuthToken = () => globalAuthToken;
+export const setAuthToken = (token: string | null) => { 
+    globalAuthToken = token;
+    if (token) {
+        sessionStorage.setItem('marion_token', token);
+    } else {
+        sessionStorage.removeItem('marion_token');
+    }
+};
 import { 
     LayoutGrid, 
     Bell, 
@@ -419,6 +435,10 @@ const LOADING_MESSAGES = [
 // --- Main App Component ---
 
 const App: React.FC = () => {
+    // Authentication State
+    const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(false);
+    const [authChecked, setAuthChecked] = React.useState<boolean>(false);
+
     // App State
     const [isConfigured, setIsConfigured] = React.useState<boolean | null>(null);
     const [isBackendDown, setIsBackendDown] = React.useState(false);
@@ -426,6 +446,47 @@ const App: React.FC = () => {
     const [isTransitioning, setIsTransitioning] = React.useState(false);
     const [loadingMessage, setLoadingMessage] = React.useState(LOADING_MESSAGES[0]);
     const [loadingText, setLoadingText] = React.useState(LOADING_MESSAGES[0]); // New state for cycling messages
+
+    // Check authentication on mount
+    React.useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                // Check if we have a saved token
+                const savedToken = sessionStorage.getItem('marion_token');
+                
+                const response = await fetch('/api/auth/check', {
+                    headers: savedToken ? { 'X-Marion-Token': savedToken } : {}
+                });
+                const data = await response.json();
+                
+                if (!data.configured) {
+                    // Auth not configured, skip login
+                    setIsAuthenticated(true);
+                    setAuthChecked(true);
+                    return;
+                }
+                
+                if (data.authenticated && savedToken) {
+                    // Already authenticated
+                    setAuthToken(savedToken);
+                    setIsAuthenticated(true);
+                }
+            } catch (err) {
+                // Backend might not be ready, allow access
+                console.log('Auth check failed, allowing access');
+                setIsAuthenticated(true);
+            }
+            setAuthChecked(true);
+        };
+        
+        checkAuth();
+    }, []);
+
+    const handleAuthenticated = (token: string) => {
+        setAuthToken(token);
+        sessionStorage.setItem('marion_token', token);
+        setIsAuthenticated(true);
+    };
 
     // Cycle Loading Messages Effect
     React.useEffect(() => {
@@ -647,7 +708,7 @@ const App: React.FC = () => {
         const storedPwd = sessionStorage.getItem('infomaniak_pwd');
 
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/projects/scan');
+            const res = await apiFetch('http://127.0.0.1:5003/api/projects/scan');
             const data = await res.json();
             
             if (data.projects) {
@@ -656,7 +717,7 @@ const App: React.FC = () => {
                     // Only attempt to fetch email count if credentials and client email are available
                     if (storedEmail && storedPwd && folder.profile?.email) {
                         try {
-                            const emailCountRes = await fetch('http://127.0.0.1:5003/api/email/count_for_client', {
+                            const emailCountRes = await apiFetch('http://127.0.0.1:5003/api/email/count_for_client', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -754,7 +815,7 @@ const App: React.FC = () => {
     // Backend status check (reusable)
     const checkStatus = React.useCallback(async () => {
         try {
-            const res = await fetch('http://127.0.0.1:5003/check-status');
+            const res = await apiFetch('http://127.0.0.1:5003/check-status');
             const data = await res.json();
             setIsConfigured(data.configured);
             setIsBackendDown(false);
@@ -1186,7 +1247,7 @@ const App: React.FC = () => {
         const predictedPath = `${targetFolder}/${safeName}`;
 
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/files/create', {
+            const res = await apiFetch('http://127.0.0.1:5003/api/files/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientName: trimmed, status: newClientStatus })
@@ -1254,7 +1315,7 @@ const App: React.FC = () => {
 
         // Persist to Server
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/projects/save', {
+            const res = await apiFetch('http://127.0.0.1:5003/api/projects/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
@@ -1387,7 +1448,7 @@ const App: React.FC = () => {
         });
 
         // Persister côté FS avec l’API dédiée (déplacement du dossier)
-        fetch('http://127.0.0.1:5003/api/projects/move', {
+        apiFetch('http://127.0.0.1:5003/api/projects/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1448,7 +1509,7 @@ const App: React.FC = () => {
     const handleCreateDatabase = async () => {
         // 1. Force Init Structure (Create all root folders: Actifs, ProBono, etc.)
         try {
-            await fetch('http://127.0.0.1:5003/api/database/init', { method: 'POST' });
+            await apiFetch('http://127.0.0.1:5003/api/database/init', { method: 'POST' });
         } catch (e) {
             console.error("Failed to init DB structure", e);
         }
@@ -1489,6 +1550,15 @@ const App: React.FC = () => {
             // Then, sort alphabetically by client name
             return a.clientName.localeCompare(b.clientName, 'fr');
         });
+
+    // --- Authentication Gate ---
+    if (authChecked && !isAuthenticated) {
+        return (
+            <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement..." />}>
+                <LoginScreen onAuthenticated={handleAuthenticated} />
+            </Suspense>
+        );
+    }
 
     // --- Onboarding Logic ---
     if (isConfigured === false) {
