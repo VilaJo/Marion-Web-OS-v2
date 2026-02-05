@@ -195,6 +195,14 @@ def require_auth():
         '/api/auth/reset',
     ]
     
+    # Prefixes publics (OAuth flow doit fonctionner sans auth Marion)
+    public_prefixes = [
+        '/api/oauth/',  # Google OAuth flow
+    ]
+    
+    if any(request.path.startswith(p) for p in public_prefixes):
+        return None
+    
     # Static files et assets - toujours accessibles
     static_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.css', '.js', '.woff', '.woff2', '.ttf', '.eot', '.map')
     if request.path.endswith(static_extensions):

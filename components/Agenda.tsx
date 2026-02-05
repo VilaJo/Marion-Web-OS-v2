@@ -6,6 +6,7 @@ import { Calendar as CalIcon, ChevronLeft, ChevronRight, Plus, Clock, Video, Cop
 import { toZonedTime, format, formatInTimeZone } from 'date-fns-tz';
 import { fr } from 'date-fns/locale';
 import { addMinutes, differenceInMinutes, parse, isBefore, startOfDay, parseISO } from 'date-fns';
+import { apiFetch } from '../services/api';
 
 interface AgendaProps {
     events: CalendarEvent[];
@@ -181,15 +182,15 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                 // Fetch everything in parallel
                 const [statusResult, icalResult, gcalResult] = await Promise.allSettled([
                     // 1. Check Google connection
-                    fetch('http://127.0.0.1:5003/api/gcal/sync-status', { signal: controller.signal })
+                    apiFetch('http://127.0.0.1:5003/api/gcal/sync-status', { signal: controller.signal })
                         .then(r => r.ok ? r.json() : Promise.reject('status_error')),
                     
                     // 2. Fetch iCal events
-                    fetch('http://127.0.0.1:5003/api/calendar/fetch', { signal: controller.signal })
+                    apiFetch('http://127.0.0.1:5003/api/calendar/fetch', { signal: controller.signal })
                         .then(r => r.ok ? r.json() : Promise.reject('ical_error')),
                     
                     // 3. Fetch Google Calendar events
-                    fetch('http://127.0.0.1:5003/api/gcal/events', { signal: controller.signal })
+                    apiFetch('http://127.0.0.1:5003/api/gcal/events', { signal: controller.signal })
                         .then(r => r.ok ? r.json() : Promise.reject('gcal_error'))
                 ]);
                 
@@ -628,7 +629,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             
             // Handle iCal Update
             if (finalEvent.source === 'iCal') {
-                fetch('http://127.0.0.1:5003/api/calendar/update', {
+                apiFetch('http://127.0.0.1:5003/api/calendar/update', {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
                      body: JSON.stringify({
@@ -644,7 +645,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             
             // Handle Google Calendar Update
             if (finalEvent.source === 'google' && finalEvent.googleEventId) {
-                fetch(`http://127.0.0.1:5003/api/gcal/events/${finalEvent.googleEventId}`, {
+                apiFetch(`http://127.0.0.1:5003/api/gcal/events/${finalEvent.googleEventId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -662,7 +663,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             
             // Sync to Google Calendar if connected (except Personal events)
             if (googleCalendarConnected && finalEvent.type !== 'Personal') {
-                fetch('http://127.0.0.1:5003/api/gcal/events', {
+                apiFetch('http://127.0.0.1:5003/api/gcal/events', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
