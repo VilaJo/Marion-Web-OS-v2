@@ -299,7 +299,11 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         }
     });
     const [customCity, setCustomCity] = useState<string | null>(() => {
-        return localStorage.getItem('marion_agenda_city') || null;
+        const saved = localStorage.getItem('marion_agenda_city');
+        if (saved) return saved;
+        // Default to "Genève" for Swiss timezone instead of "Zurich"
+        if (localTimezone === 'Europe/Zurich') return 'Genève';
+        return null;
     });
     const [viewTimezone, setViewTimezone] = useState<string>(localTimezone); 
 
