@@ -56,7 +56,7 @@ GOOGLE_SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleap
 oauth_tokens = {}
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPO_OWNER = "VilaJo"
-GITHUB_REPO_NAME = "Marion-Web-OS"
+GITHUB_REPO_NAME = "Marion-Web-OS-v2"
 
 client = None
 
@@ -2859,7 +2859,7 @@ def gcal_sync_status():
 
 # --- Version & Updates ---
 APP_VERSION = "2.3.0"
-GITHUB_REPO_API = "https://api.github.com/repos/VilaJo/Marion-Web-OS"
+GITHUB_REPO_API = "https://api.github.com/repos/VilaJo/Marion-Web-OS-v2"
 
 @app.route('/api/version')
 def get_version():
@@ -2962,7 +2962,7 @@ def apply_update():
         
         # Get the download URL from the request
         data = request.json or {}
-        download_url = data.get('downloadUrl', 'https://github.com/VilaJo/Marion-Web-OS/archive/refs/heads/main.zip')
+        download_url = data.get('downloadUrl', 'https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip')
         
         # Create a response that tells the client to expect a restart
         # The actual update will be run in background
