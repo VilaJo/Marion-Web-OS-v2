@@ -192,6 +192,7 @@ def require_auth():
         '/api/auth/check',
         '/api/auth/setup', 
         '/api/auth/login',
+        '/api/auth/reset',
     ]
     
     # Static files et assets
@@ -383,6 +384,48 @@ def auth_logout():
     current_password = None
     
     return jsonify({"success": True})
+
+
+@app.route('/api/auth/reset', methods=['POST'])
+def auth_reset():
+    """Reinitialise l'authentification - SUPPRIME les donnees chiffrees"""
+    global current_password, oauth_tokens, active_sessions
+    
+    data = request.get_json()
+    confirm = data.get('confirm', '')
+    
+    if confirm != 'RESET':
+        return jsonify({"error": "Confirmation requise"}), 400
+    
+    try:
+        # Supprimer le fichier d'auth
+        if AUTH_FILE.exists():
+            AUTH_FILE.unlink()
+            print("Auth file deleted", file=sys.stderr)
+        
+        # Supprimer les tokens OAuth chiffres
+        if OAUTH_TOKENS_ENC.exists():
+            OAUTH_TOKENS_ENC.unlink()
+            print("Encrypted OAuth tokens deleted", file=sys.stderr)
+        
+        # Supprimer les tokens OAuth non chiffres (legacy)
+        if OAUTH_TOKENS_JSON.exists():
+            OAUTH_TOKENS_JSON.unlink()
+            print("Legacy OAuth tokens deleted", file=sys.stderr)
+        
+        # Vider les sessions et tokens en memoire
+        active_sessions.clear()
+        oauth_tokens.clear()
+        current_password = None
+        
+        return jsonify({
+            "success": True,
+            "message": "Authentification reinitialisee. Vous pouvez configurer un nouveau mot de passe."
+        })
+        
+    except Exception as e:
+        print(f"Reset error: {e}", file=sys.stderr)
+        return jsonify({"error": str(e)}), 500
 
 
 def migrate_existing_data(password: str):

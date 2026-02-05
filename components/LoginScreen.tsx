@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Eye, EyeOff, Shield, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, Shield, Sparkles, AlertCircle, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 
 interface LoginScreenProps {
     onAuthenticated: (token: string) => void;
@@ -14,6 +14,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+    const [resetConfirmText, setResetConfirmText] = useState('');
 
     // Check if auth is configured on mount
     useEffect(() => {
@@ -110,6 +113,41 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             setError(err.message || 'Erreur de connexion');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleResetAuth = async () => {
+        if (resetConfirmText !== 'RESET') {
+            setError('Tapez RESET pour confirmer');
+            return;
+        }
+
+        setIsResetting(true);
+        setError('');
+
+        try {
+            const response = await fetch('/api/auth/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirm: 'RESET' })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erreur de réinitialisation');
+            }
+
+            // Clear local storage and reload
+            sessionStorage.removeItem('marion_token');
+            setShowResetConfirm(false);
+            setIsConfigured(false);
+            setPassword('');
+            setResetConfirmText('');
+        } catch (err: any) {
+            setError(err.message || 'Erreur de réinitialisation');
+        } finally {
+            setIsResetting(false);
         }
     };
 
@@ -310,11 +348,103 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                     </div>
                 </form>
 
+                {/* Forgot Password Link */}
+                <button
+                    type="button"
+                    onClick={() => setShowResetConfirm(true)}
+                    className="mt-4 w-full text-slate-500 text-sm hover:text-slate-300 transition-colors"
+                >
+                    Mot de passe oublié ?
+                </button>
+
                 {/* Footer */}
                 <p className="mt-6 text-center text-xs text-slate-600">
                     Vos données sont chiffrées et sécurisées localement
                 </p>
             </div>
+
+            {/* Reset Confirmation Modal */}
+            {showResetConfirm && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                                <AlertTriangle className="w-6 h-6 text-red-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">Réinitialiser l'authentification</h3>
+                                <p className="text-sm text-slate-400">Cette action est irréversible</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
+                            <p className="text-sm text-red-300 mb-2">
+                                <strong>Attention !</strong> La réinitialisation va supprimer :
+                            </p>
+                            <ul className="text-sm text-red-300/80 space-y-1 ml-4 list-disc">
+                                <li>Votre mot de passe actuel</li>
+                                <li>Les tokens Google (connexion Calendar/Drive)</li>
+                                <li>Les données chiffrées du coffre-fort</li>
+                            </ul>
+                            <p className="text-sm text-red-300 mt-2">
+                                Vos fichiers clients et dossiers seront conservés.
+                            </p>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Tapez <span className="font-mono bg-slate-700 px-2 py-0.5 rounded">RESET</span> pour confirmer
+                            </label>
+                            <input
+                                type="text"
+                                value={resetConfirmText}
+                                onChange={(e) => setResetConfirmText(e.target.value.toUpperCase())}
+                                placeholder="RESET"
+                                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all font-mono"
+                            />
+                        </div>
+
+                        {error && (
+                            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 rounded-lg p-3 mb-4">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowResetConfirm(false);
+                                    setResetConfirmText('');
+                                    setError('');
+                                }}
+                                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors font-medium"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleResetAuth}
+                                disabled={isResetting || resetConfirmText !== 'RESET'}
+                                className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 disabled:bg-red-500/50 text-white rounded-xl transition-colors font-medium flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                            >
+                                {isResetting ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Réinitialisation...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 className="w-5 h-5" />
+                                        Réinitialiser
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
