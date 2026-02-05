@@ -57,3 +57,5 @@ Clients/
 # Fichiers temporaires
 *.pdf
 *.tmp
+.marion.pid
+.marion.log
