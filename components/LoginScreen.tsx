@@ -170,9 +170,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                 <div className="w-full max-w-md">
                     {/* Logo / Header */}
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-orange to-pink-500 mb-4 shadow-lg shadow-brand-orange/20">
-                            <Shield className="w-10 h-10 text-white" />
-                        </div>
+                        <img 
+                            src="/logo-marion.png" 
+                            alt="Marion Web OS" 
+                            className="h-20 w-auto mx-auto mb-4 drop-shadow-lg"
+                        />
                         <h1 className="text-2xl font-bold text-white mb-2">Sécuriser Marion</h1>
                         <p className="text-slate-400 text-sm">
                             Créez un mot de passe pour protéger vos données
@@ -282,9 +284,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             <div className="w-full max-w-md">
                 {/* Logo / Header */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-orange to-pink-500 mb-4 shadow-lg shadow-brand-orange/20">
-                        <Lock className="w-10 h-10 text-white" />
-                    </div>
+                    <img 
+                        src="/logo-marion.png" 
+                        alt="Marion Web OS" 
+                        className="h-20 w-auto mx-auto mb-4 drop-shadow-lg"
+                    />
                     <h1 className="text-2xl font-bold text-white mb-2">Marion Web OS</h1>
                     <p className="text-slate-400 text-sm">
                         Entrez votre mot de passe pour continuer
