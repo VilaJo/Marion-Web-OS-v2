@@ -29,7 +29,9 @@ import {
     Users,
     PieChart,
     TrendingDown,
-    FileSpreadsheet
+    FileSpreadsheet,
+    Receipt,
+    PiggyBank
 } from 'lucide-react';
 
 declare const confetti: any;
@@ -928,111 +930,222 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
 
                     {/* Report Content */}
                     <div className="flex-1 overflow-y-auto p-8" id="accounting-report-preview">
-                        <div className="max-w-4xl mx-auto bg-white p-12 shadow-sm min-h-[800px]">
-                            <div className="text-center mb-12">
-                                <h1 className="text-2xl font-serif font-bold text-slate-900 uppercase tracking-widest mb-2">
-                                    {accountingView === 'report' ? 'Compte de Résultat' : accountingView === 'sales' ? 'Journal des Ventes' : 'Journal des Achats'}
-                                </h1>
-                                <p className="text-slate-500">Exercice {accountingYear} - {currency}</p>
-                            </div>
-
+                        <div className="max-w-4xl mx-auto bg-white p-12 shadow-lg rounded-xl min-h-[800px]">
+                            
                             {accountingView === 'report' && (
-                                <div className="space-y-12">
-                                    {/* Products */}
-                                    <div>
-                                        <h3 className="text-sm font-bold text-emerald-600 uppercase border-b border-emerald-100 pb-2 mb-4">Produits (Recettes)</h3>
-                                        <div className="flex justify-between py-2 border-b border-slate-100">
-                                            <span className="text-slate-600">Chiffre d'Affaires HT</span>
-                                            <span className="font-mono font-extrabold text-slate-900 dark:text-white">{formatCurrency(totalRevenue / 1.081)}</span>
-                                        </div>
-                                        <div className="flex justify-between py-2 border-b border-slate-100">
-                                            <span className="text-slate-600">TVA Collectée (Est. 8.1%)</span>
-                                            <span className="font-mono text-slate-400">{formatCurrency(totalRevenue - (totalRevenue / 1.081))}</span>
-                                        </div>
-                                        <div className="flex justify-between py-2 bg-emerald-50 px-4 rounded-lg mt-2 mb-6">
-                                            <span className="font-bold text-emerald-800">Total Produits TTC</span>
-                                            <span className="font-mono font-extrabold text-emerald-800">{formatCurrency(totalRevenue)}</span>
-                                        </div>
-
-                                        {/* Detailed Revenue Table */}
-                                        <div className="pl-4 border-l-2 border-emerald-100">
-                                            <h4 className="text-xs font-bold text-emerald-500 uppercase mb-3">Détail des écritures (Ventes)</h4>
-                                            <table className="w-full text-xs text-left">
-                                                <thead className="text-slate-400 border-b border-slate-100">
-                                                    <tr>
-                                                        <th className="pb-2 font-normal">Date</th>
-                                                        <th className="pb-2 font-normal">Client</th>
-                                                        <th className="pb-2 font-normal">Facture</th>
-                                                        <th className="pb-2 font-normal text-right">Montant</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-50 text-slate-600">
-                                                    {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map(inv => (
-                                                        <tr key={inv.id}>
-                                                            <td className="py-2">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
-                                                            <td className="py-2 font-medium">{inv.project.clientName}</td>
-                                                            <td className="py-2">{inv.number}</td>
-                                                            <td className="py-2 text-right font-mono">{formatCurrency(inv.amount)}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    {/* Charges */}
-                                    <div>
-                                        <h3 className="text-sm font-bold text-red-600 uppercase border-b border-red-100 pb-2 mb-4">Charges (Dépenses)</h3>
-                                        {Object.entries(expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).reduce((acc: any, exp) => { // Added year filter for expenses here
-                                            acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
-                                            return acc;
-                                        }, {})).map(([cat, amount]: any) => (
-                                            <div key={cat} className="flex justify-between py-2 border-b border-slate-100">
-                                                <span className="text-slate-600">{cat}</span>
-                                                <span className="font-mono">{formatCurrency(amount)}</span>
+                                <>
+                                    {/* Header with branding */}
+                                    <div className="border-b-4 border-slate-900 pb-6 mb-8">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h1 className="text-3xl font-serif font-bold text-slate-900 mb-1">
+                                                    Compte de Résultat
+                                                </h1>
+                                                <p className="text-slate-500 text-sm">Exercice comptable {accountingYear}</p>
                                             </div>
-                                        ))}
-                                        <div className="flex justify-between py-2 bg-red-50 px-4 rounded-lg mt-2 mb-6">
-                                            <span className="font-bold text-red-800">Total Charges</span>
-                                            <span className="font-mono font-extrabold text-red-800">{formatCurrency(totalExpenses)}</span>
-                                        </div>
-
-                                        {/* Detailed Expenses Table */}
-                                        <div className="pl-4 border-l-2 border-red-100">
-                                            <h4 className="text-xs font-bold text-red-500 uppercase mb-3">Détail des écritures (Achats)</h4>
-                                            <table className="w-full text-xs text-left">
-                                                <thead className="text-slate-400 border-b border-slate-100">
-                                                    <tr>
-                                                        <th className="pb-2 font-normal">Date</th>
-                                                        <th className="pb-2 font-normal">Fournisseur</th>
-                                                        <th className="pb-2 font-normal">Catégorie</th>
-                                                        <th className="pb-2 font-normal text-right">Montant</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-50 text-slate-600">
-                                                    {expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).map(exp => (
-                                                        <tr key={exp.id}>
-                                                            <td className="py-2">{new Date(exp.date).toLocaleDateString('fr-CH')}</td>
-                                                            <td className="py-2 font-medium">{exp.supplier}</td>
-                                                            <td className="py-2">{exp.category}</td>
-                                                            <td className="py-2 text-right font-mono">{formatCurrency(exp.amount)}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                            <div className="text-right">
+                                                <p className="font-serif font-bold text-slate-900">Marion Kindynis</p>
+                                                <p className="text-xs text-slate-500">Web Designer Indépendante</p>
+                                                <p className="text-xs text-slate-400 mt-1">Généré le {new Date().toLocaleDateString('fr-CH')}</p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Result */}
-                                    <div className="mt-12 p-6 bg-slate-900 text-white rounded-xl">
+                                    {/* Quick Summary Cards */}
+                                    <div className="grid grid-cols-3 gap-4 mb-10">
+                                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 border border-emerald-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                                                    <TrendingUp className="w-4 h-4 text-white" />
+                                                </div>
+                                                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Produits</span>
+                                            </div>
+                                            <p className="text-2xl font-mono font-bold text-emerald-700">{formatCurrency(totalRevenue)}</p>
+                                            <p className="text-xs text-emerald-600 mt-1">{currency} TTC</p>
+                                        </div>
+                                        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-5 border border-red-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                                                    <Receipt className="w-4 h-4 text-white" />
+                                                </div>
+                                                <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Charges</span>
+                                            </div>
+                                            <p className="text-2xl font-mono font-bold text-red-700">{formatCurrency(totalExpenses)}</p>
+                                            <p className="text-xs text-red-600 mt-1">{currency}</p>
+                                        </div>
+                                        <div className={`bg-gradient-to-br ${netProfit >= 0 ? 'from-slate-800 to-slate-900' : 'from-red-800 to-red-900'} rounded-xl p-5 border border-slate-700`}>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className={`w-8 h-8 ${netProfit >= 0 ? 'bg-emerald-500' : 'bg-red-500'} rounded-lg flex items-center justify-center`}>
+                                                    <PiggyBank className="w-4 h-4 text-white" />
+                                                </div>
+                                                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Résultat</span>
+                                            </div>
+                                            <p className={`text-2xl font-mono font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {netProfit >= 0 ? '+' : ''}{formatCurrency(netProfit)}
+                                            </p>
+                                            <p className="text-xs text-slate-400 mt-1">{currency} Net</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Products Section */}
+                                    <div className="mb-10">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg font-bold text-slate-900">Produits d'Exploitation</h2>
+                                                <p className="text-xs text-slate-500">Chiffre d'affaires et recettes</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-slate-50 rounded-xl p-6 space-y-3">
+                                            <div className="flex justify-between items-center py-3 border-b border-slate-200">
+                                                <div>
+                                                    <span className="text-slate-700 font-medium">Chiffre d'Affaires HT</span>
+                                                    <span className="text-xs text-slate-400 ml-2">(Prestations de services)</span>
+                                                </div>
+                                                <span className="font-mono font-bold text-slate-900 text-lg">{formatCurrency(totalRevenue / 1.081)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-3 border-b border-slate-200">
+                                                <div>
+                                                    <span className="text-slate-500">TVA Collectée</span>
+                                                    <span className="text-xs text-slate-400 ml-2">(8.1%)</span>
+                                                </div>
+                                                <span className="font-mono text-slate-500">{formatCurrency(totalRevenue - (totalRevenue / 1.081))}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-4 bg-emerald-100 -mx-6 px-6 rounded-b-xl mt-4">
+                                                <span className="font-bold text-emerald-800 text-lg">Total Produits TTC</span>
+                                                <span className="font-mono font-black text-emerald-800 text-xl">{formatCurrency(totalRevenue)} {currency}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Revenue Details Accordion */}
+                                        <details className="mt-4 group">
+                                            <summary className="cursor-pointer flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2">
+                                                <FileText className="w-4 h-4" />
+                                                Voir le détail des {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).length} factures
+                                                <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                                            </summary>
+                                            <div className="mt-3 border border-emerald-100 rounded-xl overflow-hidden">
+                                                <table className="w-full text-sm">
+                                                    <thead className="bg-emerald-50 text-emerald-700">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left font-semibold">Date</th>
+                                                            <th className="px-4 py-3 text-left font-semibold">Client</th>
+                                                            <th className="px-4 py-3 text-left font-semibold">N° Facture</th>
+                                                            <th className="px-4 py-3 text-right font-semibold">Montant TTC</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-emerald-50">
+                                                        {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map((inv, idx) => (
+                                                            <tr key={inv.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-emerald-50/30'}>
+                                                                <td className="px-4 py-3 text-slate-600">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
+                                                                <td className="px-4 py-3 font-medium text-slate-900">{inv.project.clientName}</td>
+                                                                <td className="px-4 py-3 text-slate-600">{inv.number}</td>
+                                                                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{formatCurrency(inv.amount)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </details>
+                                    </div>
+
+                                    {/* Charges Section */}
+                                    <div className="mb-10">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                                                <Receipt className="w-5 h-5 text-red-600" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg font-bold text-slate-900">Charges d'Exploitation</h2>
+                                                <p className="text-xs text-slate-500">Dépenses et frais professionnels</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-slate-50 rounded-xl p-6 space-y-3">
+                                            {Object.entries(expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).reduce((acc: any, exp) => {
+                                                acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+                                                return acc;
+                                            }, {})).sort((a: any, b: any) => b[1] - a[1]).map(([cat, amount]: any, idx) => (
+                                                <div key={cat} className="flex justify-between items-center py-3 border-b border-slate-200 last:border-0">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                                                        <span className="text-slate-700 font-medium">{cat}</span>
+                                                    </div>
+                                                    <span className="font-mono text-slate-700">{formatCurrency(amount)}</span>
+                                                </div>
+                                            ))}
+                                            <div className="flex justify-between items-center py-4 bg-red-100 -mx-6 px-6 rounded-b-xl mt-4">
+                                                <span className="font-bold text-red-800 text-lg">Total Charges</span>
+                                                <span className="font-mono font-black text-red-800 text-xl">{formatCurrency(totalExpenses)} {currency}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Expenses Details Accordion */}
+                                        <details className="mt-4 group">
+                                            <summary className="cursor-pointer flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium py-2">
+                                                <FileText className="w-4 h-4" />
+                                                Voir le détail des {expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).length} dépenses
+                                                <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                                            </summary>
+                                            <div className="mt-3 border border-red-100 rounded-xl overflow-hidden">
+                                                <table className="w-full text-sm">
+                                                    <thead className="bg-red-50 text-red-700">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left font-semibold">Date</th>
+                                                            <th className="px-4 py-3 text-left font-semibold">Fournisseur</th>
+                                                            <th className="px-4 py-3 text-left font-semibold">Catégorie</th>
+                                                            <th className="px-4 py-3 text-right font-semibold">Montant</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-red-50">
+                                                        {expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).map((exp, idx) => (
+                                                            <tr key={exp.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-red-50/30'}>
+                                                                <td className="px-4 py-3 text-slate-600">{new Date(exp.date).toLocaleDateString('fr-CH')}</td>
+                                                                <td className="px-4 py-3 font-medium text-slate-900">{exp.supplier}</td>
+                                                                <td className="px-4 py-3 text-slate-600">{exp.category}</td>
+                                                                <td className="px-4 py-3 text-right font-mono font-bold text-red-700">{formatCurrency(exp.amount)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </details>
+                                    </div>
+
+                                    {/* Final Result */}
+                                    <div className={`rounded-2xl p-8 ${netProfit >= 0 ? 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-r from-red-900 via-red-800 to-red-900'}`}>
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xl font-serif font-bold">Résultat Net</span>
-                                            <span className={`text-2xl font-mono font-extrabold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {netProfit >= 0 ? '+' : ''}{formatCurrency(netProfit)} {currency}
+                                            <div>
+                                                <p className="text-slate-400 text-sm uppercase tracking-widest mb-1">Résultat de l'Exercice {accountingYear}</p>
+                                                <h3 className="text-2xl font-serif font-bold text-white">Bénéfice {netProfit >= 0 ? 'Net' : '(Perte)'}</h3>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={`text-4xl font-mono font-black ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                    {netProfit >= 0 ? '+' : ''}{formatCurrency(netProfit)}
+                                                </p>
+                                                <p className="text-slate-400 text-sm mt-1">{currency}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Profit Margin */}
+                                        <div className="mt-6 pt-6 border-t border-slate-700 flex justify-between items-center">
+                                            <span className="text-slate-400 text-sm">Marge bénéficiaire</span>
+                                            <span className={`font-mono font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0}%
                                             </span>
                                         </div>
                                     </div>
-                                </div>
+
+                                    {/* Footer */}
+                                    <div className="mt-10 pt-6 border-t border-slate-200 text-center">
+                                        <p className="text-xs text-slate-400">
+                                            Document généré automatiquement par Marion Web OS • {new Date().toLocaleDateString('fr-CH')} à {new Date().toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
+                                </>
                             )}
 
                             {accountingView === 'sales' && (
