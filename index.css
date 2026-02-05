@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-orange: #FF7E5F;
+  --pastel-pink: #FFF0F5;
+  --pastel-purple: #F3E8FF;
+}
+
+body {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 400; /* Regular par défaut */
+  overflow-x: hidden; /* Prevent horizontal scroll from animations */
+}
+
+/* Titres avec Montserrat */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+}
+
+/* Typography Overrides */
+.font-serif {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Chiffres en Raleway (override font-mono) */
+.font-mono {
+  font-family: 'Raleway', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.font-calligraphy {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes loading-bar {
+    0% { width: 0%; margin-left: 0; }
+    50% { width: 100%; margin-left: 0; }
+    100% { width: 0%; margin-left: 100%; }
+}
+
+.animate-loading-bar {
+    animation: loading-bar 2s ease-in-out infinite;
+}
+
+/* Unicorn Theme Specifics */
+.unicorn {
+    --brand-color: #d946ef; /* Fuchsia-500 */
+}
+
+.unicorn body {
+    background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 50%, #f5d0fe 100%) !important;
+}
+
+/* Sparkle/Glitter Effect for New Emails */
+@keyframes sparkle {
+  0% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0); }
+}
+
+.bg-sparkle-pattern {
+  background-image: 
+    radial-gradient(white 15%, transparent 16%),
+    radial-gradient(white 15%, transparent 16%);
+  background-size: 10px 10px;
+  background-position: 0 0, 5px 5px;
+}
+
+.animate-shine {
+  animation: shine 2s linear infinite;
+}
+
+@keyframes shine {
+  from {
+    mask-position: 150%;
+  }
+  to {
+    mask-position: -50%;
+  }
+}
+
+/* Ensure content sits above glitter */
+.card-content {
+    position: relative;
+    z-index: 10;
+    background: inherit; /* Maintain card background */
+    border-radius: inherit;
+}

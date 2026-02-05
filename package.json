@@ -1,0 +1,39 @@
+{
+  "name": "Marion-Web-OS",
+  "private": true,
+  "version": "2.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "date-fns-tz": "^3.2.0",
+    "html2pdf.js": "^0.14.0",
+    "lucide-react": "^0.555.0",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@chromatic-com/storybook": "^3.2.0",
+    "@storybook/addon-a11y": "^8.6.14",
+    "@storybook/addon-docs": "^8.6.14",
+    "@storybook/addon-onboarding": "^8.6.14",
+    "@storybook/react-vite": "^8.6.14",
+    "@storybook/test": "^8.6.14",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/browser-playwright": "^4.0.15",
+    "@vitest/coverage-v8": "^4.0.15",
+    "playwright": "^1.57.0",
+    "storybook": "^8.6.14",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^4.0.15"
+  }
+}

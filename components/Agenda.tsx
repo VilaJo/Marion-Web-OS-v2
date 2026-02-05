@@ -1,0 +1,1359 @@
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { CalendarEvent } from '../types';
+import { Modal, Badge, Tooltip } from './Shared';
+import { Calendar as CalIcon, ChevronLeft, ChevronRight, Plus, Clock, Video, Copy, Star, Trash2, AlertCircle, Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, MapPin, Minimize2, Maximize2, X, Settings, ArrowRight, Globe, Map as MapIcon } from 'lucide-react';
+import { toZonedTime, format, formatInTimeZone } from 'date-fns-tz';
+import { fr } from 'date-fns/locale';
+import { addMinutes, differenceInMinutes, parse, isBefore, startOfDay, parseISO } from 'date-fns';
+
+interface AgendaProps {
+    events: CalendarEvent[];
+    onAddEvent: (event: CalendarEvent) => void;
+    onUpdateEvent: (event: CalendarEvent) => void;
+    onDeleteEvent: (eventId: string) => void;
+}
+
+interface EventTypeBadgeProps {
+    type: string;
+    selected?: boolean;
+    onClick?: () => void;
+}
+
+const EventTypeBadge: React.FC<EventTypeBadgeProps> = React.memo(({ type, selected, onClick }) => {
+    const colors: Record<string, string> = {
+        'Meeting': 'bg-blue-100 text-blue-700 border-blue-200',
+        'Deadline': 'bg-red-100 text-red-700 border-red-200',
+        'Focus': 'bg-purple-100 text-purple-700 border-purple-200',
+        'Personal': 'bg-green-100 text-green-700 border-green-200',
+    };
+    return (
+        <div 
+            onClick={onClick}
+            className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer transition-all ${colors[type]} ${selected ? 'ring-2 ring-offset-2 ring-slate-400' : 'opacity-60 hover:opacity-100'}`}
+        >
+            {type}
+        </div>
+    );
+});
+
+// --- Timezone Generation (optimized - base list generated once) ---
+const BASE_TIMEZONES: { value: string; city: string; region: string; search: string }[] = (() => {
+    if (typeof Intl === 'undefined' || !Intl.supportedValuesOf) return [];
+    try {
+        return Intl.supportedValuesOf('timeZone').map(tz => {
+            const city = tz.split('/').pop()?.replace(/_/g, ' ') || tz;
+            const region = tz.split('/')[0].replace(/_/g, ' ') || '';
+            return { value: tz, city, region, search: `${city} ${region} ${tz}`.toLowerCase() };
+        }).sort((a, b) => a.city.localeCompare(b.city));
+    } catch { return []; }
+})();
+
+// Only format with current time when needed (lazy)
+const formatTimezoneWithTime = (tz: typeof BASE_TIMEZONES[0], date: Date) => {
+    try {
+        const nowInTz = toZonedTime(date, tz.value);
+        const offset = format(nowInTz, 'xxx', { timeZone: tz.value });
+        const time = format(nowInTz, 'HH:mm', { timeZone: tz.value });
+        return { ...tz, label: `${tz.city} (${time}) ${offset} - ${tz.region}` };
+    } catch {
+        return { ...tz, label: `${tz.city} - ${tz.region}` };
+    }
+};
+
+// --- Constants ---
+const START_HOUR = 0; 
+const END_HOUR = 23; 
+const HOURS_COUNT = END_HOUR - START_HOUR + 1;
+const PIXELS_PER_HOUR = 80;
+
+const COMMON_CITIES = [
+    { name: 'Genève', tz: 'Europe/Zurich', country: '🇨🇭' },
+    { name: 'Zürich', tz: 'Europe/Zurich', country: '🇨🇭' },
+    { name: 'Lausanne', tz: 'Europe/Zurich', country: '🇨🇭' },
+    { name: 'Paris', tz: 'Europe/Paris', country: '🇫🇷' },
+    { name: 'London', tz: 'Europe/London', country: '🇬🇧' },
+    { name: 'New York', tz: 'America/New_York', country: '🇺🇸' },
+    { name: 'Tokyo', tz: 'Asia/Tokyo', country: '🇯🇵' },
+];
+
+export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
+    // State for external events (iCal)
+    const [externalEvents, setExternalEvents] = useState<CalendarEvent[]>([]);
+    
+    // Merge local and external events for display (avoiding duplicates)
+    const events = useMemo(() => {
+        // Get IDs of local events that are synced to Google (have googleEventId)
+        const syncedGoogleIds = new Set(
+            localEvents
+                .filter(e => e.googleEventId)
+                .map(e => e.googleEventId)
+        );
+        
+        // Filter out external Google events that already exist locally
+        const filteredExternal = externalEvents.filter(e => {
+            if (e.source === 'google' && e.googleEventId) {
+                return !syncedGoogleIds.has(e.googleEventId);
+            }
+            return true;
+        });
+        
+        return [...localEvents, ...filteredExternal];
+    }, [localEvents, externalEvents]);
+
+    // Ensure initial dates are valid
+    const [currentDate, setCurrentDate] = useState(() => {
+        const d = new Date();
+        return isNaN(d.getTime()) ? new Date() : d;
+    }); 
+    const [currentTime, setCurrentTime] = useState(() => {
+        const d = new Date();
+        return isNaN(d.getTime()) ? new Date() : d;
+    }); 
+    
+    // Google Calendar sync state
+    const [googleCalendarConnected, setGoogleCalendarConnected] = useState(() => {
+        // Check cached status for instant UI
+        return localStorage.getItem('marion_gcal_connected') === 'true';
+    });
+    const [googleCalendarEmail, setGoogleCalendarEmail] = useState<string | null>(() => {
+        return localStorage.getItem('marion_gcal_email');
+    });
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastGoogleSync, setLastGoogleSync] = useState<Date | null>(null);
+    
+    // Load cached Google events immediately for instant display
+    useEffect(() => {
+        try {
+            const cached = localStorage.getItem('marion_gcal_events_cache');
+            if (cached) {
+                const { events: cachedEvents, timestamp } = JSON.parse(cached);
+                // Use cache if less than 10 minutes old
+                if (Date.now() - timestamp < 600000 && Array.isArray(cachedEvents)) {
+                    setExternalEvents(cachedEvents);
+                }
+            }
+        } catch (e) {
+            // Silent fail
+        }
+    }, []);
+    
+    // Track consecutive failures for smarter reconnection
+    const failureCountRef = useRef(0);
+    const lastSuccessfulSyncRef = useRef<Date | null>(null);
+    
+    // Fetch all external events in parallel (resilient sync)
+    useEffect(() => {
+        let isMounted = true;
+        
+        // Helper to map Google events
+        const mapGoogleEvent = (e: any): CalendarEvent => ({
+            id: `gcal-${e.googleEventId}`,
+            title: e.title,
+            date: e.date,
+            startTime: e.startTime,
+            duration: e.duration || 60,
+            type: 'Meeting' as const,
+            description: e.description,
+            meetLink: e.meetLink,
+            source: 'google' as const,
+            googleEventId: e.googleEventId,
+            originalTimezone: e.originalTimezone,
+            originalDateTime: e.originalDateTime
+        });
+        
+        const fetchAllExternalEvents = async (isRetry = false) => {
+            if (!isMounted) return;
+            
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
+            
+            if (!isRetry) setIsSyncing(true);
+            
+            try {
+                // Fetch everything in parallel
+                const [statusResult, icalResult, gcalResult] = await Promise.allSettled([
+                    // 1. Check Google connection
+                    fetch('http://127.0.0.1:5003/api/gcal/sync-status', { signal: controller.signal })
+                        .then(r => r.ok ? r.json() : Promise.reject('status_error')),
+                    
+                    // 2. Fetch iCal events
+                    fetch('http://127.0.0.1:5003/api/calendar/fetch', { signal: controller.signal })
+                        .then(r => r.ok ? r.json() : Promise.reject('ical_error')),
+                    
+                    // 3. Fetch Google Calendar events
+                    fetch('http://127.0.0.1:5003/api/gcal/events', { signal: controller.signal })
+                        .then(r => r.ok ? r.json() : Promise.reject('gcal_error'))
+                ]);
+                
+                clearTimeout(timeout);
+                if (!isMounted) return;
+                
+                const allEvents: CalendarEvent[] = [];
+                let syncSuccess = false;
+                
+                // Update connection status ONLY if we get a definitive answer
+                if (statusResult.status === 'fulfilled') {
+                    const status = statusResult.value;
+                    // Only update if server explicitly says connected or not
+                    if (typeof status.connected === 'boolean') {
+                        setGoogleCalendarConnected(status.connected);
+                        localStorage.setItem('marion_gcal_connected', String(status.connected));
+                        if (status.email) {
+                            setGoogleCalendarEmail(status.email);
+                            localStorage.setItem('marion_gcal_email', status.email);
+                        }
+                    }
+                    syncSuccess = true;
+                }
+                // On network failure, KEEP the cached status (don't set to false)
+                
+                // Add iCal events
+                if (icalResult.status === 'fulfilled' && icalResult.value.events) {
+                    allEvents.push(...icalResult.value.events.map((e: any) => ({ ...e, source: 'iCal' as const })));
+                    syncSuccess = true;
+                }
+                
+                // Add Google Calendar events
+                if (gcalResult.status === 'fulfilled' && gcalResult.value.events) {
+                    const googleEvents = gcalResult.value.events.map(mapGoogleEvent);
+                    allEvents.push(...googleEvents);
+                    setLastGoogleSync(new Date());
+                    lastSuccessfulSyncRef.current = new Date();
+                    syncSuccess = true;
+                    
+                    // Cache Google events for instant load next time
+                    localStorage.setItem('marion_gcal_events_cache', JSON.stringify({
+                        events: googleEvents,
+                        timestamp: Date.now()
+                    }));
+                    
+                    // If we got events, we're definitely connected
+                    if (googleEvents.length > 0) {
+                        setGoogleCalendarConnected(true);
+                        localStorage.setItem('marion_gcal_connected', 'true');
+                    }
+                }
+                
+                // Only update events if we got at least some data
+                if (allEvents.length > 0 || syncSuccess) {
+                    setExternalEvents(allEvents);
+                    failureCountRef.current = 0;
+                } else {
+                    // All fetches failed - increment failure count
+                    failureCountRef.current++;
+                    
+                    // Only show disconnected after 3 consecutive failures
+                    if (failureCountRef.current >= 3) {
+                        // Keep cached events but maybe mark as stale
+                        console.log('Agenda sync: multiple failures, keeping cached data');
+                    }
+                    
+                    // Retry once after a short delay (if not already a retry)
+                    if (!isRetry && failureCountRef.current < 3) {
+                        setTimeout(() => fetchAllExternalEvents(true), 3000);
+                    }
+                }
+                
+            } catch (e) {
+                clearTimeout(timeout);
+                // Network error - keep existing state, don't reset
+                console.log('Agenda sync error:', e);
+                failureCountRef.current++;
+                
+                // Auto-retry on first failure
+                if (!isRetry && failureCountRef.current < 2) {
+                    setTimeout(() => fetchAllExternalEvents(true), 5000);
+                }
+            } finally {
+                if (isMounted) setIsSyncing(false);
+            }
+        };
+        
+        // Initial fetch
+        fetchAllExternalEvents();
+        
+        // Refresh every 3 minutes (more frequent for better sync)
+        const interval = setInterval(() => fetchAllExternalEvents(), 180000);
+        
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, []);
+
+    const [isExpanded, setIsExpanded] = useState(false); // Expanded = "Immersion Mode"
+    const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day'); // Only used in expanded
+    const [localTimezone, setLocalTimezone] = useState(() => {
+        try {
+            return localStorage.getItem('marion_agenda_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch {
+            return 'UTC';
+        }
+    });
+    const [customCity, setCustomCity] = useState<string | null>(() => {
+        return localStorage.getItem('marion_agenda_city') || null;
+    });
+    const [viewTimezone, setViewTimezone] = useState<string>(localTimezone); 
+
+    // Persist Timezone Settings
+    useEffect(() => {
+        localStorage.setItem('marion_agenda_timezone', localTimezone);
+    }, [localTimezone]);
+
+    useEffect(() => {
+        if (customCity) localStorage.setItem('marion_agenda_city', customCity);
+        else localStorage.removeItem('marion_agenda_city');
+    }, [customCity]);
+
+    // Modals & Forms
+    const [showEventModal, setShowEventModal] = useState(false);
+    const [showLocationModal, setShowLocationModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [formError, setFormError] = useState('');
+    const [eventForm, setEventForm] = useState<Partial<CalendarEvent>>({
+        type: 'Meeting',
+        startTime: '09:00',
+        duration: 60,
+        originalTimezone: localTimezone 
+    });
+
+    // Derived End Time state for the form UI
+    const [endDateTime, setEndDateTime] = useState<{date: string, time: string}>({ date: '', time: '' });
+
+    // Weather
+    const [weather, setWeather] = useState<{ temp: number, code: number } | null>(null);
+    const [loadingWeather, setLoadingWeather] = useState(false);
+
+    // Timezone Selection
+    const [searchTimezoneQuery, setSearchTimezoneQuery] = useState('');
+    const [showTimezoneDropdown, setShowTimezoneDropdown] = useState(false);
+    const [locationSearchQuery, setLocationSearchQuery] = useState('');
+    
+    const [favoriteTimezones, setFavoriteTimezones] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem('marion_favorite_timezones');
+            return saved ? JSON.parse(saved) : [localTimezone]; 
+        } catch {
+            return [localTimezone];
+        }
+    });
+    
+    // Refs
+    const gridContainerRef = useRef<HTMLDivElement>(null);
+    const timezoneInputRef = useRef<HTMLInputElement>(null);
+    const timezoneDropdownRef = useRef<HTMLDivElement>(null);
+
+    // --- Derived Data (optimized: only format timezones when dropdown is open) ---
+    const filteredTimezones = useMemo(() => {
+        if (!showTimezoneDropdown) return []; // Don't compute if dropdown closed
+        const query = searchTimezoneQuery.toLowerCase();
+        const now = new Date(); // Use fresh time only when dropdown is open
+        let results = BASE_TIMEZONES
+            .filter(tz => tz.search.includes(query))
+            .slice(0, 100) // Limit results for performance
+            .map(tz => formatTimezoneWithTime(tz, now));
+        const favs = results.filter(tz => favoriteTimezones.includes(tz.value));
+        const nonFavs = results.filter(tz => !favoriteTimezones.includes(tz.value));
+        return [...favs, ...nonFavs]; 
+    }, [searchTimezoneQuery, favoriteTimezones, showTimezoneDropdown]);
+
+    const filteredLocationTimezones = useMemo(() => {
+        if (!locationSearchQuery) return [];
+        const query = locationSearchQuery.toLowerCase();
+        const now = new Date();
+        return BASE_TIMEZONES
+            .filter(tz => tz.search.includes(query))
+            .slice(0, 50)
+            .map(tz => formatTimezoneWithTime(tz, now));
+    }, [locationSearchQuery]);
+
+    // Memoized event positions - only recalculate when events or viewTimezone changes
+    const eventPositionsCache = useMemo(() => {
+        const cache = new Map<string, { top: number; height: number; dateInView: string }>();
+        events.forEach(ev => {
+            const dateInView = ev.originalTimezone && ev.originalDateTime 
+                ? (() => {
+                    try {
+                        const eventDateInOriginalTz = toZonedTime(ev.originalDateTime, ev.originalTimezone);
+                        const eventDateInViewTz = toZonedTime(eventDateInOriginalTz, viewTimezone);
+                        return format(eventDateInViewTz, 'yyyy-MM-dd');
+                    } catch { return ev.date; }
+                })()
+                : ev.date;
+            
+            let hours = 9, minutes = 0;
+            if (ev.originalTimezone && ev.originalDateTime) {
+                try {
+                    const eventDateInOriginalTz = toZonedTime(ev.originalDateTime, ev.originalTimezone);
+                    const eventDateInViewTz = toZonedTime(eventDateInOriginalTz, viewTimezone);
+                    hours = eventDateInViewTz.getHours();
+                    minutes = eventDateInViewTz.getMinutes();
+                } catch {
+                    const [h, m] = ev.startTime.split(':').map(Number);
+                    hours = isNaN(h) ? 9 : h;
+                    minutes = isNaN(m) ? 0 : m;
+                }
+            } else {
+                const [h, m] = ev.startTime.split(':').map(Number);
+                hours = isNaN(h) ? 9 : h;
+                minutes = isNaN(m) ? 0 : m;
+            }
+            
+            const totalMinutesFromStart = (hours - START_HOUR) * 60 + minutes;
+            const top = (totalMinutesFromStart / 60) * PIXELS_PER_HOUR;
+            const height = (ev.duration / 60) * PIXELS_PER_HOUR;
+            
+            cache.set(ev.id, { top, height, dateInView });
+        });
+        return cache;
+    }, [events, viewTimezone]);
+
+    // --- Effects ---
+    useEffect(() => { localStorage.setItem('marion_favorite_timezones', JSON.stringify(favoriteTimezones)); }, [favoriteTimezones]);
+    
+    // Update current time every second for accurate clock display
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000); 
+        return () => clearInterval(timer);
+    }, []);
+
+    // Sync EndDateTime state with EventForm when form changes (and not manually editing end)
+    useEffect(() => {
+        if (eventForm.date && eventForm.startTime && eventForm.duration !== undefined) {
+            try {
+                const startDateTime = parse(`${eventForm.date}T${eventForm.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+                const calculatedEnd = addMinutes(startDateTime, eventForm.duration);
+                setEndDateTime({
+                    date: format(calculatedEnd, 'yyyy-MM-dd'),
+                    time: format(calculatedEnd, 'HH:mm')
+                });
+            } catch (e) {
+                // Fallback or log error
+                console.error("Error calculating end date/time from eventForm:", e);
+            }
+        }
+    }, [eventForm.date, eventForm.startTime, eventForm.duration]);
+
+    // Weather Fetching
+    useEffect(() => {
+        const fetchWeather = async () => {
+            setLoadingWeather(true);
+            setWeather(null);
+            const fetchWithCoords = async (lat: number, lon: number) => {
+                try {
+                    const dateStr = format(currentDate, 'yyyy-MM-dd'); 
+                    const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max&timezone=${localTimezone}&start_date=${dateStr}&end_date=${dateStr}`);
+                    const data = await response.json();
+                    if (data.daily?.temperature_2m_max?.length > 0) {
+                        setWeather({ temp: Math.round(data.daily.temperature_2m_max[0]), code: data.daily.weather_code[0] });
+                    }
+                } catch (e) { console.error("Weather error", e); } finally { setLoadingWeather(false); }
+            };
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (p) => fetchWithCoords(p.coords.latitude, p.coords.longitude),
+                    (err) => {
+                        console.warn("Geolocation fallback to Geneva:", err.message);
+                        fetchWithCoords(46.2044, 6.1432);
+                    },
+                    { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+                );
+            } else { fetchWithCoords(46.2044, 6.1432); }
+        };
+        fetchWeather();
+    }, [currentDate, localTimezone]);
+
+    // Original Time Calculation Logic (for Create/Edit)
+    useEffect(() => {
+        setFormError(''); 
+        if (eventForm.date && eventForm.startTime && eventForm.originalTimezone) {
+            const dateParts = eventForm.date.split('-').map(Number);
+            const timeParts = eventForm.startTime.split(':').map(Number);
+            
+            if (dateParts.length !== 3 || timeParts.length !== 2) return;
+
+            const [year, month, day] = dateParts;
+            const [hours, minutes] = timeParts;
+
+            try {
+                const localDateFromComponents = new Date(year, month - 1, day, hours, minutes);
+                if (isNaN(localDateFromComponents.getTime())) return;
+
+                const zonedDateInOriginalTz = toZonedTime(localDateFromComponents, eventForm.originalTimezone);
+                const originalISO = format(zonedDateInOriginalTz, `yyyy-MM-dd'T'HH:mm:ssXXX`, { timeZone: eventForm.originalTimezone });
+                setEventForm(prev => ({ ...prev, originalDateTime: originalISO }));
+            } catch (error: any) {
+                setEventForm(prev => ({ ...prev, originalDateTime: undefined })); 
+            }
+        } else {
+            setEventForm(prev => ({ ...prev, originalDateTime: undefined })); 
+        }
+    }, [eventForm.date, eventForm.startTime, eventForm.originalTimezone]);
+
+    // Function to scroll to current time
+    const scrollToCurrentTime = useCallback((smooth = true) => {
+        if (gridContainerRef.current) {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            if (hours >= START_HOUR && hours <= END_HOUR) {
+                const totalMinutes = (hours - START_HOUR) * 60 + minutes;
+                const top = (totalMinutes / 60) * PIXELS_PER_HOUR;
+                // Scroll so the current time line is ~1/3 from the top of the view
+                const offset = gridContainerRef.current.clientHeight / 3;
+                gridContainerRef.current.scrollTo({ 
+                    top: Math.max(0, top - offset), 
+                    behavior: smooth ? 'smooth' : 'auto' 
+                });
+            }
+        }
+    }, []);
+
+    // Auto-scroll to current time on mount and when date/expanded changes
+    useEffect(() => {
+        // Small delay to ensure DOM is ready
+        const timer = setTimeout(() => scrollToCurrentTime(false), 100);
+        return () => clearTimeout(timer);
+    }, []); // Only on mount
+
+    useEffect(() => {
+        scrollToCurrentTime(true);
+    }, [currentDate, isExpanded, scrollToCurrentTime]);
+
+    // --- Helpers ---
+    const toISODate = (date: Date) => {
+        try {
+            return format(date, 'yyyy-MM-dd');
+        } catch {
+            return format(new Date(), 'yyyy-MM-dd');
+        }
+    };
+    
+    const navigate = (direction: number) => {
+        const newDate = new Date(currentDate);
+        if (viewMode === 'week' && isExpanded) newDate.setDate(newDate.getDate() + (direction * 7));
+        else if (viewMode === 'month' && isExpanded) newDate.setMonth(newDate.getMonth() + direction);
+        else newDate.setDate(newDate.getDate() + direction);
+        setCurrentDate(newDate);
+    };
+
+    const getWeatherIcon = (code: number) => {
+        if (code === 0) return <Sun size={18} className="text-yellow-500" />;
+        if (code >= 1 && code <= 3) return <Cloud size={18} className="text-slate-400" />;
+        if (code >= 51) return <CloudRain size={18} className="text-blue-400" />;
+        if (code >= 71) return <CloudSnow size={18} className="text-cyan-300" />;
+        if (code >= 95) return <CloudLightning size={18} className="text-purple-500" />;
+        return <Sun size={18} className="text-yellow-500" />;
+    };
+
+    // --- Event Styling ---
+    const getEventStyle = (type: string) => {
+        switch (type) {
+            case 'Meeting': return 'bg-blue-100 border-l-4 border-blue-500 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200';
+            case 'Deadline': return 'bg-red-100 border-l-4 border-red-500 text-red-700 dark:bg-red-900/40 dark:text-red-200';
+            case 'Focus': return 'bg-purple-100 border-l-4 border-purple-500 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200';
+            case 'Personal': return 'bg-green-100 border-l-4 border-green-500 text-green-700 dark:bg-green-900/40 dark:text-green-200';
+            default: return 'bg-slate-100 text-slate-700';
+        }
+    };
+
+    // --- Interaction Handlers ---
+    const handleSaveEvent = () => {
+        setFormError(''); 
+        // Relaxed validation: check only visible fields
+        if (!eventForm.title || !eventForm.date || !eventForm.startTime) {
+            setFormError('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+        
+        let finalEvent = { ...eventForm } as CalendarEvent;
+        if (!finalEvent.id) finalEvent.id = `e-${Date.now()}`;
+        
+        // Mark new events as local (for persistence)
+        if (!finalEvent.source) finalEvent.source = 'local';
+        
+        // Ensure originalDateTime is set
+        if (!finalEvent.originalDateTime && finalEvent.date && finalEvent.startTime) {
+             try {
+                 const [year, month, day] = finalEvent.date.split('-').map(Number);
+                 const [hours, minutes] = finalEvent.startTime.split(':').map(Number);
+                 const localDate = new Date(year, month - 1, day, hours, minutes);
+                 
+                 // Default to view/local timezone if original is missing
+                 const tz = finalEvent.originalTimezone || viewTimezone || 'UTC';
+                 finalEvent.originalTimezone = tz;
+                 
+                 const zonedDate = toZonedTime(localDate, tz);
+                 finalEvent.originalDateTime = format(zonedDate, `yyyy-MM-dd'T'HH:mm:ssXXX`, { timeZone: tz });
+             } catch (e) {
+                 // Fallback: simple ISO string from local
+                 console.warn("Date calculation fallback", e);
+                 finalEvent.originalDateTime = new Date(`${finalEvent.date}T${finalEvent.startTime}`).toISOString();
+             }
+        }
+
+        if (isEditing) {
+            onUpdateEvent(finalEvent);
+            
+            // Handle iCal Update
+            if (finalEvent.source === 'iCal') {
+                fetch('http://127.0.0.1:5003/api/calendar/update', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         id: finalEvent.id,
+                         calendarName: finalEvent.calendarName,
+                         title: finalEvent.title,
+                         startDate: finalEvent.date,
+                         startTime: finalEvent.startTime,
+                         duration: (finalEvent.duration || 60) / 60
+                     })
+                 }).catch(err => console.error("Calendar Update Failed:", err));
+            }
+            
+            // Handle Google Calendar Update
+            if (finalEvent.source === 'google' && finalEvent.googleEventId) {
+                fetch(`http://127.0.0.1:5003/api/gcal/events/${finalEvent.googleEventId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: finalEvent.title,
+                        description: finalEvent.description,
+                        date: finalEvent.date,
+                        startTime: finalEvent.startTime,
+                        duration: finalEvent.duration || 60,
+                        timezone: finalEvent.originalTimezone || 'Europe/Zurich'
+                    })
+                }).catch(err => console.error("Google Calendar Update Failed:", err));
+            }
+        } else {
+            onAddEvent(finalEvent);
+            
+            // Sync to Google Calendar if connected (except Personal events)
+            if (googleCalendarConnected && finalEvent.type !== 'Personal') {
+                fetch('http://127.0.0.1:5003/api/gcal/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: finalEvent.title,
+                        description: finalEvent.description || '',
+                        date: finalEvent.date,
+                        startTime: finalEvent.startTime,
+                        duration: finalEvent.duration || 60,
+                        timezone: finalEvent.originalTimezone || 'Europe/Zurich',
+                        addMeet: !!finalEvent.meetLink
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.event?.googleEventId) {
+                        // Update local event with Google ID (keep source as 'local' for persistence)
+                        onUpdateEvent({ ...finalEvent, googleEventId: data.event.googleEventId });
+                    }
+                })
+                .catch(err => console.error("Google Calendar Sync Failed:", err));
+            }
+        }
+        
+        setShowEventModal(false);
+    };
+
+    const generateMeet = useCallback(() => {
+        const id = Math.random().toString(36).substring(2, 5) + '-' + Math.random().toString(36).substring(2, 6) + '-' + Math.random().toString(36).substring(2, 5);
+        setEventForm(prev => ({...prev, meetLink: 'https://meet.google.com/' + id}));
+    }, [setEventForm]);
+
+    const handleGridClick = (date: Date, hour: number) => {
+        setFormError('');
+        const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+        const initialStartDate = toISODate(date);
+        const initialStartTime = timeStr;
+        const initialDuration = 60; // Default to 1 hour
+        
+        const startDateTime = parse(`${initialStartDate}T${initialStartTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+        const calculatedEnd = addMinutes(startDateTime, initialDuration);
+
+        // Default to creating event in VIEW timezone to match what user sees
+        setIsEditing(false);
+        setEventForm({
+            type: 'Meeting',
+            startTime: initialStartTime,
+            date: initialStartDate,
+            duration: initialDuration,
+            originalTimezone: viewTimezone, 
+            title: ''
+        });
+        setEndDateTime({
+            date: format(calculatedEnd, 'yyyy-MM-dd'),
+            time: format(calculatedEnd, 'HH:mm')
+        });
+        setShowEventModal(true);
+    };
+
+    const handleStartDateChange = (newDate: string) => {
+        setEventForm(prev => {
+            const newStart = parse(`${newDate}T${prev.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+            const currentEnd = parse(`${endDateTime.date}T${endDateTime.time}`, "yyyy-MM-dd'T'HH:mm", new Date());
+            
+            let newEnd = addMinutes(newStart, prev.duration || 0);
+
+            // Ensure end is not before new start
+            if (isBefore(newEnd, newStart)) {
+                newEnd = addMinutes(newStart, 60); // Default 1 hour duration
+                setEventForm(p => ({...p, duration: 60}));
+            }
+
+            setEndDateTime({
+                date: format(newEnd, 'yyyy-MM-dd'),
+                time: format(newEnd, 'HH:mm')
+            });
+
+            return {...prev, date: newDate};
+        });
+    };
+
+    const handleStartTimeChange = (newTime: string) => {
+        setEventForm(prev => {
+            if (!prev.date) return prev;
+            const newStart = parse(`${prev.date}T${newTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+            
+            let newEnd = addMinutes(newStart, prev.duration || 0);
+
+            // Ensure end is not before new start
+            if (isBefore(newEnd, newStart)) {
+                newEnd = addMinutes(newStart, 60); // Default 1 hour duration
+                setEventForm(p => ({...p, duration: 60}));
+            }
+
+            setEndDateTime({
+                date: format(newEnd, 'yyyy-MM-dd'),
+                time: format(newEnd, 'HH:mm')
+            });
+
+            return {...prev, startTime: newTime};
+        });
+    };
+
+    const handleEndDateChange = (newDate: string) => {
+        // Changing end date recalculates duration
+        if (!eventForm.date || !eventForm.startTime || !newDate || !endDateTime.time) return;
+        const start = parse(`${eventForm.date}T${eventForm.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+        const end = parse(`${newDate}T${endDateTime.time}`, "yyyy-MM-dd'T'HH:mm", new Date());
+        
+        const diff = differenceInMinutes(end, start);
+        if (diff > 0) setEventForm(prev => ({...prev, duration: diff}));
+        setEndDateTime(prev => ({...prev, date: newDate})); // Update local end date state
+    };
+
+    const handleEndTimeChange = (newTime: string) => {
+        // Changing end time recalculates duration
+        if (!eventForm.date || !eventForm.startTime || !endDateTime.date || !newTime) return;
+        const start = parse(`${eventForm.date}T${eventForm.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+        const end = parse(`${endDateTime.date}T${newTime}`, "yyyy-MM-dd'T'HH:mm", new Date());
+        
+        const diff = differenceInMinutes(end, start);
+        if (diff > 0) setEventForm(prev => ({...prev, duration: diff}));
+        setEndDateTime(prev => ({...prev, time: newTime})); // Update local end time state
+    };
+
+    // --- Render Logic ---
+    const getWeekDays = (refDate: Date) => {
+        const start = new Date(refDate);
+        const day = start.getDay();
+        const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(start.setDate(diff));
+        return Array.from({length: 7}, (_, i) => {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            return d;
+        });
+    };
+
+    const renderDayColumn = (day: Date, isFullWidth = true) => {
+        const dateStr = toISODate(day);
+        const isToday = dateStr === toISODate(currentTime);
+        
+        // Filter events using memoized cache for positions
+        const dayEvents = events
+            .filter(e => {
+                const cached = eventPositionsCache.get(e.id);
+                return cached?.dateInView === dateStr;
+            })
+            .map(ev => {
+                const cached = eventPositionsCache.get(ev.id)!;
+                return { ...ev, top: cached.top, height: cached.height, start: cached.top, end: cached.top + cached.height };
+            })
+            .sort((a, b) => a.start - b.start || b.duration - a.duration);
+
+        // Calculate layout columns for side-by-side display
+        const columns: any[][] = [];
+        dayEvents.forEach(ev => {
+            let placed = false;
+            for (const col of columns) {
+                const lastEv = col[col.length - 1];
+                if (ev.start >= lastEv.end) {
+                    col.push(ev);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                columns.push([ev]);
+            }
+        });
+
+        // Flatten back to list with colIndex
+        const positionedEvents: any[] = [];
+        columns.forEach((col, colIndex) => {
+            col.forEach(ev => {
+                positionedEvents.push({ ...ev, colIndex, totalCols: columns.length });
+            });
+        });
+
+        return (
+            <div className={`relative h-full ${isFullWidth ? 'flex-1' : 'w-full'} border-r border-slate-100 dark:border-slate-700/50 last:border-r-0 group`}>
+                {/* Background Grid */}
+                <div className="absolute inset-0 flex flex-col pointer-events-none">
+                    {Array.from({ length: HOURS_COUNT }).map((_, i) => (
+                        <div key={i} className="border-b border-slate-100 dark:border-slate-700/50 w-full" style={{ height: PIXELS_PER_HOUR }}></div>
+                    ))}
+                </div>
+
+                {/* Click Targets */}
+                <div className="absolute inset-0 z-0">
+                    {Array.from({ length: HOURS_COUNT }).map((_, i) => (
+                        <div 
+                            key={i}
+                            onClick={() => handleGridClick(day, START_HOUR + i)}
+                            className="absolute w-full cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                            style={{ top: i * PIXELS_PER_HOUR, height: PIXELS_PER_HOUR }}
+                        ></div>
+                    ))}
+                </div>
+
+                {/* Events */}
+                {positionedEvents.map(ev => {
+                    const width = 85 / ev.totalCols;
+                    const left = ev.colIndex * width;
+                    
+                    // Consider as "External iCal" only if it's NOT an event created by our App
+                    const isICal = ev.source === 'iCal' && !ev.isAppEvent;
+
+                    return (
+                        <div
+                            key={ev.id}
+                            onClick={(e) => { 
+                                e.stopPropagation(); 
+                                // Allow editing ALL events now
+                                setIsEditing(true); 
+                                setEventForm({...ev}); 
+                                setShowEventModal(true); 
+                            }}
+                            className={`absolute rounded-md p-2 text-xs shadow-sm cursor-pointer z-10 hover:z-20 hover:shadow-md transition-all flex flex-col overflow-hidden border ${getEventStyle(ev.type)} ${isICal ? 'border-dashed opacity-90' : ''}`}
+                            style={{ 
+                                top: `${ev.top}px`, 
+                                height: `${ev.height}px`, 
+                                minHeight: '30px', 
+                                width: `${width}%`,
+                                left: `${left}%`
+                            }}
+                        >
+                            <div className="font-bold truncate leading-tight flex items-center gap-1">
+                                {isICal && <span className="text-[10px]">🍎</span>}
+                                {ev.title}
+                            </div>
+                            {ev.height > 40 && (
+                                <div className="text-[10px] opacity-80 mt-0.5">
+                                    <div className="flex items-center gap-1">
+                                        <Clock size={10} /> 
+                                        {ev.originalDateTime 
+                                            ? formatInTimeZone(toZonedTime(ev.originalDateTime!, ev.originalTimezone!), viewTimezone, 'HH:mm')
+                                            : ev.startTime
+                                        }
+                                    </div>
+                                    {ev.meetLink && (
+                                        <a href={ev.meetLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline truncate">
+                                            <Video size={10} /> {ev.meetLink.replace('https://', '').replace('http://', '').split('/')[0]}
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {/* Red Line (Current Time) */}
+                {isToday && (
+                    <div 
+                        className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
+                        style={{ 
+                            top: `${((currentTime.getHours() - START_HOUR) * 60 + currentTime.getMinutes()) / 60 * PIXELS_PER_HOUR}px` 
+                        }}
+                    >
+                        <div className="w-full h-[2px] bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.6)]"></div>
+                        <div className="absolute -left-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // --- Modal Content ---
+    const ExpandedModal = () => (
+        <div className="fixed inset-0 z-[100] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl flex flex-col animate-in fade-in zoom-in-95 duration-300">
+            {/* Toolbar */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-6">
+                    <h2 className="text-3xl font-serif font-bold text-slate-800 dark:text-white">Agenda</h2>
+                    
+                    {/* View Switcher */}
+                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                        {(['day', 'week', 'month'] as const).map(m => (
+                            <button
+                                key={m}
+                                onClick={() => setViewMode(m)}
+                                className={`px-4 py-1.5 rounded-md text-sm font-bold capitalize transition-all ${viewMode === m ? 'bg-white dark:bg-slate-700 shadow-sm text-brand-orange' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                {m === 'day' ? 'Jour' : m === 'week' ? 'Semaine' : 'Mois'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Timezone Selector */}
+                    <div className="relative group">
+                        <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-brand-orange px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            <Globe size={16} /> 
+                            {viewTimezone.split('/').pop()?.replace(/_/g, ' ')}
+                        </button>
+                        {/* Simple dropdown for quick switch (Local vs others could be added here) */}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800">
+                        Aujourd'hui
+                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><ChevronLeft /></button>
+                        <span className="text-lg font-bold w-48 text-center capitalize">
+                            {viewMode === 'day' ? format(currentDate, 'EEEE d MMMM', { locale: fr }) :
+                             viewMode === 'week' ? `Semaine ${format(currentDate, 'w')}` :
+                             format(currentDate, 'MMMM yyyy', { locale: fr })}
+                        </span>
+                        <button onClick={() => navigate(1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><ChevronRight /></button>
+                    </div>
+                    <button onClick={() => setIsExpanded(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-red-500 transition-colors">
+                        <Minimize2 size={20} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 flex overflow-hidden">
+                {/* Sidebar (Mini Cal + Filters) */}
+                <div className="w-64 border-r border-slate-200 dark:border-slate-800 p-6 hidden lg:block overflow-y-auto">
+                    <button onClick={() => { setIsEditing(false); setEventForm({...eventForm, date: toISODate(currentDate)}); setShowEventModal(true); }} className="w-full py-3 bg-brand-orange text-white rounded-xl shadow-lg shadow-orange-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                        <Plus size={20} /> Créer
+                    </button>
+                    {/* Mini Month View (Simplified) */}
+                    <div className="mb-8">
+                        <div className="font-bold mb-4 capitalize text-slate-700 dark:text-slate-200">{format(currentDate, 'MMMM yyyy', { locale: fr })}</div>
+                        <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                            {['L','M','M','J','V','S','D'].map(d => <div key={d} className="text-slate-400 font-bold py-1">{d}</div>)}
+                            {Array.from({length: 35}).map((_, i) => {
+                                const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                                d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) + i);
+                                const isSel = toISODate(d) === toISODate(currentDate);
+                                return (
+                                    <div key={i} onClick={() => setCurrentDate(d)} className={`py-1.5 rounded-full cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${isSel ? 'bg-brand-orange text-white font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
+                                        {d.getDate()}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Grid */}
+                <div className="flex-1 overflow-y-auto relative no-scrollbar bg-white dark:bg-[#0B0F19] pt-4 pb-20">
+                    {viewMode === 'month' ? (
+                        <div className="h-full p-4 grid grid-cols-7 grid-rows-5 gap-2">
+                            {Array.from({length: 35}).map((_, i) => {
+                                const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                                d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) + i);
+                                const isCurrentMonth = d.getMonth() === currentDate.getMonth();
+                                return (
+                                    <div 
+                                        key={i} 
+                                        onClick={() => handleGridClick(d, 9)} // Create event at 9am
+                                        className={`border rounded-lg p-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isCurrentMonth ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700' : 'bg-slate-50 dark:bg-slate-900 border-transparent opacity-50'}`}
+                                    >
+                                        <div className="text-right text-xs font-bold mb-1">{d.getDate()}</div>
+                                        {events.filter(e => e.date === toISODate(d)).slice(0,3).map(ev => (
+                                            <div 
+                                                key={ev.id} 
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    setIsEditing(true); 
+                                                    setEventForm({...ev}); 
+                                                    setShowEventModal(true); 
+                                                }}
+                                                className={`text-[10px] truncate px-1 rounded mb-1 cursor-pointer hover:opacity-80 ${getEventStyle(ev.type)}`}
+                                            >
+                                                {ev.title}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    ) : (
+                        <div className="flex min-h-full">
+                            {/* Time Axis */}
+                            <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 sticky left-0 z-20">
+                                {Array.from({ length: HOURS_COUNT }).map((_, i) => (
+                                    <div key={i} className="relative border-b border-transparent" style={{ height: PIXELS_PER_HOUR }}>
+                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-medium text-slate-400 bg-white/80 dark:bg-slate-800 px-1 rounded">
+                                            {`${START_HOUR + i}:00`}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {/* Columns */}
+                            <div className="flex-1 flex">
+                                {viewMode === 'day' ? renderDayColumn(currentDate) : getWeekDays(currentDate).map(d => (
+                                    <div key={d.toISOString()} className="flex-1 flex flex-col min-w-[150px]">
+                                        <div className={`text-center py-2 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white/95 dark:bg-slate-900/95 z-10 backdrop-blur-sm ${toISODate(d) === toISODate(currentTime) ? 'text-brand-orange' : ''}`}>
+                                            <div className="text-xs uppercase font-bold">{format(d, 'EEE', { locale: fr })}</div>
+                                            <div className="text-xl font-serif font-bold">{d.getDate()}</div>
+                                        </div>
+                                        <div className="flex-1 relative">
+                                            {renderDayColumn(d, false)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
+    // --- Widget View (Compact) ---
+    return (
+        <>
+            <div className="flex flex-col h-[500px] w-full animate-in fade-in slide-in-from-left duration-500">
+                {/* Widget Header : date à gauche, boutons alignés à droite sur une seule ligne */}
+                <div className="flex justify-between items-center mb-3 px-1">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors"><ChevronLeft size={20} /></button>
+                        <div className="text-center">
+                            <div className="text-2xl font-serif font-bold text-slate-800 dark:text-white capitalize leading-none">
+                                {format(currentDate, 'EEEE d', { locale: fr })}
+                            </div>
+                            <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+                                {format(currentDate, 'MMMM', { locale: fr })}
+                            </div>
+                        </div>
+                        <button onClick={() => navigate(1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors"><ChevronRight size={20} /></button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {/* Google Calendar Sync Indicator */}
+                        {googleCalendarConnected ? (
+                            <div 
+                                className="flex items-center gap-1.5 px-2 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-full text-emerald-600 dark:text-emerald-400 text-xs font-bold"
+                                title={`Synchronisé avec ${googleCalendarEmail || 'Google Calendar'}`}
+                            >
+                                {isSyncing ? (
+                                    <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                                )}
+                                <span className="hidden sm:inline">Sync</span>
+                            </div>
+                        ) : (
+                            <div 
+                                className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 text-xs"
+                                title="Google Calendar non connecté"
+                            >
+                                <div className="w-2 h-2 bg-slate-300 rounded-full" />
+                                <span className="hidden sm:inline">Hors ligne</span>
+                            </div>
+                        )}
+                        
+                        <button
+                            onClick={() => setCurrentDate(new Date())}
+                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors"
+                            title="Aujourd'hui"
+                        >
+                            <CalIcon size={18} />
+                        </button>
+                        <button
+                            onClick={() => setShowLocationModal(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors"
+                            title="Changer de ville"
+                        >
+                            <MapPin size={18} />
+                            <span className="text-sm font-bold capitalize">
+                                {customCity || localTimezone.split('/').pop()?.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-sm text-slate-400 border-l border-slate-300 dark:border-slate-600 pl-2">
+                                {formatInTimeZone(currentTime, localTimezone, 'HH:mm')}
+                            </span>
+                        </button>
+                        <button onClick={() => setIsExpanded(true)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors" title="Agrandir"><Maximize2 size={18} /></button>
+                    </div>
+                </div>
+
+                {/* Widget Content (Simple Timeline) */}
+                <div className="flex-1 bg-white/60 dark:bg-slate-800/40 backdrop-blur-md rounded-3xl border border-white/60 dark:border-white/10 shadow-sm relative flex flex-col overflow-hidden">
+                    <div ref={gridContainerRef} className="flex-1 overflow-y-auto no-scrollbar relative pt-4 pb-20">
+                        <div className="flex relative" style={{ height: HOURS_COUNT * PIXELS_PER_HOUR }}>
+                            <div className="w-14 flex-shrink-0 border-r border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/10 z-10 sticky left-0">
+                                {Array.from({ length: HOURS_COUNT }).map((_, i) => (
+                                    <div key={i} className="relative" style={{ height: PIXELS_PER_HOUR }}>
+                                        <span className="absolute -top-2 right-3 text-[10px] font-bold text-slate-400 font-mono">{`${START_HOUR + i}:00`}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex-1 relative">
+                                {renderDayColumn(currentDate)}
+                            </div>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => { setIsEditing(false); setEventForm({ date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: localTimezone, type: 'Meeting' }); setShowEventModal(true); }}
+                        className="absolute bottom-4 right-4 w-12 h-12 bg-brand-orange text-white rounded-full shadow-lg shadow-orange-200/50 dark:shadow-none flex items-center justify-center hover:scale-110 transition-transform z-20"
+                    >
+                        <Plus size={24} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Immersion Mode Overlay */}
+            {isExpanded && createPortal(<ExpandedModal />, document.body)}
+
+            {/* Event Modal (Shared) */}
+            <Modal isOpen={showEventModal} onClose={() => setShowEventModal(false)} title={isEditing ? "Modifier" : "Nouvel Événement"}>
+                <div className="space-y-6">
+                    {formError && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-center gap-2"><AlertCircle size={16}/>{formError}</div>}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Titre</label>
+                                            <input 
+                                                autoFocus 
+                                                value={eventForm.title || ''} 
+                                                onChange={e => setEventForm({...eventForm, title: e.target.value})} 
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && !isEditing) { // Only create if not editing an existing event
+                                                        e.preventDefault(); // Prevent default behavior (e.g., form submission)
+                                                        handleSaveEvent();
+                                                    }
+                                                }}
+                                                placeholder="Ex: Brief Client..." 
+                                                className="w-full text-xl font-serif border-b-2 border-slate-200 bg-transparent py-2 focus:border-brand-orange focus:outline-none dark:text-white" 
+                                            />
+                                        </div>
+                                        
+                                        {/* Lieu / Visio (Moved for prominence) */}
+                                        <div>
+                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Lieu / Visio</label>
+                                             <div className="flex flex-col gap-2">
+                                                {!eventForm.meetLink ? (
+                                                    <button 
+                                                        onClick={generateMeet}
+                                                        className="flex items-center justify-center gap-2 w-full py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                                                    >
+                                                        <Video size={16} /> Générer un lien Google Meet
+                                                    </button>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
+                                                        <div className="p-1.5 bg-blue-100 dark:bg-blue-800 rounded-lg text-blue-600 dark:text-blue-300">
+                                                            <Video size={16} />
+                                                        </div>
+                                                        <a href={eventForm.meetLink} target="_blank" rel="noreferrer" className="flex-1 text-xs font-bold text-blue-600 dark:text-blue-400 truncate hover:underline">
+                                                            {eventForm.meetLink}
+                                                        </a>
+                                                        <button 
+                                                            onClick={() => navigator.clipboard.writeText(eventForm.meetLink || '')}
+                                                            className="p-1.5 text-blue-400 hover:text-blue-600 transition-colors"
+                                                            title="Copier"
+                                                        >
+                                                            <Copy size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setEventForm({...eventForm, meetLink: undefined})}
+                                                            className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                                                            title="Supprimer"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Google Calendar Style Date/Time Selection */}
+                                        <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-end">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Début</label>
+                                                <div className="flex gap-2">
+                                                    <input 
+                                                        type="date" 
+                                                        value={eventForm.date} 
+                                                        onChange={e => handleStartDateChange(e.target.value)} 
+                                                        className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-3 outline-none text-sm dark:text-white" 
+                                                    />
+                                                    <input 
+                                                        type="time" 
+                                                        value={eventForm.startTime} 
+                                                        onChange={e => handleStartTimeChange(e.target.value)} 
+                                                        className="w-24 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-3 outline-none text-sm dark:text-white" 
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="pb-4 text-slate-400">
+                                                <ArrowRight size={20} />
+                                            </div>
+                    
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Fin</label>
+                                                <div className="flex gap-2">
+                                                    <input 
+                                                        type="date" 
+                                                        value={endDateTime.date} 
+                                                        onChange={e => handleEndDateChange(e.target.value)} 
+                                                        className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-3 outline-none text-sm dark:text-white" 
+                                                    />
+                                                    <input 
+                                                        type="time" 
+                                                        value={endDateTime.time} 
+                                                        onChange={e => handleEndTimeChange(e.target.value)} 
+                                                        className="w-24 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-3 outline-none text-sm dark:text-white" 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                    
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Fuseau Horaire (Original)</label>
+                                                                <div className="relative">
+                                                                    <input 
+                                                                        ref={timezoneInputRef}
+                                                                        value={searchTimezoneQuery || (eventForm.originalTimezone ? `${eventForm.originalTimezone.split('/').pop()?.replace(/_/g, ' ')} - ${eventForm.originalTimezone.split('/')[0]}` : '')}
+                                                                        onChange={e => { setSearchTimezoneQuery(e.target.value); setShowTimezoneDropdown(true); }}
+                                                                        onFocus={() => { setSearchTimezoneQuery(''); setShowTimezoneDropdown(true); }}
+                                                                        className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none dark:text-white"
+                                                                    />
+                                                                    {showTimezoneDropdown && (
+                                                                        <div ref={timezoneDropdownRef} className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                                                            {filteredTimezones.map(tz => (
+                                                                                <div key={tz.value} onClick={() => { setEventForm({...eventForm, originalTimezone: tz.value}); setShowTimezoneDropdown(false); setSearchTimezoneQuery(''); }} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-sm dark:text-white">
+                                                                                    {tz.label}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                        
+                                                            <div>
+                                                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Notes / Description</label>
+                                                                 <textarea 
+                                                                    value={eventForm.description || ''}
+                                                                    onChange={e => setEventForm({...eventForm, description: e.target.value})}
+                                                                    className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange h-24 resize-none dark:text-white"
+                                                                    placeholder="Détails de l'événement..."
+                                                                 />
+                                                            </div>                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Type</label>
+                        <div className="flex gap-2">
+                            {['Meeting', 'Deadline', 'Focus', 'Personal'].map(t => (
+                                <EventTypeBadge key={t} type={t} selected={eventForm.type === t} onClick={() => setEventForm({...eventForm, type: t as any})} />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                        {isEditing && <button onClick={() => { onDeleteEvent(eventForm.id!); setShowEventModal(false); }} className="text-red-500 font-bold text-sm">Supprimer</button>}
+                        <button onClick={handleSaveEvent} className="bg-brand-orange text-white px-6 py-2 rounded-full font-bold ml-auto">{isEditing ? 'Sauvegarder' : 'Créer'}</button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Location Selector Modal */}
+            <Modal isOpen={showLocationModal} onClose={() => setShowLocationModal(false)} title="Sélectionner une ville" width="max-w-md">
+                <div className="space-y-4">
+                    <p className="text-sm text-slate-500 mb-2">Choisissez votre localisation pour ajuster l'heure et l'affichage.</p>
+                    
+                    {/* Common Cities */}
+                    <div className="grid grid-cols-1 gap-2">
+                        {COMMON_CITIES.map(city => (
+                            <button
+                                key={city.name}
+                                onClick={() => {
+                                    setCustomCity(city.name);
+                                    setLocalTimezone(city.tz);
+                                    setViewTimezone(city.tz);
+                                    setShowLocationModal(false);
+                                }}
+                                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                    customCity === city.name || (!customCity && city.tz === localTimezone && city.name === 'Zürich') // Approx check for default
+                                    ? 'bg-orange-50 border-brand-orange text-brand-orange' 
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-lg">{city.country}</span>
+                                    <span className="font-bold text-sm dark:text-white">{city.name}</span>
+                                </div>
+                                <span className="text-xs text-slate-400 font-mono">
+                                    {formatInTimeZone(currentTime, city.tz, 'HH:mm')}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="relative pt-4 border-t border-slate-100 dark:border-slate-700">
+                        <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Autre Fuseau Horaire</label>
+                        <div className="relative">
+                            <MapIcon className="absolute left-3 top-3 text-slate-400" size={16} />
+                            <input 
+                                placeholder="Rechercher un fuseau (ex: Asia/Tokyo)..."
+                                value={locationSearchQuery}
+                                onChange={(e) => setLocationSearchQuery(e.target.value)}
+                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-orange dark:text-white"
+                            />
+                            {locationSearchQuery && (
+                                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                    {filteredLocationTimezones.length > 0 ? (
+                                        filteredLocationTimezones.map(tz => (
+                                            <div 
+                                                key={tz.value} 
+                                                onClick={() => {
+                                                    setCustomCity(tz.label.split('(')[0].trim()); // Extract city name roughly
+                                                    setLocalTimezone(tz.value);
+                                                    setViewTimezone(tz.value);
+                                                    setShowLocationModal(false);
+                                                    setLocationSearchQuery('');
+                                                }}
+                                                className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-sm dark:text-white border-b border-slate-50 dark:border-slate-700 last:border-0 flex justify-between items-center"
+                                            >
+                                                <span>{tz.label}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-3 text-sm text-slate-400 italic">Aucun résultat trouvé.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+        </>
+    );
+};
