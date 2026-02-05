@@ -67,14 +67,21 @@ const END_HOUR = 23;
 const HOURS_COUNT = END_HOUR - START_HOUR + 1;
 const PIXELS_PER_HOUR = 80;
 
+// Favorites at the top, then varied timezones (no duplicates)
 const COMMON_CITIES = [
-    { name: 'Genève', tz: 'Europe/Zurich', country: '🇨🇭' },
-    { name: 'Zürich', tz: 'Europe/Zurich', country: '🇨🇭' },
-    { name: 'Lausanne', tz: 'Europe/Zurich', country: '🇨🇭' },
-    { name: 'Paris', tz: 'Europe/Paris', country: '🇫🇷' },
-    { name: 'London', tz: 'Europe/London', country: '🇬🇧' },
-    { name: 'New York', tz: 'America/New_York', country: '🇺🇸' },
-    { name: 'Tokyo', tz: 'Asia/Tokyo', country: '🇯🇵' },
+    // ⭐ Favorites
+    { name: 'Genève', tz: 'Europe/Zurich', country: '🇨🇭', favorite: true },
+    { name: 'Mexico City', tz: 'America/Mexico_City', country: '🇲🇽', favorite: true },
+    { name: 'Athènes', tz: 'Europe/Athens', country: '🇬🇷', favorite: true },
+    // Other timezones (varied)
+    { name: 'London', tz: 'Europe/London', country: '🇬🇧', favorite: false },
+    { name: 'New York', tz: 'America/New_York', country: '🇺🇸', favorite: false },
+    { name: 'Tokyo', tz: 'Asia/Tokyo', country: '🇯🇵', favorite: false },
+    { name: 'Dubai', tz: 'Asia/Dubai', country: '🇦🇪', favorite: false },
+    { name: 'Sydney', tz: 'Australia/Sydney', country: '🇦🇺', favorite: false },
+    { name: 'Los Angeles', tz: 'America/Los_Angeles', country: '🇺🇸', favorite: false },
+    { name: 'São Paulo', tz: 'America/Sao_Paulo', country: '🇧🇷', favorite: false },
+    { name: 'Singapore', tz: 'Asia/Singapore', country: '🇸🇬', favorite: false },
 ];
 
 export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
@@ -1289,32 +1296,73 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                 <div className="space-y-4">
                     <p className="text-sm text-slate-500 mb-2">Choisissez votre localisation pour ajuster l'heure et l'affichage.</p>
                     
-                    {/* Common Cities */}
-                    <div className="grid grid-cols-1 gap-2">
-                        {COMMON_CITIES.map(city => (
-                            <button
-                                key={city.name}
-                                onClick={() => {
-                                    setCustomCity(city.name);
-                                    setLocalTimezone(city.tz);
-                                    setViewTimezone(city.tz);
-                                    setShowLocationModal(false);
-                                }}
-                                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                                    customCity === city.name || (!customCity && city.tz === localTimezone && city.name === 'Zürich') // Approx check for default
-                                    ? 'bg-orange-50 border-brand-orange text-brand-orange' 
-                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                }`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-lg">{city.country}</span>
-                                    <span className="font-bold text-sm dark:text-white">{city.name}</span>
-                                </div>
-                                <span className="text-xs text-slate-400 font-mono">
-                                    {formatInTimeZone(currentTime, city.tz, 'HH:mm')}
-                                </span>
-                            </button>
-                        ))}
+                    {/* Favorite Cities */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Star size={14} className="text-amber-500 fill-amber-500" />
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mes Favoris</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                            {COMMON_CITIES.filter(c => c.favorite).map(city => (
+                                <button
+                                    key={city.name}
+                                    onClick={() => {
+                                        setCustomCity(city.name);
+                                        setLocalTimezone(city.tz);
+                                        setViewTimezone(city.tz);
+                                        setShowLocationModal(false);
+                                    }}
+                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                        customCity === city.name || (!customCity && city.tz === localTimezone && city.name === 'Genève')
+                                        ? 'bg-gradient-to-r from-orange-50 to-amber-50 border-brand-orange text-brand-orange shadow-sm' 
+                                        : 'bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-slate-800 dark:to-slate-800 border-amber-200 dark:border-slate-700 hover:border-brand-orange'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-lg">{city.country}</span>
+                                        <span className="font-bold text-sm dark:text-white">{city.name}</span>
+                                        <Star size={12} className="text-amber-400 fill-amber-400" />
+                                    </div>
+                                    <span className="text-xs text-slate-500 font-mono bg-white/50 dark:bg-slate-700 px-2 py-1 rounded-full">
+                                        {formatInTimeZone(currentTime, city.tz, 'HH:mm')}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Other Cities */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-3 pt-2">
+                            <Globe size={14} className="text-slate-400" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Autres Fuseaux</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                            {COMMON_CITIES.filter(c => !c.favorite).map(city => (
+                                <button
+                                    key={city.name}
+                                    onClick={() => {
+                                        setCustomCity(city.name);
+                                        setLocalTimezone(city.tz);
+                                        setViewTimezone(city.tz);
+                                        setShowLocationModal(false);
+                                    }}
+                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                        customCity === city.name
+                                        ? 'bg-orange-50 border-brand-orange text-brand-orange' 
+                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-lg">{city.country}</span>
+                                        <span className="font-bold text-sm dark:text-white">{city.name}</span>
+                                    </div>
+                                    <span className="text-xs text-slate-400 font-mono">
+                                        {formatInTimeZone(currentTime, city.tz, 'HH:mm')}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="relative pt-4 border-t border-slate-100 dark:border-slate-700">
