@@ -459,22 +459,16 @@ const App: React.FC = () => {
                 });
                 const data = await response.json();
                 
-                if (!data.configured) {
-                    // Auth not configured, skip login
-                    setIsAuthenticated(true);
-                    setAuthChecked(true);
-                    return;
-                }
-                
-                if (data.authenticated && savedToken) {
-                    // Already authenticated
+                // If auth is configured AND user is authenticated with valid token
+                if (data.configured && data.authenticated && savedToken) {
                     setAuthToken(savedToken);
                     setIsAuthenticated(true);
                 }
+                // Otherwise, show login/setup screen (isAuthenticated stays false)
             } catch (err) {
-                // Backend might not be ready, allow access
-                console.log('Auth check failed, allowing access');
-                setIsAuthenticated(true);
+                // Backend might not be ready - check if it's a network error vs auth error
+                console.log('Auth check failed:', err);
+                // Don't auto-authenticate on error - let user try again
             }
             setAuthChecked(true);
         };

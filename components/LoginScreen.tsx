@@ -23,20 +23,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     const checkAuthStatus = async () => {
         try {
             const response = await fetch('/api/auth/check');
+            if (!response.ok) {
+                throw new Error('Backend not available');
+            }
             const data = await response.json();
             
             setIsConfigured(data.configured);
             
             // If already authenticated, skip login
-            if (data.authenticated) {
+            if (data.configured && data.authenticated) {
                 const savedToken = sessionStorage.getItem('marion_token');
                 if (savedToken) {
                     onAuthenticated(savedToken);
                 }
             }
         } catch (err) {
-            // Backend might not be ready yet
+            // Backend might not be ready yet - default to setup mode
             console.error('Auth check failed:', err);
+            setIsConfigured(false);
         } finally {
             setIsCheckingAuth(false);
         }
