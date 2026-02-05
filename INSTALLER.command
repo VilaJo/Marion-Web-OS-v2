@@ -161,56 +161,61 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
 </plist>
 PLIST
 
-# Script de lancement
+# Script de lancement (utilise le chemin complet vers python)
 cat > "$APP_BUNDLE/Contents/MacOS/launcher" << LAUNCHER
 #!/bin/bash
-# Marion Web OS Launcher
+# Marion Web OS Launcher - Fixed for double-click
 
 APP_PATH="$APP_DIR"
 LOG_FILE="\$APP_PATH/.marion.log"
 PID_FILE="\$APP_PATH/.marion.pid"
+PYTHON_PATH="\$APP_PATH/.venv/bin/python"
 
-cd "\$APP_PATH"
+cd "\$APP_PATH" || exit 1
 
-# Fonction pour vérifier si le serveur tourne
+echo "=== Marion Web OS Launch - \$(date) ===" >> "\$LOG_FILE"
+
 is_server_running() {
     if [ -f "\$PID_FILE" ]; then
         PID=\$(cat "\$PID_FILE")
-        if ps -p \$PID > /dev/null 2>&1; then
+        if ps -p "\$PID" > /dev/null 2>&1; then
             return 0
         fi
+    fi
+    if lsof -i :5003 > /dev/null 2>&1; then
+        return 0
     fi
     return 1
 }
 
-# Fonction pour attendre que le serveur soit prêt
 wait_for_server() {
-    echo "⏳ Démarrage du serveur..." >> "\$LOG_FILE"
-    for i in {1..30}; do
+    for i in {1..45}; do
         if curl -s http://127.0.0.1:5003/api/version > /dev/null 2>&1; then
-            echo "✅ Serveur prêt !" >> "\$LOG_FILE"
+            echo "Server ready after \${i}s" >> "\$LOG_FILE"
             return 0
         fi
         sleep 1
     done
-    echo "❌ Timeout serveur" >> "\$LOG_FILE"
     return 1
 }
 
-# Démarrer le serveur si nécessaire
 if ! is_server_running; then
-    echo "🚀 Lancement du serveur Marion..." > "\$LOG_FILE"
+    echo "Starting server..." >> "\$LOG_FILE"
     
-    # Activer l'environnement virtuel et lancer le serveur
-    source "\$APP_PATH/.venv/bin/activate"
-    python "\$APP_PATH/franck_server.py" >> "\$LOG_FILE" 2>&1 &
+    if [ ! -f "\$PYTHON_PATH" ]; then
+        osascript -e 'display alert "Marion Web OS" message "L'\''environnement Python n'\''est pas installé.\n\nLancez INSTALLER.command d'\''abord." as critical'
+        exit 1
+    fi
+    
+    "\$PYTHON_PATH" "\$APP_PATH/franck_server.py" >> "\$LOG_FILE" 2>&1 &
     echo \$! > "\$PID_FILE"
     
-    # Attendre que le serveur soit prêt
-    wait_for_server
+    if ! wait_for_server; then
+        osascript -e 'display alert "Marion Web OS" message "Le serveur n'\''a pas pu démarrer.\n\nVérifiez les logs: .marion.log" as critical'
+        exit 1
+    fi
 fi
 
-# Ouvrir le navigateur
 open "http://127.0.0.1:5003"
 LAUNCHER
 
