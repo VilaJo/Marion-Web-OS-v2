@@ -648,7 +648,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                             <div className="flex-1">
                                                 <div className="flex justify-between mb-1">
                                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{client.name}</span>
-                                                    <span className="text-sm font-mono font-bold text-emerald-600">{formatCurrency(revenue)} {currency}</span>
+                                                    <span className="text-sm font-mono font-bold text-emerald-600">{formatCurrency(client.revenue)} {currency}</span>
                                                 </div>
                                                 <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex">
                                                     <div className="h-full bg-emerald-500" style={{ width: `${(client.revenue / maxRevenue) * 100}%` }} />
@@ -813,7 +813,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-mono">{p.hours}h</td>
                                                         <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
-                                                            {formatCurrency(revenue)} {currency}
+                                                            {formatCurrency(p.revenue)} {currency}
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-mono">
                                                             {p.hourlyRate.toFixed(0)} {currency}/h
