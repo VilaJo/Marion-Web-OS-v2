@@ -13,11 +13,10 @@ fi
 # 2. Téléchargement de la dernière version (depuis la branche main)
 echo "⬇️  Téléchargement de la nouvelle version..."
 
-# Liste des URLs potentielles
+# URL du nouveau repo v2
 URLS=(
-    "https://github.com/VilaJo/Marion-Web-OS/archive/refs/heads/main.zip"
-    "https://github.com/VilaJo/Marion-Web-OS/archive/main.zip"
-    "https://github.com/VilaJo/marion-crm-storybook/archive/refs/heads/main.zip"
+    "https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip"
+    "https://github.com/VilaJo/Marion-Web-OS-v2/archive/main.zip"
 )
 
 SUCCESS=0
@@ -49,7 +48,7 @@ echo "📦 Installation de la mise à jour..."
 unzip -q -o update.zip
 
 # Trouver le dossier dézippé (quel que soit son nom)
-EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "Marion-Web-OS-*" | head -n 1)
+EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "Marion-Web-OS-v2-*" | head -n 1)
 
 if [ -z "$EXTRACTED_DIR" ]; then
     echo "❌ Erreur : Impossible de trouver le dossier de mise à jour."
