@@ -476,10 +476,36 @@ const App: React.FC = () => {
         checkAuth();
     }, []);
 
-    const handleAuthenticated = (token: string) => {
+    const handleAuthenticated = async (token: string) => {
         setAuthToken(token);
         sessionStorage.setItem('marion_token', token);
         setIsAuthenticated(true);
+        
+        // Trigger loading animation after login
+        setIsLoading(true);
+        setLoadingText("Connexion réussie...");
+        
+        // Load data after a short delay for animation
+        setTimeout(async () => {
+            try {
+                const res = await apiFetch('http://127.0.0.1:5003/check-status');
+                const data = await res.json();
+                setIsConfigured(data.configured);
+                setIsBackendDown(false);
+                
+                if (data.configured) {
+                    await loadProjects();
+                    setTimeout(() => {
+                        setIsLoading(false);
+                    }, 2000);
+                } else {
+                    setIsLoading(false);
+                }
+            } catch (e) {
+                console.error("Erreur serveur après login", e);
+                setIsLoading(false);
+            }
+        }, 500);
     };
 
     // Cycle Loading Messages Effect
