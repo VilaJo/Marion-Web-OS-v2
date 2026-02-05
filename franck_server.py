@@ -195,7 +195,11 @@ def require_auth():
         '/api/auth/reset',
     ]
     
-    # Static files et assets
+    # Static files et assets - toujours accessibles
+    static_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.css', '.js', '.woff', '.woff2', '.ttf', '.eot', '.map')
+    if request.path.endswith(static_extensions):
+        return None
+    
     if request.path.startswith('/.dist') or request.path.startswith('/assets'):
         return None
     
@@ -203,8 +207,8 @@ def require_auth():
     if any(request.path == p for p in public_paths):
         return None
     
-    # La page d'accueil (index.html) est toujours accessible
-    if request.path == '/' or (not request.path.startswith('/api/') and '.' not in request.path):
+    # La page d'accueil (index.html) et routes frontend
+    if request.path == '/' or not request.path.startswith('/api/'):
         return None
     
     # Verifier si l'auth est configuree
