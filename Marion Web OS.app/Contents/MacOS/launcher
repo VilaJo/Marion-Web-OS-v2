@@ -3,122 +3,126 @@
 # Marion Web OS Launcher
 # This script starts the server and opens the browser
 
-# Enable error logging
-exec 2>/tmp/marion_launcher_error.log
+# Setup PATH to include common Python locations
+export PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$HOME/Library/Python/3.9/bin:$HOME/Library/Python/3.10/bin:$HOME/Library/Python/3.11/bin:$PATH"
 
-echo "=== Marion Web OS Launcher ===" > /tmp/marion_launcher.log
-echo "Date: $(date)" >> /tmp/marion_launcher.log
-
-# Get the path of the .app bundle
-APP_PATH="$0"
-while [ -L "$APP_PATH" ]; do
-    APP_PATH="$(readlink "$APP_PATH")"
-done
-APP_DIR="$(cd "$(dirname "$APP_PATH")/../../.." && pwd)"
-
-echo "APP_DIR: $APP_DIR" >> /tmp/marion_launcher.log
+# Logging
+LOG="/tmp/marion_launcher.log"
+echo "=== Marion Web OS Launcher ===" > "$LOG"
+echo "Date: $(date)" >> "$LOG"
+echo "PATH: $PATH" >> "$LOG"
 
 # Find the project directory
 PROJECT_DIR=""
 
-# Check if app is inside the project (most common case)
-if [ -f "$APP_DIR/franck_server.py" ]; then
-    PROJECT_DIR="$APP_DIR"
-    echo "Found project at APP_DIR" >> /tmp/marion_launcher.log
-fi
+# Get directory where the .app is located
+SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)"
+APP_CONTENTS="$(dirname "$SCRIPT_PATH")"
+APP_BUNDLE="$(dirname "$APP_CONTENTS")"
+APP_PARENT="$(dirname "$APP_BUNDLE")"
 
-# Try parent directory
-if [ -z "$PROJECT_DIR" ] && [ -f "$(dirname "$APP_DIR")/franck_server.py" ]; then
-    PROJECT_DIR="$(dirname "$APP_DIR")"
-    echo "Found project at parent of APP_DIR" >> /tmp/marion_launcher.log
-fi
+echo "SCRIPT_PATH: $SCRIPT_PATH" >> "$LOG"
+echo "APP_BUNDLE: $APP_BUNDLE" >> "$LOG"
+echo "APP_PARENT: $APP_PARENT" >> "$LOG"
 
-# Try common locations on Desktop
+# Check locations in order of likelihood
+POSSIBLE_PATHS=(
+    "$APP_PARENT"
+    "$HOME/Desktop/Marion-Web-OS-v2-main"
+    "$HOME/Desktop/Marion Web OS"
+    "$HOME/Desktop/Marion-Web-OS-v2"
+    "$HOME/Downloads/Marion-Web-OS-v2-main"
+)
+
+for path in "${POSSIBLE_PATHS[@]}"; do
+    echo "Checking: $path" >> "$LOG"
+    if [ -f "$path/franck_server.py" ]; then
+        PROJECT_DIR="$path"
+        echo "FOUND at: $path" >> "$LOG"
+        break
+    fi
+done
+
 if [ -z "$PROJECT_DIR" ]; then
-    POSSIBLE_PATHS=(
-        "$HOME/Desktop/Marion-Web-OS-v2-main"
-        "$HOME/Desktop/Marion Web OS"
-        "$HOME/Desktop/Marion-Web-OS-v2"
-        "$HOME/Downloads/Marion-Web-OS-v2-main"
-    )
-    
-    for path in "${POSSIBLE_PATHS[@]}"; do
-        if [ -f "$path/franck_server.py" ]; then
-            PROJECT_DIR="$path"
-            echo "Found project at: $path" >> /tmp/marion_launcher.log
-            break
-        fi
-    done
-fi
-
-# If still not found, show error
-if [ -z "$PROJECT_DIR" ]; then
-    echo "ERROR: Project not found" >> /tmp/marion_launcher.log
-    osascript -e 'display alert "Marion Web OS" message "Impossible de trouver le dossier du projet.\n\nAssurez-vous que franck_server.py existe dans:\n- Bureau/Marion-Web-OS-v2-main\n- Bureau/Marion Web OS" as critical'
+    echo "ERROR: Project not found" >> "$LOG"
+    osascript -e 'display alert "Marion Web OS" message "Dossier du projet introuvable.\n\nPlacez Marion Web OS.app dans le dossier contenant franck_server.py" as critical'
     exit 1
 fi
 
-echo "Using PROJECT_DIR: $PROJECT_DIR" >> /tmp/marion_launcher.log
 cd "$PROJECT_DIR"
+echo "Working directory: $(pwd)" >> "$LOG"
 
 # Check if server is already running
 if lsof -i :5003 > /dev/null 2>&1; then
-    echo "Server already running" >> /tmp/marion_launcher.log
+    echo "Server already running, opening browser" >> "$LOG"
     open "http://127.0.0.1:5003"
     exit 0
 fi
 
-# Find Python
+# Find Python - check specific paths first
 PYTHON_CMD=""
-if command -v python3 &> /dev/null; then
-    PYTHON_CMD="python3"
-elif command -v python &> /dev/null; then
-    PYTHON_CMD="python"
-elif [ -f "/usr/bin/python3" ]; then
-    PYTHON_CMD="/usr/bin/python3"
-elif [ -f "/usr/local/bin/python3" ]; then
-    PYTHON_CMD="/usr/local/bin/python3"
+PYTHON_PATHS=(
+    "/usr/bin/python3"
+    "/usr/local/bin/python3"
+    "/opt/homebrew/bin/python3"
+    "$HOME/Library/Python/3.9/bin/python3"
+    "$HOME/Library/Python/3.10/bin/python3"
+    "$HOME/Library/Python/3.11/bin/python3"
+)
+
+for py in "${PYTHON_PATHS[@]}"; do
+    if [ -x "$py" ]; then
+        PYTHON_CMD="$py"
+        echo "Found Python at: $py" >> "$LOG"
+        break
+    fi
+done
+
+# Fallback to PATH
+if [ -z "$PYTHON_CMD" ]; then
+    PYTHON_CMD=$(which python3 2>/dev/null || which python 2>/dev/null)
 fi
 
-echo "Python command: $PYTHON_CMD" >> /tmp/marion_launcher.log
+echo "Using Python: $PYTHON_CMD" >> "$LOG"
 
-if [ -z "$PYTHON_CMD" ]; then
-    osascript -e 'display alert "Marion Web OS" message "Python 3 n'\''est pas installé.\n\nInstallez Python depuis python.org ou via:\nbrew install python3" as critical'
+if [ -z "$PYTHON_CMD" ] || [ ! -x "$PYTHON_CMD" ]; then
+    osascript -e 'display alert "Marion Web OS" message "Python 3 non trouvé.\n\nInstallez Python depuis python.org" as critical'
     exit 1
 fi
 
-# Start the server
-echo "Starting server..." >> /tmp/marion_launcher.log
-$PYTHON_CMD franck_server.py > /tmp/marion_server.log 2>&1 &
-SERVER_PID=$!
-echo "Server PID: $SERVER_PID" >> /tmp/marion_launcher.log
+# Start the server in background using osascript to run in a proper shell
+echo "Starting server..." >> "$LOG"
 
-# Wait for server to be ready (max 15 seconds)
-echo "Waiting for server..." >> /tmp/marion_launcher.log
+# Use osascript to open Terminal and run the server
+osascript <<EOF
+tell application "Terminal"
+    activate
+    do script "cd \"$PROJECT_DIR\" && $PYTHON_CMD franck_server.py"
+end tell
+EOF
+
+# Wait for server to be ready
+echo "Waiting for server..." >> "$LOG"
 READY=0
 for i in {1..30}; do
-    if curl -s --connect-timeout 1 http://127.0.0.1:5003 > /dev/null 2>&1; then
+    sleep 0.5
+    if curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:5003 > /dev/null 2>&1; then
         READY=1
-        echo "Server ready after $i attempts" >> /tmp/marion_launcher.log
+        echo "Server ready!" >> "$LOG"
         break
     fi
-    sleep 0.5
+    echo "Attempt $i..." >> "$LOG"
 done
 
 if [ $READY -eq 0 ]; then
-    echo "Server failed to start" >> /tmp/marion_launcher.log
-    # Check if process is still running
-    if ! kill -0 $SERVER_PID 2>/dev/null; then
-        echo "Server process died" >> /tmp/marion_launcher.log
-        ERROR_MSG=$(tail -20 /tmp/marion_server.log)
-        osascript -e "display alert \"Marion Web OS\" message \"Le serveur n'a pas pu démarrer.\n\nErreur:\n$ERROR_MSG\" as critical"
-        exit 1
-    fi
+    echo "Timeout waiting for server" >> "$LOG"
+    osascript -e 'display alert "Marion Web OS" message "Le serveur met du temps à démarrer.\n\nVérifiez la fenêtre Terminal pour les erreurs." as warning'
 fi
 
 # Open browser
-echo "Opening browser..." >> /tmp/marion_launcher.log
+sleep 1
+echo "Opening browser..." >> "$LOG"
 open "http://127.0.0.1:5003"
 
-echo "Done!" >> /tmp/marion_launcher.log
+echo "Done!" >> "$LOG"
 exit 0
