@@ -3258,7 +3258,7 @@ def gcal_sync_status():
 
 
 # --- Version & Updates ---
-APP_VERSION = "2.4.1"
+APP_VERSION = "2.4.2"
 GITHUB_REPO_API = "https://api.github.com/repos/VilaJo/Marion-Web-OS-v2"
 
 @app.route('/api/version')
