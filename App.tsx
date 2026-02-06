@@ -1709,7 +1709,7 @@ const App: React.FC = () => {
                     {/* Title - hidden on very small screens */}
                     <div className="hidden sm:flex flex-col">
                         <h1 className="font-sans text-base sm:text-lg md:text-[26px] font-semibold text-slate-800 dark:text-white leading-tight">
-                            Marion <span className="text-slate-400 dark:text-slate-400 font-normal hidden md:inline">Web OS</span>
+                            Marion Web <span className="text-slate-400 dark:text-slate-400 font-normal hidden md:inline">OS</span>
                         </h1>
                         <p className="text-[10px] md:text-xs text-slate-400 hidden md:block">
                             Assistant Intelligent
