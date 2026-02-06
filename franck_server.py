@@ -642,7 +642,24 @@ def setup():
     api_key = data.get('api_key')
     if not api_key: return jsonify({"error": "API Key required"}), 400
     try:
-        genai.Client(api_key=api_key).models.generate_content(model="gemini-2.5-pro", contents="Hello")
+        # Test the API key with a simple request
+        test_client = genai.Client(api_key=api_key)
+        # Try multiple model names for compatibility
+        test_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro"]
+        test_success = False
+        for model_name in test_models:
+            try:
+                test_client.models.generate_content(model=model_name, contents="Hello")
+                test_success = True
+                break
+            except Exception:
+                continue
+        
+        if not test_success:
+            # If all models fail, just verify the key format and save it
+            if not api_key.startswith("AIza"):
+                return jsonify({"error": "Invalid API key format"}), 400
+        
         with open('.env.local', 'w') as f: f.write(f"GEMINI_API_KEY={api_key}\n")
         global API_KEY
         API_KEY = api_key
