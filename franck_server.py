@@ -7,6 +7,7 @@ import urllib.parse
 import requests
 import secrets
 from datetime import datetime, timedelta
+from typing import Optional
 from flask import Flask, request, jsonify, Response, send_from_directory, redirect, session
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -122,7 +123,7 @@ def refresh_google_token(email: str) -> bool:
     
     return False
 
-def get_valid_google_token(email: str) -> str | None:
+def get_valid_google_token(email: str) -> Optional[str]:
     """Get a valid access token, refreshing if necessary."""
     if email not in oauth_tokens:
         return None
