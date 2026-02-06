@@ -1718,7 +1718,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Toolbar */}
-                <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2 bg-white/70 dark:bg-slate-800/50 md:bg-white/70 md:dark:bg-slate-800/40 px-1.5 sm:px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-sm md:shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:md:shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-md">
+                <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2 bg-white/70 dark:bg-slate-800/50 md:bg-white/70 md:dark:bg-slate-800/40 px-1.5 sm:px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-sm md:shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:md:shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-md md:-mt-2">
                     {/* Briefing */}
                     <button
                         onClick={handleMorningBriefing}
