@@ -13,7 +13,7 @@ node_modules/
 
 # Build outputs
 dist/
-.dist/
+# .dist/ is now committed for users without npm
 dist-ssr/
 *.local
 

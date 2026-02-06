@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Marion Web OS</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Marion Web OS - Votre espace de travail personnel pour la gestion clients, facturation et agenda" />
+    <meta name="theme-color" content="#FF7E5F" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Marion" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Marion Web OS" />
+    <meta name="msapplication-TileColor" content="#FF7E5F" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Favicon - Marion Logo Original -->
+    <link rel="icon" type="image/png" href="/logo-marion.png" />
+    <link rel="shortcut icon" href="/logo-marion.png" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167x167.png" />
+    
+    <!-- Splash Screens for iOS -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" />
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700;800&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              serif: ['"DM Serif Display"', 'serif'],
+              sans: ['"Raleway"', 'sans-serif'],
+              heading: ['"Montserrat"', 'sans-serif'],
+              calligraphy: ['"Playfair Display"', 'serif'],
+            },
+            colors: {
+              cream: '#FDFCF8',
+              'cream-dark': '#F5F2EA',
+              'pastel-pink': '#FCE7F3',
+              'pastel-purple': '#E9D5FF',
+              'pastel-orange': '#FFEDD5',
+              'deep-space': '#1E1B4B', 
+              'glass-white': 'rgba(255, 255, 255, 0.65)',
+              'glass-dark': 'rgba(15, 23, 42, 0.65)',
+              'brand-orange': 'var(--brand-color)',
+              'brand-pink': '#FEB47B',
+              'brand-primary': 'var(--brand-color)',
+              'brand-secondary': '#FEB47B',
+            },
+            borderRadius: {
+              '4xl': '32px',
+            },
+            backgroundImage: {
+              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+              'marion-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #FEB47B 100%)',
+              'sunset-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #d946ef 100%)',
+              'space-gradient': 'linear-gradient(to bottom, #2E1065, #0F172A)', 
+              'unicorn-gradient': 'linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 50%, #F3E5F5 100%)',
+            },
+            animation: {
+              'float': 'float 6s ease-in-out infinite',
+              'float-slow': 'float-slow 12s ease-in-out infinite',
+              'float-reverse': 'float-reverse 8s ease-in-out infinite',
+              'loading-bar': 'loading 2.5s ease-out forwards',
+              'twinkle': 'twinkle 4s ease-in-out infinite',
+              'shooting-star': 'shooting-star 8s linear infinite',
+              'fireflies-group-move': 'fireflies-group-move 2s ease-in-out forwards',
+              'firefly-dance-1': 'firefly-dance-1 1s ease-in-out infinite',
+              'firefly-dance-2': 'firefly-dance-2 1.2s ease-in-out infinite',
+              'firefly-dance-3': 'firefly-dance-3 0.8s ease-in-out infinite',
+              'unicorn-run-left': 'unicorn-run-left 2s ease-in-out forwards',
+              'unicorn-idle-lively': 'unicorn-idle-lively 4s ease-in-out infinite',
+              'float-heart': 'float-heart 1.5s ease-out forwards',
+              'unicorn-love-jump': 'unicorn-love-jump 0.5s ease-in-out',
+              'spin-slow': 'spin 12s linear infinite',
+              'rainbow-slide': 'rainbow-slide 6s ease-in-out infinite alternate',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Raleway', sans-serif;
+        font-weight: 400;
+        overflow-x: hidden;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 600;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+      }
+      .glass {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+      }
+      .dark .glass {
+        background: rgba(30, 41, 59, 0.4); /* More transparent in dark mode to see space */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Unicorn Mode specific glass override */
+      .unicorn .glass {
+        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 8px 32px 0 rgba(236, 72, 153, 0.15);
+      }
+      
+      /* Juicy Hover */
+      .juicy-hover {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .juicy-hover:hover {
+        transform: translateY(-4px) scale(1.02);
+      }
+      
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-15px); }
+      }
+      @keyframes float-reverse {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(15px); }
+      }
+      @keyframes float-slow {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(5deg); }
+      }
+
+      @keyframes loading {
+        0% { width: 0%; }
+        50% { width: 70%; }
+        100% { width: 100%; }
+      }
+
+      @keyframes twinkle {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 1; }
+      }
+
+      @keyframes shooting-star {
+        0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 0; }
+        10% { opacity: 1; }
+        20% { opacity: 0; }
+        100% { transform: translateX(-400px) translateY(400px) rotate(-45deg); opacity: 0; }
+      }
+
+      /* --- Unicorn Animations --- */
+      
+      /* Lively Idle: Breathing + Looking around */
+      @keyframes unicorn-idle-lively {
+        0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+        25% { transform: translateY(-3px) rotate(-2deg) scale(1.02); } /* Look left/up slightly */
+        50% { transform: translateY(0) rotate(0deg) scale(1); }
+        75% { transform: translateY(-2px) rotate(2deg) scale(1.01); } /* Look right slightly */
+      }
+
+      /* Fireflies Animation Group */
+      @keyframes fireflies-group-move {
+        0% { opacity: 0; transform: translate(0, 0); }
+        10% { opacity: 1; transform: translate(-10px, -5px); }
+        30% { transform: translate(-50px, 5px); }
+        50% { transform: translate(-90px, -15px); }
+        70% { transform: translate(-130px, 0px); }
+        90% { opacity: 1; transform: translate(-170px, -20px); }
+        100% { opacity: 0; transform: translate(-190px, -30px); }
+      }
+
+      /* Chaotic dances for individual fireflies */
+      @keyframes firefly-dance-1 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        25% { transform: translate(8px, -8px) scale(1.2); }
+        50% { transform: translate(0, -15px) scale(0.8); }
+        75% { transform: translate(-8px, -5px) scale(1.1); }
+      }
+
+      @keyframes firefly-dance-2 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(-10px, 5px) scale(0.9); }
+        66% { transform: translate(5px, 10px) scale(1.2); }
+      }
+
+      @keyframes firefly-dance-3 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(12px, 0px) scale(1.3); }
+      }
+
+      @keyframes unicorn-run-left {
+        0% { transform: translateX(0) rotate(0deg); }
+        10% { transform: translateX(5px) rotate(5deg); } /* Recul pour élan */
+        30% { transform: translateX(-30px) rotate(-10deg); } /* Bond en avant gauche */
+        50% { transform: translateX(-70px) rotate(-5deg); } /* Course */
+        60% { transform: translateX(-80px) rotate(0deg); } /* Pause brève */
+        100% { transform: translateX(0) rotate(0deg); } /* Retour */
+      }
+
+      /* Love Interaction */
+      @keyframes unicorn-love-jump {
+        0%, 100% { transform: scale(1) translateY(0); }
+        50% { transform: scale(1.1) translateY(-10px) rotate(-5deg); }
+      }
+
+      @keyframes float-heart {
+        0% { transform: translateY(0) scale(0.5); opacity: 0; }
+        20% { opacity: 1; transform: translateY(-20px) scale(1); }
+        100% { transform: translateY(-60px) scale(0); opacity: 0; }
+      }
+
+      @keyframes rainbow-slide {
+        0% { transform: translateY(0) scale(1); }
+        100% { transform: translateY(-20px) scale(1.05); }
+      }
+
+      @keyframes shimmer {
+        0% { transform: translateX(-150%); }
+        50% { transform: translateX(150%); }
+        100% { transform: translateX(150%); }
+      }
+
+      @keyframes shimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      
+      .animate-shimmer {
+        animation: shimmer 3s linear infinite;
+      }
+      
+      .bg-300\% {
+        background-size: 300% 100%;
+      }
+
+      /* Space Objects */
+      .planet-lollipop {
+          background: linear-gradient(135deg, #a855f7, #ec4899);
+          box-shadow: inset -10px -10px 20px rgba(0,0,0,0.2), 0 0 30px rgba(236, 72, 153, 0.4);
+      }
+      
+      .planet-ring {
+        position: absolute;
+        width: 160%;
+        height: 40%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top: 2px solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        top: 50%;
+        left: -30%;
+        transform: translateY(-50%) rotate(-20deg);
+      }
+
+      .planet-peach {
+          background: linear-gradient(to bottom, #ffed4a, #ff7e5f);
+          box-shadow: inset -5px -5px 10px rgba(0,0,0,0.1), 0 0 20px rgba(255, 126, 95, 0.3);
+      }
+
+      .planet-blue {
+          background: linear-gradient(45deg, #60a5fa, #818cf8);
+          box-shadow: 0 0 15px rgba(96, 165, 250, 0.4);
+      }
+      
+      .crater {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.1);
+        box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
+      }
+
+      .shooting-star {
+        position: absolute;
+        width: 150px;
+        height: 2px;
+        background: linear-gradient(to right, rgba(255,255,255,0), rgba(255, 126, 95, 1), rgba(255,255,255,0));
+        z-index: -1;
+        border-radius: 100%;
+      }
+
+      /* Star Layers - Static in Dark Mode */
+      .star-bg {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+      }
+      
+      .stars-sm {
+          background-image: radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+                            radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                            radial-gradient(1px 1px at 50px 160px, #ffffff, rgba(0,0,0,0)),
+                            radial-gradient(1px 1px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                            radial-gradient(1px 1px at 130px 80px, #ffffff, rgba(0,0,0,0));
+          background-repeat: repeat;
+          background-size: 200px 200px;
+          opacity: 0.5;
+      }
+      
+      .stars-md {
+          background-image: radial-gradient(2px 2px at 100px 50px, #e9d5ff, rgba(0,0,0,0)),
+                            radial-gradient(2px 2px at 200px 150px, #ffedd5, rgba(0,0,0,0)),
+                            radial-gradient(2px 2px at 300px 100px, #ffffff, rgba(0,0,0,0));
+          background-repeat: repeat;
+          background-size: 300px 300px;
+          background-position: fixed;
+          opacity: 0.8;
+          animation: twinkle 5s infinite alternate;
+      }
+
+      .stars-lg {
+          background-image: radial-gradient(3px 3px at 50px 100px, #ffffff, rgba(0,0,0,0)),
+                            radial-gradient(3px 3px at 150px 200px, #fce7f3, rgba(0,0,0,0));
+          background-repeat: repeat;
+          background-size: 400px 400px;
+          background-position: fixed;
+          opacity: 1;
+          animation: twinkle 7s infinite alternate-reverse;
+      }
+
+      /* Unicorn World Elements - 3D CSS Objects */
+      .cloud-3d {
+          background: #fff;
+          width: 150px; height: 50px;
+          border-radius: 50px;
+          box-shadow: inset -5px -5px 10px rgba(0,0,0,0.05), 0 10px 20px rgba(0,0,0,0.05);
+          position: absolute;
+      }
+      .cloud-3d::after {
+          content: ''; position: absolute;
+          width: 60px; height: 60px;
+          background: #fff;
+          border-radius: 50%;
+          top: -30px; left: 20px;
+          box-shadow: inset 2px 2px 5px rgba(255,255,255,1);
+      }
+      .cloud-3d::before {
+          content: ''; position: absolute;
+          width: 80px; height: 80px;
+          background: #fff;
+          border-radius: 50%;
+          top: -50px; right: 20px;
+          box-shadow: inset 2px 2px 5px rgba(255,255,255,1);
+      }
+
+      .sun-3d-sphere {
+          background: radial-gradient(circle at 35% 35%, #fefce8, #facc15);
+          border-radius: 50%;
+          box-shadow: inset -10px -10px 30px rgba(202, 138, 4, 0.2), 0 0 60px rgba(250, 204, 21, 0.6);
+      }
+
+      .rainbow-ring {
+          position: absolute;
+          border-radius: 50%;
+          border: 40px solid transparent;
+          filter: blur(8px);
+          opacity: 0.5;
+          width: 120%; height: 120%;
+          left: -10%; bottom: -40%;
+      }
+
+      /* --- Briefing Content Styles --- */
+      .briefing-content {
+        font-family: 'Raleway', sans-serif;
+        font-weight: 400;
+      }
+      
+      .briefing-content h3 {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 600;
+        background: linear-gradient(to right, var(--brand-color), #FEB47B);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 1.8rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        letter-spacing: -0.02em;
+      }
+      .dark .briefing-content h3 {
+        background: linear-gradient(to right, #FEB47B, #fff);
+        -webkit-background-clip: text;
+      }
+      
+      .briefing-content ul {
+        list-style-type: none;
+        padding-left: 0;
+        margin-bottom: 2rem;
+        background: rgba(255,255,255,0.5);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(0,0,0,0.05);
+      }
+      .dark .briefing-content ul {
+        background: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.1);
+      }
+      
+      .briefing-content li {
+        position: relative;
+        padding-left: 1.5rem;
+        margin-bottom: 0.75rem;
+        color: #475569;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+      .dark .briefing-content li {
+        color: #e2e8f0;
+      }
+      
+      /* Fancy Bullet */
+      .briefing-content li::before {
+        content: '✦';
+        color: var(--brand-color);
+        font-size: 1rem;
+        position: absolute;
+        left: 0;
+        top: 0.1rem;
+      }
+      
+      .briefing-content p {
+        margin-bottom: 1.5rem;
+        line-height: 1.7;
+        color: #334155;
+        font-size: 1.05rem;
+      }
+      .dark .briefing-content p {
+        color: #cbd5e1;
+      }
+      
+      .briefing-content strong {
+        color: var(--brand-color);
+        font-weight: 700;
+      }
+
+      /* --- SPACE THEME (Dark Mode) VIDEO GAME BUTTONS --- */
+      
+      /* General Button Transition */
+      .dark button {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Primary / Gradient Buttons (The "Action" Buttons) */
+      .dark button[class*="bg-gradient"], 
+      .dark button[class*="bg-brand-orange"],
+      .dark button[class*="from-brand-orange"] {
+        box-shadow: 0 0 10px rgba(255, 126, 95, 0.4), 
+                    inset 0 0 10px rgba(255, 255, 255, 0.2),
+                    0 0 0 1px rgba(255, 126, 95, 0.3); /* Thin border */
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        backdrop-filter: blur(4px);
+      }
+
+      .dark button[class*="bg-gradient"]:hover, 
+      .dark button[class*="bg-brand-orange"]:hover,
+      .dark button[class*="from-brand-orange"]:hover {
+        box-shadow: 0 0 20px rgba(255, 126, 95, 0.7), 
+                    0 0 40px rgba(255, 126, 95, 0.4), 
+                    inset 0 0 15px rgba(255, 255, 255, 0.4);
+        transform: translateY(-2px) scale(1.03);
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+        z-index: 10;
+      }
+
+      /* Secondary / Glass Buttons (The "UI" Buttons) */
+      /* We target generic buttons that might be white or transparent in dark mode */
+      .dark button.bg-white,
+      .dark button.bg-slate-900,
+      .dark button:not([class*="bg-gradient"]):not([class*="bg-brand-orange"]):not([class*="bg-transparent"]):not([class*="bg-red"]):not([class*="text-red"]) {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 5px rgba(139, 92, 246, 0.1); /* Faint purple glow */
+        backdrop-filter: blur(5px);
+      }
+
+      .dark button.bg-white:hover,
+      .dark button.bg-slate-900:hover,
+      .dark button:not([class*="bg-gradient"]):not([class*="bg-brand-orange"]):not([class*="bg-transparent"]):not([class*="bg-red"]):not([class*="text-red"]):hover {
+        border-color: rgba(139, 92, 246, 0.6); /* Purple border on hover */
+        box-shadow: 0 0 15px rgba(139, 92, 246, 0.4), inset 0 0 10px rgba(139, 92, 246, 0.1);
+        color: #fff;
+        transform: scale(1.05);
+      }
+
+      /* Specific override for Red/Danger buttons in dark mode */
+      .dark button[class*="text-red"], .dark button[class*="bg-red"] {
+         text-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+      }
+      .dark button[class*="text-red"]:hover, .dark button[class*="bg-red"]:hover {
+         box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+      }
+
+      /* Sci-Fi Grid Overlay for Body */
+      .dark body {
+        background-image: 
+            linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)), /* Darken the grid slightly */
+            linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 100% 100%, 50px 50px, 50px 50px;
+      }
+
+      /* --- Firefly Glow Animation --- */
+      @keyframes firefly-glow {
+        0%, 100% { box-shadow: 0 0 8px rgba(255, 126, 95, 0.6), 0 0 20px rgba(255, 126, 95, 0.3); } /* Subtle glow */
+        50% { box-shadow: 0 0 15px rgba(255, 126, 95, 0.9), 0 0 35px rgba(255, 126, 95, 0.5); } /* Brighter pulse */
+      }
+      
+      .dark #briefing-button,
+      .dark #new-client-filter-button,
+      .dark #new-project-card {
+        animation: firefly-glow 3s ease-in-out infinite alternate;
+      }
+
+    </style>
+  <script type="module" crossorigin src="/assets/index-C7K5DHUy.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CLrnneTW.css">
+</head>
+  <body class="bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] text-slate-800 transition-colors duration-1000 dark:bg-none dark:bg-transparent dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+    
+    <!-- CUTE SPACE BACKGROUND (Dark Mode Only) -->
+    <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-space-gradient">
+        
+        <!-- Static Star Fields -->
+        <div class="star-bg stars-sm"></div>
+        <div class="star-bg stars-md"></div>
+        <div class="star-bg stars-lg"></div>
+        
+        <!-- Blueberry Moon (Top Left) -->
+        <div class="absolute top-[15%] left-[10%] w-16 h-16 rounded-full planet-blue animate-float"></div>
+
+        <!-- Lollipop Planet (Top Right) -->
+        <div class="absolute top-[8%] right-[8%] w-48 h-48 rounded-full planet-lollipop animate-float-slow">
+            <div class="planet-ring"></div>
+            <div class="crater w-8 h-8 top-8 right-10"></div>
+            <div class="crater w-4 h-4 bottom-10 left-12"></div>
+        </div>
+
+        <!-- Peach Planet (Bottom Left) -->
+        <div class="absolute bottom-[15%] left-[5%] w-32 h-32 rounded-full planet-peach animate-float-reverse">
+            <div class="crater w-6 h-6 top-6 left-8"></div>
+            <div class="crater w-3 h-3 bottom-8 right-8"></div>
+        </div>
+        
+        <!-- Shooting Stars -->
+        <div class="shooting-star" style="top: 10%; right: 20%; animation-delay: 0s;"></div>
+        <div class="shooting-star" style="top: 40%; right: 40%; animation-delay: 5s;"></div>
+        <div class="shooting-star" style="bottom: 30%; left: 20%; animation-delay: 2s;"></div>
+    </div>
+
+    <!-- UNICORN WORLD (Unicorn Mode Only) -->
+    <div id="unicorn-scene" class="fixed inset-0 pointer-events-none z-0 hidden unicorn:block overflow-hidden bg-unicorn-gradient">
+        <!-- 3D Rainbow Layers -->
+        <div class="rainbow-ring animate-rainbow-slide" style="border-top-color: #fca5a5; width: 130%; height: 130%; bottom: -45%; left: -15%;"></div>
+        <div class="rainbow-ring animate-rainbow-slide" style="border-top-color: #fcd34d; width: 120%; height: 120%; bottom: -40%; left: -10%;"></div>
+        <div class="rainbow-ring animate-rainbow-slide" style="border-top-color: #86efac; width: 110%; height: 110%; bottom: -35%; left: -5%;"></div>
+        <div class="rainbow-ring animate-rainbow-slide" style="border-top-color: #93c5fd; width: 100%; height: 100%; bottom: -30%; left: 0%;"></div>
+        
+        <!-- 3D Sun -->
+        <div class="absolute top-[10%] right-[10%] w-28 h-28 sun-3d-sphere animate-spin-slow flex items-center justify-center"></div>
+
+        <!-- 3D Fluffy Clouds -->
+        <div class="cloud-3d absolute top-[15%] left-[5%] opacity-90 animate-float-slow"></div>
+        <div class="cloud-3d absolute top-[25%] right-[20%] opacity-80 animate-float-reverse scale-75"></div>
+        <div class="cloud-3d absolute bottom-[20%] left-[20%] opacity-70 animate-float scale-125"></div>
+        
+        <!-- Sparkles Overlay -->
+        <div class="absolute top-1/2 left-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-40 select-none"></div>
+    </div>
+
+    <!-- UNICORN WORLD (Unicorn Mode Only) -->
+    <div class="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-brand-pink/20 dark:hidden unicorn:hidden rounded-full blur-[120px] -z-10 animate-pulse transition-colors duration-1000"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:hidden unicorn:hidden rounded-full blur-[100px] -z-10 transition-colors duration-1000"></div>
+    
+    <div id="root"></div>
+  
+  <!-- PWA Service Worker Registration -->
+  <script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/'
+          });
+          console.log('✅ Service Worker registered:', registration.scope);
+          
+          // Check for updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            console.log('🔄 New Service Worker installing...');
+            
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New content available, show update notification
+                console.log('📦 New version available!');
+                if (window.showUpdateNotification) {
+                  window.showUpdateNotification();
+                }
+              }
+            });
+          });
+        } catch (error) {
+          console.error('❌ Service Worker registration failed:', error);
+        }
+      });
+    }
+    
+    // Handle PWA install prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      console.log('📲 PWA install prompt available');
+      
+      // Show install button if available
+      if (window.showInstallButton) {
+        window.showInstallButton();
+      }
+    });
+    
+    // Track PWA install
+    window.addEventListener('appinstalled', () => {
+      console.log('✅ PWA installed successfully');
+      deferredPrompt = null;
+    });
+    
+    // Expose install function globally
+    window.installPWA = async () => {
+      if (!deferredPrompt) {
+        console.log('Install prompt not available');
+        return false;
+      }
+      
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('User choice:', outcome);
+      deferredPrompt = null;
+      return outcome === 'accepted';
+    };
+    
+    // Check if running as PWA
+    window.isPWA = () => {
+      return window.matchMedia('(display-mode: standalone)').matches || 
+             window.navigator.standalone === true;
+    };
+  </script>
+</body>
+</html>
