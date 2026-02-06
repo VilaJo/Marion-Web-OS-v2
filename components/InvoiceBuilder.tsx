@@ -150,7 +150,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                 setCurrentInvoice(prev => ({ ...prev, clientAddress: generatedAddress.trim() }));
             }
             
-            fetch('http://127.0.0.1:5003/api/time/get', {
+            fetch('/api/time/get', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId: activeProject.id })
@@ -247,7 +247,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     message: `Facture ${currentInvoice.number}`
                 };
 
-                const res = await fetch('http://127.0.0.1:5003/api/generate-qr', { // Using correct route
+                const res = await fetch('/api/generate-qr', { // Using correct route
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -307,7 +307,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
         setTimeout(async () => {
             // Mark logs as billed if needed
             if (currentInvoice.items.some(i => i.desc.includes('Prestations horaires')) && pendingLogs.length > 0) {
-                await fetch('http://127.0.0.1:5003/api/time/mark_billed', {
+                await fetch('/api/time/mark_billed', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ clientId: selectedProjectId, logIds: pendingLogs.map(l => l.id) })

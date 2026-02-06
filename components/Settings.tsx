@@ -38,6 +38,7 @@ import {
     LogOut,
     Key
 } from 'lucide-react';
+import { apiFetch } from '../services/api';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -97,7 +98,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     React.useEffect(() => {
         const checkGoogleStatus = async () => {
             try {
-                const res = await fetch('http://127.0.0.1:5003/api/oauth/google/status');
+                const res = await apiFetch('/api/oauth/google/status');
                 const data = await res.json();
                 if (data.connected) {
                     const updated = {
@@ -133,7 +134,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setIsConnecting(true);
         try {
             // Get OAuth URL from backend
-            const res = await fetch('http://127.0.0.1:5003/api/oauth/google/login');
+            const res = await apiFetch('/api/oauth/google/login');
             const data = await res.json();
             
             // Open popup for OAuth
@@ -182,13 +183,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const handleDisconnectGoogle = async () => {
         try {
-            await fetch('http://127.0.0.1:5003/api/oauth/google/disconnect', { method: 'POST' });
+            await apiFetch('/api/oauth/google/disconnect', { method: 'POST' });
             const updated = {
                 ...cloudConfig,
                 googleDrive: { enabled: false, connected: false, folder: '', email: '', name: '' }
             };
             setCloudConfig(updated);
             localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
+            
+            // Notify other components (like Agenda) of disconnect
+            window.postMessage({ type: 'GOOGLE_AUTH_DISCONNECT' }, '*');
         } catch (e) {
             console.error('Failed to disconnect Google', e);
         }
@@ -287,7 +291,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setIsCheckingUpdate(true);
         setUpdateMessage(null);
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/updates/check');
+            const res = await apiFetch('/api/updates/check');
             const data = await res.json();
             setUpdateInfo(data);
         } catch (e) {
@@ -301,7 +305,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     useEffect(() => {
         const fetchVersion = async () => {
             try {
-                const res = await fetch('http://127.0.0.1:5003/api/version');
+                const res = await apiFetch('/api/version');
                 const data = await res.json();
                 setUpdateInfo({ currentVersion: data.version });
             } catch {
@@ -315,7 +319,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setIsUpdating(true);
         setUpdateMessage(null);
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/updates/apply', {
+            const res = await apiFetch('/api/updates/apply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})

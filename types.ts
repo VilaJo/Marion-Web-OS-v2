@@ -260,3 +260,101 @@ export interface ClientPortalSettings {
     allowComments: boolean;
     lastAccessed?: string;
 }
+
+// --- Goals & KPIs ---
+export interface Goal {
+    id: string;
+    title: string;
+    description?: string;
+    type: 'revenue' | 'clients' | 'projects' | 'custom';
+    target: number;
+    current: number;
+    unit: string; // 'CHF', 'clients', 'projets', etc.
+    period: 'monthly' | 'quarterly' | 'yearly';
+    year: number;
+    month?: number; // 1-12 for monthly goals
+    quarter?: number; // 1-4 for quarterly goals
+    createdAt: string;
+    completedAt?: string;
+}
+
+export interface KPI {
+    id: string;
+    name: string;
+    value: number;
+    previousValue?: number;
+    unit: string;
+    trend: 'up' | 'down' | 'stable';
+    category: 'finance' | 'clients' | 'productivity';
+}
+
+// --- Document Templates ---
+export interface DocumentTemplate {
+    id: string;
+    name: string;
+    type: 'devis' | 'contrat' | 'email' | 'autre';
+    category?: string;
+    content: string;
+    variables: string[]; // e.g., ['{{client_name}}', '{{date}}', '{{amount}}']
+    createdAt: string;
+    updatedAt: string;
+    usageCount: number;
+}
+
+// --- Email Signatures ---
+export interface EmailSignature {
+    id: string;
+    name: string;
+    content: string;
+    isDefault: boolean;
+    createdAt: string;
+}
+
+// --- Email Templates ---
+export interface EmailTemplate {
+    id: string;
+    name: string;
+    subject: string;
+    body: string;
+    category: 'relance' | 'devis' | 'remerciement' | 'suivi' | 'autre';
+    variables: string[];
+    createdAt: string;
+    usageCount: number;
+}
+
+// --- Messaging (WhatsApp/SMS) ---
+export interface Message {
+    id: string;
+    direction: 'incoming' | 'outgoing';
+    content: string;
+    timestamp: string;
+    status: 'sent' | 'delivered' | 'read' | 'failed';
+    platform: 'whatsapp' | 'sms';
+}
+
+export interface Conversation {
+    id: string;
+    contactName: string;
+    contactPhone: string;
+    projectId?: string;
+    platform: 'whatsapp' | 'sms';
+    messages: Message[];
+    lastMessage?: Message;
+    unreadCount: number;
+    updatedAt: string;
+}
+
+// --- Treasury Forecast ---
+export interface TreasuryEntry {
+    id: string;
+    type: 'income' | 'expense';
+    description: string;
+    amount: number;
+    date: string;
+    category: string;
+    isRecurring: boolean;
+    recurringFrequency?: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+    projectId?: string;
+    invoiceId?: string;
+    status: 'confirmed' | 'expected' | 'pending';
+}

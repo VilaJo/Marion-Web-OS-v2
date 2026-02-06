@@ -106,7 +106,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
 
     const fetchTimeLogs = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/time/get', {
+            const res = await fetch('/api/time/get', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId: project.id })
@@ -159,7 +159,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         };
 
         try {
-            await fetch('http://127.0.0.1:5003/api/time/log', {
+            await fetch('/api/time/log', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId: project.id, entry: newEntry })
@@ -209,7 +209,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         const fullPath = subPath ? `${safeClientName}/${subPath}` : safeClientName;
 
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/files/list', {
+            const res = await fetch('/api/files/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: fullPath })
@@ -245,7 +245,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                 const relativeDir = currentPath ? `${safeClientName}/${currentPath}` : safeClientName;
                 const filePath = `${relativeDir}/${item.name}`;
                 
-                await fetch('http://127.0.0.1:5003/api/files/open', {
+                await fetch('/api/files/open', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path: filePath })
@@ -270,7 +270,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             const relativeDir = currentPath ? `${safeClientName}/${currentPath}` : safeClientName;
             const oldPath = `${relativeDir}/${item.name}`;
             
-            const res = await fetch('http://127.0.0.1:5003/api/files/rename', {
+            const res = await fetch('/api/files/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ oldPath, newName })
@@ -294,7 +294,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             const relativeDir = currentPath ? `${safeClientName}/${currentPath}` : safeClientName;
             const filePath = `${relativeDir}/${item.name}`;
 
-            const res = await fetch('http://127.0.0.1:5003/api/files/delete_item', {
+            const res = await fetch('/api/files/delete_item', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: filePath })
@@ -317,7 +317,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         setIsSyncingToDrive(true);
         try {
             // Check if connected to Google Drive
-            const statusRes = await fetch('http://127.0.0.1:5003/api/oauth/google/status');
+            const statusRes = await fetch('/api/oauth/google/status');
             const statusData = await statusRes.json();
             
             if (!statusData.connected) {
@@ -332,7 +332,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             const driveFolder = config.googleDrive?.folder || '';
 
             // Sync the client folder
-            const res = await fetch('http://127.0.0.1:5003/api/drive/sync', {
+            const res = await fetch('/api/drive/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -396,7 +396,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
     // --- PROMOTE/ARCHIVE/DELETE ---
     const handleChangeStatus = async (newStatus: ProjectStatus, category?: string) => {
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/projects/move', {
+            const res = await fetch('/api/projects/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -449,7 +449,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         if (confirm(`SUPPRIMER DÉFINITIVEMENT ${project.clientName} ?`)) {
             if (!confirm("Vraiment certaine ?")) return;
             try {
-                const res = await fetch(`http://127.0.0.1:5003/api/projects/delete?clientName=${encodeURIComponent(project.clientName)}`, { method: 'DELETE' });
+                const res = await fetch(`/api/projects/delete?clientName=${encodeURIComponent(project.clientName)}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
                     onNotify("Client Supprimé", "Dossier effacé.", 'warning');

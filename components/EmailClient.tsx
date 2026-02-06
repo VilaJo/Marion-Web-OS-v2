@@ -107,7 +107,7 @@ export const EmailClient: React.FC<EmailClientProps> = ({ clientEmail, initialCo
         setIsLoading(true);
         setError('');
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/email/list', {
+            const res = await fetch('/api/email/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -195,7 +195,7 @@ export const EmailClient: React.FC<EmailClientProps> = ({ clientEmail, initialCo
         setView('read');
         
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/email/body', {
+            const res = await fetch('/api/email/body', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -233,7 +233,7 @@ export const EmailClient: React.FC<EmailClientProps> = ({ clientEmail, initialCo
     const handleSendDraft = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/email/send', {
+            const res = await fetch('/api/email/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -261,7 +261,7 @@ export const EmailClient: React.FC<EmailClientProps> = ({ clientEmail, initialCo
     const handleSaveDraft = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/email/draft', {
+            const res = await fetch('/api/email/draft', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

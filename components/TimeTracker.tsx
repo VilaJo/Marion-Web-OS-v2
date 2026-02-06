@@ -74,7 +74,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ projects = [], client 
         };
 
         try {
-            await fetch('http://127.0.0.1:5003/api/time/log', {
+            await fetch('/api/time/log', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

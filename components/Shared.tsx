@@ -11,14 +11,14 @@ interface BadgeProps {
 
 export const Badge: React.FC<BadgeProps> = ({ children, color, onClick }) => {
     const colorClasses: Record<string, string> = {
-        green: 'bg-green-100 text-green-700 border-green-200',
-        blue: 'bg-blue-100 text-blue-700 border-blue-200',
-        purple: 'bg-purple-100 text-purple-700 border-purple-200',
-        yellow: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-        gray: 'bg-gray-100 text-gray-700 border-gray-200',
-        red: 'bg-red-100 text-red-700 border-red-200',
-        pink: 'bg-pink-100 text-pink-700 border-pink-200',
-        brand: 'bg-orange-100 text-orange-700 border-orange-200',
+        green: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800/50',
+        blue: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50',
+        purple: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800/50',
+        yellow: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800/50',
+        gray: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700/50',
+        red: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50',
+        pink: 'bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800/50',
+        brand: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800/50',
     };
 
     return (
@@ -40,7 +40,7 @@ interface CardProps {
 export const Card: React.FC<CardProps> = ({ children, className = '', onClick }) => (
     <div 
         onClick={onClick}
-        className={`glass rounded-4xl p-6 shadow-sm border border-white/50 dark:border-white/10 ${className}`}
+        className={`glass rounded-4xl p-6 shadow-sm dark:shadow-md border border-white/50 dark:border-slate-700/50 dark:bg-slate-800/40 ${className}`}
     >
         {children}
     </div>
@@ -195,12 +195,12 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         >
                         <div 
                             ref={modalRef}
-                            className={`bg-white dark:bg-slate-900 rounded-4xl shadow-2xl w-full ${width} flex flex-col animate-in zoom-in-95 duration-500 max-h-[95vh] relative outline-none`}
+                            className={`bg-white dark:bg-slate-900/95 dark:border dark:border-slate-700/50 rounded-4xl shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full ${width} flex flex-col animate-in zoom-in-95 duration-500 max-h-[95vh] relative outline-none`}
                             onClick={(e) => e.stopPropagation()}
                             tabIndex={-1}
                         >
                             {title ? (
-                                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10 rounded-t-4xl shrink-0">
+                                <div className="p-6 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900/95 z-10 rounded-t-4xl shrink-0">
                                     <h2 id="modal-title" className="text-2xl font-serif text-slate-800 dark:text-white">{title}</h2>
                                     {showCloseButton && (
                                         <button onClick={onClose} aria-label="Fermer" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group">

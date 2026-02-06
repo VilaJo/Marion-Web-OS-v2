@@ -1,5 +1,15 @@
 // Service now proxies to the Python Backend to secure the API Key
-const BACKEND_URL = 'http://127.0.0.1:5003';
+// Using empty string for relative URLs - works from any device
+const BACKEND_URL = '';
+
+// Helper to get auth headers
+const getAuthHeaders = () => {
+    const token = sessionStorage.getItem('marion_token');
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { 'X-Marion-Token': token } : {})
+    };
+};
 
 export const createChatSession = (getAppContext?: () => any) => {
   // Returns an object compatible with the UI's expectation of the Gemini SDK Chat object
@@ -11,7 +21,7 @@ export const createChatSession = (getAppContext?: () => any) => {
             
             const response = await fetch(`${BACKEND_URL}/api/chat`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ history, context }) // Send full history + context
             });
 
@@ -40,7 +50,9 @@ export const createChatSession = (getAppContext?: () => any) => {
 // Fetch any todos/events Franck created
 export const fetchFranckData = async () => {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/franck/data`);
+        const response = await fetch(`${BACKEND_URL}/api/franck/data`, {
+            headers: getAuthHeaders()
+        });
         return await response.json();
     } catch (e) {
         console.error('Failed to fetch Franck data:', e);
@@ -51,7 +63,10 @@ export const fetchFranckData = async () => {
 // Clear Franck's data after syncing
 export const clearFranckData = async () => {
     try {
-        await fetch(`${BACKEND_URL}/api/franck/clear`, { method: 'POST' });
+        await fetch(`${BACKEND_URL}/api/franck/clear`, { 
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
     } catch (e) {
         console.error('Failed to clear Franck data:', e);
     }
@@ -61,7 +76,7 @@ export const generateBriefing = async (contextData: string): Promise<string> => 
     try {
         const response = await fetch(`${BACKEND_URL}/api/briefing`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ context: contextData })
         });
         
@@ -77,7 +92,7 @@ export const sendZenMessageStream = async function* (history: any[], newMessage:
     try {
         const response = await fetch(`${BACKEND_URL}/api/chat/zen`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ history, message: newMessage })
         });
 

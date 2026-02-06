@@ -13,11 +13,15 @@ const FinanceDashboard = React.lazy(() => import('./components/FinanceDashboard'
 const FinancialHealthWidget = React.lazy(() => import('./components/FinancialHealthWidget').then(module => ({ default: module.FinancialHealthWidget })));
 const InvoiceBuilder = React.lazy(() => import('./components/InvoiceBuilder').then(module => ({ default: module.InvoiceBuilder })));
 const Onboarding = React.lazy(() => import('./components/Onboarding'));
+const GoalsKPIs = React.lazy(() => import('./components/GoalsKPIs').then(module => ({ default: module.GoalsKPIs })));
+const DocumentTemplates = React.lazy(() => import('./components/DocumentTemplates').then(module => ({ default: module.DocumentTemplates })));
+const MessagingHub = React.lazy(() => import('./components/MessagingHub').then(module => ({ default: module.MessagingHub })));
 const MediaStudio = React.lazy(() => import('./components/MediaStudio').then(module => ({ default: module.MediaStudio })));
 const FocusMode = React.lazy(() => import('./components/FocusMode').then(module => ({ default: module.FocusMode })));
 const TourGuide = React.lazy(() => import('./components/TourGuide').then(module => ({ default: module.TourGuide })));
 const BugReporter = React.lazy(() => import('./components/BugReporter').then(module => ({ default: module.BugReporter })));
 const WhatsNew = React.lazy(() => import('./components/WhatsNew').then(module => ({ default: module.WhatsNew })));
+const PWAInstallPrompt = React.lazy(() => import('./components/PWAInstallPrompt').then(module => ({ default: module.PWAInstallPrompt })));
 
 import { AmbientPlayer } from './components/AmbientPlayer';
 import { Card, Badge, Modal, Tooltip, EmptyState } from './components/Shared';
@@ -83,7 +87,9 @@ import {
     Palette,
     Upload,
     Clock,
-    StickyNote
+    StickyNote,
+    Target,
+    Settings as SettingsIcon
 } from 'lucide-react';
 import { SOUNDS } from './constants';
 
@@ -488,7 +494,7 @@ const App: React.FC = () => {
         // Load data after a short delay for animation
         setTimeout(async () => {
             try {
-                const res = await apiFetch('http://127.0.0.1:5003/check-status');
+                const res = await apiFetch('/check-status');
                 const data = await res.json();
                 setIsConfigured(data.configured);
                 setIsBackendDown(false);
@@ -632,6 +638,9 @@ const App: React.FC = () => {
     const [showGlobalInvoiceModal, setShowGlobalInvoiceModal] = React.useState(false);
     const [currentInvoiceToEdit, setCurrentInvoiceToEdit] = React.useState<{invoice: Invoice, project?: Project} | null>(null);
     const [showGuide, setShowGuide] = React.useState(false);
+    const [showGoalsKPIs, setShowGoalsKPIs] = React.useState(false);
+    const [showDocTemplates, setShowDocTemplates] = React.useState(false);
+    const [showMessagingHub, setShowMessagingHub] = React.useState(false);
     const [filter, setFilter] = React.useState<string>('Tous');
     const [showNotifCenter, setShowNotifCenter] = React.useState(false);
     const [showMediaWorkshop, setShowMediaWorkshop] = React.useState(false);
@@ -728,7 +737,7 @@ const App: React.FC = () => {
         const storedPwd = sessionStorage.getItem('infomaniak_pwd');
 
         try {
-            const res = await apiFetch('http://127.0.0.1:5003/api/projects/scan');
+            const res = await apiFetch('/api/projects/scan');
             const data = await res.json();
             
             if (data.projects) {
@@ -737,7 +746,7 @@ const App: React.FC = () => {
                     // Only attempt to fetch email count if credentials and client email are available
                     if (storedEmail && storedPwd && folder.profile?.email) {
                         try {
-                            const emailCountRes = await apiFetch('http://127.0.0.1:5003/api/email/count_for_client', {
+                            const emailCountRes = await apiFetch('/api/email/count_for_client', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -835,7 +844,7 @@ const App: React.FC = () => {
     // Backend status check (reusable)
     const checkStatus = React.useCallback(async () => {
         try {
-            const res = await apiFetch('http://127.0.0.1:5003/check-status');
+            const res = await apiFetch('/check-status');
             const data = await res.json();
             setIsConfigured(data.configured);
             setIsBackendDown(false);
@@ -1267,7 +1276,7 @@ const App: React.FC = () => {
         const predictedPath = `${targetFolder}/${safeName}`;
 
         try {
-            const res = await apiFetch('http://127.0.0.1:5003/api/files/create', {
+            const res = await apiFetch('/api/files/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientName: trimmed, status: newClientStatus })
@@ -1335,7 +1344,7 @@ const App: React.FC = () => {
 
         // Persist to Server
         try {
-            const res = await apiFetch('http://127.0.0.1:5003/api/projects/save', {
+            const res = await apiFetch('/api/projects/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updated)
@@ -1419,7 +1428,7 @@ const App: React.FC = () => {
         
         if (eventToDelete && eventToDelete.source === 'iCal' && eventToDelete.calendarName) {
             // Delete from External Calendar via Backend
-            fetch(`http://127.0.0.1:5003/api/calendar/delete?id=${encodeURIComponent(eventId)}&calendarName=${encodeURIComponent(eventToDelete.calendarName)}`, {
+            fetch(`/api/calendar/delete?id=${encodeURIComponent(eventId)}&calendarName=${encodeURIComponent(eventToDelete.calendarName)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: eventId, calendarName: eventToDelete.calendarName })
@@ -1468,7 +1477,7 @@ const App: React.FC = () => {
         });
 
         // Persister côté FS avec l’API dédiée (déplacement du dossier)
-        apiFetch('http://127.0.0.1:5003/api/projects/move', {
+        apiFetch('/api/projects/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1529,7 +1538,7 @@ const App: React.FC = () => {
     const handleCreateDatabase = async () => {
         // 1. Force Init Structure (Create all root folders: Actifs, ProBono, etc.)
         try {
-            await apiFetch('http://127.0.0.1:5003/api/database/init', { method: 'POST' });
+            await apiFetch('/api/database/init', { method: 'POST' });
         } catch (e) {
             console.error("Failed to init DB structure", e);
         }
@@ -1676,57 +1685,74 @@ const App: React.FC = () => {
             )}
 
             {/* Toast Container (Fixed) */}
-            <div className="fixed top-24 right-8 z-[60] flex flex-col gap-3 w-full max-w-sm pointer-events-none">
+            <div className="fixed top-20 md:top-24 right-2 md:right-8 left-2 md:left-auto z-[60] flex flex-col gap-3 w-auto md:w-full md:max-w-sm pointer-events-none">
                 {toasts.map(t => (
                     <ToastItem key={t.id} notification={t} onClose={removeToast} />
                 ))}
             </div>
 
             {/* Sticky fully transparent header (tools + actions, sans menu déroulant global) */}
-            <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-4 mb-8 bg-transparent">
-                <div className="flex items-center gap-5">
-                    <div 
-                        onClick={() => {
-                            setSelectedProject(null);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="relative group cursor-pointer hover:scale-105 transition-transform duration-500"
-                    >
-                        <img 
-                            src="/logo-marion.png" 
-                            alt="Home" 
-                            className={`w-12 h-12 md:w-14 md:h-14 object-contain transition-all duration-300 group-hover:scale-110 ${ 
-                                theme === 'light' ? 'group-hover:drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 
-                                theme === 'unicorn' ? 'group-hover:drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 
-                                'group-hover:drop-shadow-[0_0_15px_rgba(255,126,95,0.8)]'
-                            }`} 
-                        />
-                    </div>
-                    <div className="flex flex-col">
-                        <h1 className="font-sans text-[22px] md:text-[26px] font-semibold text-slate-800 dark:text-white tracking-[0.02em] leading-snug">
-                            Marion Web <span className="text-slate-500 dark:text-slate-300 font-normal">OS</span>
+            <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-8 bg-white/70 dark:bg-slate-900/40 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/50 dark:border-slate-700/30 md:border-0">
+                {/* Logo + Title */}
+                <div 
+                    onClick={() => {
+                        setSelectedProject(null);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="flex items-center gap-2 sm:gap-3 md:gap-5 cursor-pointer"
+                >
+                    <img 
+                        src="/logo-marion.png" 
+                        alt="Home" 
+                        className="w-9 h-9 sm:w-10 sm:h-10 md:w-14 md:h-14 object-contain" 
+                    />
+                    {/* Title - hidden on very small screens */}
+                    <div className="hidden sm:flex flex-col">
+                        <h1 className="font-sans text-base sm:text-lg md:text-[26px] font-semibold text-slate-800 dark:text-white leading-tight">
+                            Marion <span className="text-slate-400 dark:text-slate-400 font-normal hidden md:inline">Web OS</span>
                         </h1>
-                        <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 font-normal leading-none mt-0.5">
-                            Assistant Intelligent pour Webdesigner
+                        <p className="text-[10px] md:text-xs text-slate-400 hidden md:block">
+                            Assistant Intelligent
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-white/70 dark:bg-slate-900/60 px-3 py-1.5 rounded-full border border-white/80 dark:border-slate-700 shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-md">
+                {/* Toolbar */}
+                <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2 bg-white/70 dark:bg-slate-800/50 md:bg-white/70 md:dark:bg-slate-800/40 px-1.5 sm:px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-sm md:shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:md:shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-md">
                     {/* Briefing */}
                     <button
                         onClick={handleMorningBriefing}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-gradient-to-r from-brand-orange to-pink-500 text-white shadow-sm hover:shadow-md hover:scale-[1.03] transition-all"
+                        className="p-2 sm:px-2 sm:py-1.5 md:px-3 rounded-full text-[10px] md:text-[11px] font-semibold uppercase tracking-wide bg-gradient-to-r from-brand-orange to-pink-500 text-white"
                     >
-                        <LayoutGrid size={14} />
-                        <span>Briefing</span>
+                        <LayoutGrid size={16} className="sm:hidden" />
+                        <span className="hidden sm:flex items-center gap-1.5"><LayoutGrid size={14} /> Briefing</span>
                     </button>
 
-                    {/* Media & Focus */}
+                    {/* Notes - visible on mobile */}
+                    <Tooltip content="Notes Rapides">
+                        <button
+                            onClick={() => setShowNotes(true)}
+                            className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <StickyNote size={18} className="text-amber-500" />
+                        </button>
+                    </Tooltip>
+
+                    {/* Settings - visible on mobile */}
+                    <Tooltip content="Paramètres">
+                        <button
+                            onClick={() => setShowSettings(true)}
+                            className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors sm:hidden"
+                        >
+                            <SettingsIcon size={18} className="text-slate-400" />
+                        </button>
+                    </Tooltip>
+
+                    {/* Hidden on mobile - visible on tablet+ */}
                     <Tooltip content="Atelier Média">
                         <button
                             onClick={() => setShowMediaWorkshop(true)}
-                            className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+                            className="hidden sm:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
                         >
                             <Wand2 size={18} className="text-purple-500" />
                         </button>
@@ -1734,25 +1760,40 @@ const App: React.FC = () => {
                     <Tooltip content="Mode Focus">
                         <button
                             onClick={() => setIsFocusMode(true)}
-                            className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+                            className="hidden sm:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
                         >
                             <Tent size={18} className="text-blue-500" />
                         </button>
                     </Tooltip>
-
-                    {/* Notes & Donner à Franck */}
-                    <Tooltip content="Notes Rapides">
+                    
+                    {/* Hidden on mobile and tablet */}
+                    <Tooltip content="Objectifs & KPIs">
                         <button
-                            onClick={() => setShowNotes(true)}
-                            className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+                            onClick={() => setShowGoalsKPIs(true)}
+                            className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
                         >
-                            <StickyNote size={18} className="text-amber-500" />
+                            <Target size={18} className="text-violet-500" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Templates">
+                        <button
+                            onClick={() => setShowDocTemplates(true)}
+                            className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            <FileText size={18} className="text-orange-500" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Messagerie">
+                        <button
+                            onClick={() => setShowMessagingHub(true)}
+                            className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            <MessageCircle size={18} className="text-green-500" />
                         </button>
                     </Tooltip>
                     <Tooltip content="Donner à Franck">
                         <button
                             onClick={() => {
-                                // Open file picker
                                 const input = document.createElement('input');
                                 input.type = 'file';
                                 input.multiple = true;
@@ -1765,13 +1806,13 @@ const App: React.FC = () => {
                                 };
                                 input.click();
                             }}
-                            className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
+                            className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
                         >
                             <Sparkles size={18} className="text-emerald-500" />
                         </button>
                     </Tooltip>
 
-                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+                    <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 hidden sm:block" />
 
                     {/* Theme toggle simple (cycle) */}
                     <Tooltip content="Changer de thème">
@@ -1837,35 +1878,50 @@ const App: React.FC = () => {
                     </div>
 
                     {isConfigured !== null && (
-                        <span
-                            className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1 ${
-                                (isBackendDown || isConfigured === false as boolean)
-                                    ? 'bg-red-50 text-red-600 border border-red-200'
-                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                            }`}
-                        >
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                                (isBackendDown || isConfigured === false as boolean) ? 'bg-red-500' : 'bg-emerald-500'
-                            }`} />
-                            {(isBackendDown || isConfigured === false as boolean) ? 'Franck hors ligne' : 'Franck en ligne'}
-                        </span>
-                    )}
-
-                    {isBackendDown && (
                         <button
                             onClick={() => {
-                                setIsLoading(true);
-                                checkStatus();
+                                if (isBackendDown) {
+                                    // Try to reconnect
+                                    setIsLoading(true);
+                                    checkStatus();
+                                } else if (isConfigured === false) {
+                                    // Show onboarding to configure API key
+                                    // This will trigger the Onboarding component via the isConfigured state
+                                    setIsConfigured(false);
+                                } else {
+                                    // Franck is online, open chat
+                                    setShowChat(true);
+                                }
                             }}
-                            className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-red-500 text-white hover:bg-red-600 transition-colors"
+                            className={`ml-2 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer ${
+                                (isBackendDown || isConfigured === false as boolean)
+                                    ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
+                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100'
+                            }`}
+                            title={
+                                isBackendDown 
+                                    ? 'Cliquez pour reconnecter' 
+                                    : isConfigured === false 
+                                        ? 'Cliquez pour configurer Franck' 
+                                        : 'Cliquez pour parler à Franck'
+                            }
                         >
-                            Reconnecter
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                                (isBackendDown || isConfigured === false as boolean) 
+                                    ? 'bg-red-500 animate-pulse' 
+                                    : 'bg-emerald-500'
+                            }`} />
+                            {isBackendDown 
+                                ? 'Reconnecter' 
+                                : isConfigured === false 
+                                    ? 'Configurer Franck' 
+                                    : 'Franck en ligne'}
                         </button>
                     )}
                 </div>
             </header>
 
-            <main className="max-w-[1400px] mx-auto pb-20 relative z-10">
+            <main className="max-w-[1400px] mx-auto px-3 md:px-6 pb-20 relative z-10">
                 {selectedProject ? (
                     <ClientView 
                         project={selectedProject} 
@@ -1878,7 +1934,7 @@ const App: React.FC = () => {
                 ) : (
                     <div className="animate-in fade-in slide-in-from-left-8 duration-500">
                         {/* TOP ROW: Agenda (Left), Performance & Distribution (Right) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8 mb-4 md:mb-8">
                             {/* Left Column: Agenda (lg:col-span-2) */}
                             <div className="lg:col-span-2 space-y-8 animate-in slide-in-from-left-8 duration-700">
                                 <div id="agenda-widget">
@@ -1921,7 +1977,7 @@ const App: React.FC = () => {
 
                         {/* ACTIVITY WIDGET */}
                         {activities.length > 0 && (
-                            <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="mb-4 md:mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <Card className="p-5">
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -1956,10 +2012,10 @@ const App: React.FC = () => {
                                             return (
                                                 <div 
                                                     key={act.id}
-                                                    className="flex-shrink-0 bg-slate-50 dark:bg-slate-800 rounded-xl p-3 min-w-[200px] max-w-[250px] border border-slate-100 dark:border-slate-700 hover:border-brand-orange/50 transition-colors cursor-default"
+                                                    className="flex-shrink-0 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 min-w-[200px] max-w-[250px] border border-slate-100 dark:border-slate-700/50 hover:border-brand-orange/50 transition-colors cursor-default"
                                                 >
                                                     <div className="flex items-start gap-2">
-                                                        <div className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm">
+                                                        <div className="p-1.5 bg-white dark:bg-slate-700/80 rounded-lg shadow-sm">
                                                             {icons[act.type]}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
@@ -1982,68 +2038,70 @@ const App: React.FC = () => {
                         )}
 
                         {/* MIDDLE SECTION: Search, Filters, New Client & Project Cards */}
-                        <div className="space-y-8 mb-8">
-                            <div id="dashboard-search" className="bg-white/40 dark:bg-slate-800/40 p-3 rounded-3xl backdrop-blur-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="space-y-4 md:space-y-8 mb-4 md:mb-8">
+                            <div id="dashboard-search" className="bg-white/40 dark:bg-slate-800/30 p-2 md:p-3 rounded-2xl md:rounded-3xl backdrop-blur-sm flex items-center gap-2 md:gap-3">
                                 {/* Search Bar */}
-                                <div className="relative w-full md:w-auto flex-1 max-w-xl flex items-center gap-2">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                <div className="relative flex items-center gap-2 flex-shrink-0 w-48 md:w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                     <input 
                                         id="dashboard-search-input"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder="Rechercher un dossier, un client..." 
-                                        className="pl-12 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-transparent focus:border-orange-300 dark:focus:border-orange-700 shadow-sm focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-900/20 w-full transition-all outline-none"
+                                        placeholder="Rechercher..." 
+                                        className="pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-800/80 border border-transparent dark:border-slate-700/50 focus:border-orange-300 dark:focus:border-orange-600 shadow-sm focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 w-full transition-all outline-none text-sm dark:text-slate-100 dark:placeholder-slate-400"
                                     />
-                                    <button 
-                                        onClick={loadProjects}
-                                        disabled={isRefreshing}
-                                        className="p-3 bg-white dark:bg-slate-900 rounded-2xl text-slate-400 hover:text-brand-orange hover:shadow-md transition-all disabled:opacity-50"
-                                        title="Actualiser les dossiers"
-                                    >
-                                        <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
-                                    </button>
                                 </div>
 
-                                {/* Filters */}
-                                <div className="flex items-center gap-2 flex-wrap justify-end">
+                                {/* Filters - Scrollable */}
+                                <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto flex-1 no-scrollbar">
                                     {['Actif', 'Archivé', 'Perso', 'Pro Bono', 'Prospect', 'Tous'].map(f => (
                                         <button  
                                             key={f}
                                             onClick={() => setFilter(f)}
-                                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 whitespace-nowrap relative overflow-hidden ${ 
+                                            className={`px-3 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${ 
                                                 filter === f 
-                                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-[0_10px_20px_-5px_rgba(236,72,153,0.5)] dark:shadow-[0_0_20px_rgba(236,72,153,0.4)] transform scale-105' 
-                                                : 'bg-white dark:bg-slate-800 text-slate-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-slate-700 hover:shadow-md'
+                                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md' 
+                                                : 'bg-white dark:bg-slate-800/60 text-slate-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-slate-700/80'
                                             }`}
                                         >
                                             {f.toUpperCase()}
                                         </button>
                                     ))}
                                 </div>
-
-                                {/* Global New Project Button */}
+                                
+                                {/* New Client Button */}
                                 <button 
                                     id="new-client-filter-button"
                                     onClick={() => projects.length === 0 ? handleCreateDatabase() : setShowImporter(true)}
-                                    className={`px-6 py-2.5 rounded-full text-white transition-all duration-300 flex items-center gap-2 text-sm font-bold uppercase tracking-wide whitespace-nowrap group ${ 
+                                    className={`px-3 md:px-5 py-1.5 md:py-2 rounded-full text-white transition-all duration-300 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase whitespace-nowrap group flex-shrink-0 ${ 
                                         projects.length === 0
-                                        ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse shadow-xl shadow-orange-500/50 scale-105 hover:scale-110'
-                                        : 'bg-gradient-to-r from-[#FF7E5F] to-[#d946ef] hover:scale-105 hover:shadow-[0_0_30px_rgba(217,70,239,0.5)] shadow-xl shadow-orange-200/50 dark:shadow-[0_0_25px_rgba(217,70,239,0.4)]'
+                                        ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse shadow-lg'
+                                        : 'bg-gradient-to-r from-[#FF7E5F] to-[#d946ef] hover:scale-105 shadow-md'
                                     }`}
                                 >
                                     {projects.length === 0 ? (
                                         <>
-                                            <Database size={18} /> <span>Créer la Database</span>
+                                            <Database size={12} /> <span className="hidden sm:inline">Database</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" /> <span>Nouveau Client</span>
+                                            <Plus size={12} className="group-hover:rotate-90 transition-transform duration-300" /> <span>Nouveau</span>
                                         </>
                                     )}
                                 </button>
+
+                                {/* Refresh Button */}
+                                <button 
+                                    onClick={loadProjects}
+                                    disabled={isRefreshing}
+                                    className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-brand-orange hover:shadow-md dark:hover:shadow-lg transition-all disabled:opacity-50 flex-shrink-0 dark:border dark:border-slate-700/50"
+                                    title="Actualiser les dossiers"
+                                >
+                                    <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-in slide-in-from-bottom-8 duration-500">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6 animate-in slide-in-from-bottom-8 duration-500">
                                 {filteredProjects.map(p => (
                                     <ProjectCard 
                                         key={p.id} 
@@ -2056,7 +2114,7 @@ const App: React.FC = () => {
                                 <div 
                                     id="new-project-card"
                                     onClick={() => setShowImporter(true)}
-                                    className="group rounded-4xl p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 hover:border-brand-orange hover:text-brand-orange hover:bg-white/30 dark:hover:bg-white/5 cursor-pointer transition-all min-h-[280px]"
+                                    className="group rounded-4xl p-6 border-2 border-dashed border-slate-300 dark:border-slate-600/50 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:border-brand-orange hover:text-brand-orange hover:bg-white/30 dark:hover:bg-slate-800/30 cursor-pointer transition-all min-h-[280px]"
                                 >
                                     <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-90 transition-transform duration-300 shadow-inner">
                                         <Plus size={32} />
@@ -2073,7 +2131,7 @@ const App: React.FC = () => {
             <footer className="max-w-7xl mx-auto mt-20 text-center text-xs text-slate-400 font-serif flex items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity pb-8 relative z-10">
                 <span>Designer avec</span>
                 <span className="text-red-400">♥</span>
-                <span>par JV Automation - Copyright 2026 - v2.3.0</span>
+                <span>par JV Automation - Copyright 2026 - v2.4.0</span>
             </footer>
 
             {/* Global Overlays */}
@@ -2105,7 +2163,7 @@ const App: React.FC = () => {
             {/* Notes Modal */}
             {showNotes && (
                 <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowNotes(false)}>
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white dark:bg-slate-900/95 dark:border dark:border-slate-700/50 rounded-3xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
                             <h2 className="font-serif text-2xl text-slate-800 dark:text-white">Notes Rapides</h2>
                             <button 
@@ -2127,7 +2185,7 @@ const App: React.FC = () => {
                 <div className="fixed inset-0 z-[100] pointer-events-none">
                     <div className="absolute inset-0 bg-emerald-500/10 dark:bg-emerald-500/20 backdrop-blur-sm animate-pulse" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 shadow-2xl border-4 border-emerald-500 border-dashed">
+                        <div className="bg-white dark:bg-slate-800/90 rounded-3xl p-12 shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] border-4 border-emerald-500 dark:border-emerald-600 border-dashed">
                             <div className="flex flex-col items-center gap-6">
                                 <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center animate-bounce">
                                     <UploadCloud size={48} className="text-emerald-600 dark:text-emerald-400" />
@@ -2159,7 +2217,7 @@ const App: React.FC = () => {
             {showScrollTop && (
                 <button
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="fixed bottom-8 right-28 z-40 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-[0_6px_20px_rgba(15,23,42,0.25)] flex items-center justify-center text-slate-500 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-brand-orange transition-all duration-300"
+                    className="fixed bottom-8 right-28 z-40 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-600/50 shadow-[0_6px_20px_rgba(15,23,42,0.25)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.4)] flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-brand-orange transition-all duration-300"
                     aria-label="Revenir en haut de la page"
                 >
                     <ArrowUp size={18} />
@@ -2202,7 +2260,7 @@ const App: React.FC = () => {
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Identité du Client</label>
                         <div className="relative group">
                             <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-orange to-pink-500 rounded-2xl opacity-20 group-focus-within:opacity-100 transition-opacity duration-500 blur"></div>
-                            <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-1">
+                            <div className="relative bg-white dark:bg-slate-800/90 rounded-2xl p-1">
                                 <input 
                                     autoFocus
                                     placeholder="Ex: Maison de la Fleur..."
@@ -2249,7 +2307,7 @@ const App: React.FC = () => {
                         <select 
                             value={newClientStatus} 
                             onChange={(e) => setNewClientStatus(e.target.value as ProjectStatus)}
-                            className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange dark:text-white"
+                            className="w-full bg-slate-50 dark:bg-slate-800/80 dark:border dark:border-slate-700/50 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange dark:text-white dark:placeholder-slate-400"
                         >
                             {Object.values(ProjectStatus).map((status) => (
                                 <option key={status} value={status}>{status}</option>
@@ -2282,7 +2340,7 @@ const App: React.FC = () => {
             </Modal>
 
             <Modal isOpen={showFinanceModal} onClose={() => setShowFinanceModal(false)} title="" width="max-w-[95vw] w-full h-[95vh]" showCloseButton={false} noContentPadding={true}>
-                <div className="h-full overflow-y-auto flex flex-col bg-slate-50 dark:bg-slate-900">
+                <div className="h-full overflow-y-auto flex flex-col bg-slate-50 dark:bg-slate-900/95">
                     <FinanceDashboard 
                         projects={projects} 
                         onOpenInvoice={handleOpenGlobalInvoiceModal}
@@ -2309,7 +2367,7 @@ const App: React.FC = () => {
             </Modal>
 
             <Modal isOpen={showMondayBriefing} onClose={() => setShowMondayBriefing(false)} title="Briefing du Lundi" width="max-w-[95vw] w-full h-[95vh]">
-                <div className="bg-[#fffdf9] dark:bg-slate-900 p-8 rounded-[32px] border border-[#f5ece0] dark:border-slate-700 shadow-sm relative">
+                <div className="bg-[#fffdf9] dark:bg-slate-800/50 p-8 rounded-[32px] border border-[#f5ece0] dark:border-slate-700/50 shadow-sm dark:shadow-lg relative">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 dark:bg-orange-900/10 rounded-bl-full flex items-start justify-end p-6">
                         <Coffee className="text-orange-200 dark:text-orange-800 w-12 h-12" />
                     </div>
@@ -2370,7 +2428,7 @@ const App: React.FC = () => {
                                 desc: "Accès direct à vos dossiers locaux. Glissez-déposez pour trier, et laissez Franck organiser vos documents dans la bonne structure."
                             }
                         ].map((feature, idx) => (
-                            <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[32px] hover:shadow-lg transition-all hover:scale-[1.02] border border-slate-100 dark:border-slate-700">
+                            <div key={idx} className="bg-slate-50 dark:bg-slate-800/40 p-8 rounded-[32px] hover:shadow-lg dark:hover:shadow-xl transition-all hover:scale-[1.02] border border-slate-100 dark:border-slate-700/50">
                                 <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-slate-700 text-brand-orange flex items-center justify-center mb-6">
                                     <feature.icon size={24} />
                                 </div>
@@ -2393,7 +2451,7 @@ const App: React.FC = () => {
                             Fini la charge mentale de l'organisation, place à la sérénité et à la clarté."
                         </p>
                         
-                        <div className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-900 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 text-xs font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400">
+                        <div className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800/60 rounded-full shadow-sm dark:shadow-md border border-slate-200 dark:border-slate-700/50 text-xs font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400">
                             <Sparkles size={14} className="text-brand-orange" />
                             Signature de design par Johan Vila Automation
                         </div>
@@ -2401,6 +2459,37 @@ const App: React.FC = () => {
                 </div>
             </Modal>
 
+            {/* Goals & KPIs Modal */}
+            {showGoalsKPIs && (
+                <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full" /></div>}>
+                    <GoalsKPIs 
+                        projects={projects}
+                        currency={currency}
+                        onClose={() => setShowGoalsKPIs(false)}
+                    />
+                </Suspense>
+            )}
+
+            {/* Document Templates Modal */}
+            {showDocTemplates && (
+                <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full" /></div>}>
+                    <DocumentTemplates 
+                        onClose={() => setShowDocTemplates(false)}
+                    />
+                </Suspense>
+            )}
+
+            {/* Messaging Hub Modal */}
+            {showMessagingHub && (
+                <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full" /></div>}>
+                    <MessagingHub 
+                        projects={projects}
+                        onClose={() => setShowMessagingHub(false)}
+                    />
+                </Suspense>
+            )}
+
+            <PWAInstallPrompt />
             <BugReporter />
             <WhatsNew />
         </div>

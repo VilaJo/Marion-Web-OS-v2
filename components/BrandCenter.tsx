@@ -123,7 +123,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
         formData.append('file', fileInputRef.current.files[0]);
 
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/media/palette', {
+            const res = await fetch('/api/media/palette', {
                 method: 'POST',
                 body: formData
             });

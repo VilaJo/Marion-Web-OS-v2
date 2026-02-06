@@ -110,7 +110,7 @@ export const FileDispatcher: React.FC<FileDispatcherProps> = ({ files: initialFi
         formData.append('file', item.file);
 
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/files/dispatch', {
+            const res = await fetch('/api/files/dispatch', {
                 method: 'POST',
                 body: formData
             });
@@ -157,7 +157,7 @@ export const FileDispatcher: React.FC<FileDispatcherProps> = ({ files: initialFi
         setQueue(prev => prev.map(f => f.id === id ? { ...f, status: 'completed' } : f));
 
         try {
-            await fetch('http://127.0.0.1:5003/api/files/move', {
+            await fetch('/api/files/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

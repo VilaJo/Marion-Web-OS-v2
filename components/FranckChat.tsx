@@ -6,6 +6,7 @@ import { Bot, Send, X, Sparkles, Calendar, FileText, DollarSign, Clock, Lightbul
 import { ChatMessage, Project, CalendarEvent } from '../types';
 
 import { createChatSession, fetchFranckData, clearFranckData } from '../services/geminiService';
+import { apiFetch } from '../services/api';
 
 // @ts-ignore
 import franckAvatar from '../assets/franck-avatar.png';
@@ -146,7 +147,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
     useEffect(() => {
         const fetchGreeting = async () => {
             try {
-                const res = await fetch('http://127.0.0.1:5003/api/franck/greeting');
+                const res = await apiFetch('/api/franck/greeting');
                 const data = await res.json();
                 const greeting = data.greeting;
                 setMessages([{ role: 'model', text: greeting, timestamp: new Date() }]);

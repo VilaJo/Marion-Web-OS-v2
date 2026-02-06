@@ -101,7 +101,7 @@ export const QuickNotes: React.FC = () => {
     const fetchNotes = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/notes');
+            const res = await fetch('/api/notes');
             const data = await res.json();
             if (data.notes) {
                 const enriched = data.notes.map((n: any) => ({
@@ -135,7 +135,7 @@ export const QuickNotes: React.FC = () => {
         setIsEditing(false);
 
         try {
-            await fetch('http://127.0.0.1:5003/api/notes', {
+            await fetch('/api/notes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...newNote, color: activeThemeId })
@@ -149,7 +149,7 @@ export const QuickNotes: React.FC = () => {
             saveToHistory();
             setNotes(notes.filter(n => n.id !== id));
             if (selectedNote?.id === id) setIsEditing(false);
-            try { await fetch(`http://127.0.0.1:5003/api/notes?id=${id}`, { method: 'DELETE' }); } catch (err) {}
+            try { await fetch(`/api/notes?id=${id}`, { method: 'DELETE' }); } catch (err) {}
         }
     };
 
@@ -158,7 +158,7 @@ export const QuickNotes: React.FC = () => {
         const updated = { ...note, pinned: !note.pinned };
         setNotes(notes.map(n => n.id === note.id ? updated : n));
         try {
-            await fetch('http://127.0.0.1:5003/api/notes', {
+            await fetch('/api/notes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...updated, color: updated.theme })
@@ -171,7 +171,7 @@ export const QuickNotes: React.FC = () => {
         if (!formContent) return;
         setIsProcessingAI(true);
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/notes/ai', {
+            const res = await fetch('/api/notes/ai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: formContent, action })

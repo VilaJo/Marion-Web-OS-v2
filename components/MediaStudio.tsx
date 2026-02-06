@@ -182,7 +182,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
             if (action === 'upscale') endpoint = 'upscale';
             if (action === 'remove_bg') endpoint = 'remove_bg';
 
-            const res = await fetch(`http://127.0.0.1:5003/api/media/${endpoint}`, {
+            const res = await fetch(`/api/media/${endpoint}`, {
                 method: 'POST',
                 body: formData
             });

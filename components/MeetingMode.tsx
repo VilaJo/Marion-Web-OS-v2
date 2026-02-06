@@ -172,7 +172,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
 
         try {
             setStatus('processing'); // Indicate AI analysis
-            const res = await fetch('http://127.0.0.1:5003/api/meeting/analyze', {
+            const res = await fetch('/api/meeting/analyze', {
                 method: 'POST',
                 body: formData
             });

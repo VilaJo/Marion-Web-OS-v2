@@ -146,6 +146,35 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         }
     }, []);
     
+    // Resync trigger - listen for changes from Settings or OAuth popup
+    const [syncTrigger, setSyncTrigger] = useState(0);
+    
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                // Google connected from OAuth popup - trigger resync
+                console.log('Agenda: Google auth success, triggering resync');
+                setGoogleCalendarConnected(true);
+                if (event.data.email) {
+                    setGoogleCalendarEmail(event.data.email);
+                    localStorage.setItem('marion_gcal_email', event.data.email);
+                }
+                localStorage.setItem('marion_gcal_connected', 'true');
+                setSyncTrigger(t => t + 1); // Trigger resync
+            }
+            if (event.data.type === 'GOOGLE_AUTH_DISCONNECT') {
+                setGoogleCalendarConnected(false);
+                setExternalEvents([]);
+                localStorage.removeItem('marion_gcal_connected');
+                localStorage.removeItem('marion_gcal_email');
+                localStorage.removeItem('marion_gcal_events_cache');
+            }
+        };
+        
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+    
     // Track consecutive failures for smarter reconnection
     const failureCountRef = useRef(0);
     const lastSuccessfulSyncRef = useRef<Date | null>(null);
@@ -182,15 +211,15 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                 // Fetch everything in parallel
                 const [statusResult, icalResult, gcalResult] = await Promise.allSettled([
                     // 1. Check Google connection
-                    apiFetch('http://127.0.0.1:5003/api/gcal/sync-status', { signal: controller.signal })
+                    apiFetch('/api/gcal/sync-status', { signal: controller.signal })
                         .then(r => r.ok ? r.json() : Promise.reject('status_error')),
                     
                     // 2. Fetch iCal events
-                    apiFetch('http://127.0.0.1:5003/api/calendar/fetch', { signal: controller.signal })
+                    apiFetch('/api/calendar/fetch', { signal: controller.signal })
                         .then(r => r.ok ? r.json() : Promise.reject('ical_error')),
                     
                     // 3. Fetch Google Calendar events
-                    apiFetch('http://127.0.0.1:5003/api/gcal/events', { signal: controller.signal })
+                    apiFetch('/api/gcal/events', { signal: controller.signal })
                         .then(r => r.ok ? r.json() : Promise.reject('gcal_error'))
                 ]);
                 
@@ -288,7 +317,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             isMounted = false;
             clearInterval(interval);
         };
-    }, []);
+    }, [syncTrigger]); // Re-run when Google auth succeeds
 
     const [isExpanded, setIsExpanded] = useState(false); // Expanded = "Immersion Mode"
     const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day'); // Only used in expanded
@@ -629,7 +658,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             
             // Handle iCal Update
             if (finalEvent.source === 'iCal') {
-                apiFetch('http://127.0.0.1:5003/api/calendar/update', {
+                apiFetch('/api/calendar/update', {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
                      body: JSON.stringify({
@@ -645,7 +674,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             
             // Handle Google Calendar Update
             if (finalEvent.source === 'google' && finalEvent.googleEventId) {
-                apiFetch(`http://127.0.0.1:5003/api/gcal/events/${finalEvent.googleEventId}`, {
+                apiFetch(`/api/gcal/events/${finalEvent.googleEventId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -663,7 +692,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             
             // Sync to Google Calendar if connected (except Personal events)
             if (googleCalendarConnected && finalEvent.type !== 'Personal') {
-                apiFetch('http://127.0.0.1:5003/api/gcal/events', {
+                apiFetch('/api/gcal/events', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

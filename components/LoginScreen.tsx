@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Eye, EyeOff, Shield, Sparkles, AlertCircle, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, Sparkles, AlertCircle, Loader2, AlertTriangle, Trash2, Shield } from 'lucide-react';
 
 interface LoginScreenProps {
     onAuthenticated: (token: string) => void;
@@ -151,13 +151,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
         }
     };
 
+    // Marion Logo Component - Uses the original logo
+    const MarionLogo = ({ size = 80 }: { size?: number }) => (
+        <div className="relative">
+            <img 
+                src="/logo-marion.png" 
+                alt="Marion Web OS" 
+                className="drop-shadow-xl"
+                style={{ width: size, height: size, objectFit: 'contain' }}
+            />
+        </div>
+    );
+
     // Loading state while checking auth
     if (isCheckingAuth) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 text-brand-orange animate-spin" />
-                    <p className="text-slate-400 text-sm">Chargement...</p>
+            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-6">
+                    <MarionLogo size={100} />
+                    <div className="flex items-center gap-3">
+                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin" />
+                        <p className="text-slate-500 dark:text-slate-400" style={{ fontFamily: 'Raleway, sans-serif' }}>
+                            Chargement...
+                        </p>
+                    </div>
                 </div>
             </div>
         );
@@ -166,43 +183,60 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     // If not configured yet, show setup form
     if (isConfigured === false) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+                {/* Background decorations */}
+                <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-orange-900/10 rounded-full blur-[120px] -z-10" />
+                <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-[100px] -z-10" />
+                
                 <div className="w-full max-w-md">
                     {/* Logo / Header */}
                     <div className="text-center mb-8">
-                        <img 
-                            src="/logo-marion.png" 
-                            alt="Marion Web OS" 
-                            className="h-20 w-auto mx-auto mb-4 drop-shadow-lg"
-                        />
-                        <h1 className="text-2xl font-bold text-white mb-2">Sécuriser Marion</h1>
-                        <p className="text-slate-400 text-sm">
+                        <div className="flex justify-center mb-6">
+                            <MarionLogo size={100} />
+                        </div>
+                        <h1 
+                            className="text-3xl font-semibold text-slate-800 dark:text-white mb-3"
+                            style={{ fontFamily: 'Montserrat, sans-serif' }}
+                        >
+                            Bienvenue sur Marion
+                        </h1>
+                        <p 
+                            className="text-slate-500 dark:text-slate-400"
+                            style={{ fontFamily: 'Raleway, sans-serif' }}
+                        >
                             Créez un mot de passe pour protéger vos données
                         </p>
                     </div>
 
                     {/* Setup Form */}
-                    <form onSubmit={handleSetup} className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
-                        <div className="space-y-4">
+                    <form 
+                        onSubmit={handleSetup} 
+                        className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/50 dark:border-slate-700/50 shadow-xl"
+                    >
+                        <div className="space-y-5">
                             {/* Password Field */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                <label 
+                                    className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2"
+                                    style={{ fontFamily: 'Raleway, sans-serif' }}
+                                >
                                     Mot de passe
                                 </label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Minimum 6 caractères"
-                                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-11 pr-11 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange transition-all"
+                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-12 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                        style={{ fontFamily: 'Raleway, sans-serif' }}
                                         autoFocus
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                                     >
                                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
@@ -211,26 +245,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
                             {/* Confirm Password Field */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                <label 
+                                    className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2"
+                                    style={{ fontFamily: 'Raleway, sans-serif' }}
+                                >
                                     Confirmer le mot de passe
                                 </label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="Répétez le mot de passe"
-                                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange transition-all"
+                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                        style={{ fontFamily: 'Raleway, sans-serif' }}
                                     />
                                 </div>
                             </div>
 
                             {/* Error Message */}
                             {error && (
-                                <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 rounded-lg p-3">
-                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                    {error}
+                                <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-500/10 rounded-xl p-4">
+                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                    <span style={{ fontFamily: 'Raleway, sans-serif' }}>{error}</span>
                                 </div>
                             )}
 
@@ -238,7 +276,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                             <button
                                 type="submit"
                                 disabled={isLoading || !password || !confirmPassword}
-                                className="w-full bg-gradient-to-r from-brand-orange to-pink-500 text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-brand-orange/20"
+                                className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white font-semibold py-4 rounded-2xl hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
                                 {isLoading ? (
                                     <>
@@ -247,7 +286,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                                     </>
                                 ) : (
                                     <>
-                                        <Sparkles className="w-5 h-5" />
+                                        <Shield className="w-5 h-5" />
                                         Activer la protection
                                     </>
                                 )}
@@ -255,12 +294,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                         </div>
 
                         {/* Security Info */}
-                        <div className="mt-6 pt-4 border-t border-slate-700/50">
-                            <p className="text-xs text-slate-500 text-center">
-                                Vos données seront chiffrées avec ce mot de passe.
-                                <br />
-                                <span className="text-brand-orange">Conservez-le précieusement !</span>
-                            </p>
+                        <div className="mt-6 pt-5 border-t border-slate-200/50 dark:border-slate-700/50">
+                            <div className="flex items-start gap-3 text-sm text-slate-500 dark:text-slate-400">
+                                <Sparkles className="w-5 h-5 text-[#FF7E5F] flex-shrink-0 mt-0.5" />
+                                <p style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                    Vos données seront chiffrées localement avec ce mot de passe. 
+                                    <span className="text-[#FF7E5F] font-medium"> Conservez-le précieusement !</span>
+                                </p>
+                            </div>
                         </div>
                     </form>
 
@@ -268,7 +309,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                     {onSkip && (
                         <button
                             onClick={onSkip}
-                            className="mt-4 w-full text-slate-500 text-sm hover:text-slate-300 transition-colors"
+                            className="mt-4 w-full text-slate-400 text-sm hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                            style={{ fontFamily: 'Raleway, sans-serif' }}
                         >
                             Ignorer pour l'instant
                         </button>
@@ -280,43 +322,60 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
     // Login form (auth already configured)
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+            {/* Background decorations */}
+            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-orange-900/10 rounded-full blur-[120px] -z-10" />
+            <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-[100px] -z-10" />
+            
             <div className="w-full max-w-md">
                 {/* Logo / Header */}
                 <div className="text-center mb-8">
-                    <img 
-                        src="/logo-marion.png" 
-                        alt="Marion Web OS" 
-                        className="h-20 w-auto mx-auto mb-4 drop-shadow-lg"
-                    />
-                    <h1 className="text-2xl font-bold text-white mb-2">Marion Web OS</h1>
-                    <p className="text-slate-400 text-sm">
+                    <div className="flex justify-center mb-6">
+                        <MarionLogo size={100} />
+                    </div>
+                    <h1 
+                        className="text-3xl font-semibold text-slate-800 dark:text-white mb-3"
+                        style={{ fontFamily: 'Montserrat, sans-serif' }}
+                    >
+                        Marion Web OS
+                    </h1>
+                    <p 
+                        className="text-slate-500 dark:text-slate-400"
+                        style={{ fontFamily: 'Raleway, sans-serif' }}
+                    >
                         Entrez votre mot de passe pour continuer
                     </p>
                 </div>
 
                 {/* Login Form */}
-                <form onSubmit={handleLogin} className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
-                    <div className="space-y-4">
+                <form 
+                    onSubmit={handleLogin} 
+                    className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/50 dark:border-slate-700/50 shadow-xl"
+                >
+                    <div className="space-y-5">
                         {/* Password Field */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                            <label 
+                                className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
                                 Mot de passe
                             </label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Votre mot de passe"
-                                    className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-11 pr-11 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange transition-all"
+                                    className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-12 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                    style={{ fontFamily: 'Raleway, sans-serif' }}
                                     autoFocus
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -325,9 +384,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
                         {/* Error Message */}
                         {error && (
-                            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 rounded-lg p-3">
-                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                {error}
+                            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-500/10 rounded-xl p-4">
+                                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                <span style={{ fontFamily: 'Raleway, sans-serif' }}>{error}</span>
                             </div>
                         )}
 
@@ -335,7 +394,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                         <button
                             type="submit"
                             disabled={isLoading || !password}
-                            className="w-full bg-gradient-to-r from-brand-orange to-pink-500 text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-brand-orange/20"
+                            className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white font-semibold py-4 rounded-2xl hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+                            style={{ fontFamily: 'Montserrat, sans-serif' }}
                         >
                             {isLoading ? (
                                 <>
@@ -356,62 +416,88 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                 <button
                     type="button"
                     onClick={() => setShowResetConfirm(true)}
-                    className="mt-4 w-full text-slate-500 text-sm hover:text-slate-300 transition-colors"
+                    className="mt-5 w-full text-slate-400 text-sm hover:text-[#FF7E5F] transition-colors"
+                    style={{ fontFamily: 'Raleway, sans-serif' }}
                 >
                     Mot de passe oublié ?
                 </button>
 
                 {/* Footer */}
-                <p className="mt-6 text-center text-xs text-slate-600">
+                <p 
+                    className="mt-6 text-center text-xs text-slate-400"
+                    style={{ fontFamily: 'Raleway, sans-serif' }}
+                >
                     Vos données sont chiffrées et sécurisées localement
                 </p>
             </div>
 
             {/* Reset Confirmation Modal */}
             {showResetConfirm && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 shadow-2xl">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
-                                <AlertTriangle className="w-6 h-6 text-red-500" />
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl">
+                        <div className="flex items-center gap-4 mb-5">
+                            <div className="w-14 h-14 bg-red-100 dark:bg-red-500/20 rounded-2xl flex items-center justify-center">
+                                <AlertTriangle className="w-7 h-7 text-red-500" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white">Réinitialiser l'authentification</h3>
-                                <p className="text-sm text-slate-400">Cette action est irréversible</p>
+                                <h3 
+                                    className="text-xl font-semibold text-slate-800 dark:text-white"
+                                    style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                >
+                                    Réinitialiser
+                                </h3>
+                                <p 
+                                    className="text-sm text-slate-500 dark:text-slate-400"
+                                    style={{ fontFamily: 'Raleway, sans-serif' }}
+                                >
+                                    Cette action est irréversible
+                                </p>
                             </div>
                         </div>
 
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
-                            <p className="text-sm text-red-300 mb-2">
-                                <strong>Attention !</strong> La réinitialisation va supprimer :
+                        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-2xl p-4 mb-5">
+                            <p 
+                                className="text-sm text-red-600 dark:text-red-300 mb-2 font-medium"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
+                                Attention ! La réinitialisation va supprimer :
                             </p>
-                            <ul className="text-sm text-red-300/80 space-y-1 ml-4 list-disc">
+                            <ul 
+                                className="text-sm text-red-500 dark:text-red-300/80 space-y-1 ml-4 list-disc"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
                                 <li>Votre mot de passe actuel</li>
-                                <li>Les tokens Google (connexion Calendar/Drive)</li>
+                                <li>Les tokens Google (Calendar/Drive)</li>
                                 <li>Les données chiffrées du coffre-fort</li>
                             </ul>
-                            <p className="text-sm text-red-300 mt-2">
-                                Vos fichiers clients et dossiers seront conservés.
+                            <p 
+                                className="text-sm text-red-600 dark:text-red-300 mt-3"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
+                                Vos fichiers clients seront conservés.
                             </p>
                         </div>
 
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Tapez <span className="font-mono bg-slate-700 px-2 py-0.5 rounded">RESET</span> pour confirmer
+                        <div className="mb-5">
+                            <label 
+                                className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
+                                Tapez <span className="font-mono bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg">RESET</span> pour confirmer
                             </label>
                             <input
                                 type="text"
                                 value={resetConfirmText}
                                 onChange={(e) => setResetConfirmText(e.target.value.toUpperCase())}
                                 placeholder="RESET"
-                                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all font-mono"
+                                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all font-mono"
                             />
                         </div>
 
                         {error && (
-                            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 rounded-lg p-3 mb-4">
+                            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-500/10 rounded-xl p-3 mb-4">
                                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                {error}
+                                <span style={{ fontFamily: 'Raleway, sans-serif' }}>{error}</span>
                             </div>
                         )}
 
@@ -423,7 +509,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                                     setResetConfirmText('');
                                     setError('');
                                 }}
-                                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors font-medium"
+                                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-2xl transition-colors font-medium"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
                                 Annuler
                             </button>
@@ -431,12 +518,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                                 type="button"
                                 onClick={handleResetAuth}
                                 disabled={isResetting || resetConfirmText !== 'RESET'}
-                                className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 disabled:bg-red-500/50 text-white rounded-xl transition-colors font-medium flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                                className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 disabled:bg-red-300 dark:disabled:bg-red-500/50 text-white rounded-2xl transition-colors font-medium flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
                                 {isResetting ? (
                                     <>
                                         <Loader2 className="w-5 h-5 animate-spin" />
-                                        Réinitialisation...
+                                        ...
                                     </>
                                 ) : (
                                     <>

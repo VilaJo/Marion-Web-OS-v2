@@ -73,7 +73,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
         const context = chatHistory.map(msg => ({ role: msg.role, parts: [msg.text] }));
         
         try {
-             const response = await fetch('http://127.0.0.1:5003/api/chat/zen', {
+             const response = await fetch('/api/chat/zen', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ history: context, message: userMsg })

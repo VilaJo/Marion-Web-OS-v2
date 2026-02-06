@@ -33,6 +33,7 @@ import {
     Receipt,
     PiggyBank
 } from 'lucide-react';
+import { apiFetch } from '../services/api';
 
 declare const confetti: any;
 
@@ -48,7 +49,7 @@ interface FinanceDashboardProps {
 }
 
 export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, onOpenInvoice, onUpdateProject, currency = 'CHF', currentTheme, onClose, onCreateInvoice, onCreateEstimate }) => {
-    const [activeTab, setActiveTab] = useState<'revenus' | 'depenses' | 'analytics' | 'temps'>('revenus');
+    const [activeTab, setActiveTab] = useState<'revenus' | 'depenses' | 'analytics' | 'temps' | 'tresorerie' | 'export'>('revenus');
     const [period, setPeriod] = useState<'all' | 'year' | 'month'>('year');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
     const [showPeriodMenu, setShowPeriodMenu] = useState(false);
@@ -71,7 +72,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
     useEffect(() => {
         const fetchExpenses = async () => {
             try {
-                const res = await fetch('http://127.0.0.1:5003/api/expenses');
+                const res = await apiFetch('/api/expenses');
                 const data = await res.json();
                 if (data.expenses) setExpenses(data.expenses);
             } catch (e) {
@@ -170,7 +171,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
         formData.append('file', file);
 
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/expenses/scan', {
+            const res = await apiFetch('/api/expenses/scan', {
                 method: 'POST',
                 body: formData
             });
@@ -192,7 +193,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
     const handleDeleteExpense = async (id: string) => {
         if(!confirm("Supprimer cette dépense ?")) return;
         try {
-            await fetch(`http://127.0.0.1:5003/api/expenses/${id}`, { method: 'DELETE' });
+            await apiFetch(`/api/expenses/${id}`, { method: 'DELETE' });
             setExpenses(expenses.filter(e => e.id !== id));
         } catch(e) { console.error(e); }
     };
@@ -213,7 +214,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
         let body = `Bonjour,\n\nSauf erreur de notre part, la facture ${invoice.number} du ${new Date(invoice.date).toLocaleDateString()} est toujours en attente de paiement.\n\nMerci de faire le nécessaire.\n\nCordialement,\nMarion`;
 
         try {
-            const res = await fetch('http://127.0.0.1:5003/api/invoices/remind', {
+            const res = await fetch('/api/invoices/remind', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -458,6 +459,18 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                 >
                     <Clock size={16} /> Temps
                 </button>
+                <button 
+                    onClick={() => setActiveTab('tresorerie')}
+                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'tresorerie' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    <PiggyBank size={16} /> Trésorerie
+                </button>
+                <button 
+                    onClick={() => setActiveTab('export')}
+                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'export' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    <FileSpreadsheet size={16} /> Export
+                </button>
             </div>
 
             {/* Tables Content */}
@@ -602,7 +615,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                             <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                 {exp.fileUrl && (
                                                     <button 
-                                                        onClick={() => fetch('http://127.0.0.1:5003/api/files/open', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: `Dépenses/${exp.id}${exp.fileUrl.substring(exp.fileUrl.lastIndexOf('.'))}` }) }) } 
+                                                        onClick={() => fetch('/api/files/open', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: `Dépenses/${exp.id}${exp.fileUrl.substring(exp.fileUrl.lastIndexOf('.'))}` }) }) } 
                                                         className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-blue-500 transition-colors"
                                                         title="Voir le justificatif"
                                                     >
@@ -892,6 +905,329 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                 <FileSpreadsheet size={16} /> Export CSV Rapport Temps
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {/* TRESORERIE TAB - Treasury Forecast */}
+                {activeTab === 'tresorerie' && (
+                    <div className="p-6 space-y-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <PiggyBank className="text-emerald-500" size={20} />
+                                Prévisions de Trésorerie
+                            </h3>
+                        </div>
+
+                        {(() => {
+                            // Calculate treasury forecast
+                            const now = new Date();
+                            const months: { month: string; income: number; expenses: number; balance: number }[] = [];
+                            let runningBalance = 0;
+
+                            // Calculate current balance from paid invoices minus expenses
+                            const currentYear = now.getFullYear();
+                            const allPaidInvoices = projects.flatMap(p => p.invoices.filter(i => i.status === 'Paid'));
+                            const totalPaid = allPaidInvoices.reduce((s, i) => s + i.amount, 0);
+                            const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+                            runningBalance = totalPaid - totalExpenses;
+
+                            // Forecast next 6 months
+                            for (let i = 0; i < 6; i++) {
+                                const forecastDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                                const monthName = forecastDate.toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
+
+                                // Expected income: pending invoices due this month
+                                const pendingInvoices = projects.flatMap(p => 
+                                    p.invoices.filter(inv => {
+                                        if (inv.status !== 'Pending') return false;
+                                        const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(inv.date);
+                                        return dueDate.getMonth() === forecastDate.getMonth() && 
+                                               dueDate.getFullYear() === forecastDate.getFullYear();
+                                    })
+                                );
+                                const expectedIncome = pendingInvoices.reduce((s, i) => s + i.amount, 0);
+
+                                // Estimated expenses (average of past expenses or fixed estimate)
+                                const avgMonthlyExpense = expenses.length > 0 
+                                    ? totalExpenses / Math.max(1, new Set(expenses.map(e => e.date.substring(0, 7))).size)
+                                    : 0;
+
+                                runningBalance += expectedIncome - avgMonthlyExpense;
+
+                                months.push({
+                                    month: monthName,
+                                    income: expectedIncome,
+                                    expenses: avgMonthlyExpense,
+                                    balance: runningBalance
+                                });
+                            }
+
+                            const maxValue = Math.max(...months.map(m => Math.max(m.income, m.expenses, Math.abs(m.balance))));
+
+                            return (
+                                <>
+                                    {/* Current Balance */}
+                                    <div className="grid grid-cols-3 gap-4 mb-6">
+                                        <Card className="p-4">
+                                            <div className="text-sm text-slate-500 uppercase font-bold mb-1">Solde Actuel</div>
+                                            <div className={`text-2xl font-bold ${(totalPaid - totalExpenses) >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                {formatCurrency(totalPaid - totalExpenses, currency)}
+                                            </div>
+                                        </Card>
+                                        <Card className="p-4">
+                                            <div className="text-sm text-slate-500 uppercase font-bold mb-1">Factures en Attente</div>
+                                            <div className="text-2xl font-bold text-amber-600" style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                {formatCurrency(projects.flatMap(p => p.invoices.filter(i => i.status === 'Pending')).reduce((s, i) => s + i.amount, 0), currency)}
+                                            </div>
+                                        </Card>
+                                        <Card className="p-4">
+                                            <div className="text-sm text-slate-500 uppercase font-bold mb-1">Prévision 6 mois</div>
+                                            <div className={`text-2xl font-bold ${months[5]?.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                {formatCurrency(months[5]?.balance || 0, currency)}
+                                            </div>
+                                        </Card>
+                                    </div>
+
+                                    {/* Chart */}
+                                    <Card className="p-6">
+                                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 uppercase">Évolution sur 6 mois</h4>
+                                        <div className="h-64 flex items-end gap-2">
+                                            {months.map((m, idx) => (
+                                                <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                                                    <div className="w-full flex flex-col items-center justify-end h-48 gap-1">
+                                                        {/* Income bar */}
+                                                        <div 
+                                                            className="w-4 bg-emerald-400 rounded-t transition-all hover:bg-emerald-500"
+                                                            style={{ height: `${maxValue > 0 ? (m.income / maxValue) * 100 : 0}%`, minHeight: m.income > 0 ? '4px' : '0' }}
+                                                            title={`Revenus: ${formatCurrency(m.income, currency)}`}
+                                                        />
+                                                        {/* Expense bar */}
+                                                        <div 
+                                                            className="w-4 bg-red-400 rounded-t transition-all hover:bg-red-500"
+                                                            style={{ height: `${maxValue > 0 ? (m.expenses / maxValue) * 100 : 0}%`, minHeight: m.expenses > 0 ? '4px' : '0' }}
+                                                            title={`Dépenses: ${formatCurrency(m.expenses, currency)}`}
+                                                        />
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 text-center capitalize" style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                        {m.month.split(' ')[0].substring(0, 3)}
+                                                    </div>
+                                                    <div className={`text-xs font-bold ${m.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                        {formatCurrency(m.balance, currency)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex items-center justify-center gap-6 mt-4 text-xs">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 bg-emerald-400 rounded" />
+                                                <span className="text-slate-500">Revenus attendus</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 bg-red-400 rounded" />
+                                                <span className="text-slate-500">Dépenses estimées</span>
+                                            </div>
+                                        </div>
+                                    </Card>
+
+                                    {/* Detailed Table */}
+                                    <Card className="overflow-hidden">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-slate-50 dark:bg-slate-800">
+                                                <tr>
+                                                    <th className="p-3 text-left text-xs font-bold text-slate-500 uppercase">Mois</th>
+                                                    <th className="p-3 text-right text-xs font-bold text-slate-500 uppercase">Revenus Attendus</th>
+                                                    <th className="p-3 text-right text-xs font-bold text-slate-500 uppercase">Dépenses Estimées</th>
+                                                    <th className="p-3 text-right text-xs font-bold text-slate-500 uppercase">Solde Prévisionnel</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {months.map((m, idx) => (
+                                                    <tr key={idx} className="border-t border-slate-100 dark:border-slate-700">
+                                                        <td className="p-3 font-medium text-slate-700 dark:text-slate-300 capitalize" style={{ fontFamily: 'Raleway, sans-serif' }}>{m.month}</td>
+                                                        <td className="p-3 text-right text-emerald-600 font-medium" style={{ fontFamily: 'Raleway, sans-serif' }}>+{formatCurrency(m.income, currency)}</td>
+                                                        <td className="p-3 text-right text-red-500 font-medium" style={{ fontFamily: 'Raleway, sans-serif' }}>-{formatCurrency(m.expenses, currency)}</td>
+                                                        <td className={`p-3 text-right font-bold ${m.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                            {formatCurrency(m.balance, currency)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </Card>
+                                </>
+                            );
+                        })()}
+                    </div>
+                )}
+
+                {/* EXPORT TAB - Accounting Export */}
+                {activeTab === 'export' && (
+                    <div className="p-6 space-y-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <FileSpreadsheet className="text-blue-500" size={20} />
+                                Export Comptable
+                            </h3>
+                        </div>
+
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6" style={{ fontFamily: 'Raleway, sans-serif' }}>
+                            Exportez vos données dans des formats compatibles avec les logiciels comptables (Bexio, Banana, Crésus, etc.)
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* CSV Export */}
+                            <Card className="p-6 hover:shadow-lg transition-shadow">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
+                                        <FileText className="w-6 h-6 text-green-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Export CSV Standard</h4>
+                                        <p className="text-xs text-slate-500">Compatible Excel, Google Sheets</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <button 
+                                        onClick={() => generateCSV(filteredInvoices, 'revenus')}
+                                        className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-between"
+                                    >
+                                        <span>Journal des Ventes</span>
+                                        <Download size={16} />
+                                    </button>
+                                    <button 
+                                        onClick={() => generateCSV(expenses as any, 'depenses')}
+                                        className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-between"
+                                    >
+                                        <span>Journal des Achats</span>
+                                        <Download size={16} />
+                                    </button>
+                                </div>
+                            </Card>
+
+                            {/* Bexio Format */}
+                            <Card className="p-6 hover:shadow-lg transition-shadow">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                                        <Receipt className="w-6 h-6 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Format Bexio</h4>
+                                        <p className="text-xs text-slate-500">Import direct dans Bexio</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        // Bexio CSV format
+                                        const headers = ['Date', 'Numéro', 'Client', 'Montant', 'TVA', 'Total TTC', 'Statut'];
+                                        const rows = filteredInvoices.map(inv => [
+                                            inv.date,
+                                            inv.number,
+                                            projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || '',
+                                            inv.amount.toFixed(2),
+                                            '0.00', // TVA
+                                            inv.amount.toFixed(2),
+                                            inv.status === 'Paid' ? 'Payé' : 'En attente'
+                                        ].join(';'));
+                                        const csv = [headers.join(';'), ...rows].join('\n');
+                                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                                        const link = document.createElement('a');
+                                        link.href = URL.createObjectURL(blob);
+                                        link.download = `Export_Bexio_${new Date().getFullYear()}.csv`;
+                                        link.click();
+                                    }}
+                                    className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Download size={16} /> Exporter pour Bexio
+                                </button>
+                            </Card>
+
+                            {/* Banana Format */}
+                            <Card className="p-6 hover:shadow-lg transition-shadow">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl">
+                                        <FileSpreadsheet className="w-6 h-6 text-yellow-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Format Banana</h4>
+                                        <p className="text-xs text-slate-500">Compatible Banana Comptabilité</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        // Banana accounting format
+                                        const headers = ['Date', 'Pièce', 'Description', 'Débit', 'Crédit', 'Compte'];
+                                        const rows = filteredInvoices.map(inv => [
+                                            inv.date,
+                                            inv.number,
+                                            `Facture ${projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || ''}`,
+                                            inv.status === 'Paid' ? '' : inv.amount.toFixed(2),
+                                            inv.status === 'Paid' ? inv.amount.toFixed(2) : '',
+                                            inv.status === 'Paid' ? '1020' : '1100' // Bank or Accounts Receivable
+                                        ].join('\t'));
+                                        const tsv = [headers.join('\t'), ...rows].join('\n');
+                                        const blob = new Blob(['\uFEFF' + tsv], { type: 'text/tab-separated-values;charset=utf-8' });
+                                        const link = document.createElement('a');
+                                        link.href = URL.createObjectURL(blob);
+                                        link.download = `Export_Banana_${new Date().getFullYear()}.txt`;
+                                        link.click();
+                                    }}
+                                    className="w-full px-4 py-3 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Download size={16} /> Exporter pour Banana
+                                </button>
+                            </Card>
+
+                            {/* Crésus Format */}
+                            <Card className="p-6 hover:shadow-lg transition-shadow">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+                                        <PieChart className="w-6 h-6 text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Format Crésus</h4>
+                                        <p className="text-xs text-slate-500">Compatible Crésus Comptabilité</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        // Crésus format (simplified)
+                                        const headers = ['Date', 'Libellé', 'Débit', 'Crédit', 'Pièce'];
+                                        const rows = filteredInvoices.map(inv => [
+                                            inv.date.split('-').reverse().join('.'), // DD.MM.YYYY format
+                                            `Fact. ${inv.number} - ${projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || ''}`,
+                                            inv.status === 'Pending' ? inv.amount.toFixed(2) : '',
+                                            inv.status === 'Paid' ? inv.amount.toFixed(2) : '',
+                                            inv.number
+                                        ].join(';'));
+                                        const csv = [headers.join(';'), ...rows].join('\n');
+                                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                                        const link = document.createElement('a');
+                                        link.href = URL.createObjectURL(blob);
+                                        link.download = `Export_Cresus_${new Date().getFullYear()}.csv`;
+                                        link.click();
+                                    }}
+                                    className="w-full px-4 py-3 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Download size={16} /> Exporter pour Crésus
+                                </button>
+                            </Card>
+                        </div>
+
+                        {/* Full Report */}
+                        <Card className="p-6 mt-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Rapport Comptable Complet</h4>
+                                    <p className="text-xs text-slate-500" style={{ fontFamily: 'Raleway, sans-serif' }}>Compte de résultat + journaux</p>
+                                </div>
+                                <button 
+                                    onClick={() => setShowAccountingModal(true)}
+                                    className="px-6 py-3 bg-slate-800 dark:bg-slate-600 text-white rounded-lg text-sm font-bold hover:bg-slate-700 transition-colors flex items-center gap-2"
+                                >
+                                    <Printer size={16} /> Générer le Rapport
+                                </button>
+                            </div>
+                        </Card>
                     </div>
                 )}
             </Card>

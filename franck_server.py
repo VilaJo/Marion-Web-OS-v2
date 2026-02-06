@@ -193,6 +193,8 @@ def require_auth():
         '/api/auth/setup', 
         '/api/auth/login',
         '/api/auth/reset',
+        '/setup',  # Gemini API setup (onboarding)
+        '/check-status',  # Check Gemini status
     ]
     
     # Prefixes publics (OAuth flow doit fonctionner sans auth Marion)
@@ -2061,8 +2063,20 @@ def chat():
     # Get app context from request and set it globally for tools
     app_context = data.get('context', {})
     projects = app_context.get('projects', [])
-    todos = app_context.get('todos', [])
     events = app_context.get('events', [])
+    
+    # Extract todos from both standalone todos array and project tasks
+    todos = app_context.get('todos', [])
+    # Also extract all tasks from projects
+    for p in projects:
+        for task in p.get('tasks', []):
+            todos.append({
+                'title': task.get('title', ''),
+                'completed': task.get('completed', False),
+                'priority': task.get('priority', 'Medium'),
+                'dueDate': task.get('dueDate'),
+                'projectName': p.get('clientName', 'Projet inconnu')
+            })
     
     # Set current context for tools to access
     current_context = {
@@ -2095,6 +2109,10 @@ def chat():
     today = time.strftime('%Y-%m-%d')
     today_events = [e for e in events if e.get('date', '') == today]
     
+    # Get pending tasks
+    pending_todos = [t for t in todos if not t.get('completed', False)]
+    high_priority_todos = [t for t in pending_todos if t.get('priority') == 'High']
+    
     # Build rich context string
     context_info = f"""
 CONTEXTE ACTUEL ({time.strftime('%A %d %B %Y, %H:%M')}):
@@ -2105,9 +2123,14 @@ CONTEXTE ACTUEL ({time.strftime('%A %d %B %Y, %H:%M')}):
 - Revenus encaissés: {total_paid:.0f} CHF
 - En attente de paiement: {total_pending:.0f} CHF
 
-📅 AUJOURD'HUI:
-- {len(today_events)} événement(s) prévu(s)
-- {len(todos)} tâche(s) dans la to-do
+📅 ÉVÉNEMENTS D'AUJOURD'HUI:
+{chr(10).join(['- ' + e.get('startTime', '?') + ' : ' + e.get('title', '?') for e in today_events]) if today_events else '- Aucun événement prévu'}
+
+✅ TÂCHES EN COURS ({len(pending_todos)} tâches non terminées):
+{chr(10).join(['- [' + t.get('priority', 'Medium') + '] ' + t.get('title', '?') + ' (' + t.get('projectName', '?') + ')' for t in pending_todos[:10]]) if pending_todos else '- Aucune tâche en attente'}
+
+🔥 TÂCHES PRIORITAIRES ({len(high_priority_todos)} haute priorité):
+{chr(10).join(['- ' + t.get('title', '?') + ' (' + t.get('projectName', '?') + ')' for t in high_priority_todos[:5]]) if high_priority_todos else '- Aucune tâche urgente'}
 
 👥 CLIENTS ACTIFS:
 {chr(10).join(['- ' + p.get('clientName', '?') + ' (' + p.get('phase', '?') + ')' for p in projects if p.get('status') == 'Active'][:5]) or '- Aucun projet actif'}
@@ -3217,7 +3240,7 @@ def gcal_sync_status():
 
 
 # --- Version & Updates ---
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.4.0"
 GITHUB_REPO_API = "https://api.github.com/repos/VilaJo/Marion-Web-OS-v2"
 
 @app.route('/api/version')

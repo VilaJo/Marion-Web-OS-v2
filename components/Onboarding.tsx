@@ -1,12 +1,32 @@
-
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Check, Key, LayoutGrid } from 'lucide-react';
+import { ArrowRight, Check, Key, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 
 declare const confetti: any;
 
 interface OnboardingProps {
     onSetupComplete: () => void;
 }
+
+// Marion Logo Component - Uses the original logo
+const MarionLogo = ({ size = 80, spinning = false, success = false }: { size?: number; spinning?: boolean; success?: boolean }) => (
+    <div className={`relative ${spinning ? 'animate-spin-slow' : ''}`}>
+        {success ? (
+            <div 
+                className="rounded-full bg-gradient-to-br from-green-400 to-emerald-500 shadow-2xl flex items-center justify-center"
+                style={{ width: size, height: size }}
+            >
+                <Check className="text-white drop-shadow-lg" style={{ width: size * 0.5, height: size * 0.5 }} />
+            </div>
+        ) : (
+            <img 
+                src="/logo-marion.png" 
+                alt="Marion Web OS" 
+                className="drop-shadow-xl"
+                style={{ width: size, height: size, objectFit: 'contain' }}
+            />
+        )}
+    </div>
+);
 
 const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
     const [apiKey, setApiKey] = useState('');
@@ -23,129 +43,212 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
         setError('');
 
         try {
-            const response = await fetch('http://127.0.0.1:5003/setup', {
+            // Get auth token if available
+            const token = sessionStorage.getItem('marion_token');
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch('/setup', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ api_key: apiKey })
             });
 
-            const data = await response.json();
+            let data;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                const text = await response.text();
+                data = { error: `Réponse inattendue: ${text.substring(0, 100)}` };
+            }
 
-            if (response.ok) {
+            if (response.ok && data.success) {
                 setTimeout(() => {
                     setStep('success');
                     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                     setTimeout(onSetupComplete, 2000);
-                }, 2500); // Fake delay for dramatic effect
+                }, 2500);
             } else {
                 setStep('input');
-                setError(data.error || "Oups, cette clé ne semble pas fonctionner.");
+                // Better error messages
+                let errorMsg = data.error || "Oups, cette clé ne semble pas fonctionner.";
+                if (response.status === 401) {
+                    errorMsg = "Session expirée. Veuillez rafraîchir la page.";
+                } else if (response.status === 400 && errorMsg.includes('API')) {
+                    errorMsg = "Clé API invalide. Vérifiez que vous avez copié la clé complète.";
+                }
+                setError(errorMsg);
             }
-        } catch (e) {
+        } catch (e: any) {
             setStep('input');
-            setError("Impossible de contacter le cerveau (Serveur Python déconnecté ?).");
+            console.error('Setup error:', e);
+            setError(`Erreur de connexion: ${e.message || 'Vérifiez votre connexion réseau.'}`);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[200] bg-[#FDFCF8] dark:bg-[#0B0F19] flex items-center justify-center font-sans">
-            {/* Background Ambience */}
-            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-orange-200/20 rounded-full blur-[120px] animate-pulse"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200/20 rounded-full blur-[100px]"></div>
+        <div className="fixed inset-0 z-[200] bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+            {/* Background decorations */}
+            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-orange-900/10 rounded-full blur-[120px] -z-10" />
+            <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-[100px] -z-10" />
 
-            <div className="max-w-lg w-full p-8 relative z-10">
+            <div className="max-w-lg w-full relative z-10">
                 
                 {/* Logo Animation */}
                 <div className="flex justify-center mb-8">
-                    <div className={`w-24 h-24 rounded-full bg-marion-gradient shadow-2xl flex items-center justify-center relative transition-all duration-700 ${step === 'installing' ? 'animate-spin-slow' : ''}`}>
-                         <span className="font-serif text-5xl text-white italic pr-1">M</span>
-                         {step === 'success' && (
-                             <div className="absolute inset-0 bg-green-500 rounded-full flex items-center justify-center animate-in zoom-in">
-                                 <Check className="text-white w-12 h-12" />
-                             </div>
-                         )}
-                    </div>
+                    <MarionLogo 
+                        size={100} 
+                        spinning={step === 'installing'} 
+                        success={step === 'success'} 
+                    />
                 </div>
 
                 {/* Content Flow */}
-                <div className="text-center space-y-6 transition-all duration-500">
+                <div className="text-center transition-all duration-500">
                     
+                    {/* INTRO STEP */}
                     {step === 'intro' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4">
-                            <h1 className="text-4xl font-serif text-slate-800 dark:text-white mb-4">Bonjour, Marion.</h1>
-                            <p className="text-lg text-slate-500 mb-8 leading-relaxed">
-                                Je suis Franck, votre nouvel assistant. <br/>
-                                Je vais organiser votre bureau, trier vos dossiers et préparer votre café (virtuel).
+                            <h1 
+                                className="text-4xl font-semibold text-slate-800 dark:text-white mb-4"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                            >
+                                Bonjour, Marion.
+                            </h1>
+                            <p 
+                                className="text-lg text-slate-500 dark:text-slate-400 mb-10 leading-relaxed"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
+                                Je suis Franck, votre assistant intelligent. <br/>
+                                Je vais organiser votre espace de travail et vous accompagner au quotidien.
                             </p>
                             <button 
                                 onClick={() => setStep('input')}
-                                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform flex items-center gap-3 mx-auto shadow-xl shadow-slate-200 dark:shadow-none"
+                                className="bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white px-10 py-4 rounded-2xl font-semibold text-lg hover:scale-[1.02] hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 transition-all flex items-center gap-3 mx-auto"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
-                                Commencer l'installation <ArrowRight size={20} />
+                                Commencer <ArrowRight size={20} />
                             </button>
                         </div>
                     )}
 
+                    {/* INPUT STEP */}
                     {step === 'input' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-2xl font-serif text-slate-800 dark:text-white mb-2">Clé d'activation</h2>
-                            <p className="text-slate-500 text-sm mb-6">Pour fonctionner, j'ai besoin d'une clé API Gemini Pro.</p>
+                            <h2 
+                                className="text-3xl font-semibold text-slate-800 dark:text-white mb-3"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                            >
+                                Clé d'activation
+                            </h2>
+                            <p 
+                                className="text-slate-500 dark:text-slate-400 mb-8"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
+                                Pour fonctionner, j'ai besoin d'une clé API Gemini Pro.
+                            </p>
                             
-                            <div className="relative mb-4">
-                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                                <input 
-                                    type="password"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder="Collez votre clé ici (AIza...)"
-                                    className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-center text-lg outline-none focus:border-brand-orange transition-colors shadow-sm"
-                                    autoFocus
-                                />
+                            {/* Form Card */}
+                            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/50 dark:border-slate-700/50 shadow-xl">
+                                <div className="relative mb-5">
+                                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                    <input 
+                                        type="password"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        placeholder="Collez votre clé ici (AIza...)"
+                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                        style={{ fontFamily: 'Raleway, sans-serif' }}
+                                        autoFocus
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSetup()}
+                                    />
+                                </div>
+
+                                {error && (
+                                    <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-500/10 rounded-xl p-4 mb-5">
+                                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                        <span style={{ fontFamily: 'Raleway, sans-serif' }}>{error}</span>
+                                    </div>
+                                )}
+
+                                <button 
+                                    onClick={handleSetup}
+                                    disabled={!apiKey.trim()}
+                                    className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white py-4 rounded-2xl font-semibold text-lg hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+                                    style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                >
+                                    <Sparkles className="w-5 h-5" />
+                                    Initialiser mon espace
+                                </button>
+
+                                <p 
+                                    className="mt-6 text-xs text-slate-400 dark:text-slate-500"
+                                    style={{ fontFamily: 'Raleway, sans-serif' }}
+                                >
+                                    Votre clé est stockée localement et ne quitte jamais votre ordinateur.
+                                </p>
                             </div>
 
-                            {error && (
-                                <div className="text-red-500 text-sm font-bold mb-4 bg-red-50 py-2 rounded-lg animate-pulse">
-                                    {error}
-                                </div>
-                            )}
-
-                            <button 
-                                onClick={handleSetup}
-                                className="w-full bg-brand-orange text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200/50"
+                            {/* Help link */}
+                            <a 
+                                href="https://makersuite.google.com/app/apikey" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-block mt-6 text-sm text-[#FF7E5F] hover:underline"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
                             >
-                                Initialiser mon Espace
-                            </button>
-                            <p className="mt-6 text-xs text-slate-400">
-                                Cela va créer un dossier "Mon bordel" sur votre bureau.
-                            </p>
+                                Comment obtenir une clé API Gemini ?
+                            </a>
                         </div>
                     )}
 
+                    {/* INSTALLING STEP */}
                     {step === 'installing' && (
                         <div className="animate-in fade-in zoom-in duration-500">
-                            <h2 className="text-2xl font-serif text-slate-800 dark:text-white mb-6">Installation en cours...</h2>
+                            <h2 
+                                className="text-3xl font-semibold text-slate-800 dark:text-white mb-8"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                            >
+                                Installation en cours...
+                            </h2>
                             
-                            <div className="max-w-xs mx-auto space-y-4 text-left">
-                                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
-                                    <div className="w-5 h-5 border-2 border-brand-orange border-t-transparent rounded-full animate-spin" />
-                                    <span>Connexion à Gemini...</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 animate-in fade-in slide-in-from-left-2 delay-300 fill-mode-both">
-                                    <div className="w-5 h-5 border-2 border-brand-orange border-t-transparent rounded-full animate-spin" />
-                                    <span>Création de "00_INBOX"...</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 animate-in fade-in slide-in-from-left-2 delay-700 fill-mode-both">
-                                    <div className="w-5 h-5 border-2 border-brand-orange border-t-transparent rounded-full animate-spin" />
-                                    <span>Configuration du Dashboard...</span>
+                            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/50 dark:border-slate-700/50 shadow-xl max-w-sm mx-auto">
+                                <div className="space-y-5 text-left">
+                                    <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300">
+                                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin flex-shrink-0" />
+                                        <span style={{ fontFamily: 'Raleway, sans-serif' }}>Connexion à Gemini...</span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300 animate-in fade-in slide-in-from-left-2 delay-300 fill-mode-both">
+                                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin flex-shrink-0" />
+                                        <span style={{ fontFamily: 'Raleway, sans-serif' }}>Création de "00_INBOX"...</span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300 animate-in fade-in slide-in-from-left-2 delay-700 fill-mode-both">
+                                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin flex-shrink-0" />
+                                        <span style={{ fontFamily: 'Raleway, sans-serif' }}>Configuration du Dashboard...</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
+                    {/* SUCCESS STEP */}
                     {step === 'success' && (
                         <div className="animate-in fade-in zoom-in duration-300">
-                            <h2 className="text-3xl font-serif text-slate-800 dark:text-white mb-2">Tout est prêt !</h2>
-                            <p className="text-slate-500">Votre cockpit est configuré.</p>
+                            <h2 
+                                className="text-4xl font-semibold text-slate-800 dark:text-white mb-3"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                            >
+                                Tout est prêt !
+                            </h2>
+                            <p 
+                                className="text-lg text-slate-500 dark:text-slate-400"
+                                style={{ fontFamily: 'Raleway, sans-serif' }}
+                            >
+                                Votre espace de travail est configuré.
+                            </p>
                         </div>
                     )}
                 </div>

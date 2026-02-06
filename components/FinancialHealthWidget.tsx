@@ -3,6 +3,7 @@ import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizz
 import { Project, Expense } from '../types';
 import { Card } from './Shared';
 import { formatCurrency } from '../utils';
+import { apiFetch } from '../services/api';
 
 interface FinancialHealthWidgetProps {
     projects: Project[];
@@ -147,7 +148,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     useEffect(() => {
         const fetchExpenses = async () => {
             try {
-                const res = await fetch('http://127.0.0.1:5003/api/expenses');
+                const res = await apiFetch('/api/expenses');
                 const data = await res.json();
                 if (data.expenses) setExpenses(data.expenses);
             } catch (e) {

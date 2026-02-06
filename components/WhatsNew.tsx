@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Wand2, Bug, X, ArrowRight, Gift } from 'lucide-react';
+import { Sparkles, Bot, Smartphone, Layout, ArrowRight, Gift, CheckCircle } from 'lucide-react';
 import { Modal } from './Shared';
 
 // UPDATE THIS VERSION TO TRIGGER THE MODAL FOR USERS
-const CURRENT_VERSION = "1.2.0";
+const CURRENT_VERSION = "2.4.0";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -38,46 +38,59 @@ export const WhatsNew: React.FC = () => {
                             Quoi de neuf, Marion ?
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Mise à jour v{CURRENT_VERSION} • Décembre 2025
+                            Mise à jour v{CURRENT_VERSION} • Février 2026
                         </p>
                     </div>
 
                     <div className="space-y-6">
-                        {/* Feature 1 */}
+                        {/* Feature 1 - Franck amélioré */}
                         <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
-                                <Wand2 size={24} />
+                                <Bot size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Atelier Média Pro</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Franck voit tout 👀</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Un nouvel outil puissant pour vos images. Créez des <strong>Logos Transparents</strong> (détourage auto), des posts Instagram parfaits, ou optimisez vos images pour le Web en un clic.
+                                    Franck a maintenant accès à <strong>toutes vos tâches et événements</strong>. Demandez-lui "Quelles sont mes tâches prioritaires ?" ou "Comment se présente ma journée ?" - il sait tout !
                                 </p>
                             </div>
                         </div>
 
-                        {/* Feature 2 */}
+                        {/* Feature 2 - Statut Franck cliquable */}
                         <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 flex items-center justify-center flex-shrink-0">
-                                <Bug size={24} />
+                            <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center flex-shrink-0">
+                                <CheckCircle size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Signalement de Bugs</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Statut Franck interactif</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Un petit bouton 🐞 est apparu en bas à gauche. Si quelque chose ne va pas, dites-le moi directement via ce bouton.
+                                    Le badge "Franck en ligne" dans l'en-tête est maintenant <strong>cliquable</strong>. Cliquez dessus pour parler à Franck ou le reconnecter s'il est hors ligne.
                                 </p>
                             </div>
                         </div>
 
-                        {/* Feature 3 */}
+                        {/* Feature 3 - Interface améliorée */}
                         <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center flex-shrink-0">
-                                <Sparkles size={24} />
+                                <Layout size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Plus rapide & plus beau</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Interface plus compacte</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    L'interface de l'Atelier Média a été repensée pour être plus claire, et le "Cerveau" (Backend) est maintenant propulsé par Pillow pour une qualité d'image maximale.
+                                    La barre de recherche et les filtres sont maintenant <strong>sur une seule ligne</strong> pour une meilleure utilisation de l'espace.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Feature 4 - PWA amélioré */}
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-500 flex items-center justify-center flex-shrink-0">
+                                <Smartphone size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">App mobile améliorée</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Le popup d'installation peut maintenant être <strong>masqué définitivement</strong> si vous ne souhaitez pas installer l'application sur votre téléphone.
                                 </p>
                             </div>
                         </div>
