@@ -1,31 +1,17 @@
 #!/bin/bash
 
 # Marion Web OS Launcher
-# This script starts the server and opens the browser
+# Replique le comportement de LANCER_MARION.command
 
-# Setup PATH to include common Python locations
-export PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$HOME/Library/Python/3.9/bin:$HOME/Library/Python/3.10/bin:$HOME/Library/Python/3.11/bin:$PATH"
-
-# Logging
-LOG="/tmp/marion_launcher.log"
-echo "=== Marion Web OS Launcher ===" > "$LOG"
-echo "Date: $(date)" >> "$LOG"
-echo "PATH: $PATH" >> "$LOG"
+# Setup PATH
+export PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$PATH"
 
 # Find the project directory
-PROJECT_DIR=""
-
-# Get directory where the .app is located
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)"
-APP_CONTENTS="$(dirname "$SCRIPT_PATH")"
-APP_BUNDLE="$(dirname "$APP_CONTENTS")"
+APP_BUNDLE="$(dirname "$(dirname "$SCRIPT_PATH")")"
 APP_PARENT="$(dirname "$APP_BUNDLE")"
 
-echo "SCRIPT_PATH: $SCRIPT_PATH" >> "$LOG"
-echo "APP_BUNDLE: $APP_BUNDLE" >> "$LOG"
-echo "APP_PARENT: $APP_PARENT" >> "$LOG"
-
-# Check locations in order of likelihood
+PROJECT_DIR=""
 POSSIBLE_PATHS=(
     "$APP_PARENT"
     "$HOME/Desktop/Marion-Web-OS-v2-main"
@@ -35,94 +21,47 @@ POSSIBLE_PATHS=(
 )
 
 for path in "${POSSIBLE_PATHS[@]}"; do
-    echo "Checking: $path" >> "$LOG"
     if [ -f "$path/franck_server.py" ]; then
         PROJECT_DIR="$path"
-        echo "FOUND at: $path" >> "$LOG"
         break
     fi
 done
 
 if [ -z "$PROJECT_DIR" ]; then
-    echo "ERROR: Project not found" >> "$LOG"
-    osascript -e 'display alert "Marion Web OS" message "Dossier du projet introuvable.\n\nPlacez Marion Web OS.app dans le dossier contenant franck_server.py" as critical'
+    osascript -e 'display alert "Marion Web OS" message "Dossier du projet introuvable." as critical'
     exit 1
 fi
 
-cd "$PROJECT_DIR"
-echo "Working directory: $(pwd)" >> "$LOG"
-
-# Check if server is already running
+# If server is already running, just open browser
 if lsof -i :5003 > /dev/null 2>&1; then
-    echo "Server already running, opening browser" >> "$LOG"
     open "http://127.0.0.1:5003"
     exit 0
 fi
 
-# Find Python - check specific paths first
-PYTHON_CMD=""
-PYTHON_PATHS=(
-    "/usr/bin/python3"
-    "/usr/local/bin/python3"
-    "/opt/homebrew/bin/python3"
-    "$HOME/Library/Python/3.9/bin/python3"
-    "$HOME/Library/Python/3.10/bin/python3"
-    "$HOME/Library/Python/3.11/bin/python3"
-)
-
-for py in "${PYTHON_PATHS[@]}"; do
-    if [ -x "$py" ]; then
-        PYTHON_CMD="$py"
-        echo "Found Python at: $py" >> "$LOG"
-        break
-    fi
-done
-
-# Fallback to PATH
-if [ -z "$PYTHON_CMD" ]; then
-    PYTHON_CMD=$(which python3 2>/dev/null || which python 2>/dev/null)
-fi
-
-echo "Using Python: $PYTHON_CMD" >> "$LOG"
-
-if [ -z "$PYTHON_CMD" ] || [ ! -x "$PYTHON_CMD" ]; then
-    osascript -e 'display alert "Marion Web OS" message "Python 3 non trouvé.\n\nInstallez Python depuis python.org" as critical'
-    exit 1
-fi
-
-# Start the server in background using osascript to run in a proper shell
-echo "Starting server..." >> "$LOG"
-
-# Use osascript to open Terminal and run the server
-osascript <<EOF
+# Open Terminal and run the exact same logic as LANCER_MARION.command
+osascript <<APPLESCRIPT
 tell application "Terminal"
     activate
-    do script "cd \"$PROJECT_DIR\" && $PYTHON_CMD franck_server.py"
-end tell
-EOF
-
-# Wait for server to be ready
-echo "Waiting for server..." >> "$LOG"
-READY=0
-for i in {1..30}; do
-    sleep 0.5
-    if curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:5003 > /dev/null 2>&1; then
-        READY=1
-        echo "Server ready!" >> "$LOG"
+    do script "cd '$PROJECT_DIR' && clear && echo '🦄 Marion Web OS - Démarrage...' && echo '' && if [ -d '.venv' ]; then source .venv/bin/activate; fi && python3 franck_server.py &
+SERVER_PID=\$!
+echo \$SERVER_PID > .marion.pid
+echo '⏳ Initialisation...'
+for i in \$(seq 1 30); do
+    if curl -s http://127.0.0.1:5003/api/version > /dev/null 2>&1; then
+        echo '✅ Serveur prêt !'
         break
     fi
-    echo "Attempt $i..." >> "$LOG"
+    sleep 1
 done
+echo '🌐 Ouverture du navigateur...'
+open 'http://127.0.0.1:5003'
+echo ''
+echo '🦄 Marion Web OS est en cours!'
+echo '   📍 URL: http://127.0.0.1:5003'
+echo '   💡 Ferme cette fenêtre pour arrêter'
+echo ''
+wait \$SERVER_PID"
+end tell
+APPLESCRIPT
 
-if [ $READY -eq 0 ]; then
-    echo "Timeout waiting for server" >> "$LOG"
-    osascript -e 'display alert "Marion Web OS" message "Le serveur met du temps à démarrer.\n\nVérifiez la fenêtre Terminal pour les erreurs." as warning'
-fi
-
-# Open browser
-sleep 1
-echo "Opening browser..." >> "$LOG"
-open "http://127.0.0.1:5003"
-
-echo "Done!" >> "$LOG"
 exit 0
