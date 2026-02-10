@@ -70,15 +70,14 @@ L'interface s'adapte à l'humeur du créatif.
 ### ☀️ Mode Professionnel (Light)
 *Pour les présentations clients et la clarté.*
 <div align="center">
-  <img src="screenshots/dashboard_light.jpeg" alt="Dashboard Light" width="48%">
-  <img src="screenshots/client_view_light.jpeg" alt="Client Light" width="48%">
+  <img src="screenshots/dashboard_light.png" alt="Dashboard Light" width="48%">
+  <img src="screenshots/client_view_light.png" alt="Fiche Client Light" width="48%">
 </div>
 
 ### 🌌 Mode Espace (Dark)
 *Pour le "Deep Work" et les sessions de code nocturnes.*
 <div align="center">
-  <img src="screenshots/dashboard_preview.png" alt="Dashboard Dark" width="48%">
-  <img src="screenshots/client_view_preview.png" alt="Client Dark" width="48%">
+  <img src="screenshots/dashboard_dark.png" alt="Dashboard Dark" width="96%">
 </div>
 
 ---
