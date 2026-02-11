@@ -1,5 +1,62 @@
+<!-- Tailwind CSS CDN (same as main app) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          serif: ['"Montserrat"', 'sans-serif'],
+          sans: ['"Raleway"', 'sans-serif'],
+          heading: ['"Montserrat"', 'sans-serif'],
+          calligraphy: ['"Montserrat"', 'sans-serif'],
+        },
+        colors: {
+          cream: '#FDFCF8',
+          'cream-dark': '#F5F2EA',
+          'pastel-pink': '#FCE7F3',
+          'pastel-purple': '#E9D5FF',
+          'pastel-orange': '#FFEDD5',
+          'deep-space': '#1E1B4B',
+          'glass-white': 'rgba(255, 255, 255, 0.65)',
+          'glass-dark': 'rgba(15, 23, 42, 0.65)',
+          'brand-orange': 'var(--brand-color)',
+          'brand-pink': '#FEB47B',
+          'brand-primary': 'var(--brand-color)',
+          'brand-secondary': '#FEB47B',
+        },
+        borderRadius: {
+          '4xl': '32px',
+        },
+        backgroundImage: {
+          'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+          'marion-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #FEB47B 100%)',
+          'sunset-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #d946ef 100%)',
+          'space-gradient': 'linear-gradient(to bottom, #2E1065, #0F172A)',
+          'unicorn-gradient': 'linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 50%, #F3E5F5 100%)',
+        },
+        animation: {
+          'float': 'float 6s ease-in-out infinite',
+          'float-slow': 'float-slow 12s ease-in-out infinite',
+          'float-reverse': 'float-reverse 8s ease-in-out infinite',
+          'loading-bar': 'loading 2.5s ease-out forwards',
+          'twinkle': 'twinkle 4s ease-in-out infinite',
+          'shooting-star': 'shooting-star 8s linear infinite',
+          'spin-slow': 'spin 12s linear infinite',
+          'rainbow-slide': 'rainbow-slide 6s ease-in-out infinite alternate',
+        }
+      }
+    }
+  }
+</script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
+  /* ===== CSS Variables ===== */
   :root {
     --brand-color: #FF7E5F;
     --brand-orange: #FF7E5F;
@@ -7,7 +64,39 @@
     --pastel-purple: #F3E8FF;
   }
 
-  /* Glass effect for Storybook */
+  /* ===== Typography ===== */
+  body {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 400;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+  }
+  .font-serif {
+    font-family: 'Montserrat', sans-serif !important;
+    font-weight: 600;
+  }
+  .font-mono {
+    font-family: 'Raleway', sans-serif !important;
+    font-variant-numeric: tabular-nums;
+  }
+  .font-calligraphy {
+    font-family: 'Montserrat', sans-serif !important;
+    font-style: italic;
+    font-weight: 600;
+  }
+
+  /* ===== Scrollbar ===== */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  .dark ::-webkit-scrollbar-thumb { background: #334155; }
+  .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* ===== Glass Effect ===== */
   .glass {
     background: rgba(255, 255, 255, 0.75);
     backdrop-filter: blur(20px);
@@ -20,12 +109,116 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   }
+  .unicorn .glass {
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 32px 0 rgba(236, 72, 153, 0.15);
+  }
 
-  /* Juicy hover */
+  /* ===== Juicy Hover ===== */
   .juicy-hover {
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   .juicy-hover:hover {
     transform: translateY(-4px) scale(1.02);
+  }
+
+  /* ===== Animations ===== */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+  }
+  @keyframes float-reverse {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(15px); }
+  }
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+  }
+  @keyframes loading {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+  @keyframes sparkle {
+    0% { opacity: 0; transform: scale(0); }
+    50% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0); }
+  }
+  @keyframes shine {
+    from { mask-position: 150%; }
+    to { mask-position: -50%; }
+  }
+  .animate-shine { animation: shine 2s linear infinite; }
+
+  /* ===== Sparkle Pattern ===== */
+  .bg-sparkle-pattern {
+    background-image: 
+      radial-gradient(white 15%, transparent 16%),
+      radial-gradient(white 15%, transparent 16%);
+    background-size: 10px 10px;
+    background-position: 0 0, 5px 5px;
+  }
+
+  /* ===== Dark Mode Button Effects ===== */
+  .dark button {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .dark button[class*="bg-gradient"], 
+  .dark button[class*="bg-brand-orange"],
+  .dark button[class*="from-brand-orange"] {
+    box-shadow: 0 0 10px rgba(255, 126, 95, 0.4), 
+                inset 0 0 10px rgba(255, 255, 255, 0.2),
+                0 0 0 1px rgba(255, 126, 95, 0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+  }
+  .dark button[class*="bg-gradient"]:hover, 
+  .dark button[class*="bg-brand-orange"]:hover,
+  .dark button[class*="from-brand-orange"]:hover {
+    box-shadow: 0 0 20px rgba(255, 126, 95, 0.7), 
+                0 0 40px rgba(255, 126, 95, 0.4), 
+                inset 0 0 15px rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px) scale(1.03);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    z-index: 10;
+  }
+  .dark button.bg-white:hover,
+  .dark button.bg-slate-900:hover {
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4), inset 0 0 10px rgba(139, 92, 246, 0.1);
+    color: #fff;
+    transform: scale(1.05);
+  }
+  .dark button[class*="text-red"]:hover, 
+  .dark button[class*="bg-red"]:hover {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+
+  /* ===== No-scrollbar Utility ===== */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* ===== Slide Animations ===== */
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes slide-out-right {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes slide-down {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
   }
 </style>

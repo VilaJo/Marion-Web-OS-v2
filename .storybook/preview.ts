@@ -1,5 +1,6 @@
 import type { Preview } from '@storybook/react';
-import '../index.css';
+// Note: Tailwind CSS + all styles are loaded via preview-head.html (CDN approach)
+// Do NOT import index.css here as it contains @tailwind directives that need the CDN to process
 
 const preview: Preview = {
   parameters: {
