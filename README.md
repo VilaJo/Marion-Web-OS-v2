@@ -5,6 +5,8 @@
 > **Plus qu'un CRM, c'est un cockpit de pilotage complet.** 
 > Il fusionne gestion de projet, finance, et créativité, le tout propulsé par une IA contextuelle. Conçu pour remplacer la multitude d'outils SaaS par une solution unique, locale et sécurisée.
 
+📖 **[Documentation technique complète](./docs/README.md)** — Architecture, API, base de données, frontend, déploiement
+
 ---
 
 ## 💡 La Vision : Pourquoi cet outil ?
