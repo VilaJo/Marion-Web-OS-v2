@@ -13,6 +13,13 @@
 | [Base de données](./database/schema.md) | Schéma SQLite, relations, migrations |
 | [Frontend](./frontend/structure.md) | Structure React, routing, state management |
 | [Déploiement](./deployment/local-deployment.md) | Installation locale, prérequis, lancement |
+| [Glossaire](./glossary.md) | Définitions des termes |
+| [Guide utilisateur](./user-guide.md) | Parcours utilisateur, modules |
+| [Dépannage](./troubleshooting.md) | Erreurs fréquentes et solutions |
+| [Sécurité](./security.md) | Authentification, chiffrement |
+| [Backup & restauration](./backup-restore.md) | Sauvegarde et restauration |
+| [Développement](./development/setup.md) | Setup dev, variables, commandes |
+| [ADR](./adr/) | Architecture Decision Records |
 
 ---
 

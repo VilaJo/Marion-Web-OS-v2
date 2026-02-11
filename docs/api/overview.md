@@ -53,3 +53,9 @@ Les routes `/api/v1/portal/<token>/...` (où `token` est un identifiant partagé
 ## Détails des endpoints
 
 Voir [Endpoints](./endpoints.md) pour la liste complète par blueprint.
+
+---
+
+## Spécification OpenAPI
+
+Un fichier [openapi.yaml](./openapi.yaml) (OpenAPI 3.0) documente les principaux endpoints. Utilisable avec Swagger UI, Postman ou Insomnia.

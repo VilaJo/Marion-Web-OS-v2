@@ -1,0 +1,79 @@
+openapi: 3.0.3
+info:
+  title: Marion Web OS API
+  description: API REST du Business OS Local-First pour freelances créatifs
+  version: 2.4.4
+
+servers:
+  - url: http://127.0.0.1:5003/api/v1
+    description: Serveur local
+
+security:
+  - MarionToken: []
+
+components:
+  securitySchemes:
+    MarionToken:
+      type: apiKey
+      in: header
+      name: X-Marion-Token
+      description: Token de session obtenu via POST /auth/login
+
+  schemas:
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        clientName: { type: string }
+        status: { type: string, enum: [Prospect, Active, Archived, Pro Bono, Perso] }
+        phase: { type: string }
+        progress: { type: integer }
+      example:
+        id: "Actif/Johan Vila"
+        clientName: "Johan Vila"
+        status: "Active"
+        phase: "Maintenance"
+
+paths:
+  /auth/check:
+    get:
+      summary: Vérifier si setup requis / session valide
+      security: []
+  /auth/login:
+    post:
+      summary: Connexion
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+      responses:
+        '200':
+          description: Token de session
+
+  /projects/scan:
+    get:
+      summary: Scanner les projets
+      responses:
+        '200':
+          description: Liste des projets
+
+  /chat:
+    post:
+      summary: Chat Franck (stream)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string }
+                history: { type: array, items: { type: object } }
+      responses:
+        '200':
+          description: Stream texte (text/plain)
