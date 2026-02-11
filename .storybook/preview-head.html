@@ -1,0 +1,31 @@
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-color: #FF7E5F;
+    --brand-orange: #FF7E5F;
+    --pastel-pink: #FFF0F5;
+    --pastel-purple: #F3E8FF;
+  }
+
+  /* Glass effect for Storybook */
+  .glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  }
+  .dark .glass {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Juicy hover */
+  .juicy-hover {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .juicy-hover:hover {
+    transform: translateY(-4px) scale(1.02);
+  }
+</style>
