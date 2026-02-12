@@ -25,7 +25,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
     const checkAuthStatus = async () => {
         try {
-            const response = await fetch('/api/auth/check');
+            const response = await fetch('/api/v1/auth/check');
             if (!response.ok) {
                 throw new Error('Backend not available');
             }
@@ -66,7 +66,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/auth/setup', {
+            const response = await fetch('/api/v1/auth/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password })
@@ -94,7 +94,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/auth/login', {
+            const response = await fetch('/api/v1/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password })
@@ -126,7 +126,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
         setError('');
 
         try {
-            const response = await fetch('/api/auth/reset', {
+            const response = await fetch('/api/v1/auth/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ confirm: 'RESET' })
@@ -166,7 +166,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     // Loading state while checking auth
     if (isCheckingAuth) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center relative z-10">
                 <div className="flex flex-col items-center gap-6">
                     <MarionLogo size={100} />
                     <div className="flex items-center gap-3">
@@ -183,10 +183,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     // If not configured yet, show setup form
     if (isConfigured === false) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
-                {/* Background decorations */}
-                <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-orange-900/10 rounded-full blur-[120px] -z-10" />
-                <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-[100px] -z-10" />
+            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
+                {/* Background decorations (light mode only) */}
+                <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-transparent rounded-full blur-[120px] -z-10" />
+                <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-transparent rounded-full blur-[100px] -z-10" />
                 
                 <div className="w-full max-w-md">
                     {/* Logo / Header */}
@@ -195,13 +195,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                             <MarionLogo size={100} />
                         </div>
                         <h1 
-                            className="text-3xl font-semibold text-slate-800 dark:text-white mb-3"
+                            className="text-3xl font-semibold text-slate-800 dark:text-white mb-3 drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
                             style={{ fontFamily: 'Montserrat, sans-serif' }}
                         >
                             Bienvenue sur Marion
                         </h1>
                         <p 
-                            className="text-slate-500 dark:text-slate-400"
+                            className="text-slate-500 dark:text-slate-300"
                             style={{ fontFamily: 'Raleway, sans-serif' }}
                         >
                             Créez un mot de passe pour protéger vos données
@@ -322,10 +322,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
     // Login form (auth already configured)
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
-            {/* Background decorations */}
-            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-orange-900/10 rounded-full blur-[120px] -z-10" />
-            <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-[100px] -z-10" />
+        <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
+            {/* Background decorations (light mode only) */}
+            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-transparent rounded-full blur-[120px] -z-10" />
+            <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-transparent rounded-full blur-[100px] -z-10" />
             
             <div className="w-full max-w-md">
                 {/* Logo / Header */}
@@ -334,13 +334,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                         <MarionLogo size={100} />
                     </div>
                     <h1 
-                        className="text-3xl font-semibold text-slate-800 dark:text-white mb-3"
+                        className="text-3xl font-semibold text-slate-800 dark:text-white mb-3 drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
                         style={{ fontFamily: 'Montserrat, sans-serif' }}
                     >
                         Marion Web OS
                     </h1>
                     <p 
-                        className="text-slate-500 dark:text-slate-400"
+                        className="text-slate-500 dark:text-slate-300"
                         style={{ fontFamily: 'Raleway, sans-serif' }}
                     >
                         Entrez votre mot de passe pour continuer
@@ -483,14 +483,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                                 className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2"
                                 style={{ fontFamily: 'Raleway, sans-serif' }}
                             >
-                                Tapez <span className="font-mono bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg">RESET</span> pour confirmer
+                                Tapez <span className="tabular-nums bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg">RESET</span> pour confirmer
                             </label>
                             <input
                                 type="text"
                                 value={resetConfirmText}
                                 onChange={(e) => setResetConfirmText(e.target.value.toUpperCase())}
                                 placeholder="RESET"
-                                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all font-mono"
+                                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all tabular-nums"
                             />
                         </div>
 

@@ -28,7 +28,7 @@ export const BugReporter: React.FC<BugReporterProps> = () => {
         const fullBody = `${description}\n\n---\n${context}`;
 
         try {
-            const res = await fetch('/api/report-bug', {
+            const res = await fetch('/api/v1/report-bug', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -19,7 +19,7 @@ export const createChatSession = (getAppContext?: () => any) => {
             // Get app context if available
             const context = getAppContext ? getAppContext() : {};
             
-            const response = await fetch(`${BACKEND_URL}/api/chat`, {
+            const response = await fetch(`${BACKEND_URL}/api/v1/chat`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ history, context }) // Send full history + context
@@ -50,7 +50,7 @@ export const createChatSession = (getAppContext?: () => any) => {
 // Fetch any todos/events Franck created
 export const fetchFranckData = async () => {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/franck/data`, {
+        const response = await fetch(`${BACKEND_URL}/api/v1/franck/data`, {
             headers: getAuthHeaders()
         });
         return await response.json();
@@ -63,7 +63,7 @@ export const fetchFranckData = async () => {
 // Clear Franck's data after syncing
 export const clearFranckData = async () => {
     try {
-        await fetch(`${BACKEND_URL}/api/franck/clear`, { 
+        await fetch(`${BACKEND_URL}/api/v1/franck/clear`, { 
             method: 'POST',
             headers: getAuthHeaders()
         });
@@ -74,7 +74,7 @@ export const clearFranckData = async () => {
 
 export const generateBriefing = async (contextData: string): Promise<string> => {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/briefing`, {
+        const response = await fetch(`${BACKEND_URL}/api/v1/briefing`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({ context: contextData })
@@ -90,7 +90,7 @@ export const generateBriefing = async (contextData: string): Promise<string> => 
 
 export const sendZenMessageStream = async function* (history: any[], newMessage: string) {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/chat/zen`, {
+        const response = await fetch(`${BACKEND_URL}/api/v1/chat/zen`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({ history, message: newMessage })

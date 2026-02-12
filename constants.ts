@@ -158,8 +158,8 @@ export const MOCK_PROJECTS: Project[] = [
             { name: 'Accent', hex: '#fbbf24' }
         ],
         fonts: [
-            { name: 'Playfair Display', type: 'Serif', usage: 'Title' },
-            { name: 'Lato', type: 'Sans-Serif', usage: 'Body' }
+            { name: 'Montserrat', type: 'Sans-Serif', usage: 'Title' },
+            { name: 'Raleway', type: 'Sans-Serif', usage: 'Body' }
         ]
     },
     credentials: [

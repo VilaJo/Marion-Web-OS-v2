@@ -66,7 +66,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
             const { outcome } = await deferredPrompt.userChoice;
             
             if (outcome === 'accepted') {
-                console.log('PWA installed');
+                // PWA installed successfully
             }
             
             setDeferredPrompt(null);

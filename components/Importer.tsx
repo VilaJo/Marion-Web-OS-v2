@@ -18,7 +18,7 @@ export const Importer: React.FC<ImporterProps> = ({ onImport, onClose }) => {
     const fetchFiles = async (path: string) => {
         setIsLoading(true);
         try {
-            const res = await fetch('/api/files/list', {
+            const res = await fetch('/api/v1/files/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path })

@@ -258,6 +258,19 @@ CREATE TABLE IF NOT EXISTS invoice_templates (
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
 
+-- Email accounts (encrypted credential storage)
+CREATE TABLE IF NOT EXISTS email_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    username TEXT NOT NULL,
+    password_encrypted TEXT NOT NULL,
+    salt TEXT NOT NULL,
+    imap_host TEXT DEFAULT 'mail.infomaniak.com',
+    smtp_host TEXT DEFAULT 'mail.infomaniak.com',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, username)
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);

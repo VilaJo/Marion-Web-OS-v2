@@ -3,7 +3,7 @@ import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizz
 import { Project, Expense } from '../types';
 import { Card } from './Shared';
 import { formatCurrency } from '../utils';
-import { apiFetch } from '../services/api';
+import { useExpenses } from '../services/queries';
 
 interface FinancialHealthWidgetProps {
     projects: Project[];
@@ -26,7 +26,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     onCreateEstimate,
     onAddReminder
 }) => {
-    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const { data: expenses = [] } = useExpenses();
     const [rates, setRates] = useState<Record<string, number>>({});
     const [isLoadingRates, setIsLoadingRates] = useState(true);
     // Persist view preference in localStorage
@@ -46,7 +46,21 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     const [isListening, setIsListening] = useState(false);
     const [newTodo, setNewTodo] = useState('');
     type TodoCategory = 'Client' | 'Finance' | 'Perso';
-    const [todos, setTodos] = useState<{ id: string; text: string; done: boolean; remindAt?: string; category?: TodoCategory }[]>([]);
+    const [todos, setTodos] = useState<{ id: string; text: string; done: boolean; remindAt?: string; category?: TodoCategory }[]>(() => {
+        try {
+            const saved = localStorage.getItem('marion_daily_todos');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Check if saved date is today — reset if it's a new day
+                const savedDate = localStorage.getItem('marion_daily_todos_date');
+                const today = new Date().toISOString().slice(0, 10);
+                if (savedDate === today && Array.isArray(parsed)) return parsed;
+                // New day: keep uncompleted tasks, clear completed ones
+                if (Array.isArray(parsed)) return parsed.filter((t: any) => !t.done);
+            }
+        } catch { /* ignore */ }
+        return [];
+    });
     const [todoCategoryFilter, setTodoCategoryFilter] = useState<TodoCategory | 'all'>('all');
     const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
     const [editingTodoText, setEditingTodoText] = useState('');
@@ -54,6 +68,14 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     const [editingTodoCategory, setEditingTodoCategory] = useState<TodoCategory>('Perso');
     const [newTodoCategory, setNewTodoCategory] = useState<TodoCategory>('Perso');
     const editInputRef = useRef<HTMLInputElement>(null);
+
+    // Persist todos to localStorage on every change
+    useEffect(() => {
+        try {
+            localStorage.setItem('marion_daily_todos', JSON.stringify(todos));
+            localStorage.setItem('marion_daily_todos_date', new Date().toISOString().slice(0, 10));
+        } catch { /* ignore */ }
+    }, [todos]);
 
     useEffect(() => {
         if (editingTodoId) {
@@ -146,17 +168,6 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     };
 
     useEffect(() => {
-        const fetchExpenses = async () => {
-            try {
-                const res = await apiFetch('/api/expenses');
-                const data = await res.json();
-                if (data.expenses) setExpenses(data.expenses);
-            } catch (e) {
-                console.error("Failed to load expenses", e);
-            }
-        };
-        fetchExpenses();
-
         // Fetch Exchange Rates (Base CHF)
         const fetchRates = async () => {
             try {
@@ -428,7 +439,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                                 <ArrowUpRight size={12} className="text-emerald-500" /> Entrées
                             </span>
-                            <span className="font-mono font-bold text-slate-700 dark:text-slate-200 text-lg truncate">
+                            <span className="tabular-nums font-bold text-slate-700 dark:text-slate-200 text-lg truncate">
                                 {formatSwiss(totalRevenue, targetIsoCurrency)}
                             </span>
                         </div>
@@ -437,7 +448,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                                 <ArrowDownRight size={12} className="text-red-500" /> Sorties
                             </span>
-                            <span className="font-mono font-bold text-slate-700 dark:text-slate-200 text-lg truncate">
+                            <span className="tabular-nums font-bold text-slate-700 dark:text-slate-200 text-lg truncate">
                                 {formatSwiss(totalExpenses, targetIsoCurrency)}
                             </span>
                         </div>
@@ -446,7 +457,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                             <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                                 <Clock size={12} /> En Attente
                             </span>
-                            <span className="font-mono font-bold text-orange-500 text-lg truncate">
+                            <span className="tabular-nums font-bold text-orange-500 text-lg truncate">
                                 {formatSwiss(pendingRevenue, targetIsoCurrency)}
                             </span>
                         </div>

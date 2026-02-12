@@ -775,7 +775,7 @@ const DocumentEditorModal: React.FC<{ template: DocumentTemplate | null; onSave:
                         <textarea
                             value={form.content}
                             onChange={e => setForm({ ...form, content: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 font-mono text-sm"
+                            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 tabular-nums text-sm"
                             rows={12}
                             required
                         />

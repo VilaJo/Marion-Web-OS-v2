@@ -74,7 +74,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ projects = [], client 
         };
 
         try {
-            await fetch('/api/time/log', {
+            await fetch('/api/v1/time/log', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -94,7 +94,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ projects = [], client 
     if (client) {
         return (
             <div className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all duration-300 ${isRunning ? 'bg-slate-900 text-white border-slate-900' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                <div className={`font-mono text-sm font-bold tracking-wider tabular-nums w-20 text-center ${isPaused ? 'opacity-50' : ''}`}>
+                <div className={`tabular-nums text-sm font-bold tracking-wider tabular-nums w-20 text-center ${isPaused ? 'opacity-50' : ''}`}>
                     {formatTime(elapsed)}
                 </div>
                 
@@ -138,7 +138,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ projects = [], client 
             >
                 {isRunning ? (
                     <div className="relative">
-                        <span className="font-mono text-[10px] font-bold animate-pulse text-brand-orange">REC</span>
+                        <span className="tabular-nums text-[10px] font-bold animate-pulse text-brand-orange">REC</span>
                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
                     </div>
                 ) : (
@@ -163,7 +163,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ projects = [], client 
                             <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-2">
                                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div> Enregistrement
                             </span>
-                            <span className="font-mono text-xl font-bold tracking-widest tabular-nums">{formatTime(elapsed)}</span>
+                            <span className="tabular-nums text-xl font-bold tracking-widest tabular-nums">{formatTime(elapsed)}</span>
                         </div>
                         <button 
                             onClick={handleStop}

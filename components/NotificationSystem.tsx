@@ -59,13 +59,23 @@ const TYPE_STYLES: Record<NotificationType, { icon: any, bg: string, border: str
 
 // --- Components ---
 
-export const ToastItem: React.FC<{ notification: Notification, onClose: (id: string) => void }> = ({ notification, onClose }) => {
+export const ToastItem: React.FC<{ notification: Notification, onClose: (id: string) => void, onNavigate?: (link: string) => void }> = ({ notification, onClose, onNavigate }) => {
     const style = TYPE_STYLES[notification.type];
-    // Conditional rendering for Franck's face
     const IconComponent = style.icon; 
+    const isClickable = !!notification.link;
+
+    const handleClick = () => {
+        if (notification.link && onNavigate) {
+            onNavigate(notification.link);
+            onClose(notification.id);
+        }
+    };
 
     return (
-        <div className={`pointer-events-auto w-full max-w-sm overflow-hidden rounded-2xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-xl bg-white/90 dark:bg-slate-800/90 animate-in slide-in-from-right-full duration-500 border-l-4 ${style.border.replace('border', 'border-l')}`}>
+        <div 
+            onClick={isClickable ? handleClick : undefined}
+            className={`pointer-events-auto w-full max-w-sm overflow-hidden rounded-2xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-xl bg-white/90 dark:bg-slate-800/90 animate-in slide-in-from-right-full duration-500 border-l-4 ${style.border.replace('border', 'border-l')} ${isClickable ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}`}
+        >
             <div className="p-4">
                 <div className="flex items-start">
                     <div className="flex-shrink-0">
@@ -82,11 +92,16 @@ export const ToastItem: React.FC<{ notification: Notification, onClose: (id: str
                             <div className="mt-3">
                                 <button
                                     type="button"
-                                    onClick={() => { notification.action?.onClick(); onClose(notification.id); }}
+                                    onClick={(e) => { e.stopPropagation(); notification.action?.onClick(); onClose(notification.id); }}
                                     className={`inline-flex items-center rounded-md bg-white dark:bg-slate-700 px-2.5 py-1.5 text-xs font-semibold ${style.iconColor} shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600`}
                                 >
                                     {notification.action.label} <ArrowRight size={12} className="ml-1"/>
                                 </button>
+                            </div>
+                        )}
+                        {isClickable && !notification.action && (
+                            <div className="mt-1.5 text-[11px] font-medium text-brand-orange flex items-center gap-1">
+                                Voir <ArrowRight size={10} />
                             </div>
                         )}
                     </div>
@@ -94,7 +109,7 @@ export const ToastItem: React.FC<{ notification: Notification, onClose: (id: str
                         <button
                             type="button"
                             className="inline-flex rounded-md bg-transparent text-slate-400 hover:text-slate-500 focus:outline-none"
-                            onClick={() => onClose(notification.id)}
+                            onClick={(e) => { e.stopPropagation(); onClose(notification.id); }}
                         >
                             <span className="sr-only">Close</span>
                             <X className="h-5 w-5" aria-hidden="true" />
@@ -110,20 +125,33 @@ export const NotificationCenterPanel: React.FC<{
     notifications: Notification[], 
     onMarkRead: (id: string) => void, 
     onDelete: (id: string) => void,
-    onClearAll: () => void
-}> = ({ notifications, onMarkRead, onDelete, onClearAll }) => {
+    onClearAll: () => void,
+    onNavigate?: (link: string) => void
+}> = ({ notifications, onMarkRead, onDelete, onClearAll, onNavigate }) => {
     
     const unread = notifications.filter(n => !n.read);
     const read = notifications.filter(n => n.read);
+
+    const handleItemClick = (n: Notification) => {
+        if (!n.read) onMarkRead(n.id);
+        if (n.link && onNavigate) {
+            onNavigate(n.link);
+        }
+    };
 
     const renderList = (list: Notification[]) => (
         <div className="space-y-2">
             {list.map(n => {
                 const style = TYPE_STYLES[n.type];
-                const IconComponent = style.icon; // Renamed to avoid conflict
+                const IconComponent = style.icon;
+                const isClickable = !!n.link;
 
                 return (
-                    <div key={n.id} className={`relative group p-4 rounded-xl transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-transparent hover:border-slate-100 dark:hover:border-slate-700 ${!n.read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
+                    <div 
+                        key={n.id} 
+                        onClick={() => handleItemClick(n)}
+                        className={`relative group p-4 rounded-xl transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-transparent hover:border-slate-100 dark:hover:border-slate-700 ${!n.read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''} ${isClickable ? 'cursor-pointer' : ''}`}
+                    >
                         <div className="flex gap-3">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${style.bg} ${n.type !== 'ai' ? style.iconColor : ''}`}>
                                 {n.type === 'ai' ? (
@@ -146,11 +174,16 @@ export const NotificationCenterPanel: React.FC<{
                                 </p>
                                 {n.action && (
                                     <button 
-                                        onClick={() => { n.action?.onClick(); onMarkRead(n.id); }}
+                                        onClick={(e) => { e.stopPropagation(); n.action?.onClick(); onMarkRead(n.id); }}
                                         className="mt-2 text-xs font-bold text-brand-orange hover:underline flex items-center gap-1"
                                     >
                                         {n.action.label} <ArrowRight size={10} />
                                     </button>
+                                )}
+                                {isClickable && !n.action && (
+                                    <div className="mt-1.5 text-[11px] font-medium text-brand-orange flex items-center gap-1">
+                                        Voir <ArrowRight size={10} />
+                                    </div>
                                 )}
                             </div>
                         </div>

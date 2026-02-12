@@ -1,0 +1,324 @@
+"""
+Invoices & Finance Blueprint - Expenses, notes, time tracking.
+Handles: expenses CRUD + AI scan, notes CRUD, time tracking CRUD.
+"""
+
+import os
+import json
+import time
+from pathlib import Path
+from flask import Blueprint, request, jsonify
+
+from api.shared import DESKTOP_PATH, get_safe_path, load_project_data, save_project_data_file, error_response
+
+invoices_bp = Blueprint('invoices', __name__, url_prefix='/api/v1')
+
+
+# ============================================================================
+# EXPENSES
+# ============================================================================
+
+@invoices_bp.route('/expenses', methods=['GET'])
+def get_expenses():
+    """Get all expenses from the Depenses folder."""
+    expenses_path = DESKTOP_PATH / "Dépenses"
+    if not expenses_path.exists():
+        os.makedirs(expenses_path)
+    expenses = []
+    try:
+        for entry in expenses_path.glob("*.json"):
+            try:
+                with open(entry, 'r') as f:
+                    data = json.load(f)
+                    expenses.append(data)
+            except Exception:
+                pass
+        expenses.sort(key=lambda x: x.get('date', ''), reverse=True)
+
+        # Optional pagination - backwards compatible
+        limit = request.args.get('limit', type=int)
+        offset = request.args.get('offset', default=0, type=int) or 0
+
+        # If no limit provided, keep existing behavior
+        if limit is None:
+            return jsonify({"expenses": expenses})
+
+        # Apply limit/offset and return paginated payload
+        if offset < 0:
+            offset = 0
+        total = len(expenses)
+        items = expenses[offset: offset + limit]
+        has_more = (offset + limit) < total
+
+        return jsonify({
+            "items": items,
+            "total": total,
+            "hasMore": has_more,
+        })
+    except Exception as e:
+        return error_response(e)
+
+
+@invoices_bp.route('/expenses/scan', methods=['POST'])
+def scan_expense():
+    """Scan an expense receipt with AI."""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        expenses_path = DESKTOP_PATH / "Dépenses"
+        if not expenses_path.exists():
+            os.makedirs(expenses_path)
+
+        file_ext = Path(file.filename).suffix
+        expense_id = f"exp-{int(time.time())}"
+        file_name = f"{expense_id}{file_ext}"
+        file_path = expenses_path / file_name
+        file.save(file_path)
+
+        expense_data = {
+            "id": expense_id,
+            "date": time.strftime('%Y-%m-%d'),
+            "supplier": "Inconnu",
+            "amount": 0,
+            "category": "Other",
+            "description": "Scan echoue",
+            "fileUrl": str(file_path),
+        }
+
+        # Try AI extraction
+        from services.gemini_service import get_client
+        client = get_client()
+        if client:
+            try:
+                from google.genai import types
+                mime_type = "application/pdf" if file_ext.lower() == '.pdf' else "image/jpeg"
+                if file_ext.lower() in ['.png', '.webp']:
+                    mime_type = f"image/{file_ext[1:]}"
+                with open(file_path, "rb") as f:
+                    file_content = f.read()
+                prompt = (
+                    'Analyze this receipt/invoice. Extract: '
+                    '- Supplier Name (merchant) '
+                    '- Total Amount (Grand Total) '
+                    '- Date (YYYY-MM-DD) '
+                    '- Category (Choose one: Software, Hardware, Office, Travel, Services, Tax, Other) '
+                    '- Description (Short summary). '
+                    'Return ONLY JSON: { "supplier": "", "amount": 0.0, "date": "", "category": "", "description": "" }'
+                )
+                response = client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Part.from_bytes(data=file_content, mime_type=mime_type),
+                        types.Part.from_text(text=prompt),
+                    ],
+                    config=types.GenerateContentConfig(response_mime_type="application/json"),
+                )
+                extracted = json.loads(response.text)
+                expense_data.update(extracted)
+            except Exception as ai_e:
+                print(f"AI Expense Scan Error: {ai_e}")
+
+        json_path = expenses_path / f"{expense_id}.json"
+        with open(json_path, 'w') as f:
+            json.dump(expense_data, f, indent=2)
+
+        return jsonify({"success": True, "expense": expense_data})
+    except Exception as e:
+        return error_response(e)
+
+
+@invoices_bp.route('/expenses/<expense_id>', methods=['DELETE'])
+def delete_expense(expense_id):
+    """Delete an expense by ID."""
+    try:
+        expenses_path = DESKTOP_PATH / "Dépenses"
+        json_path = expenses_path / f"{expense_id}.json"
+        if json_path.exists():
+            os.remove(json_path)
+        for f in expenses_path.glob(f"{expense_id}.*"):
+            os.remove(f)
+        return jsonify({"success": True})
+    except Exception as e:
+        return error_response(e)
+
+
+# ============================================================================
+# NOTES
+# ============================================================================
+
+@invoices_bp.route('/notes', methods=['GET'])
+def get_notes():
+    """Get all quick notes."""
+    notes_path = DESKTOP_PATH / "Notes"
+    if not notes_path.exists():
+        os.makedirs(notes_path)
+    notes = []
+    try:
+        for entry in notes_path.glob("*.json"):
+            try:
+                with open(entry, 'r') as f:
+                    notes.append(json.load(f))
+            except Exception:
+                pass
+        notes.sort(key=lambda x: x.get('date', ''), reverse=True)
+
+        # Optional pagination - backwards compatible
+        limit = request.args.get('limit', type=int)
+        offset = request.args.get('offset', default=0, type=int) or 0
+
+        # If no limit provided, keep existing behavior
+        if limit is None:
+            return jsonify({"notes": notes})
+
+        # Apply limit/offset and return paginated payload
+        if offset < 0:
+            offset = 0
+        total = len(notes)
+        items = notes[offset: offset + limit]
+        has_more = (offset + limit) < total
+
+        return jsonify({
+            "items": items,
+            "total": total,
+            "hasMore": has_more,
+        })
+    except Exception as e:
+        return error_response(e)
+
+
+@invoices_bp.route('/notes', methods=['POST'])
+def save_note():
+    """Save or update a note."""
+    data = request.json
+    note_id = data.get('id')
+    if not note_id:
+        return jsonify({"error": "Note ID required"}), 400
+    try:
+        notes_path = DESKTOP_PATH / "Notes"
+        if not notes_path.exists():
+            os.makedirs(notes_path)
+        file_path = notes_path / f"{note_id}.json"
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+        return jsonify({"success": True})
+    except Exception as e:
+        return error_response(e)
+
+
+@invoices_bp.route('/notes', methods=['DELETE'])
+def delete_note():
+    """Delete a note by ID."""
+    note_id = request.args.get('id')
+    if not note_id:
+        return jsonify({"error": "Note ID required"}), 400
+    try:
+        file_path = DESKTOP_PATH / "Notes" / f"{note_id}.json"
+        if file_path.exists():
+            os.remove(file_path)
+        else:
+            return jsonify({"error": "Note not found"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        return error_response(e)
+
+
+# ============================================================================
+# TIME TRACKING
+# ============================================================================
+
+@invoices_bp.route('/time/log', methods=['POST'])
+def log_time():
+    """Log a time entry for a client/project."""
+    data = request.json
+    client_id = data.get('clientId')
+    entry = data.get('entry')
+    if not client_id or not entry:
+        return jsonify({"error": "Missing data"}), 400
+    try:
+        safe_path = get_safe_path(client_id)
+        admin_path = safe_path / ".99_Admin"
+        if not admin_path.exists():
+            os.makedirs(admin_path)
+        sheet_path = admin_path / "timesheet.json"
+        logs = []
+        if sheet_path.exists():
+            try:
+                with open(sheet_path, 'r') as f:
+                    logs = json.load(f)
+            except Exception:
+                pass
+        entry['id'] = f"log-{int(time.time())}-{len(logs)}"
+        entry['status'] = 'pending'
+        logs.append(entry)
+        with open(sheet_path, 'w') as f:
+            json.dump(logs, f, indent=2)
+        return jsonify({"success": True})
+    except Exception as e:
+        return error_response(e)
+
+
+@invoices_bp.route('/time/mark_billed', methods=['POST'])
+def mark_time_billed():
+    """Mark time entries as billed."""
+    data = request.json
+    client_id = data.get('clientId')
+    log_ids = data.get('logIds', [])
+    try:
+        safe_path = get_safe_path(client_id)
+        sheet_path = safe_path / ".99_Admin" / "timesheet.json"
+        if not sheet_path.exists():
+            return jsonify({"error": "No timesheet found"}), 404
+        with open(sheet_path, 'r') as f:
+            logs = json.load(f)
+        updated_count = 0
+        for log in logs:
+            if log.get('id') in log_ids:
+                log['status'] = 'billed'
+                updated_count += 1
+        with open(sheet_path, 'w') as f:
+            json.dump(logs, f, indent=2)
+        return jsonify({"success": True, "updated": updated_count})
+    except Exception as e:
+        return error_response(e)
+
+
+@invoices_bp.route('/time/get', methods=['POST'])
+def get_time_logs():
+    """Get time logs for a client/project."""
+    data = request.json
+    client_id = data.get('clientId')
+    try:
+        safe_path = get_safe_path(client_id)
+        sheet_path = safe_path / ".99_Admin" / "timesheet.json"
+        if sheet_path.exists():
+            with open(sheet_path, 'r') as f:
+                logs = json.load(f)
+        else:
+            logs = []
+
+        # Optional pagination via query params - backwards compatible
+        limit = request.args.get('limit', type=int)
+        offset = request.args.get('offset', default=0, type=int) or 0
+
+        # If no limit provided, keep existing behavior
+        if limit is None:
+            return jsonify({"logs": logs})
+
+        # Apply limit/offset and return paginated payload
+        if offset < 0:
+            offset = 0
+        total = len(logs)
+        items = logs[offset: offset + limit]
+        has_more = (offset + limit) < total
+
+        return jsonify({
+            "items": items,
+            "total": total,
+            "hasMore": has_more,
+        })
+    except Exception as e:
+        return error_response(e)

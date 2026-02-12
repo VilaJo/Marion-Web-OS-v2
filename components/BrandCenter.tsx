@@ -123,7 +123,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
         formData.append('file', fileInputRef.current.files[0]);
 
         try {
-            const res = await fetch('/api/media/palette', {
+            const res = await fetch('/api/v1/media/palette', {
                 method: 'POST',
                 body: formData
             });
@@ -148,7 +148,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
     };
 
     // --- Font Logic ---
-    const addFont = () => setFonts([...fonts, { name: 'Inter', type: 'Sans-Serif', usage: 'Body' }]);
+    const addFont = () => setFonts([...fonts, { name: 'Raleway', type: 'Sans-Serif', usage: 'Body' }]);
     const removeFont = (idx: number) => setFonts(fonts.filter((_, i) => i !== idx));
     const updateFont = (idx: number, field: keyof BrandFont, value: string) => {
         const newFonts = [...fonts];
@@ -370,7 +370,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                                     <input 
                                                         value={color.hex}
                                                         onChange={(e) => updateColor(idx, 'hex', e.target.value)}
-                                                        className="w-full bg-transparent font-mono text-xs text-slate-400 outline-none uppercase"
+                                                        className="w-full bg-transparent tabular-nums text-xs text-slate-400 outline-none uppercase"
                                                     />
                                                     <button
                                                         type="button"
@@ -456,7 +456,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                                         onFocus={() => setOpenFontFamilyIdx(idx)}
                                                         onBlur={() => setTimeout(() => setOpenFontFamilyIdx(null), 180)}
                                                         className="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm font-bold outline-none"
-                                                        placeholder="Ex: Inter, Roboto..."
+                                                        placeholder="Ex: Montserrat, Raleway..."
                                                         autoComplete="off"
                                                     />
                                                     {openFontFamilyIdx === idx && (
@@ -540,7 +540,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                     >
                                         <Copy size={16} />
                                     </button>
-                                    <pre className="font-mono text-sm text-emerald-400 overflow-x-auto">
+                                    <pre className="tabular-nums text-sm text-emerald-400 overflow-x-auto">
                                         {generateCSS()}
                                     </pre>
                                 </div>
@@ -612,7 +612,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                         />
                                         <div>
                                             <div className="text-sm font-semibold">{c.name}</div>
-                                            <div className="text-xs font-mono text-slate-500">{c.hex}</div>
+                                            <div className="text-xs tabular-nums text-slate-500">{c.hex}</div>
                                         </div>
                                     </div>
                                 ))}
@@ -665,7 +665,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                             style={{ 
                                                 backgroundColor: c.hex, 
                                                 color: getLuminance(c.hex) > 0.5 ? '#1a1a1a' : '#ffffff',
-                                                fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'system-ui',
+                                                fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'Raleway',
                                                 padding: '10px 24px',
                                                 borderRadius: '8px',
                                                 fontWeight: 600,
@@ -679,7 +679,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                             style={{ 
                                                 backgroundColor: 'transparent', 
                                                 color: c.hex,
-                                                fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'system-ui',
+                                                fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'Raleway',
                                                 padding: '10px 24px',
                                                 borderRadius: '8px',
                                                 fontWeight: 600,
@@ -708,7 +708,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                 >
                                     <div 
                                         style={{ 
-                                            fontFamily: fonts.find(f => f.usage === 'Title')?.name || 'Georgia',
+                                            fontFamily: fonts.find(f => f.usage === 'Title')?.name || 'Montserrat',
                                             fontSize: '18px',
                                             fontWeight: 700,
                                             marginBottom: '8px',
@@ -719,7 +719,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                     </div>
                                     <div 
                                         style={{ 
-                                            fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'system-ui',
+                                            fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'Raleway',
                                             fontSize: '13px',
                                             color: '#64748b',
                                             lineHeight: 1.5
@@ -738,7 +738,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                 >
                                     <div 
                                         style={{ 
-                                            fontFamily: fonts.find(f => f.usage === 'Title')?.name || 'Georgia',
+                                            fontFamily: fonts.find(f => f.usage === 'Title')?.name || 'Montserrat',
                                             fontSize: '18px',
                                             fontWeight: 700,
                                             marginBottom: '8px'
@@ -748,7 +748,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                     </div>
                                     <div 
                                         style={{ 
-                                            fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'system-ui',
+                                            fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'Raleway',
                                             fontSize: '13px',
                                             opacity: 0.9,
                                             lineHeight: 1.5
@@ -776,7 +776,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                             >
                                 <div 
                                     style={{ 
-                                        fontFamily: fonts.find(f => f.usage === 'Title')?.name || 'Georgia',
+                                        fontFamily: fonts.find(f => f.usage === 'Title')?.name || 'Montserrat',
                                         fontSize: '28px',
                                         fontWeight: 700,
                                         marginBottom: '12px',
@@ -787,7 +787,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                 </div>
                                 <div 
                                     style={{ 
-                                        fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'system-ui',
+                                        fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'Raleway',
                                         fontSize: '14px',
                                         opacity: 0.9,
                                         marginBottom: '20px',
@@ -802,7 +802,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                     style={{ 
                                         backgroundColor: '#ffffff',
                                         color: colors[0]?.hex || '#667eea',
-                                        fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'system-ui',
+                                        fontFamily: fonts.find(f => f.usage === 'Body')?.name || 'Raleway',
                                         padding: '12px 32px',
                                         borderRadius: '8px',
                                         fontWeight: 700,
@@ -833,8 +833,8 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                         <span 
                                             style={{ 
                                                 fontFamily: item.label.startsWith('H') 
-                                                    ? fonts.find(f => f.usage === 'Title')?.name || 'Georgia'
-                                                    : fonts.find(f => f.usage === 'Body')?.name || 'system-ui',
+                                                    ? fonts.find(f => f.usage === 'Title')?.name || 'Montserrat'
+                                                    : fonts.find(f => f.usage === 'Body')?.name || 'Raleway',
                                                 fontSize: item.size,
                                                 fontWeight: item.weight,
                                                 color: '#1a1a1a'

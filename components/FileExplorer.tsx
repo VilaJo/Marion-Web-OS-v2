@@ -62,7 +62,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ items, currentPath, 
 
     const handleOpenInFinder = async () => {
         try {
-            await fetch('http://localhost:5003/api/files/open', {
+            await fetch('/api/v1/files/open', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: currentPath })
@@ -83,7 +83,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ items, currentPath, 
                 >
                     <ArrowLeft size={18} className="text-slate-600 dark:text-slate-300" />
                 </button>
-                <div className="flex-1 font-mono text-xs text-slate-500 dark:text-slate-400 truncate px-2 py-1.5 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 shadow-sm select-all">
+                <div className="flex-1 tabular-nums text-xs text-slate-500 dark:text-slate-400 truncate px-2 py-1.5 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 shadow-sm select-all">
                     root/{currentPath}
                 </div>
                 <button 
@@ -114,7 +114,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ items, currentPath, 
                                 draggable={item.type === 'file'}
                                 onDragStart={(e) => {
                                     if (item.type === 'file') {
-                                        const fileUrl = `http://localhost:5003/files/${currentPath ? currentPath + '/' : ''}${item.name}`;
+                                        const fileUrl = `/files/${currentPath ? currentPath + '/' : ''}${item.name}`;
                                         e.dataTransfer.setData("DownloadURL", `application/octet-stream:${item.name}:${fileUrl}`);
                                     }
                                 }}
@@ -156,7 +156,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ items, currentPath, 
                                 {item.type === 'file' && !renamingId && (
                                     <div className="opacity-0 group-hover:opacity-100 flex gap-2">
                                         <a 
-                                            href={`http://localhost:5003/files/${currentPath ? currentPath + '/' : ''}${item.name}`} 
+                                            href={`/files/${currentPath ? currentPath + '/' : ''}${item.name}`} 
                                             download={item.name}
                                             onClick={(e) => e.stopPropagation()}
                                             className="p-2 text-slate-400 hover:text-brand-orange rounded-full hover:bg-white dark:hover:bg-slate-700"
@@ -192,7 +192,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ items, currentPath, 
                     </button>
                     {contextMenu.item.type === 'file' && (
                          <a 
-                            href={`http://localhost:5003/files/${currentPath ? currentPath + '/' : ''}${contextMenu.item.name}`} 
+                            href={`/files/${currentPath ? currentPath + '/' : ''}${contextMenu.item.name}`} 
                             download={contextMenu.item.name}
                             className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-600 dark:text-slate-300"
                         >

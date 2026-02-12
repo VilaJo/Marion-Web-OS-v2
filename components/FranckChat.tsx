@@ -6,7 +6,7 @@ import { Bot, Send, X, Sparkles, Calendar, FileText, DollarSign, Clock, Lightbul
 import { ChatMessage, Project, CalendarEvent } from '../types';
 
 import { createChatSession, fetchFranckData, clearFranckData } from '../services/geminiService';
-import { apiFetch } from '../services/api';
+import { useFranckGreeting } from '../services/queries';
 
 // @ts-ignore
 import franckAvatar from '../assets/franck-avatar.png';
@@ -143,21 +143,20 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         }
     };
     
-    // Fetch contextual greeting on mount
+    // Fetch contextual greeting via React Query
+    const { data: greetingData } = useFranckGreeting();
+    
     useEffect(() => {
-        const fetchGreeting = async () => {
-            try {
-                const res = await apiFetch('/api/franck/greeting');
-                const data = await res.json();
-                const greeting = data.greeting;
-                setMessages([{ role: 'model', text: greeting, timestamp: new Date() }]);
-            } catch (e) {
-                const fallbackGreeting = 'Salut ma belle ! C\'est Franck. Qu\'est-ce que je peux faire pour toi ? 👴';
-                setMessages([{ role: 'model', text: fallbackGreeting, timestamp: new Date() }]);
-            }
-        };
-        fetchGreeting();
-    }, []);
+        if (greetingData?.greeting) {
+            setMessages(prev => {
+                // Only set greeting if we don't have messages yet or just have the initial one
+                if (prev.length <= 1) {
+                    return [{ role: 'model', text: greetingData.greeting, timestamp: new Date() }];
+                }
+                return prev;
+            });
+        }
+    }, [greetingData]);
 
     useEffect(() => {
 
@@ -277,11 +276,11 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
     return (
 
-        <div className="fixed bottom-6 right-6 w-96 h-[500px] glass rounded-3xl shadow-2xl flex flex-col z-40 animate-in slide-in-from-bottom-10 border border-orange-200 dark:border-orange-900">
+        <div className="fixed inset-0 md:inset-auto md:bottom-6 md:right-6 md:w-96 md:h-[500px] glass md:rounded-3xl shadow-2xl flex flex-col z-40 animate-in slide-in-from-bottom-10 border-0 md:border border-orange-200 dark:border-orange-900">
 
             {/* Header */}
 
-            <div className="p-4 bg-gradient-to-r from-brand-orange to-pink-600 rounded-t-3xl flex justify-between items-center text-white">
+            <div className="p-4 bg-gradient-to-r from-brand-orange to-pink-600 md:rounded-t-3xl flex justify-between items-center text-white">
 
                 <div className="flex items-center gap-4">
 

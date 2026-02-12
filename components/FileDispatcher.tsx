@@ -110,7 +110,7 @@ export const FileDispatcher: React.FC<FileDispatcherProps> = ({ files: initialFi
         formData.append('file', item.file);
 
         try {
-            const res = await fetch('/api/files/dispatch', {
+            const res = await fetch('/api/v1/files/dispatch', {
                 method: 'POST',
                 body: formData
             });
@@ -157,7 +157,7 @@ export const FileDispatcher: React.FC<FileDispatcherProps> = ({ files: initialFi
         setQueue(prev => prev.map(f => f.id === id ? { ...f, status: 'completed' } : f));
 
         try {
-            await fetch('/api/files/move', {
+            await fetch('/api/v1/files/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -359,7 +359,7 @@ export const FileDispatcher: React.FC<FileDispatcherProps> = ({ files: initialFi
                                             value={item.manualData?.newName || ''}
                                             onChange={(e) => updateManualData(item.id, 'newName', e.target.value)}
                                             disabled={item.status === 'completed'}
-                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-brand-orange transition-colors"
+                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm tabular-nums outline-none focus:border-brand-orange transition-colors"
                                         />
                                     </div>
 

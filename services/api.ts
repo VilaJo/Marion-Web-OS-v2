@@ -102,9 +102,20 @@ export const apiDelete = async <T = any>(url: string): Promise<T> => {
  * Logout - clear token and reload
  */
 export const logout = () => {
-    apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    apiFetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
     sessionStorage.removeItem('marion_token');
     window.location.reload();
 };
+
+// Online/offline detection
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+        // Dynamic import to avoid circular deps
+        import('../stores/useOfflineStore').then(m => m.useOfflineStore.getState().setOnline(true));
+    });
+    window.addEventListener('offline', () => {
+        import('../stores/useOfflineStore').then(m => m.useOfflineStore.getState().setOnline(false));
+    });
+}
 
 export default apiFetch;

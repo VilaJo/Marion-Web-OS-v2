@@ -6,7 +6,8 @@ import { Calendar as CalIcon, ChevronLeft, ChevronRight, Plus, Clock, Video, Cop
 import { toZonedTime, format, formatInTimeZone } from 'date-fns-tz';
 import { fr } from 'date-fns/locale';
 import { addMinutes, differenceInMinutes, parse, isBefore, startOfDay, parseISO } from 'date-fns';
-import { apiFetch } from '../services/api';
+import { useCalendarSync, useICalEvents, useGoogleCalendarEvents, useCreateGoogleEvent, useUpdateGoogleEvent, useUpdateICalEvent, useConnectGoogle, queryKeys } from '../services/queries';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AgendaProps {
     events: CalendarEvent[];
@@ -85,12 +86,81 @@ const COMMON_CITIES = [
     { name: 'Singapore', tz: 'Asia/Singapore', country: '🇸🇬', favorite: false },
 ];
 
-export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
-    // State for external events (iCal)
-    const [externalEvents, setExternalEvents] = useState<CalendarEvent[]>([]);
+const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
+    // === React Query hooks for external calendar data ===
+    const { data: syncStatus } = useCalendarSync();
+    const { data: icalData } = useICalEvents();
+    const { data: gcalEvents = [], isFetching: isSyncingGcal } = useGoogleCalendarEvents();
+    const createGoogleEventMutation = useCreateGoogleEvent();
+    const updateGoogleEventMutation = useUpdateGoogleEvent();
+    const updateICalEventMutation = useUpdateICalEvent();
+    const connectGoogleMutation = useConnectGoogle();
+    const queryClient = useQueryClient();
+
+    // Reconnect handler — opens OAuth popup
+    const handleReconnect = useCallback(() => {
+        connectGoogleMutation.mutate(undefined, {
+            onSuccess: (data: any) => {
+                const popup = window.open(data.auth_url, 'Google Auth', 'width=500,height=600,left=200,top=100');
+                const handleMessage = (event: MessageEvent) => {
+                    if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                        localStorage.setItem('marion_gcal_connected', 'true');
+                        if (event.data.email) localStorage.setItem('marion_gcal_email', event.data.email);
+                        queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
+                        queryClient.invalidateQueries({ queryKey: queryKeys.events });
+                        queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
+                        window.removeEventListener('message', handleMessage);
+                    }
+                    if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+                        window.removeEventListener('message', handleMessage);
+                    }
+                };
+                window.addEventListener('message', handleMessage);
+                const checkClosed = setInterval(() => {
+                    if (popup?.closed) { clearInterval(checkClosed); window.removeEventListener('message', handleMessage); }
+                }, 1000);
+            },
+        });
+    }, [connectGoogleMutation, queryClient]);
+
+    // Helper to map Google events from API
+    const mapGoogleEvent = useCallback((e: any): CalendarEvent => ({
+        id: `gcal-${e.googleEventId}`,
+        title: e.title,
+        date: e.date,
+        startTime: e.startTime,
+        duration: e.duration || 60,
+        type: 'Meeting' as const,
+        description: e.description,
+        meetLink: e.meetLink,
+        source: 'google' as const,
+        googleEventId: e.googleEventId,
+        originalTimezone: e.originalTimezone,
+        originalDateTime: e.originalDateTime
+    }), []);
+
+    // Compute external events from React Query data
+    const externalEvents = useMemo(() => {
+        const allEvents: CalendarEvent[] = [];
+        
+        // Add iCal events
+        if (icalData?.events) {
+            allEvents.push(...icalData.events.map((e: any) => ({ ...e, source: 'iCal' as const })));
+        }
+        
+        // Add Google Calendar events
+        if (gcalEvents.length > 0) {
+            allEvents.push(...gcalEvents.map(mapGoogleEvent));
+        }
+        
+        return allEvents;
+    }, [icalData, gcalEvents, mapGoogleEvent]);
     
+    // Calendar source visibility filters
+    const [visibleSources, setVisibleSources] = useState<{ local: boolean, google: boolean, ical: boolean }>({ local: true, google: true, ical: true });
+
     // Merge local and external events for display (avoiding duplicates)
-    const events = useMemo(() => {
+    const allMergedEvents = useMemo(() => {
         // Get IDs of local events that are synced to Google (have googleEventId)
         const syncedGoogleIds = new Set(
             localEvents
@@ -109,6 +179,15 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         return [...localEvents, ...filteredExternal];
     }, [localEvents, externalEvents]);
 
+    // Apply source visibility filter
+    const events = useMemo(() => {
+        return allMergedEvents.filter(e => {
+            if (e.source === 'google') return visibleSources.google;
+            if (e.source === 'iCal') return visibleSources.ical;
+            return visibleSources.local; // local or undefined source
+        });
+    }, [allMergedEvents, visibleSources]);
+
     // Ensure initial dates are valid
     const [currentDate, setCurrentDate] = useState(() => {
         const d = new Date();
@@ -119,205 +198,40 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         return isNaN(d.getTime()) ? new Date() : d;
     }); 
     
-    // Google Calendar sync state
-    const [googleCalendarConnected, setGoogleCalendarConnected] = useState(() => {
-        // Check cached status for instant UI
-        return localStorage.getItem('marion_gcal_connected') === 'true';
-    });
-    const [googleCalendarEmail, setGoogleCalendarEmail] = useState<string | null>(() => {
-        return localStorage.getItem('marion_gcal_email');
-    });
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [lastGoogleSync, setLastGoogleSync] = useState<Date | null>(null);
-    
-    // Load cached Google events immediately for instant display
+    // Google Calendar sync state (derived from React Query)
+    const googleCalendarConnected = syncStatus?.connected ?? localStorage.getItem('marion_gcal_connected') === 'true';
+    const googleCalendarEmail = syncStatus?.email ?? localStorage.getItem('marion_gcal_email');
+    const isSyncing = isSyncingGcal;
+    const lastGoogleSync = gcalEvents.length > 0 ? new Date() : null;
+
+    // Persist Google connection status to localStorage for instant UI on next load
     useEffect(() => {
-        try {
-            const cached = localStorage.getItem('marion_gcal_events_cache');
-            if (cached) {
-                const { events: cachedEvents, timestamp } = JSON.parse(cached);
-                // Use cache if less than 10 minutes old
-                if (Date.now() - timestamp < 600000 && Array.isArray(cachedEvents)) {
-                    setExternalEvents(cachedEvents);
-                }
+        if (syncStatus?.connected !== undefined) {
+            localStorage.setItem('marion_gcal_connected', String(syncStatus.connected));
+            if (syncStatus.email) {
+                localStorage.setItem('marion_gcal_email', syncStatus.email);
             }
-        } catch (e) {
-            // Silent fail
         }
-    }, []);
-    
-    // Resync trigger - listen for changes from Settings or OAuth popup
-    const [syncTrigger, setSyncTrigger] = useState(0);
-    
+    }, [syncStatus]);
+
+    // Listen for auth changes from Settings/OAuth popup to invalidate queries
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-                // Google connected from OAuth popup - trigger resync
-                console.log('Agenda: Google auth success, triggering resync');
-                setGoogleCalendarConnected(true);
+                localStorage.setItem('marion_gcal_connected', 'true');
                 if (event.data.email) {
-                    setGoogleCalendarEmail(event.data.email);
                     localStorage.setItem('marion_gcal_email', event.data.email);
                 }
-                localStorage.setItem('marion_gcal_connected', 'true');
-                setSyncTrigger(t => t + 1); // Trigger resync
             }
             if (event.data.type === 'GOOGLE_AUTH_DISCONNECT') {
-                setGoogleCalendarConnected(false);
-                setExternalEvents([]);
                 localStorage.removeItem('marion_gcal_connected');
                 localStorage.removeItem('marion_gcal_email');
-                localStorage.removeItem('marion_gcal_events_cache');
             }
         };
         
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, []);
-    
-    // Track consecutive failures for smarter reconnection
-    const failureCountRef = useRef(0);
-    const lastSuccessfulSyncRef = useRef<Date | null>(null);
-    
-    // Fetch all external events in parallel (resilient sync)
-    useEffect(() => {
-        let isMounted = true;
-        
-        // Helper to map Google events
-        const mapGoogleEvent = (e: any): CalendarEvent => ({
-            id: `gcal-${e.googleEventId}`,
-            title: e.title,
-            date: e.date,
-            startTime: e.startTime,
-            duration: e.duration || 60,
-            type: 'Meeting' as const,
-            description: e.description,
-            meetLink: e.meetLink,
-            source: 'google' as const,
-            googleEventId: e.googleEventId,
-            originalTimezone: e.originalTimezone,
-            originalDateTime: e.originalDateTime
-        });
-        
-        const fetchAllExternalEvents = async (isRetry = false) => {
-            if (!isMounted) return;
-            
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
-            
-            if (!isRetry) setIsSyncing(true);
-            
-            try {
-                // Fetch everything in parallel
-                const [statusResult, icalResult, gcalResult] = await Promise.allSettled([
-                    // 1. Check Google connection
-                    apiFetch('/api/gcal/sync-status', { signal: controller.signal })
-                        .then(r => r.ok ? r.json() : Promise.reject('status_error')),
-                    
-                    // 2. Fetch iCal events
-                    apiFetch('/api/calendar/fetch', { signal: controller.signal })
-                        .then(r => r.ok ? r.json() : Promise.reject('ical_error')),
-                    
-                    // 3. Fetch Google Calendar events
-                    apiFetch('/api/gcal/events', { signal: controller.signal })
-                        .then(r => r.ok ? r.json() : Promise.reject('gcal_error'))
-                ]);
-                
-                clearTimeout(timeout);
-                if (!isMounted) return;
-                
-                const allEvents: CalendarEvent[] = [];
-                let syncSuccess = false;
-                
-                // Update connection status ONLY if we get a definitive answer
-                if (statusResult.status === 'fulfilled') {
-                    const status = statusResult.value;
-                    // Only update if server explicitly says connected or not
-                    if (typeof status.connected === 'boolean') {
-                        setGoogleCalendarConnected(status.connected);
-                        localStorage.setItem('marion_gcal_connected', String(status.connected));
-                        if (status.email) {
-                            setGoogleCalendarEmail(status.email);
-                            localStorage.setItem('marion_gcal_email', status.email);
-                        }
-                    }
-                    syncSuccess = true;
-                }
-                // On network failure, KEEP the cached status (don't set to false)
-                
-                // Add iCal events
-                if (icalResult.status === 'fulfilled' && icalResult.value.events) {
-                    allEvents.push(...icalResult.value.events.map((e: any) => ({ ...e, source: 'iCal' as const })));
-                    syncSuccess = true;
-                }
-                
-                // Add Google Calendar events
-                if (gcalResult.status === 'fulfilled' && gcalResult.value.events) {
-                    const googleEvents = gcalResult.value.events.map(mapGoogleEvent);
-                    allEvents.push(...googleEvents);
-                    setLastGoogleSync(new Date());
-                    lastSuccessfulSyncRef.current = new Date();
-                    syncSuccess = true;
-                    
-                    // Cache Google events for instant load next time
-                    localStorage.setItem('marion_gcal_events_cache', JSON.stringify({
-                        events: googleEvents,
-                        timestamp: Date.now()
-                    }));
-                    
-                    // If we got events, we're definitely connected
-                    if (googleEvents.length > 0) {
-                        setGoogleCalendarConnected(true);
-                        localStorage.setItem('marion_gcal_connected', 'true');
-                    }
-                }
-                
-                // Only update events if we got at least some data
-                if (allEvents.length > 0 || syncSuccess) {
-                    setExternalEvents(allEvents);
-                    failureCountRef.current = 0;
-                } else {
-                    // All fetches failed - increment failure count
-                    failureCountRef.current++;
-                    
-                    // Only show disconnected after 3 consecutive failures
-                    if (failureCountRef.current >= 3) {
-                        // Keep cached events but maybe mark as stale
-                        console.log('Agenda sync: multiple failures, keeping cached data');
-                    }
-                    
-                    // Retry once after a short delay (if not already a retry)
-                    if (!isRetry && failureCountRef.current < 3) {
-                        setTimeout(() => fetchAllExternalEvents(true), 3000);
-                    }
-                }
-                
-            } catch (e) {
-                clearTimeout(timeout);
-                // Network error - keep existing state, don't reset
-                console.log('Agenda sync error:', e);
-                failureCountRef.current++;
-                
-                // Auto-retry on first failure
-                if (!isRetry && failureCountRef.current < 2) {
-                    setTimeout(() => fetchAllExternalEvents(true), 5000);
-                }
-            } finally {
-                if (isMounted) setIsSyncing(false);
-            }
-        };
-        
-        // Initial fetch
-        fetchAllExternalEvents();
-        
-        // Refresh every 3 minutes (more frequent for better sync)
-        const interval = setInterval(() => fetchAllExternalEvents(), 180000);
-        
-        return () => {
-            isMounted = false;
-            clearInterval(interval);
-        };
-    }, [syncTrigger]); // Re-run when Google auth succeeds
 
     const [isExpanded, setIsExpanded] = useState(false); // Expanded = "Immersion Mode"
     const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day'); // Only used in expanded
@@ -400,6 +314,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
     
     // Refs
     const gridContainerRef = useRef<HTMLDivElement>(null);
+    const expandedGridRef = useRef<HTMLDivElement>(null);
     const timezoneInputRef = useRef<HTMLInputElement>(null);
     const timezoneDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -431,37 +346,43 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
     const eventPositionsCache = useMemo(() => {
         const cache = new Map<string, { top: number; height: number; dateInView: string }>();
         events.forEach(ev => {
-            const dateInView = ev.originalTimezone && ev.originalDateTime 
-                ? (() => {
-                    try {
-                        const eventDateInOriginalTz = toZonedTime(ev.originalDateTime, ev.originalTimezone);
-                        const eventDateInViewTz = toZonedTime(eventDateInOriginalTz, viewTimezone);
-                        return format(eventDateInViewTz, 'yyyy-MM-dd');
-                    } catch { return ev.date; }
-                })()
-                : ev.date;
-            
+            // Determine which date this event falls on in the current view timezone
+            let dateInView = ev.date; // Fallback to raw date
             let hours = 9, minutes = 0;
+            
             if (ev.originalTimezone && ev.originalDateTime) {
                 try {
-                    const eventDateInOriginalTz = toZonedTime(ev.originalDateTime, ev.originalTimezone);
-                    const eventDateInViewTz = toZonedTime(eventDateInOriginalTz, viewTimezone);
-                    hours = eventDateInViewTz.getHours();
-                    minutes = eventDateInViewTz.getMinutes();
+                    // Convert from original timezone to view timezone
+                    const zonedInOriginal = toZonedTime(ev.originalDateTime, ev.originalTimezone);
+                    if (viewTimezone === ev.originalTimezone) {
+                        // Same timezone: use the zoned date directly (avoid double-conversion)
+                        dateInView = format(zonedInOriginal, 'yyyy-MM-dd');
+                        hours = zonedInOriginal.getHours();
+                        minutes = zonedInOriginal.getMinutes();
+                    } else {
+                        // Different timezone: convert to view timezone
+                        const zonedInView = toZonedTime(zonedInOriginal, viewTimezone);
+                        dateInView = format(zonedInView, 'yyyy-MM-dd');
+                        hours = zonedInView.getHours();
+                        minutes = zonedInView.getMinutes();
+                    }
                 } catch {
-                    const [h, m] = ev.startTime.split(':').map(Number);
+                    // Fallback: parse startTime directly
+                    const [h, m] = (ev.startTime || '09:00').split(':').map(Number);
                     hours = isNaN(h) ? 9 : h;
                     minutes = isNaN(m) ? 0 : m;
                 }
             } else {
-                const [h, m] = ev.startTime.split(':').map(Number);
+                // No timezone info: use startTime directly
+                const [h, m] = (ev.startTime || '09:00').split(':').map(Number);
                 hours = isNaN(h) ? 9 : h;
                 minutes = isNaN(m) ? 0 : m;
             }
             
             const totalMinutesFromStart = (hours - START_HOUR) * 60 + minutes;
             const top = (totalMinutesFromStart / 60) * PIXELS_PER_HOUR;
-            const height = (ev.duration / 60) * PIXELS_PER_HOUR;
+            const duration = ev.duration || 60; // Ensure duration is never 0/undefined
+            const height = Math.max((duration / 60) * PIXELS_PER_HOUR, 20); // Minimum 20px
             
             cache.set(ev.id, { top, height, dateInView });
         });
@@ -551,23 +472,27 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         }
     }, [eventForm.date, eventForm.startTime, eventForm.originalTimezone]);
 
-    // Function to scroll to current time
+    // Function to scroll to current time (or 7am as fallback for business hours)
     const scrollToCurrentTime = useCallback((smooth = true) => {
-        if (gridContainerRef.current) {
-            const now = new Date();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            if (hours >= START_HOUR && hours <= END_HOUR) {
-                const totalMinutes = (hours - START_HOUR) * 60 + minutes;
-                const top = (totalMinutes / 60) * PIXELS_PER_HOUR;
-                // Scroll so the current time line is ~1/3 from the top of the view
-                const offset = gridContainerRef.current.clientHeight / 3;
-                gridContainerRef.current.scrollTo({ 
+        const containers = [gridContainerRef.current, expandedGridRef.current].filter(Boolean);
+        if (containers.length === 0) return;
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        // If current time is within visible range, scroll to it; otherwise scroll to 7am
+        const targetMinutes = (hours >= START_HOUR && hours <= END_HOUR)
+            ? (hours - START_HOUR) * 60 + minutes
+            : (7 - START_HOUR) * 60;
+        const top = (targetMinutes / 60) * PIXELS_PER_HOUR;
+        containers.forEach(container => {
+            if (container) {
+                const offset = container.clientHeight / 3;
+                container.scrollTo({ 
                     top: Math.max(0, top - offset), 
                     behavior: smooth ? 'smooth' : 'auto' 
                 });
             }
-        }
+        });
     }, []);
 
     // Auto-scroll to current time on mount and when date/expanded changes
@@ -578,8 +503,10 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
     }, []); // Only on mount
 
     useEffect(() => {
-        scrollToCurrentTime(true);
-    }, [currentDate, isExpanded, scrollToCurrentTime]);
+        // Delay for expanded mode DOM to render before scrolling
+        const timer = setTimeout(() => scrollToCurrentTime(isExpanded ? false : true), isExpanded ? 150 : 0);
+        return () => clearTimeout(timer);
+    }, [currentDate, isExpanded, viewMode, scrollToCurrentTime]);
 
     // --- Helpers ---
     const toISODate = (date: Date) => {
@@ -618,6 +545,26 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         }
     };
 
+    const getEventDotColor = (type: string) => {
+        switch (type) {
+            case 'Meeting': return 'bg-blue-500';
+            case 'Deadline': return 'bg-red-500';
+            case 'Focus': return 'bg-purple-500';
+            case 'Personal': return 'bg-green-500';
+            default: return 'bg-slate-400';
+        }
+    };
+
+    const getEventChipStyle = (type: string) => {
+        switch (type) {
+            case 'Meeting': return 'bg-blue-500 text-white dark:bg-blue-600';
+            case 'Deadline': return 'bg-red-500 text-white dark:bg-red-600';
+            case 'Focus': return 'bg-purple-500 text-white dark:bg-purple-600';
+            case 'Personal': return 'bg-green-500 text-white dark:bg-green-600';
+            default: return 'bg-slate-500 text-white';
+        }
+    };
+
     // --- Interaction Handlers ---
     const handleSaveEvent = () => {
         setFormError(''); 
@@ -630,99 +577,136 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         let finalEvent = { ...eventForm } as CalendarEvent;
         if (!finalEvent.id) finalEvent.id = `e-${Date.now()}`;
         
-        // Mark new events as local (for persistence)
-        if (!finalEvent.source) finalEvent.source = 'local';
+        // ALWAYS mark new events as local (for persistence) - override any stale source
+        if (!isEditing) {
+            finalEvent.source = 'local';
+        } else if (!finalEvent.source) {
+            finalEvent.source = 'local';
+        }
         
-        // Ensure originalDateTime is set
+        // Ensure duration is always set
+        if (!finalEvent.duration || finalEvent.duration <= 0) {
+            finalEvent.duration = 60;
+        }
+        
+        // Ensure originalTimezone is always set
+        if (!finalEvent.originalTimezone) {
+            finalEvent.originalTimezone = viewTimezone || localTimezone || 'UTC';
+        }
+        
+        // Ensure originalDateTime is set using formatInTimeZone for accuracy
         if (!finalEvent.originalDateTime && finalEvent.date && finalEvent.startTime) {
              try {
-                 const [year, month, day] = finalEvent.date.split('-').map(Number);
-                 const [hours, minutes] = finalEvent.startTime.split(':').map(Number);
-                 const localDate = new Date(year, month - 1, day, hours, minutes);
-                 
-                 // Default to view/local timezone if original is missing
-                 const tz = finalEvent.originalTimezone || viewTimezone || 'UTC';
-                 finalEvent.originalTimezone = tz;
-                 
-                 const zonedDate = toZonedTime(localDate, tz);
-                 finalEvent.originalDateTime = format(zonedDate, `yyyy-MM-dd'T'HH:mm:ssXXX`, { timeZone: tz });
+                 const tz = finalEvent.originalTimezone;
+                 // Build an ISO-like string and use formatInTimeZone for proper timezone handling
+                 const dateTimeStr = `${finalEvent.date}T${finalEvent.startTime}:00`;
+                 const parsed = parse(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", new Date());
+                 finalEvent.originalDateTime = formatInTimeZone(parsed, tz, "yyyy-MM-dd'T'HH:mm:ssXXX");
              } catch (e) {
-                 // Fallback: simple ISO string from local
+                 // Fallback: simple ISO string
                  console.warn("Date calculation fallback", e);
-                 finalEvent.originalDateTime = new Date(`${finalEvent.date}T${finalEvent.startTime}`).toISOString();
+                 finalEvent.originalDateTime = `${finalEvent.date}T${finalEvent.startTime}:00`;
              }
         }
 
         if (isEditing) {
             onUpdateEvent(finalEvent);
             
-            // Handle iCal Update
-            if (finalEvent.source === 'iCal') {
-                apiFetch('/api/calendar/update', {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({
-                         id: finalEvent.id,
-                         calendarName: finalEvent.calendarName,
-                         title: finalEvent.title,
-                         startDate: finalEvent.date,
-                         startTime: finalEvent.startTime,
-                         duration: (finalEvent.duration || 60) / 60
-                     })
-                 }).catch(err => console.error("Calendar Update Failed:", err));
+            // Handle iCal Update via React Query mutation
+            if (finalEvent.source === 'iCal' && finalEvent.calendarName) {
+                updateICalEventMutation.mutate({
+                    id: finalEvent.id,
+                    calendarName: finalEvent.calendarName,
+                    title: finalEvent.title,
+                    date: finalEvent.date,
+                    startTime: finalEvent.startTime,
+                    duration: finalEvent.duration || 60,
+                });
             }
             
-            // Handle Google Calendar Update
+            // Handle Google Calendar Update via React Query mutation
             if (finalEvent.source === 'google' && finalEvent.googleEventId) {
-                apiFetch(`/api/gcal/events/${finalEvent.googleEventId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                updateGoogleEventMutation.mutate({
+                    googleEventId: finalEvent.googleEventId,
+                    event: {
                         title: finalEvent.title,
                         description: finalEvent.description,
                         date: finalEvent.date,
                         startTime: finalEvent.startTime,
                         duration: finalEvent.duration || 60,
-                        timezone: finalEvent.originalTimezone || 'Europe/Zurich'
-                    })
-                }).catch(err => console.error("Google Calendar Update Failed:", err));
+                    },
+                });
             }
         } else {
             onAddEvent(finalEvent);
             
             // Sync to Google Calendar if connected (except Personal events)
             if (googleCalendarConnected && finalEvent.type !== 'Personal') {
-                apiFetch('/api/gcal/events', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                createGoogleEventMutation.mutate(
+                    {
                         title: finalEvent.title,
                         description: finalEvent.description || '',
                         date: finalEvent.date,
                         startTime: finalEvent.startTime,
                         duration: finalEvent.duration || 60,
-                        timezone: finalEvent.originalTimezone || 'Europe/Zurich',
-                        addMeet: !!finalEvent.meetLink
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.event?.googleEventId) {
-                        // Update local event with Google ID (keep source as 'local' for persistence)
-                        onUpdateEvent({ ...finalEvent, googleEventId: data.event.googleEventId });
+                    },
+                    {
+                        onSuccess: (data) => {
+                            if (data.success && data.event?.googleEventId) {
+                                onUpdateEvent({ ...finalEvent, googleEventId: data.event.googleEventId });
+                            }
+                        },
                     }
-                })
-                .catch(err => console.error("Google Calendar Sync Failed:", err));
+                );
             }
+            
+            // Navigate to the event's date and scroll to its time
+            setCurrentDate(parse(finalEvent.date, 'yyyy-MM-dd', new Date()));
+            setTimeout(() => {
+                if (gridContainerRef.current) {
+                    const [h] = (finalEvent.startTime || '09:00').split(':').map(Number);
+                    const targetTop = ((isNaN(h) ? 9 : h) - START_HOUR) * PIXELS_PER_HOUR;
+                    gridContainerRef.current.scrollTo({ top: Math.max(0, targetTop - 60), behavior: 'smooth' });
+                }
+            }, 100);
         }
         
         setShowEventModal(false);
     };
 
+    const [isGeneratingMeet, setIsGeneratingMeet] = useState(false);
     const generateMeet = useCallback(() => {
-        const id = Math.random().toString(36).substring(2, 5) + '-' + Math.random().toString(36).substring(2, 6) + '-' + Math.random().toString(36).substring(2, 5);
-        setEventForm(prev => ({...prev, meetLink: 'https://meet.google.com/' + id}));
-    }, [setEventForm]);
+        if (!googleCalendarConnected) {
+            setFormError('Connecte Google Calendar dans les paramètres pour générer un lien Meet.');
+            return;
+        }
+        setIsGeneratingMeet(true);
+        const title = eventForm.title || 'Réunion';
+        const date = eventForm.date || toISODate(currentDate);
+        const startTime = eventForm.startTime || '09:00';
+        const duration = eventForm.duration || 60;
+        createGoogleEventMutation.mutate(
+            { title, date, startTime, duration, addMeet: true },
+            {
+                onSuccess: (data) => {
+                    if (data.success && data.event?.meetLink) {
+                        setEventForm(prev => ({
+                            ...prev,
+                            meetLink: data.event.meetLink,
+                            googleEventId: data.event.googleEventId,
+                        }));
+                    } else {
+                        setFormError('Impossible de créer le lien Meet. Réessaye.');
+                    }
+                    setIsGeneratingMeet(false);
+                },
+                onError: () => {
+                    setFormError('Erreur lors de la création du lien Meet.');
+                    setIsGeneratingMeet(false);
+                },
+            }
+        );
+    }, [googleCalendarConnected, eventForm.title, eventForm.date, eventForm.startTime, eventForm.duration, currentDate, createGoogleEventMutation]);
 
     const handleGridClick = (date: Date, hour: number) => {
         setFormError('');
@@ -910,7 +894,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                 setEventForm({...ev}); 
                                 setShowEventModal(true); 
                             }}
-                            className={`absolute rounded-md p-2 text-xs shadow-sm cursor-pointer z-10 hover:z-20 hover:shadow-md transition-all flex flex-col overflow-hidden border ${getEventStyle(ev.type)} ${isICal ? 'border-dashed opacity-90' : ''}`}
+                            className={`absolute rounded-lg p-2 text-xs shadow-sm cursor-pointer z-10 hover:z-20 hover:shadow-md transition-all flex flex-col overflow-hidden border ${getEventStyle(ev.type)} ${isICal ? 'border-dashed opacity-90' : ''}`}
                             style={{ 
                                 top: `${ev.top}px`, 
                                 height: `${ev.height}px`, 
@@ -924,9 +908,9 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                 {ev.title}
                             </div>
                             {ev.height > 40 && (
-                                <div className="text-[10px] opacity-80 mt-0.5">
+                                <div className="text-[11px] opacity-80 mt-0.5">
                                     <div className="flex items-center gap-1">
-                                        <Clock size={10} /> 
+                                        <Clock size={11} /> 
                                         {ev.originalDateTime 
                                             ? formatInTimeZone(toZonedTime(ev.originalDateTime!, ev.originalTimezone!), viewTimezone, 'HH:mm')
                                             : ev.startTime
@@ -963,9 +947,9 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
     const ExpandedModal = () => (
         <div className="fixed inset-0 z-[100] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl flex flex-col animate-in fade-in zoom-in-95 duration-300">
             {/* Toolbar */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-6">
-                    <h2 className="text-3xl font-serif font-bold text-slate-800 dark:text-white">Agenda</h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto">
+                    <h2 className="text-xl md:text-3xl font-serif font-bold text-slate-800 dark:text-white">Agenda</h2>
                     
                     {/* View Switcher */}
                     <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
@@ -973,37 +957,56 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                             <button
                                 key={m}
                                 onClick={() => setViewMode(m)}
-                                className={`px-4 py-1.5 rounded-md text-sm font-bold capitalize transition-all ${viewMode === m ? 'bg-white dark:bg-slate-700 shadow-sm text-brand-orange' : 'text-slate-500 hover:text-slate-700'}`}
+                                className={`px-3 md:px-4 py-1.5 rounded-md text-xs md:text-sm font-bold capitalize transition-all ${viewMode === m ? 'bg-white dark:bg-slate-700 shadow-sm text-brand-orange' : 'text-slate-500 hover:text-slate-700'}`}
                             >
-                                {m === 'day' ? 'Jour' : m === 'week' ? 'Semaine' : 'Mois'}
+                                {m === 'day' ? 'Jour' : m === 'week' ? 'Sem.' : 'Mois'}
                             </button>
                         ))}
                     </div>
 
                     {/* Timezone Selector */}
-                    <div className="relative group">
+                    <div className="relative group hidden md:block">
                         <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-brand-orange px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <Globe size={16} /> 
                             {viewTimezone.split('/').pop()?.replace(/_/g, ' ')}
                         </button>
-                        {/* Simple dropdown for quick switch (Local vs others could be added here) */}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800">
+                <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end">
+                    <button 
+                        onClick={() => setCurrentDate(new Date())} 
+                        className="px-3 md:px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs md:text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+                        aria-label="Aller à aujourd'hui"
+                    >
                         Aujourd'hui
                     </button>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><ChevronLeft /></button>
-                        <span className="text-lg font-bold w-48 text-center capitalize">
+                    <div className="flex items-center gap-1 md:gap-2">
+                        <button 
+                            onClick={() => navigate(-1)} 
+                            className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            aria-label="Période précédente"
+                        >
+                            <ChevronLeft />
+                        </button>
+                        <span className="text-sm md:text-lg font-bold w-32 md:w-48 text-center capitalize truncate">
                             {viewMode === 'day' ? format(currentDate, 'EEEE d MMMM', { locale: fr }) :
                              viewMode === 'week' ? `Semaine ${format(currentDate, 'w')}` :
                              format(currentDate, 'MMMM yyyy', { locale: fr })}
                         </span>
-                        <button onClick={() => navigate(1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><ChevronRight /></button>
+                        <button 
+                            onClick={() => navigate(1)} 
+                            className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            aria-label="Période suivante"
+                        >
+                            <ChevronRight />
+                        </button>
                     </div>
-                    <button onClick={() => setIsExpanded(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-red-500 transition-colors">
+                    <button 
+                        onClick={() => setIsExpanded(false)} 
+                        className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-red-500 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        aria-label="Fermer le mode immersion"
+                    >
                         <Minimize2 size={20} />
                     </button>
                 </div>
@@ -1013,11 +1016,11 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
             <div className="flex-1 flex overflow-hidden">
                 {/* Sidebar (Mini Cal + Filters) */}
                 <div className="w-64 border-r border-slate-200 dark:border-slate-800 p-6 hidden lg:block overflow-y-auto">
-                    <button onClick={() => { setIsEditing(false); setEventForm({...eventForm, date: toISODate(currentDate)}); setShowEventModal(true); }} className="w-full py-3 bg-brand-orange text-white rounded-xl shadow-lg shadow-orange-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                    <button onClick={() => { setIsEditing(false); setEventForm({ type: 'Meeting', date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: viewTimezone }); setShowEventModal(true); }} className="w-full py-3 bg-brand-orange text-white rounded-xl shadow-lg shadow-orange-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
                         <Plus size={20} /> Créer
                     </button>
                     {/* Mini Month View (Simplified) */}
-                    <div className="mb-8">
+                    <div className="mb-6">
                         <div className="font-bold mb-4 capitalize text-slate-700 dark:text-slate-200">{format(currentDate, 'MMMM yyyy', { locale: fr })}</div>
                         <div className="grid grid-cols-7 gap-1 text-center text-xs">
                             {['L','M','M','J','V','S','D'].map(d => <div key={d} className="text-slate-400 font-bold py-1">{d}</div>)}
@@ -1033,40 +1036,139 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                             })}
                         </div>
                     </div>
+
+                    {/* Calendar Sources */}
+                    <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Mes agendas</div>
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <input 
+                                    type="checkbox" 
+                                    checked={visibleSources.local} 
+                                    onChange={() => setVisibleSources(prev => ({ ...prev, local: !prev.local }))}
+                                    className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
+                                />
+                                <span className="w-3 h-3 rounded-sm bg-brand-orange flex-shrink-0" />
+                                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Marion Web OS</span>
+                            </label>
+                            {googleCalendarConnected && (
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={visibleSources.google} 
+                                        onChange={() => setVisibleSources(prev => ({ ...prev, google: !prev.google }))}
+                                        className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
+                                    />
+                                    <span className="w-3 h-3 rounded-sm bg-blue-500 flex-shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Google Calendar</div>
+                                        {googleCalendarEmail && <div className="text-[11px] text-slate-400 truncate">{googleCalendarEmail}</div>}
+                                    </div>
+                                </label>
+                            )}
+                            {allMergedEvents.some(e => e.source === 'iCal') && (
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={visibleSources.ical} 
+                                        onChange={() => setVisibleSources(prev => ({ ...prev, ical: !prev.ical }))}
+                                        className="w-4 h-4 rounded accent-gray-500 cursor-pointer"
+                                    />
+                                    <span className="w-3 h-3 rounded-sm bg-slate-500 flex-shrink-0" />
+                                    <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">iCal</span>
+                                </label>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Grid */}
-                <div className="flex-1 overflow-y-auto relative no-scrollbar bg-white dark:bg-[#0B0F19] pt-4 pb-20">
+                <div ref={expandedGridRef} className="flex-1 overflow-y-auto relative no-scrollbar bg-white dark:bg-[#0B0F19] pt-4 pb-20">
                     {viewMode === 'month' ? (
-                        <div className="h-full p-4 grid grid-cols-7 grid-rows-5 gap-2">
-                            {Array.from({length: 35}).map((_, i) => {
-                                const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-                                d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) + i);
-                                const isCurrentMonth = d.getMonth() === currentDate.getMonth();
-                                return (
-                                    <div 
-                                        key={i} 
-                                        onClick={() => handleGridClick(d, 9)} // Create event at 9am
-                                        className={`border rounded-lg p-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isCurrentMonth ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700' : 'bg-slate-50 dark:bg-slate-900 border-transparent opacity-50'}`}
-                                    >
-                                        <div className="text-right text-xs font-bold mb-1">{d.getDate()}</div>
-                                        {events.filter(e => e.date === toISODate(d)).slice(0,3).map(ev => (
-                                            <div 
-                                                key={ev.id} 
-                                                onClick={(e) => { 
-                                                    e.stopPropagation(); 
-                                                    setIsEditing(true); 
-                                                    setEventForm({...ev}); 
-                                                    setShowEventModal(true); 
-                                                }}
-                                                className={`text-[10px] truncate px-1 rounded mb-1 cursor-pointer hover:opacity-80 ${getEventStyle(ev.type)}`}
-                                            >
-                                                {ev.title}
-                                            </div>
-                                        ))}
+                        <div className="h-full flex flex-col">
+                            {/* Day name headers */}
+                            <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700">
+                                {['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'].map(d => (
+                                    <div key={d} className="text-center py-2 text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+                                        {d}
                                     </div>
-                                )
-                            })}
+                                ))}
+                            </div>
+                            {/* Month grid */}
+                            <div className="flex-1 grid grid-cols-7 grid-rows-5">
+                                {Array.from({length: 35}).map((_, i) => {
+                                    const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                                    d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) + i);
+                                    const isCurrentMonth = d.getMonth() === currentDate.getMonth();
+                                    const isToday = toISODate(d) === toISODate(currentTime);
+                                    const dayEvents = events.filter(e => {
+                                        const cached = eventPositionsCache.get(e.id);
+                                        return (cached?.dateInView || e.date) === toISODate(d);
+                                    });
+                                    const visibleEvents = dayEvents.slice(0, 3);
+                                    const moreCount = dayEvents.length - 3;
+                                    return (
+                                        <div 
+                                            key={i} 
+                                            onClick={() => handleGridClick(d, 9)}
+                                            className={`border-b border-r border-slate-200 dark:border-slate-700 p-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-h-[100px] ${
+                                                !isCurrentMonth ? 'bg-slate-50/50 dark:bg-slate-900/30' : 'bg-white dark:bg-transparent'
+                                            } ${i % 7 === 0 ? 'border-l' : ''} ${i < 7 ? 'border-t' : ''}`}
+                                        >
+                                            <div className={`text-xs font-bold mb-1 flex justify-end ${!isCurrentMonth ? 'text-slate-400 dark:text-slate-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                {isToday ? (
+                                                    <span className="w-7 h-7 flex items-center justify-center rounded-full bg-brand-orange text-white text-xs font-bold">
+                                                        {d.getDate()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="w-7 h-7 flex items-center justify-center">
+                                                        {d.getDate()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                {visibleEvents.map(ev => (
+                                                    <div 
+                                                        key={ev.id} 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            setIsEditing(true); 
+                                                            setEventForm({...ev}); 
+                                                            setShowEventModal(true); 
+                                                        }}
+                                                        className={`flex items-center gap-1 text-[11px] leading-tight truncate px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80 transition-opacity ${
+                                                            ev.duration && ev.duration >= 1440
+                                                                ? `${getEventChipStyle(ev.type)} rounded-md font-medium`
+                                                                : 'text-slate-700 dark:text-slate-200'
+                                                        }`}
+                                                    >
+                                                        {(!ev.duration || ev.duration < 1440) && (
+                                                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getEventDotColor(ev.type)}`} />
+                                                        )}
+                                                        <span className="truncate">
+                                                            {ev.startTime && (!ev.duration || ev.duration < 1440) ? (
+                                                                <><span className="font-medium">{ev.startTime.replace(/^0/, '')}</span> {ev.title}</>
+                                                            ) : ev.title}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {moreCount > 0 && (
+                                                    <div 
+                                                        className="text-[11px] font-medium text-brand-orange hover:underline cursor-pointer px-1.5"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setCurrentDate(d);
+                                                            setViewMode('day');
+                                                        }}
+                                                    >
+                                                        +{moreCount} autre{moreCount > 1 ? 's' : ''}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
                     ) : (
                         <div className="flex min-h-full">
@@ -1083,17 +1185,30 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                             
                             {/* Columns */}
                             <div className="flex-1 flex">
-                                {viewMode === 'day' ? renderDayColumn(currentDate) : getWeekDays(currentDate).map(d => (
-                                    <div key={d.toISOString()} className="flex-1 flex flex-col min-w-[150px]">
-                                        <div className={`text-center py-2 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white/95 dark:bg-slate-900/95 z-10 backdrop-blur-sm ${toISODate(d) === toISODate(currentTime) ? 'text-brand-orange' : ''}`}>
-                                            <div className="text-xs uppercase font-bold">{format(d, 'EEE', { locale: fr })}</div>
-                                            <div className="text-xl font-serif font-bold">{d.getDate()}</div>
+                                {viewMode === 'day' ? renderDayColumn(currentDate) : getWeekDays(currentDate).map(d => {
+                                    const isDayToday = toISODate(d) === toISODate(currentTime);
+                                    return (
+                                        <div key={d.toISOString()} className="flex-1 flex flex-col min-w-[150px]">
+                                            <div className={`text-center py-2 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white/95 dark:bg-slate-900/95 z-10 backdrop-blur-sm`}>
+                                                <div className={`text-[11px] uppercase font-bold tracking-wider ${isDayToday ? 'text-brand-orange' : 'text-slate-500 dark:text-slate-400'}`}>{format(d, 'EEE', { locale: fr })}</div>
+                                                <div className="flex justify-center mt-0.5">
+                                                    {isDayToday ? (
+                                                        <span className="w-9 h-9 flex items-center justify-center rounded-full bg-brand-orange text-white text-lg font-serif font-bold">
+                                                            {d.getDate()}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="w-9 h-9 flex items-center justify-center text-xl font-serif font-bold text-slate-800 dark:text-white">
+                                                            {d.getDate()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 relative">
+                                                {renderDayColumn(d, false)}
+                                            </div>
                                         </div>
-                                        <div className="flex-1 relative">
-                                            {renderDayColumn(d, false)}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -1105,20 +1220,45 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
     // --- Widget View (Compact) ---
     return (
         <>
-            <div className="flex flex-col h-[500px] w-full animate-in fade-in slide-in-from-left duration-500">
+            <div className="flex flex-col h-[350px] md:h-[500px] w-full animate-in fade-in slide-in-from-left duration-500">
+                {/* Reconnect banner */}
+                {!googleCalendarConnected && (
+                    <div className="mx-1 mb-2 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs">
+                        <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
+                        <span className="text-amber-700 dark:text-amber-300 flex-1">Google Calendar déconnecté</span>
+                        <button
+                            onClick={handleReconnect}
+                            className="px-2.5 py-1 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors text-[11px]"
+                        >
+                            Reconnecter
+                        </button>
+                    </div>
+                )}
                 {/* Widget Header : date à gauche, boutons alignés à droite sur une seule ligne */}
                 <div className="flex justify-between items-center mb-3 px-1">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors"><ChevronLeft size={20} /></button>
+                        <button 
+                            onClick={() => navigate(-1)} 
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            aria-label="Jour précédent"
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
                         <div className="text-center">
-                            <div className="text-2xl font-serif font-bold text-slate-800 dark:text-white capitalize leading-none">
+                            <div className="text-xl md:text-2xl font-serif font-bold text-slate-800 dark:text-white capitalize leading-none">
                                 {format(currentDate, 'EEEE d', { locale: fr })}
                             </div>
                             <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
                                 {format(currentDate, 'MMMM', { locale: fr })}
                             </div>
                         </div>
-                        <button onClick={() => navigate(1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors"><ChevronRight size={20} /></button>
+                        <button 
+                            onClick={() => navigate(1)} 
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            aria-label="Jour suivant"
+                        >
+                            <ChevronRight size={20} />
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1136,19 +1276,21 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                 <span className="hidden sm:inline">Sync</span>
                             </div>
                         ) : (
-                            <div 
-                                className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 text-xs"
-                                title="Google Calendar non connecté"
+                            <button 
+                                onClick={handleReconnect}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full text-amber-600 dark:text-amber-400 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                                title="Cliquez pour reconnecter Google Calendar"
                             >
-                                <div className="w-2 h-2 bg-slate-300 rounded-full" />
-                                <span className="hidden sm:inline">Hors ligne</span>
-                            </div>
+                                <AlertCircle size={12} />
+                                <span className="hidden sm:inline">Reconnecter</span>
+                            </button>
                         )}
                         
                         <button
                             onClick={() => setCurrentDate(new Date())}
                             className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors"
                             title="Aujourd'hui"
+                            aria-label="Aller à aujourd'hui"
                         >
                             <CalIcon size={18} />
                         </button>
@@ -1165,7 +1307,14 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                 {formatInTimeZone(currentTime, localTimezone, 'HH:mm')}
                             </span>
                         </button>
-                        <button onClick={() => setIsExpanded(true)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors" title="Agrandir"><Maximize2 size={18} /></button>
+                        <button 
+                            onClick={() => setIsExpanded(true)} 
+                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors" 
+                            title="Agrandir"
+                            aria-label="Agrandir l'agenda"
+                        >
+                            <Maximize2 size={18} />
+                        </button>
                     </div>
                 </div>
 
@@ -1176,7 +1325,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                             <div className="w-14 flex-shrink-0 border-r border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/10 z-10 sticky left-0">
                                 {Array.from({ length: HOURS_COUNT }).map((_, i) => (
                                     <div key={i} className="relative" style={{ height: PIXELS_PER_HOUR }}>
-                                        <span className="absolute -top-2 right-3 text-[10px] font-bold text-slate-400 font-mono">{`${START_HOUR + i}:00`}</span>
+                                        <span className="absolute -top-2 right-3 text-[10px] font-bold text-slate-400 tabular-nums">{`${START_HOUR + i}:00`}</span>
                                     </div>
                                 ))}
                             </div>
@@ -1225,9 +1374,14 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                                 {!eventForm.meetLink ? (
                                                     <button 
                                                         onClick={generateMeet}
-                                                        className="flex items-center justify-center gap-2 w-full py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                                                        disabled={isGeneratingMeet}
+                                                        className="flex items-center justify-center gap-2 w-full py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
                                                     >
-                                                        <Video size={16} /> Générer un lien Google Meet
+                                                        {isGeneratingMeet ? (
+                                                            <><div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /> Création en cours...</>
+                                                        ) : (
+                                                            <><Video size={16} /> Générer un lien Google Meet</>
+                                                        )}
                                                     </button>
                                                 ) : (
                                                     <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
@@ -1381,7 +1535,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                                     <span className="text-slate-400 ml-2 text-xs">{tz.region}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-xs text-slate-400 font-mono">{formatInTimeZone(currentTime, tz.value, 'HH:mm')}</span>
+                                                    <span className="text-xs text-slate-400 tabular-nums">{formatInTimeZone(currentTime, tz.value, 'HH:mm')}</span>
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -1421,7 +1575,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                         key={city.tz}
                                         className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                                             customCity === city.name
-                                            ? 'bg-gradient-to-r from-orange-50 to-amber-50 border-brand-orange shadow-sm' 
+                                            ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/20 dark:from-orange-500/30 dark:to-amber-500/30 border-brand-orange shadow-sm ring-1 ring-brand-orange/30' 
                                             : 'bg-gradient-to-r from-amber-50/30 to-orange-50/30 dark:from-slate-800 dark:to-slate-800 border-amber-200/50 dark:border-slate-700 hover:border-brand-orange'
                                         }`}
                                     >
@@ -1438,7 +1592,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                             <span className="font-bold text-sm dark:text-white">{city.name}</span>
                                         </button>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-500 font-mono bg-white/60 dark:bg-slate-700 px-2 py-1 rounded-full">
+                                            <span className="text-xs text-slate-500 tabular-nums bg-white/60 dark:bg-slate-700 px-2 py-1 rounded-full">
                                                 {formatInTimeZone(currentTime, city.tz, 'HH:mm')}
                                             </span>
                                             <button
@@ -1467,7 +1621,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                     key={city.name}
                                     className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                                         customCity === city.name
-                                        ? 'bg-orange-50 border-brand-orange' 
+                                        ? 'bg-orange-500/15 dark:bg-orange-500/25 border-brand-orange ring-1 ring-brand-orange/30' 
                                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
                                 >
@@ -1484,7 +1638,7 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
                                         <span className="font-bold text-sm dark:text-white">{city.name}</span>
                                     </button>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-slate-400 font-mono">
+                                        <span className="text-xs text-slate-400 tabular-nums">
                                             {formatInTimeZone(currentTime, city.tz, 'HH:mm')}
                                         </span>
                                         <button
@@ -1504,3 +1658,5 @@ export const Agenda: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent,
         </>
     );
 };
+
+export const Agenda = React.memo(AgendaInner);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem, InvoicePayment, InvoiceTemplate, Project } from '../types';
 import { Plus, Trash2, Download, Save, RefreshCw, X, Clock, Wand2, Calendar, CreditCard, Link2, BookmarkPlus, Check, ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../utils';
+import { apiFetch } from '../services/api';
 
 declare const confetti: any;
 
@@ -150,7 +151,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                 setCurrentInvoice(prev => ({ ...prev, clientAddress: generatedAddress.trim() }));
             }
             
-            fetch('/api/time/get', {
+            fetch('/api/v1/time/get', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId: activeProject.id })
@@ -247,7 +248,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     message: `Facture ${currentInvoice.number}`
                 };
 
-                const res = await fetch('/api/generate-qr', { // Using correct route
+                const res = await apiFetch('/api/v1/generate-qr', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -307,7 +308,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
         setTimeout(async () => {
             // Mark logs as billed if needed
             if (currentInvoice.items.some(i => i.desc.includes('Prestations horaires')) && pendingLogs.length > 0) {
-                await fetch('/api/time/mark_billed', {
+                await fetch('/api/v1/time/mark_billed', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ clientId: selectedProjectId, logIds: pendingLogs.map(l => l.id) })
@@ -714,7 +715,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     {(activeBank.id === 'main' && ['CHF', 'EUR', '€'].includes(currentInvoice.currency || 'CHF')) ? (
                         <div className="w-full border-t border-dashed border-slate-300 relative break-inside-avoid shrink-0 bg-white" style={{ height: '105mm', padding: '0' }}>
                             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-slate-400 print:hidden">
-                                <span className="text-xs font-mono">BVR / QR (Zone Protegée)</span>
+                                <span className="text-xs tabular-nums">BVR / QR (Zone Protegée)</span>
                             </div>
 
                             <div className="flex h-full font-sans text-black text-xs leading-tight">

@@ -13,24 +13,19 @@ from contextlib import contextmanager
 from typing import Optional, Dict, List, Any, Tuple
 import threading
 
+from config import get_current_config
+
 # Thread-local storage for connections
 _local = threading.local()
 
-# Database configuration
-DATABASE_PATH = os.environ.get('DATABASE_URL', '').replace('sqlite:///', '') or None
-DEFAULT_DB_NAME = 'marion.db'
-
 
 def get_db_path() -> Path:
-    """Get the database file path"""
-    if DATABASE_PATH:
-        return Path(DATABASE_PATH)
-    
-    # Default: store in Marion Web OS Database folder
-    user_home = Path.home()
-    db_folder = user_home / "Desktop" / "Marion Web OS Database"
-    db_folder.mkdir(parents=True, exist_ok=True)
-    return db_folder / DEFAULT_DB_NAME
+    """Get the database file path from the centralised Config."""
+    cfg = get_current_config()
+    db_path = cfg.get_db_path()
+    # Ensure parent directory exists
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    return db_path
 
 
 def get_connection() -> sqlite3.Connection:
@@ -173,7 +168,11 @@ def validate_session(token: str) -> Optional[Dict]:
     if not session:
         return None
     
-    if datetime.fromisoformat(session['expires_at']) < datetime.now():
+    expires_at = session['expires_at']
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    
+    if expires_at < datetime.now():
         delete_session(token)
         return None
     
@@ -268,6 +267,36 @@ def delete_oauth_token(user_id: int, provider: str = 'google', email: str = None
 # WORKSPACE OPERATIONS
 # =============================================================================
 
+def create_workspace(owner_id: int, name: str, settings: Dict = None, branding: Dict = None) -> int:
+    """Create a new workspace and return its ID"""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO workspaces (name, owner_id, settings_json, branding_json)
+               VALUES (?, ?, ?, ?)""",
+            (name, owner_id,
+             json.dumps(settings or {}),
+             json.dumps(branding or {}))
+        )
+        workspace_id = cursor.lastrowid
+
+        # Add owner as 'owner' member
+        conn.execute(
+            """INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role)
+               VALUES (?, ?, 'owner')""",
+            (workspace_id, owner_id)
+        )
+        return workspace_id
+
+
+def get_workspace_by_id(workspace_id: int) -> Optional[Dict]:
+    """Get a workspace by ID"""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM workspaces WHERE id = ?", (workspace_id,)
+        ).fetchone()
+        return row_to_dict(row)
+
+
 def get_user_workspace(user_id: int) -> Optional[Dict]:
     """Get the primary workspace for a user"""
     with get_db() as conn:
@@ -280,6 +309,48 @@ def get_user_workspace(user_id: int) -> Optional[Dict]:
             (user_id, user_id, user_id)
         ).fetchone()
         return row_to_dict(row)
+
+
+def get_user_workspaces(user_id: int) -> List[Dict]:
+    """Get all workspaces a user has access to (owned + member)"""
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT DISTINCT w.*, 
+                      CASE WHEN w.owner_id = ? THEN 'owner'
+                           ELSE COALESCE(wm.role, 'member')
+                      END AS user_role
+               FROM workspaces w
+               LEFT JOIN workspace_members wm ON w.id = wm.workspace_id AND wm.user_id = ?
+               WHERE w.owner_id = ? OR wm.user_id = ?
+               ORDER BY w.owner_id = ? DESC, w.name ASC""",
+            (user_id, user_id, user_id, user_id, user_id)
+        ).fetchall()
+        return rows_to_list(rows)
+
+
+def update_workspace(workspace_id: int, updates: Dict):
+    """Update workspace name or other direct fields"""
+    allowed = ['name']
+    set_clauses = []
+    values = []
+    for field in allowed:
+        if field in updates:
+            set_clauses.append(f"{field} = ?")
+            values.append(updates[field])
+    if not set_clauses:
+        return
+    values.append(workspace_id)
+    with get_db() as conn:
+        conn.execute(
+            f"UPDATE workspaces SET {', '.join(set_clauses)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            values
+        )
+
+
+def delete_workspace(workspace_id: int):
+    """Delete a workspace and cascade to all related data"""
+    with get_db() as conn:
+        conn.execute("DELETE FROM workspaces WHERE id = ?", (workspace_id,))
 
 
 def update_workspace_settings(workspace_id: int, settings: Dict):
@@ -298,6 +369,112 @@ def update_workspace_branding(workspace_id: int, branding: Dict):
             "UPDATE workspaces SET branding_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (json.dumps(branding), workspace_id)
         )
+
+
+# =============================================================================
+# WORKSPACE MEMBER OPERATIONS
+# =============================================================================
+
+def add_workspace_member(workspace_id: int, user_id: int, role: str = 'member') -> bool:
+    """Add a user to a workspace. Returns True on success."""
+    if role not in ('owner', 'admin', 'member', 'viewer'):
+        raise ValueError(f"Invalid role: {role}")
+    with get_db() as conn:
+        try:
+            conn.execute(
+                """INSERT INTO workspace_members (workspace_id, user_id, role)
+                   VALUES (?, ?, ?)""",
+                (workspace_id, user_id, role)
+            )
+            return True
+        except Exception:
+            return False
+
+
+def remove_workspace_member(workspace_id: int, user_id: int):
+    """Remove a user from a workspace"""
+    with get_db() as conn:
+        conn.execute(
+            "DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?",
+            (workspace_id, user_id)
+        )
+
+
+def update_workspace_member_role(workspace_id: int, user_id: int, new_role: str):
+    """Update a member's role in a workspace"""
+    if new_role not in ('owner', 'admin', 'member', 'viewer'):
+        raise ValueError(f"Invalid role: {new_role}")
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE workspace_members SET role = ? WHERE workspace_id = ? AND user_id = ?",
+            (new_role, workspace_id, user_id)
+        )
+
+
+def get_workspace_members(workspace_id: int) -> List[Dict]:
+    """Get all members of a workspace including the owner"""
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT u.id, u.email, u.display_name, wm.role, wm.created_at
+               FROM workspace_members wm
+               JOIN users u ON wm.user_id = u.id
+               WHERE wm.workspace_id = ?
+               ORDER BY 
+                   CASE wm.role 
+                       WHEN 'owner' THEN 0 
+                       WHEN 'admin' THEN 1 
+                       WHEN 'member' THEN 2 
+                       WHEN 'viewer' THEN 3 
+                   END""",
+            (workspace_id,)
+        ).fetchall()
+        members = rows_to_list(rows)
+
+        # Ensure owner is included
+        workspace = get_workspace_by_id(workspace_id)
+        if workspace:
+            owner_id = workspace['owner_id']
+            if not any(m['id'] == owner_id for m in members):
+                owner = get_user_by_id(owner_id)
+                if owner:
+                    members.insert(0, {
+                        'id': owner['id'],
+                        'email': owner['email'],
+                        'display_name': owner['display_name'],
+                        'role': 'owner',
+                        'created_at': workspace['created_at'],
+                    })
+        return members
+
+
+def check_workspace_permission(workspace_id: int, user_id: int, required_role: str = 'viewer') -> bool:
+    """Check if a user has at least the required role in a workspace.
+    Role hierarchy: owner > admin > member > viewer
+    """
+    role_order = {'owner': 0, 'admin': 1, 'member': 2, 'viewer': 3}
+    if required_role not in role_order:
+        return False
+
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return False
+
+    # Owner always has full access
+    if workspace['owner_id'] == user_id:
+        return True
+
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?",
+            (workspace_id, user_id)
+        ).fetchone()
+
+    if not row:
+        return False
+
+    user_role_rank = role_order.get(row['role'], 99)
+    required_rank = role_order[required_role]
+    return user_role_rank <= required_rank
 
 
 # =============================================================================
@@ -576,6 +753,44 @@ def update_invoice(invoice_id: int, updates: Dict):
 
 
 # =============================================================================
+# EMAIL ACCOUNT OPERATIONS (Phase 3.2)
+# =============================================================================
+
+def save_email_account(user_id: int, username: str, password_encrypted: str,
+                       salt: str, imap_host: str = None, smtp_host: str = None) -> int:
+    """Save or update email account credentials (encrypted)."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO email_accounts (user_id, username, password_encrypted, salt, imap_host, smtp_host)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, username)
+               DO UPDATE SET password_encrypted = excluded.password_encrypted,
+                             salt = excluded.salt,
+                             imap_host = COALESCE(excluded.imap_host, email_accounts.imap_host),
+                             smtp_host = COALESCE(excluded.smtp_host, email_accounts.smtp_host)""",
+            (user_id, username, password_encrypted, salt,
+             imap_host or 'mail.infomaniak.com', smtp_host or 'mail.infomaniak.com')
+        )
+        return cursor.lastrowid
+
+
+def get_email_account(user_id: int) -> Optional[Dict]:
+    """Get the email account for a user."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM email_accounts WHERE user_id = ? LIMIT 1",
+            (user_id,)
+        ).fetchone()
+        return row_to_dict(row)
+
+
+def delete_email_account(user_id: int):
+    """Delete the email account for a user."""
+    with get_db() as conn:
+        conn.execute("DELETE FROM email_accounts WHERE user_id = ?", (user_id,))
+
+
+# =============================================================================
 # RATE LIMITING
 # =============================================================================
 
@@ -590,7 +805,9 @@ def check_rate_limit(ip_address: str, endpoint: str, max_attempts: int = 10, win
         ).fetchone()
         
         if row:
-            reset_at = datetime.fromisoformat(row['reset_at'])
+            reset_at = row['reset_at']
+            if isinstance(reset_at, str):
+                reset_at = datetime.fromisoformat(reset_at)
             if reset_at < now:
                 # Window expired, reset
                 conn.execute(
@@ -652,6 +869,424 @@ def migrate_project_from_dict(workspace_id: int, project_dict: Dict) -> int:
         create_invoice(project_id, invoice)
     
     return project_id
+
+
+# =============================================================================
+# PORTAL OPERATIONS
+# =============================================================================
+
+def get_project_by_portal_token(share_token: str) -> Optional[Dict]:
+    """Find a project by its portal share token (stored in portal_settings_json)."""
+    with get_db() as conn:
+        rows = conn.execute("SELECT * FROM projects").fetchall()
+        for row in rows:
+            d = row_to_dict(row)
+            ps_raw = d.get('portal_settings_json')
+            if ps_raw:
+                try:
+                    ps = json.loads(ps_raw) if isinstance(ps_raw, str) else ps_raw
+                    if ps.get('shareToken') == share_token and ps.get('enabled'):
+                        return d
+                except (json.JSONDecodeError, TypeError):
+                    pass
+    return None
+
+
+def verify_portal_pin(project_id: int, pin: str) -> bool:
+    """Check if the given PIN matches the project's portal PIN."""
+    with get_db() as conn:
+        row = conn.execute("SELECT portal_pin FROM projects WHERE id = ?", (project_id,)).fetchone()
+        if not row:
+            return False
+        stored = row['portal_pin']
+        if not stored:
+            # No PIN set → open access
+            return True
+        return stored == pin
+
+
+# -- Portal Deliverables --
+
+def create_portal_deliverable(project_id: int, data: Dict) -> int:
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO portal_deliverables
+               (project_id, type, title, url, description, thumbnail_base64, sort_order, visible, file_path, original_name)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (project_id, data.get('type', 'link'), data['title'],
+             data.get('url'), data.get('description'), data.get('thumbnail'),
+             data.get('sortOrder', 0), 1 if data.get('visible', True) else 0,
+             data.get('file_path'), data.get('original_name'))
+        )
+        return cursor.lastrowid
+
+
+def get_portal_deliverables(project_id: int, visible_only: bool = False) -> List[Dict]:
+    with get_db() as conn:
+        if visible_only:
+            rows = conn.execute(
+                "SELECT * FROM portal_deliverables WHERE project_id = ? AND visible = 1 ORDER BY sort_order",
+                (project_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM portal_deliverables WHERE project_id = ? ORDER BY sort_order",
+                (project_id,)
+            ).fetchall()
+        return rows_to_list(rows)
+
+
+def update_portal_deliverable(deliverable_id: int, data: Dict):
+    allowed = ['type', 'title', 'url', 'description', 'thumbnail_base64', 'sort_order', 'visible', 'file_path', 'original_name']
+    clauses, vals = [], []
+    for k in allowed:
+        if k in data:
+            clauses.append(f"{k} = ?")
+            vals.append(data[k])
+    if not clauses:
+        return
+    vals.append(deliverable_id)
+    with get_db() as conn:
+        conn.execute(f"UPDATE portal_deliverables SET {', '.join(clauses)} WHERE id = ?", vals)
+
+
+def delete_portal_deliverable(deliverable_id: int):
+    with get_db() as conn:
+        row = conn.execute("SELECT file_path FROM portal_deliverables WHERE id = ?", (deliverable_id,)).fetchone()
+        if row and row['file_path']:
+            try:
+                import os
+                fp = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'portal_deliverables', row['file_path'])
+                if os.path.isfile(fp):
+                    os.remove(fp)
+            except Exception:
+                pass
+        conn.execute("DELETE FROM portal_deliverables WHERE id = ?", (deliverable_id,))
+
+
+# -- Portal Updates --
+
+def create_portal_update(project_id: int, data: Dict) -> int:
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO portal_updates (project_id, phase, title, content, attachments_json)
+               VALUES (?, ?, ?, ?, ?)""",
+            (project_id, data.get('phase'), data['title'],
+             data.get('content', ''), json.dumps(data.get('attachments', [])))
+        )
+        return cursor.lastrowid
+
+
+def get_portal_updates(project_id: int) -> List[Dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM portal_updates WHERE project_id = ? ORDER BY created_at DESC",
+            (project_id,)
+        ).fetchall()
+        return rows_to_list(rows)
+
+
+def delete_portal_update(update_id: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM portal_updates WHERE id = ?", (update_id,))
+
+
+# -- Portal Comments --
+
+def create_portal_comment(project_id: int, data: Dict) -> int:
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO portal_comments (project_id, author, text, phase_ref, is_admin)
+               VALUES (?, ?, ?, ?, ?)""",
+            (project_id, data['author'], data['text'],
+             data.get('phaseRef'), 1 if data.get('isAdmin') else 0)
+        )
+        return cursor.lastrowid
+
+
+def get_portal_comments(project_id: int) -> List[Dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM portal_comments WHERE project_id = ? ORDER BY created_at ASC",
+            (project_id,)
+        ).fetchall()
+        return rows_to_list(rows)
+
+
+def delete_portal_comment(comment_id: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM portal_comments WHERE id = ?", (comment_id,))
+
+
+def mark_portal_comments_seen(project_id: int):
+    with get_db() as conn:
+        conn.execute("UPDATE portal_comments SET seen = 1 WHERE project_id = ? AND is_admin = 0", (project_id,))
+
+
+def count_unseen_portal_comments(project_id: int) -> int:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM portal_comments WHERE project_id = ? AND is_admin = 0 AND seen = 0",
+            (project_id,)
+        ).fetchone()
+        return row['cnt'] if row else 0
+
+
+# -- Portal Client Files --
+
+def create_portal_client_file(project_id: int, data: Dict) -> int:
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO portal_client_files
+               (project_id, filename, original_name, mime_type, size_bytes, category, note, author_name)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (project_id, data['filename'], data['originalName'],
+             data.get('mimeType'), data.get('sizeBytes', 0),
+             data.get('category', 'other'), data.get('note'), data.get('authorName'))
+        )
+        return cursor.lastrowid
+
+
+def get_portal_client_files(project_id: int) -> List[Dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM portal_client_files WHERE project_id = ? ORDER BY created_at DESC",
+            (project_id,)
+        ).fetchall()
+        return rows_to_list(rows)
+
+
+def delete_portal_client_file(file_id: int) -> Optional[Dict]:
+    """Delete a client file record and return its data for physical file cleanup."""
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM portal_client_files WHERE id = ?", (file_id,)).fetchone()
+        if row:
+            conn.execute("DELETE FROM portal_client_files WHERE id = ?", (file_id,))
+            return row_to_dict(row)
+    return None
+
+
+def mark_portal_files_seen(project_id: int):
+    with get_db() as conn:
+        conn.execute("UPDATE portal_client_files SET seen = 1 WHERE project_id = ?", (project_id,))
+
+
+def count_unseen_portal_files(project_id: int) -> int:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM portal_client_files WHERE project_id = ? AND seen = 0",
+            (project_id,)
+        ).fetchone()
+        return row['cnt'] if row else 0
+
+
+# -- Portal Documents --
+
+def create_portal_document(project_id: int, data: Dict) -> int:
+    """Create a portal document record."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO portal_documents
+               (project_id, title, doc_type, file_path, original_name, mime_type, size_bytes, visible)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (project_id, data['title'], data.get('doc_type', 'other'),
+             data['file_path'], data['original_name'],
+             data.get('mime_type'), data.get('size_bytes', 0),
+             1 if data.get('visible', True) else 0)
+        )
+        return cursor.lastrowid
+
+
+def get_portal_documents(project_id: int, visible_only: bool = False) -> List[Dict]:
+    """Get all portal documents for a project."""
+    with get_db() as conn:
+        if visible_only:
+            rows = conn.execute(
+                "SELECT * FROM portal_documents WHERE project_id = ? AND visible = 1 ORDER BY uploaded_at DESC",
+                (project_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM portal_documents WHERE project_id = ? ORDER BY uploaded_at DESC",
+                (project_id,)
+            ).fetchall()
+        return rows_to_list(rows)
+
+
+def update_portal_document(doc_id: int, data: Dict):
+    """Update a portal document (e.g. toggle visibility)."""
+    allowed = ['title', 'doc_type', 'visible']
+    clauses, vals = [], []
+    for k in allowed:
+        if k in data:
+            clauses.append(f"{k} = ?")
+            vals.append(data[k])
+    if not clauses:
+        return
+    vals.append(doc_id)
+    with get_db() as conn:
+        conn.execute(f"UPDATE portal_documents SET {', '.join(clauses)} WHERE id = ?", vals)
+
+
+def delete_portal_document(doc_id: int) -> Optional[Dict]:
+    """Delete a portal document record and return its data for physical file cleanup."""
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM portal_documents WHERE id = ?", (doc_id,)).fetchone()
+        if row:
+            conn.execute("DELETE FROM portal_documents WHERE id = ?", (doc_id,))
+            return row_to_dict(row)
+    return None
+
+
+# -- Portal Activity (merged feed) --
+
+def get_portal_activity(project_id: int, limit: int = 50) -> List[Dict]:
+    """Get a merged chronological feed of updates, comments and file uploads."""
+    items = []
+    for u in get_portal_updates(project_id):
+        items.append({
+            'id': f"update-{u['id']}",
+            'type': 'update',
+            'title': u['title'],
+            'content': u.get('content'),
+            'phase': u.get('phase'),
+            'author': 'Marion Web',
+            'createdAt': u['created_at'],
+        })
+    for c in get_portal_comments(project_id):
+        items.append({
+            'id': f"comment-{c['id']}",
+            'type': 'comment',
+            'title': c['text'][:80],
+            'content': c['text'],
+            'author': c['author'],
+            'isAdmin': bool(c.get('is_admin')),
+            'createdAt': c['created_at'],
+        })
+    for f in get_portal_client_files(project_id):
+        items.append({
+            'id': f"file-{f['id']}",
+            'type': 'file',
+            'title': f['original_name'],
+            'content': f.get('note'),
+            'author': f.get('author_name', 'Client'),
+            'category': f.get('category'),
+            'createdAt': f['created_at'],
+        })
+    items.sort(key=lambda x: x['createdAt'] or '', reverse=True)
+    return items[:limit]
+
+
+# =============================================================================
+# MIGRATION SYSTEM
+# =============================================================================
+
+def _safe_add_column(conn, table: str, column: str, col_type: str = "TEXT"):
+    """Safely add a column to a table if it doesn't already exist."""
+    try:
+        cols = [row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        if column not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+            print(f"[Migration] Added column {table}.{column}")
+    except Exception as e:
+        print(f"[Migration] Could not add {table}.{column}: {e}")
+
+
+def run_migrations():
+    """
+    Run pending SQL migration files from database/migrations/.
+    Tracks applied versions in a `schema_migrations` table.
+    Files must be named NNN_description.sql and are executed in order.
+    """
+    migrations_dir = Path(__file__).parent / 'migrations'
+    if not migrations_dir.exists():
+        return
+
+    with get_db() as conn:
+        # Ensure tracking table exists
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                filename TEXT NOT NULL,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Get already-applied versions
+        applied = set()
+        rows = conn.execute("SELECT version FROM schema_migrations").fetchall()
+        for row in rows:
+            applied.add(row[0] if isinstance(row, (tuple, list)) else row['version'])
+
+        # Find migration files
+        migration_files = sorted(migrations_dir.glob('*.sql'))
+        for mf in migration_files:
+            # Extract version number from filename (e.g. 001_initial.sql -> 1)
+            try:
+                version = int(mf.name.split('_')[0])
+            except (ValueError, IndexError):
+                continue
+
+            if version in applied:
+                continue
+
+            print(f"[Migration] Applying {mf.name} (v{version})...")
+            try:
+                sql = mf.read_text()
+                conn.executescript(sql)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, filename) VALUES (?, ?)",
+                    (version, mf.name)
+                )
+                print(f"[Migration] Applied {mf.name}")
+            except Exception as e:
+                print(f"[Migration] FAILED {mf.name}: {e}")
+                # Don't break -- skip to next (or raise depending on policy)
+
+        # Safe column additions (for columns that can't use IF NOT EXISTS in SQLite)
+        _safe_add_column(conn, 'projects', 'portal_pin', 'TEXT')
+        _safe_add_column(conn, 'portal_deliverables', 'file_path', 'TEXT')
+        _safe_add_column(conn, 'portal_deliverables', 'original_name', 'TEXT')
+
+
+# =============================================================================
+# AUTOMATIC BACKUP
+# =============================================================================
+
+def backup_database(max_backups: int = 5) -> Optional[str]:
+    """
+    Create a backup of the SQLite database using the native backup API.
+    Keeps at most `max_backups` recent backups; older ones are rotated out.
+    Returns the path to the new backup file, or None on failure.
+    """
+    db_path = get_db_path()
+    backup_dir = db_path.parent / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    backup_path = backup_dir / f"marion_{timestamp}.db"
+
+    try:
+        source = sqlite3.connect(str(db_path))
+        dest = sqlite3.connect(str(backup_path))
+        source.backup(dest)
+        dest.close()
+        source.close()
+        print(f"[Backup] Created: {backup_path}")
+
+        # Rotation: keep only the N most recent backups
+        backups = sorted(backup_dir.glob("marion_*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for old in backups[max_backups:]:
+            try:
+                old.unlink()
+                print(f"[Backup] Rotated out: {old.name}")
+            except OSError:
+                pass
+
+        return str(backup_path)
+    except Exception as e:
+        print(f"[Backup] Failed: {e}")
+        return None
 
 
 # Initialize on import if running directly

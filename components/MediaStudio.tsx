@@ -55,7 +55,7 @@ const TerminalLogs = ({ active, action }: { active: boolean; action: string }) =
     if (!active) return null;
 
     return (
-        <div className="absolute bottom-32 right-8 w-80 bg-black/90 border border-green-500/30 p-4 rounded-xl font-mono text-[10px] text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.2)] z-50 pointer-events-none animate-in slide-in-from-bottom-4">
+        <div className="absolute bottom-32 right-8 w-80 bg-black/90 border border-green-500/30 p-4 rounded-xl tabular-nums text-[10px] text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.2)] z-50 pointer-events-none animate-in slide-in-from-bottom-4">
             <div className="flex items-center gap-2 mb-2 border-b border-green-500/30 pb-2">
                 <Terminal size={12} />
                 <span className="font-bold">FRANCK_TERMINAL_V2</span>
@@ -182,7 +182,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
             if (action === 'upscale') endpoint = 'upscale';
             if (action === 'remove_bg') endpoint = 'remove_bg';
 
-            const res = await fetch(`/api/media/${endpoint}`, {
+            const res = await fetch(`/api/v1/media/${endpoint}`, {
                 method: 'POST',
                 body: formData
             });
@@ -298,7 +298,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
             <div className="relative z-50 flex justify-between items-center p-6 bg-black/60 backdrop-blur-xl border-b border-white/10">
                 <div className="flex items-center gap-4 px-6 py-3 rounded-full shadow-[0_0_30px_-10px_rgba(255,126,95,0.3)]">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
-                    <span className="font-mono text-xs text-brand-orange tracking-[0.2em]">ATELIER_MEDIA_V3.0</span>
+                    <span className="tabular-nums text-xs text-brand-orange tracking-[0.2em]">ATELIER_MEDIA_V3.0</span>
                 </div>
 
                 {image && (
@@ -361,7 +361,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
                                 <UploadCloud size={64} className="text-slate-500 group-hover:text-brand-orange transition-colors duration-500 group-hover:scale-110" />
                                 <div className="text-center">
                                     <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">INITIALISATION</h2>
-                                    <p className="text-xs text-slate-500 font-mono tracking-widest">DROP_IMAGE_FILE_HERE</p>
+                                    <p className="text-xs text-slate-500 tabular-nums tracking-widest">DROP_IMAGE_FILE_HERE</p>
                                 </div>
                             </div>
                         </div>
@@ -423,7 +423,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
                             {viewMode === 'canvas' && (
                                 <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10 shadow-xl z-40" onMouseDown={(e) => e.stopPropagation()}>
                                     <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.1, s - 0.1)); }} className="p-2 hover:text-brand-orange"><Minus size={14}/></button>
-                                    <span className="font-mono text-xs w-12 text-center">{Math.round(scale * 100)}%</span>
+                                    <span className="tabular-nums text-xs w-12 text-center">{Math.round(scale * 100)}%</span>
                                     <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(3, s + 0.1)); }} className="p-2 hover:text-brand-orange"><Plus size={14}/></button>
                                     <div className="w-px h-4 bg-white/10 mx-2"></div>
                                     <button 
@@ -443,34 +443,34 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
                         {activeTool === 'ai' && (
                             <div className="space-y-8">
                                 <div>
-                                    <h3 className="text-[10px] font-mono text-brand-orange tracking-widest mb-4 flex items-center gap-2">
+                                    <h3 className="text-[10px] tabular-nums text-brand-orange tracking-widest mb-4 flex items-center gap-2">
                                         <Sparkles size={12} /> NEURAL_OPERATIONS
                                     </h3>
                                     <div className="grid gap-3">
                                         <button onClick={() => handleProcessAI('remove_bg')} disabled={isProcessing} className="group relative p-4 bg-white/5 hover:bg-brand-orange/10 border border-white/10 hover:border-brand-orange/50 rounded-xl transition-all text-left">
                                             <div className="flex justify-between items-start mb-2"><Layers className="text-slate-400 group-hover:text-brand-orange transition-colors" size={20} />{isProcessing && <Loader2 className="animate-spin text-brand-orange" size={16} />}</div>
                                             <div className="font-bold text-sm text-white">Détourage Auto</div>
-                                            <div className="text-[10px] text-slate-500 mt-1 font-mono">REMOVE_BACKGROUND_V2</div>
+                                            <div className="text-[10px] text-slate-500 mt-1 tabular-nums">REMOVE_BACKGROUND_V2</div>
                                         </button>
                                         <button onClick={() => handleProcessAI('vectorize')} disabled={isProcessing} className="group relative p-4 bg-white/5 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/50 rounded-xl transition-all text-left">
                                             <div className="flex justify-between items-start mb-2"><Code className="text-slate-400 group-hover:text-purple-400 transition-colors" size={20} /></div>
                                             <div className="font-bold text-sm text-white">Vectorisation SVG</div>
-                                            <div className="text-[10px] text-slate-500 mt-1 font-mono">BITMAP_TO_VECTOR</div>
+                                            <div className="text-[10px] text-slate-500 mt-1 tabular-nums">BITMAP_TO_VECTOR</div>
                                         </button>
                                         <button onClick={() => handleProcessAI('upscale')} disabled={isProcessing} className="group relative p-4 bg-white/5 hover:bg-blue-500/10 border border-white/10 hover:border-blue-500/50 rounded-xl transition-all text-left">
                                             <div className="flex justify-between items-start mb-2"><Zap className="text-slate-400 group-hover:text-blue-400 transition-colors" size={20} /></div>
                                             <div className="font-bold text-sm text-white">Upscale HD</div>
-                                            <div className="text-[10px] text-slate-500 mt-1 font-mono">ENHANCE_RESOLUTION</div>
+                                            <div className="text-[10px] text-slate-500 mt-1 tabular-nums">ENHANCE_RESOLUTION</div>
                                         </button>
                                         <button onClick={() => handleProcessAI('palette')} disabled={isProcessing} className="group relative p-4 bg-white/5 hover:bg-pink-500/10 border border-white/10 hover:border-pink-500/50 rounded-xl transition-all text-left">
                                             <div className="flex justify-between items-start mb-2"><Palette className="text-slate-400 group-hover:text-pink-400 transition-colors" size={20} /></div>
                                             <div className="font-bold text-sm text-white">Extraction Palette</div>
-                                            <div className="text-[10px] text-slate-500 mt-1 font-mono">COLOR_ANALYSIS</div>
+                                            <div className="text-[10px] text-slate-500 mt-1 tabular-nums">COLOR_ANALYSIS</div>
                                         </button>
                                     </div>
                                     {palette.length > 0 && (
                                         <div className="p-4 bg-black/40 rounded-xl border border-white/5 mt-4">
-                                            <div className="text-[10px] font-mono text-slate-500 mb-3">EXTRACTED_DATA</div>
+                                            <div className="text-[10px] tabular-nums text-slate-500 mb-3">EXTRACTED_DATA</div>
                                             <div className="flex flex-wrap gap-2">
                                                 {palette.map(c => <div key={c} onClick={() => navigator.clipboard.writeText(c)} className="w-10 h-10 rounded-lg cursor-pointer hover:scale-110 transition-transform shadow-lg ring-1 ring-white/10" style={{ backgroundColor: c }} title={c}></div>)}
                                             </div>
@@ -482,7 +482,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
 
                         {activeTool === 'resize' && (
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-mono text-brand-orange tracking-widest mb-4 flex items-center gap-2"><Crop size={12} /> DIMENSION_MATRIX</h3>
+                                <h3 className="text-[10px] tabular-nums text-brand-orange tracking-widest mb-4 flex items-center gap-2"><Crop size={12} /> DIMENSION_MATRIX</h3>
                                 <div className="grid grid-cols-2 gap-2">
                                     {[
                                         { id: 'insta', label: 'Instagram', sub: '1:1 Square', icon: Instagram },
@@ -493,20 +493,20 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
                                         <button key={p.id} onClick={() => setSelectedPreset(p.id)} className={`p-3 rounded-xl border text-left transition-all ${selectedPreset === p.id ? 'bg-brand-orange/20 border-brand-orange' : 'bg-white/5 border-transparent hover:bg-white/10'}`}>
                                             <p.icon size={20} />
                                             <span className={`font-bold text-sm ${selectedPreset === p.id ? 'text-white' : 'text-slate-300'}`}>{p.label}</span>
-                                            <span className="text-[10px] text-slate-500 font-mono block">{p.sub}</span>
+                                            <span className="text-[10px] text-slate-500 tabular-nums block">{p.sub}</span>
                                         </button>
                                     ))}
                                 </div>
                                 <div className="pt-4 border-t border-white/5">
-                                    <div className="text-[10px] font-mono text-slate-500 mb-3">CUSTOM_OVERRIDE</div>
+                                    <div className="text-[10px] tabular-nums text-slate-500 mb-3">CUSTOM_OVERRIDE</div>
                                     <div className="flex gap-2">
                                         <div className="bg-black/40 rounded-lg p-2 border border-white/10 flex-1">
                                             <label className="text-[9px] text-slate-500 block mb-1">WIDTH</label>
-                                            <input type="number" value={customDims.width} onChange={e => { setCustomDims({...customDims, width: Number(e.target.value)}); setSelectedPreset('custom'); }} className="bg-transparent w-full text-sm font-mono outline-none text-white" />
+                                            <input type="number" value={customDims.width} onChange={e => { setCustomDims({...customDims, width: Number(e.target.value)}); setSelectedPreset('custom'); }} className="bg-transparent w-full text-sm tabular-nums outline-none text-white" />
                                         </div>
                                         <div className="bg-black/40 rounded-lg p-2 border border-white/10 flex-1">
                                             <label className="text-[9px] text-slate-500 block mb-1">HEIGHT</label>
-                                            <input type="number" value={customDims.height} onChange={e => { setCustomDims({...customDims, height: Number(e.target.value)}); setSelectedPreset('custom'); }} className="bg-transparent w-full text-sm font-mono outline-none text-white" />
+                                            <input type="number" value={customDims.height} onChange={e => { setCustomDims({...customDims, height: Number(e.target.value)}); setSelectedPreset('custom'); }} className="bg-transparent w-full text-sm tabular-nums outline-none text-white" />
                                         </div>
                                     </div>
                                 </div>
@@ -515,10 +515,10 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
 
                         {activeTool === 'adjust' && (
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-mono text-brand-orange tracking-widest mb-4 flex items-center gap-2"><Sliders size={12} /> IMAGE_PARAMETERS</h3>
+                                <h3 className="text-[10px] tabular-nums text-brand-orange tracking-widest mb-4 flex items-center gap-2"><Sliders size={12} /> IMAGE_PARAMETERS</h3>
                                 {[{ label: 'Brightness', val: brightness, set: setBrightness, min: 0, max: 200 }, { label: 'Contrast', val: contrast, set: setContrast, min: 0, max: 200 }, { label: 'Saturation', val: saturation, set: setSaturation, min: 0, max: 200 }, { label: 'Blur', val: blur, set: setBlur, min: 0, max: 20 }].map(f => (
                                     <div key={f.label} className="group">
-                                        <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-2"><span>{f.label.toUpperCase()}</span><span className="text-white">{f.val}</span></div>
+                                        <div className="flex justify-between text-[10px] tabular-nums text-slate-400 mb-2"><span>{f.label.toUpperCase()}</span><span className="text-white">{f.val}</span></div>
                                         <input type="range" min={f.min} max={f.max} value={f.val} onChange={e => f.set(Number(e.target.value))} className="w-full accent-brand-orange h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-brand-orange hover:accent-white transition-all"/>
                                     </div>
                                 ))}
@@ -531,7 +531,7 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
 
                         {activeTool === 'export' && (
                             <div className="space-y-6">
-                                <h3 className="text-[10px] font-mono text-brand-orange tracking-widest mb-4 flex items-center gap-2"><Share2 size={12} /> FINAL_RENDER</h3>
+                                <h3 className="text-[10px] tabular-nums text-brand-orange tracking-widest mb-4 flex items-center gap-2"><Share2 size={12} /> FINAL_RENDER</h3>
                                 <div className="grid grid-cols-2 gap-2">
                                     {['png', 'jpeg', 'webp', 'svg'].map(fmt => (
                                         <button key={fmt} onClick={() => setExportFormat(fmt as any)} className={`p-3 rounded-xl border text-center transition-all ${exportFormat === fmt ? 'bg-white text-black border-white' : 'bg-white/5 border-transparent text-slate-400 hover:bg-white/10'}`}>

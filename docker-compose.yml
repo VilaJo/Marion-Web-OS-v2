@@ -1,0 +1,57 @@
+# Marion Web OS - Docker Compose
+# Usage:
+#   docker compose up -d          # Start in background
+#   docker compose logs -f        # Follow logs
+#   docker compose down           # Stop and remove containers
+#
+# First-time setup:
+#   1. Copy .env.example to .env and fill in your values
+#   2. docker compose up -d --build
+
+services:
+  marion:
+    build: .
+    container_name: marion-web-os
+    ports:
+      - "${PORT:-5003}:5003"
+    volumes:
+      - marion-data:/data
+    environment:
+      # Core
+      - FLASK_ENV=production
+      - ENV=production
+      - SECRET_KEY=${SECRET_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
+      # Database (inside container volume)
+      - DATABASE_URL=sqlite:////data/marion.db
+      - DATA_PATH=/data
+      # AI
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Google OAuth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:5003/api/v1/oauth/google/callback}
+      # GitHub (auto-updates)
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_REPO_OWNER=${GITHUB_REPO_OWNER:-VilaJo}
+      - GITHUB_REPO_NAME=${GITHUB_REPO_NAME:-Marion-Web-OS-v2}
+      # SMTP
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Marion Web OS}
+      # CORS
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5003}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  marion-data:
+    driver: local

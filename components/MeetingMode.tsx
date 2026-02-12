@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, CheckCircle, Clock, List, Target, Calendar, User, Save, X, Sparkles, BrainCircuit } from 'lucide-react';
+import { Mic, Square, Loader2, CheckCircle, Clock, List, Target, Calendar, User, Save, X, Sparkles, BrainCircuit, AlertCircle } from 'lucide-react';
 import { Badge } from './Shared';
 
 // Declare SpeechRecognition for TypeScript
@@ -97,7 +97,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
         };
 
         recognition.onend = () => {
-            console.log("Speech Recognition Ended.");
+            // Speech recognition ended
             // Restart if recording is still active (continuous recognition)
             if (status === 'recording') {
                 recognition.start();
@@ -172,7 +172,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
 
         try {
             setStatus('processing'); // Indicate AI analysis
-            const res = await fetch('/api/meeting/analyze', {
+            const res = await fetch('/api/v1/meeting/analyze', {
                 method: 'POST',
                 body: formData
             });
@@ -264,7 +264,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
 
                         {/* Timer */}
                         {status === 'recording' && (
-                            <div className="font-mono text-4xl text-white mb-12 tabular-nums">
+                            <div className="tabular-nums text-4xl text-white mb-12 tabular-nums">
                                 {formatTime(duration)}
                             </div>
                         )}
@@ -334,7 +334,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
                                     )}
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-4xl font-mono font-bold opacity-20">{formatTime(duration)}</div>
+                                    <div className="text-4xl tabular-nums font-bold opacity-20">{formatTime(duration)}</div>
                                 </div>
                             </div>
                         </div>

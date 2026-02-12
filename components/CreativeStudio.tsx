@@ -198,7 +198,7 @@ export const CreativeStudio: React.FC<CreativeStudioProps> = ({ project, onUpdat
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <h4 className="font-bold text-slate-800 dark:text-white">{color.name}</h4>
-                                                <p className="text-xs text-slate-400 font-mono uppercase">{color.hex}</p>
+                                                <p className="text-xs text-slate-400 tabular-nums uppercase">{color.hex}</p>
                                             </div>
                                             <button onClick={() => removeItem(color.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
                                         </div>
@@ -231,7 +231,7 @@ export const CreativeStudio: React.FC<CreativeStudioProps> = ({ project, onUpdat
                             <h3 className="font-serif text-xl dark:text-white">Typographie</h3>
                             <div className="flex gap-2">
                                 <input 
-                                    placeholder="Nom (ex: Inter)"
+                                    placeholder="Nom (ex: Montserrat)"
                                     value={newFont}
                                     onChange={e => setNewFont(e.target.value)}
                                     className="bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-1 text-sm outline-none w-32 dark:text-white"

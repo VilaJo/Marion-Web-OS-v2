@@ -1,134 +1,223 @@
 """
 Marion Web OS - Configuration
-Multi-environment configuration management
+Multi-environment configuration management.
+
+All application settings are centralised here. Modules should import
+``get_current_config()`` instead of reading ``os.getenv`` directly so that
+environment-specific overrides and validation happen in one place.
 """
 
 import os
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
+# ---------------------------------------------------------------------------
+# Load .env files (order matters: .env.local wins over .env)
+# ---------------------------------------------------------------------------
 load_dotenv('.env.local')
 load_dotenv('.env')
 
 
+# ---------------------------------------------------------------------------
+# Base configuration
+# ---------------------------------------------------------------------------
+
 class Config:
-    """Base configuration"""
-    
-    # Application
+    """Base configuration shared by all environments."""
+
+    # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.4.0'
+    APP_VERSION = '2.4.4'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
-    
-    # Security
+    ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+
+    # -- Security -----------------------------------------------------------
     SECRET_KEY = os.getenv('SECRET_KEY', os.getenv('FLASK_SECRET_KEY'))
     if not SECRET_KEY:
-        # Generate a stable secret key based on machine ID
+        # Generate a stable secret key based on machine identity (dev only)
         import hashlib
-        machine_id = str(Path.home()) + os.getenv('USER', 'marion')
-        SECRET_KEY = hashlib.sha256(machine_id.encode()).hexdigest()
-    
+        _machine_id = str(Path.home()) + os.getenv('USER', 'marion')
+        SECRET_KEY = hashlib.sha256(_machine_id.encode()).hexdigest()
+
     SESSION_DURATION_HOURS = int(os.getenv('SESSION_DURATION_HOURS', '8'))
     MAX_LOGIN_ATTEMPTS = int(os.getenv('MAX_LOGIN_ATTEMPTS', '10'))
     RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('RATE_LIMIT_WINDOW_SECONDS', '60'))
-    
-    # Database
+
+    # -- Database -----------------------------------------------------------
     DATABASE_URL = os.getenv('DATABASE_URL', '')
     if not DATABASE_URL:
-        db_folder = Path.home() / "Desktop" / "Marion Web OS Database"
-        DATABASE_URL = f"sqlite:///{db_folder / 'marion.db'}"
-    
-    # Paths
+        _db_folder = Path.home() / "Desktop" / "Marion Web OS Database"
+        DATABASE_URL = f"sqlite:///{_db_folder / 'marion.db'}"
+
+    # -- Paths --------------------------------------------------------------
     USER_HOME = Path.home()
     DATA_PATH = Path(os.getenv('DATA_PATH', str(USER_HOME / "Desktop" / "Marion Web OS Database")))
     STATIC_FOLDER = os.getenv('STATIC_FOLDER', '.dist')
-    
-    # API Keys
+
+    # -- API Keys -----------------------------------------------------------
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
-    
-    # Google OAuth
+
+    # -- Google OAuth -------------------------------------------------------
     GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
     GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-    GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://127.0.0.1:5003/api/oauth/google/callback')
-    GOOGLE_SCOPES = os.getenv('GOOGLE_SCOPES', 
-        'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar')
-    
-    # GitHub
+    GOOGLE_REDIRECT_URI = os.getenv(
+        'GOOGLE_REDIRECT_URI',
+        'http://127.0.0.1:5003/api/v1/oauth/google/callback',
+    )
+    GOOGLE_SCOPES = os.getenv(
+        'GOOGLE_SCOPES',
+        'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar',
+    )
+
+    # -- GitHub -------------------------------------------------------------
     GITHUB_REPO_OWNER = os.getenv('GITHUB_REPO_OWNER', 'VilaJo')
     GITHUB_REPO_NAME = os.getenv('GITHUB_REPO_NAME', 'Marion-Web-OS-v2')
-    
-    # CORS
+
+    # -- CORS ---------------------------------------------------------------
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://127.0.0.1:5003,http://localhost:5003').split(',')
-    
-    # Email (SMTP)
-    SMTP_HOST = os.getenv('SMTP_HOST', '')
-    SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+
+    # -- Email (IMAP / SMTP) ------------------------------------------------
+    IMAP_HOST = os.getenv('IMAP_HOST', 'mail.infomaniak.com')
+    IMAP_PORT = int(os.getenv('IMAP_PORT', '993'))
+    SMTP_HOST = os.getenv('SMTP_HOST', 'mail.infomaniak.com')
+    SMTP_PORT = int(os.getenv('SMTP_PORT', '465'))
     SMTP_USER = os.getenv('SMTP_USER', '')
     SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
     SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', '')
     SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', 'Marion Web OS')
-    
-    # Server
+
+    # -- Server -------------------------------------------------------------
     HOST = os.getenv('HOST', '127.0.0.1')
     PORT = int(os.getenv('PORT', '5003'))
-    
+
+    # -- Derived helpers ----------------------------------------------------
+
     @classmethod
-    def ensure_data_path(cls):
-        """Ensure data directory exists"""
+    def get_db_path(cls) -> Path:
+        """Return the resolved database file path from ``DATABASE_URL``."""
+        url = cls.DATABASE_URL
+        if url.startswith('sqlite:///'):
+            return Path(url.replace('sqlite:///', '', 1))
+        # Fallback
+        return cls.DATA_PATH / 'marion.db'
+
+    @classmethod
+    def ensure_data_path(cls) -> Path:
+        """Ensure the data directory exists and return it."""
         cls.DATA_PATH.mkdir(parents=True, exist_ok=True)
         return cls.DATA_PATH
 
-
-class DevelopmentConfig(Config):
-    """Development configuration"""
-    DEBUG = True
-    
-
-class ProductionConfig(Config):
-    """Production configuration"""
-    DEBUG = False
-    
-    # In production, SECRET_KEY must be set explicitly
     @classmethod
     def validate(cls):
+        """Validate the configuration. Override in subclasses for stricter checks."""
+        errors: list[str] = []
+        if not cls.SECRET_KEY:
+            errors.append("SECRET_KEY is empty")
+        if errors:
+            raise ValueError(f"Config validation failed: {'; '.join(errors)}")
+
+    @classmethod
+    def configure_logging(cls):
+        """Set up logging for the current environment."""
+        log_format = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        level = getattr(logging, cls.LOG_LEVEL, logging.INFO)
+        logging.basicConfig(level=level, format=log_format)
+        # Quieten noisy third-party loggers in non-debug mode
+        if not cls.DEBUG:
+            logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
+    @classmethod
+    def print_summary(cls):
+        """Print a human-readable startup summary (non-sensitive values only)."""
+        has_gemini = '✓' if cls.GEMINI_API_KEY else '✗'
+        has_google = '✓' if (cls.GOOGLE_CLIENT_ID and cls.GOOGLE_CLIENT_SECRET) else '✗'
+        has_github = '✓' if cls.GITHUB_TOKEN else '✗'
+        has_smtp = '✓' if cls.SMTP_HOST else '✗'
+        print(f"""
+╔══════════════════════════════════════════╗
+║  {cls.APP_NAME} v{cls.APP_VERSION}
+║  Environment : {cls.ENVIRONMENT}
+║  Debug       : {cls.DEBUG}
+║  Log level   : {cls.LOG_LEVEL}
+║  Database    : {cls.get_db_path()}
+║  Data path   : {cls.DATA_PATH}
+║  Server      : {cls.HOST}:{cls.PORT}
+║  Integrations: Gemini {has_gemini}  Google {has_google}  GitHub {has_github}  SMTP {has_smtp}
+╚══════════════════════════════════════════╝""")
+
+
+# ---------------------------------------------------------------------------
+# Environment-specific configurations
+# ---------------------------------------------------------------------------
+
+class DevelopmentConfig(Config):
+    """Development configuration — verbose logging, debug enabled."""
+    DEBUG = True
+    ENVIRONMENT = 'development'
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG').upper()
+
+
+class ProductionConfig(Config):
+    """Production configuration — strict validation, no debug."""
+    DEBUG = False
+    ENVIRONMENT = 'production'
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'WARNING').upper()
+
+    @classmethod
+    def validate(cls):
+        """Production checks — auto-generate SECRET_KEY if missing."""
         if not os.getenv('SECRET_KEY'):
-            raise ValueError("SECRET_KEY must be set in production!")
+            import secrets
+            generated = secrets.token_urlsafe(64)
+            os.environ['SECRET_KEY'] = generated
+            cls.SECRET_KEY = generated
+            print("⚠  Warning: SECRET_KEY not set — auto-generated for this session. "
+                  "Set SECRET_KEY in .env for persistent sessions across restarts.")
         if not cls.GEMINI_API_KEY:
-            print("Warning: GEMINI_API_KEY not set - Franck chatbot will not work")
+            print("⚠  Warning: GEMINI_API_KEY not set — Franck chatbot will not work")
 
 
 class TestingConfig(Config):
-    """Testing configuration"""
+    """Testing configuration — in-memory DB, debug enabled."""
     DEBUG = True
     TESTING = True
+    ENVIRONMENT = 'testing'
+    LOG_LEVEL = 'DEBUG'
     DATABASE_URL = 'sqlite:///:memory:'
 
 
-# Configuration mapping
+# ---------------------------------------------------------------------------
+# Config resolution
+# ---------------------------------------------------------------------------
+
 config_map = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
     'testing': TestingConfig,
-    'default': DevelopmentConfig
+    'default': DevelopmentConfig,
 }
 
 
-def get_config(env: str = None) -> Config:
-    """Get configuration for the specified environment"""
+def get_config(env: str = None) -> type[Config]:
+    """Return the configuration *class* for the given environment name."""
     if env is None:
         env = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
-    
-    config_class = config_map.get(env, DevelopmentConfig)
-    return config_class
+    return config_map.get(env, DevelopmentConfig)
 
 
-# Singleton instance
-_config = None
+# Singleton ------------------------------------------------------------------
 
-def get_current_config() -> Config:
-    """Get the current configuration instance"""
+_config: type[Config] | None = None
+
+
+def get_current_config() -> type[Config]:
+    """Return the active configuration class (cached singleton)."""
     global _config
     if _config is None:
         _config = get_config()
+        _config.configure_logging()
+        _config.validate()
     return _config

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Raleway:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -22,9 +22,10 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
 }
 
-/* Typography Overrides */
+/* Typography Overrides - Only Montserrat (titres) + Raleway (corps) */
 .font-serif {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
 }
 
 /* Chiffres en Raleway (override font-mono) */
@@ -34,8 +35,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .font-calligraphy {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Montserrat', sans-serif;
     font-style: italic;
+    font-weight: 600;
 }
 
 /* Custom Scrollbar */
@@ -129,4 +131,107 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 10;
     background: inherit; /* Maintain card background */
     border-radius: inherit;
+}
+
+/* ==============================
+   MOBILE RESPONSIVE ENHANCEMENTS
+   ============================== */
+
+/* Safe area padding for notched devices */
+@supports (padding: env(safe-area-inset-top)) {
+    .safe-area-top {
+        padding-top: env(safe-area-inset-top);
+    }
+    .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    /* Apply safe areas to key fixed elements */
+    @media (max-width: 767px) {
+        body {
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+    }
+}
+
+/* Smooth scroll for touch devices */
+@media (max-width: 767px) {
+    * {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Prevent text selection during swipe gestures */
+    .no-select-mobile {
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    /* Hide scrollbars on mobile for cleaner look */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    
+    /* Prevent zoom on input focus (iOS) */
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Touch-friendly tap targets */
+@media (pointer: coarse) {
+    button, a, [role="button"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Ensure adequate spacing between interactive elements */
+    .touch-spacing > * + * {
+        margin-top: 8px;
+    }
+}
+
+/* Slide-in animation for mobile drawer */
+@keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+@keyframes slide-out-right {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
+}
+
+/* Bottom sheet slide animation */
+@keyframes slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+@keyframes slide-down {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+}
+
+/* Reduce animations on mobile to improve performance */
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+    .animate-float,
+    .animate-float-slow,
+    .animate-float-reverse {
+        animation-duration: 12s; /* Slower animations = less CPU */
+    }
+}
+
+/* Disable heavy effects on mobile */
+@media (max-width: 767px) {
+    .planet-lollipop,
+    .planet-peach,
+    .planet-blue,
+    .cloud-3d {
+        display: none !important;
+    }
 }

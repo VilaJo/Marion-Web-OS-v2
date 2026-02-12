@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle, Sparkles } from 'lucide-react';
-import { Notification } from '../types';
+import { Notification, NotificationType } from '../types';
 
 interface BadgeProps {
     children?: React.ReactNode;
@@ -187,7 +187,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     if (!isOpen) return null;
     return createPortal(
         <div 
-            className="fixed inset-0 z-[150] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-in fade-in duration-500"
+            className="fixed inset-0 z-[150] flex items-end md:items-center justify-center bg-black/30 backdrop-blur-sm md:p-4 animate-in fade-in duration-500"
             onClick={onClose}
             role="dialog"
             aria-modal="true"
@@ -195,10 +195,14 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         >
                         <div 
                             ref={modalRef}
-                            className={`bg-white dark:bg-slate-900/95 dark:border dark:border-slate-700/50 rounded-4xl shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full ${width} flex flex-col animate-in zoom-in-95 duration-500 max-h-[95vh] relative outline-none`}
+                            className={`bg-white dark:bg-slate-900/95 dark:border dark:border-slate-700/50 rounded-t-3xl md:rounded-4xl shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full ${width} flex flex-col animate-in slide-in-from-bottom md:animate-in md:zoom-in-95 duration-500 max-h-[90vh] md:max-h-[95vh] relative outline-none`}
                             onClick={(e) => e.stopPropagation()}
                             tabIndex={-1}
                         >
+                            {/* Mobile drag handle */}
+                            <div className="md:hidden flex justify-center pt-3 pb-1">
+                                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                            </div>
                             {title ? (
                                 <div className="p-6 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900/95 z-10 rounded-t-4xl shrink-0">
                                     <h2 id="modal-title" className="text-2xl font-serif text-slate-800 dark:text-white">{title}</h2>
@@ -224,7 +228,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 };
 
 interface ToastProps {
-    type: 'success'|'error'|'info'|'warning';
+    type: NotificationType;
     message: string;
     onClose: () => void;
 }

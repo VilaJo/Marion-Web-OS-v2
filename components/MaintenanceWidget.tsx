@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar, FileText, DollarSign, Bell, Plus, Trash2, Check, AlertTriangle, Clock, Edit2, X } from 'lucide-react';
+import { Calendar, FileText, DollarSign, Bell, Plus, Trash2, Check, AlertTriangle, Clock, Edit2, X, Tag } from 'lucide-react';
 import { Project, MaintenanceInfo } from '../types';
 import { Card } from './Shared';
+import { useUIStore } from '../stores/useUIStore';
 
 interface MaintenanceWidgetProps {
     project: Project;
@@ -9,13 +10,15 @@ interface MaintenanceWidgetProps {
 }
 
 export const MaintenanceWidget: React.FC<MaintenanceWidgetProps> = ({ project, onUpdateProject }) => {
+    const currency = useUIStore(s => s.currency);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState<MaintenanceInfo>(
         project.maintenance || {
             freeMaintenanceEndDate: '',
             contractSignDate: '',
             billingDates: [],
-            hasContract: false
+            hasContract: false,
+            monthlyPrice: undefined,
         }
     );
     const [newBillingDate, setNewBillingDate] = useState('');
@@ -169,6 +172,27 @@ export const MaintenanceWidget: React.FC<MaintenanceWidgetProps> = ({ project, o
                         )}
                     </div>
 
+                    {/* Tarif mensuel */}
+                    <div className="flex items-center gap-2">
+                        <Tag size={14} className="text-purple-500 shrink-0" />
+                        <span className="text-xs text-slate-500 w-24 shrink-0">Tarif / mois</span>
+                        <div className="flex-1 flex items-center gap-1">
+                            <input
+                                type="number"
+                                min="0"
+                                step="10"
+                                placeholder="0"
+                                value={editData.monthlyPrice ?? ''}
+                                onChange={(e) => setEditData({
+                                    ...editData,
+                                    monthlyPrice: e.target.value ? parseFloat(e.target.value) : undefined
+                                })}
+                                className="flex-1 px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white"
+                            />
+                            <span className="text-xs text-slate-400 font-medium">{currency}</span>
+                        </div>
+                    </div>
+
                     {/* Dates facturation */}
                     <div>
                         <div className="flex items-center gap-2 mb-2">
@@ -259,6 +283,25 @@ export const MaintenanceWidget: React.FC<MaintenanceWidgetProps> = ({ project, o
                                 </>
                             ) : (
                                 <span className="text-xs text-slate-400 italic">Non</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tarif mensuel */}
+                    <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                <Tag size={12} className="text-purple-600" />
+                            </div>
+                            <span className="text-xs text-slate-500">Tarif</span>
+                        </div>
+                        <div className="text-right">
+                            {editData.monthlyPrice != null && editData.monthlyPrice > 0 ? (
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    {editData.monthlyPrice.toLocaleString('fr-CH')} {currency}<span className="text-[10px] text-slate-400 font-normal"> /mois</span>
+                                </span>
+                            ) : (
+                                <span className="text-xs text-slate-400 italic">Non défini</span>
                             )}
                         </div>
                     </div>

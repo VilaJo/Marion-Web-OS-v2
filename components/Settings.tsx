@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { sanitizeHTML } from '../utils/sanitize';
 import { Modal } from './Shared';
 import { Theme } from '../types';
 import { 
@@ -38,7 +39,9 @@ import {
     LogOut,
     Key
 } from 'lucide-react';
-import { apiFetch } from '../services/api';
+import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, queryKeys } from '../services/queries';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUIStore } from '../stores';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -82,6 +85,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'agency' | 'appearance' | 'ai' | 'notifications' | 'cloud' | 'updates' | 'security'>('agency');
     
+    // Subscription date from store
+    const subscriptionDate = useUIStore(s => s.subscriptionDate);
+    const renewalDate = React.useMemo(() => {
+        try {
+            const start = new Date(subscriptionDate);
+            start.setFullYear(start.getFullYear() + 1);
+            return start.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } catch {
+            return '--';
+        }
+    }, [subscriptionDate]);
+
     // Cloud Storage State
     const [cloudConfig, setCloudConfig] = useState(() => {
         const saved = localStorage.getItem('marion_cloud_config');
@@ -94,32 +109,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     });
     const [isConnecting, setIsConnecting] = useState(false);
 
-    // Check Google connection status on mount
+    // React Query hooks
+    const queryClient = useQueryClient();
+    const { data: oauthData } = useOAuthStatus();
+    const connectGoogleMutation = useConnectGoogle();
+    const disconnectGoogleMutation = useDisconnectGoogle();
+
+    // Sync OAuth status from React Query into local cloud config
     React.useEffect(() => {
-        const checkGoogleStatus = async () => {
-            try {
-                const res = await apiFetch('/api/oauth/google/status');
-                const data = await res.json();
-                if (data.connected) {
-                    const updated = {
-                        ...cloudConfig,
-                        googleDrive: { 
-                            ...cloudConfig.googleDrive, 
-                            connected: true, 
-                            enabled: true,
-                            email: data.email,
-                            name: data.name
-                        }
-                    };
-                    setCloudConfig(updated);
-                    localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
+        if (oauthData?.connected) {
+            const updated = {
+                ...cloudConfig,
+                googleDrive: { 
+                    ...cloudConfig.googleDrive, 
+                    connected: true, 
+                    enabled: true,
+                    email: oauthData.email,
+                    name: oauthData.name
                 }
-            } catch (e) {
-                console.error('Failed to check Google status', e);
-            }
-        };
-        checkGoogleStatus();
-    }, []);
+            };
+            setCloudConfig(updated);
+            localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
+        }
+    }, [oauthData]);
 
     const handleCloudConfigChange = (provider: 'googleDrive' | 'dropbox', key: string, value: any) => {
         const updated = {
@@ -132,70 +144,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const handleConnectGoogle = async () => {
         setIsConnecting(true);
-        try {
-            // Get OAuth URL from backend
-            const res = await apiFetch('/api/oauth/google/login');
-            const data = await res.json();
-            
-            // Open popup for OAuth
-            const popup = window.open(data.auth_url, 'Google Auth', 'width=500,height=600,left=200,top=100');
-            
-            // Listen for messages from popup
-            const handleMessage = (event: MessageEvent) => {
-                if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-                    const updated = {
-                        ...cloudConfig,
-                        googleDrive: { 
-                            ...cloudConfig.googleDrive, 
-                            connected: true, 
-                            enabled: true,
-                            email: event.data.email,
-                            name: event.data.name
-                        }
-                    };
-                    setCloudConfig(updated);
-                    localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
-                    setIsConnecting(false);
-                    window.removeEventListener('message', handleMessage);
-                } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-                    console.error('Google Auth Error:', event.data.error);
-                    setIsConnecting(false);
-                    window.removeEventListener('message', handleMessage);
-                }
-            };
-            
-            window.addEventListener('message', handleMessage);
-            
-            // Check if popup was closed without completing
-            const checkClosed = setInterval(() => {
-                if (popup?.closed) {
-                    clearInterval(checkClosed);
-                    setIsConnecting(false);
-                    window.removeEventListener('message', handleMessage);
-                }
-            }, 1000);
-            
-        } catch (e) {
-            console.error('Failed to initiate Google OAuth', e);
-            setIsConnecting(false);
-        }
+        connectGoogleMutation.mutate(undefined, {
+            onSuccess: (data) => {
+                // Open popup for OAuth
+                const popup = window.open(data.auth_url, 'Google Auth', 'width=500,height=600,left=200,top=100');
+                
+                // Listen for messages from popup
+                const handleMessage = (event: MessageEvent) => {
+                    if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                        const updated = {
+                            ...cloudConfig,
+                            googleDrive: { 
+                                ...cloudConfig.googleDrive, 
+                                connected: true, 
+                                enabled: true,
+                                email: event.data.email,
+                                name: event.data.name
+                            }
+                        };
+                        setCloudConfig(updated);
+                        localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
+                        // Refresh calendar & OAuth queries so Agenda picks up the new connection
+                        queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
+                        queryClient.invalidateQueries({ queryKey: queryKeys.events });
+                        queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
+                        setIsConnecting(false);
+                        window.removeEventListener('message', handleMessage);
+                    } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+                        console.error('Google Auth Error:', event.data.error);
+                        setIsConnecting(false);
+                        window.removeEventListener('message', handleMessage);
+                    }
+                };
+                
+                window.addEventListener('message', handleMessage);
+                
+                // Check if popup was closed without completing
+                const checkClosed = setInterval(() => {
+                    if (popup?.closed) {
+                        clearInterval(checkClosed);
+                        setIsConnecting(false);
+                        window.removeEventListener('message', handleMessage);
+                    }
+                }, 1000);
+            },
+            onError: (e) => {
+                console.error('Failed to initiate Google OAuth', e);
+                setIsConnecting(false);
+            },
+        });
     };
 
     const handleDisconnectGoogle = async () => {
-        try {
-            await apiFetch('/api/oauth/google/disconnect', { method: 'POST' });
-            const updated = {
-                ...cloudConfig,
-                googleDrive: { enabled: false, connected: false, folder: '', email: '', name: '' }
-            };
-            setCloudConfig(updated);
-            localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
-            
-            // Notify other components (like Agenda) of disconnect
-            window.postMessage({ type: 'GOOGLE_AUTH_DISCONNECT' }, '*');
-        } catch (e) {
-            console.error('Failed to disconnect Google', e);
-        }
+        disconnectGoogleMutation.mutate(undefined, {
+            onSuccess: () => {
+                const updated = {
+                    ...cloudConfig,
+                    googleDrive: { enabled: false, connected: false, folder: '', email: '', name: '' }
+                };
+                setCloudConfig(updated);
+                localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
+                
+                // Refresh calendar & OAuth queries so Agenda updates immediately
+                queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
+                queryClient.invalidateQueries({ queryKey: queryKeys.events });
+                queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
+                // Notify other components (like Agenda) of disconnect
+                window.postMessage({ type: 'GOOGLE_AUTH_DISCONNECT' }, '*');
+            },
+            onError: (e) => {
+                console.error('Failed to disconnect Google', e);
+            },
+        });
     };
 
     const handleConnectCloud = async (provider: 'googleDrive' | 'dropbox') => {
@@ -230,6 +250,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [localAgencyName, setLocalAgencyName] = useState(agencyName);
     const [localAgencyWebsite, setLocalAgencyWebsite] = useState(agencyWebsite);
     const [localTjh, setLocalTjh] = useState(tjh);
+    const [localCurrency, setLocalCurrency] = useState(currency);
     const [localAiTone, setLocalAiTone] = useState(aiTone);
     const [localBriefingVocal, setLocalBriefingVocal] = useState(briefingVocal);
     const [localSignature, setLocalSignature] = useState(signatureSettings);
@@ -241,12 +262,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             setLocalAgencyName(agencyName);
             setLocalAgencyWebsite(agencyWebsite);
             setLocalTjh(tjh);
+            setLocalCurrency(currency);
             setLocalAiTone(aiTone);
             setLocalBriefingVocal(briefingVocal);
             setLocalSignature(signatureSettings);
             setLocalNotifications(notificationSettings);
         }
-    }, [isOpen, agencyName, agencyWebsite, tjh, aiTone, briefingVocal, signatureSettings, notificationSettings]);
+    }, [isOpen, agencyName, agencyWebsite, tjh, currency, aiTone, briefingVocal, signatureSettings, notificationSettings]);
     
     // Helper for signature updates
     const updateLocalSignature = (key: string, value: string) => {
@@ -255,10 +277,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const handleSave = () => {
         setIsSaving(true);
-        // Commit local state to parent state (and thus localStorage via App.tsx effects)
+        // Commit local state to parent state (and thus localStorage via zustand store)
         setAgencyName(localAgencyName);
         setAgencyWebsite(localAgencyWebsite);
         setTjh(localTjh);
+        onCurrencyChange(localCurrency);
         setAiTone(localAiTone);
         setBriefingVocal(localBriefingVocal);
         setSignatureSettings(localSignature);
@@ -282,59 +305,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         message?: string;
         error?: string;
     } | null>(null);
-    const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
-    // Check for updates when tab is opened
-    const checkForUpdates = async () => {
-        setIsCheckingUpdate(true);
-        setUpdateMessage(null);
-        try {
-            const res = await apiFetch('/api/updates/check');
-            const data = await res.json();
-            setUpdateInfo(data);
-        } catch (e) {
-            setUpdateInfo({ currentVersion: 'Inconnu', error: 'Impossible de vérifier les mises à jour' });
-        } finally {
-            setIsCheckingUpdate(false);
+    // React Query hooks for version & updates
+    const { data: versionData } = useVersion();
+    const checkUpdatesMutation = useCheckUpdates();
+    const applyUpdateMutation = useApplyUpdate();
+
+    // Sync version data from React Query
+    React.useEffect(() => {
+        if (versionData?.version && !updateInfo) {
+            setUpdateInfo({ currentVersion: versionData.version });
         }
+    }, [versionData]);
+
+    const isCheckingUpdate = checkUpdatesMutation.isPending;
+
+    const checkForUpdates = () => {
+        setUpdateMessage(null);
+        checkUpdatesMutation.mutate(undefined, {
+            onSuccess: (data) => {
+                setUpdateInfo(data);
+            },
+            onError: () => {
+                setUpdateInfo({ currentVersion: updateInfo?.currentVersion || 'Inconnu', error: 'Impossible de vérifier les mises à jour' });
+            },
+        });
     };
 
-    // Fetch current version on mount
-    useEffect(() => {
-        const fetchVersion = async () => {
-            try {
-                const res = await apiFetch('/api/version');
-                const data = await res.json();
-                setUpdateInfo({ currentVersion: data.version });
-            } catch {
-                setUpdateInfo({ currentVersion: 'Inconnu' });
-            }
-        };
-        fetchVersion();
-    }, []);
-
-    const applyUpdate = async () => {
+    const applyUpdate = () => {
         setIsUpdating(true);
         setUpdateMessage(null);
-        try {
-            const res = await apiFetch('/api/updates/apply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
-            const data = await res.json();
-            if (data.success) {
-                setUpdateMessage(data.instruction || 'Mise à jour lancée ! Suivez les instructions dans le terminal.');
-            } else {
-                setUpdateMessage(data.error || 'Erreur lors de la mise à jour');
-            }
-        } catch (e) {
-            setUpdateMessage('Erreur de connexion au serveur');
-        } finally {
-            setIsUpdating(false);
-        }
+        applyUpdateMutation.mutate(undefined, {
+            onSuccess: (data) => {
+                if (data.success) {
+                    setUpdateMessage(data.instruction || 'Mise à jour lancée ! Suivez les instructions dans le terminal.');
+                } else {
+                    setUpdateMessage(data.error || 'Erreur lors de la mise à jour');
+                }
+            },
+            onError: () => {
+                setUpdateMessage('Erreur de connexion au serveur');
+            },
+            onSettled: () => {
+                setIsUpdating(false);
+            },
+        });
     };
 
     const tabs = [
@@ -369,7 +386,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     
                     <div className="mt-auto p-4 bg-orange-50 dark:bg-orange-900/10 rounded-xl border border-orange-100 dark:border-orange-900/20">
                         <div className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase mb-1">Abonnement Pro</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Renouvellement le 01/12/2026</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Renouvellement le {renewalDate}</div>
                     </div>
                 </div>
 
@@ -405,7 +422,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase">TJH ({currency}/heure)</label>
+                                    <label className="text-xs font-bold text-slate-400 uppercase">TJH ({localCurrency}/heure)</label>
                                     <div className="relative">
                                         <CreditCard className="absolute left-3 top-3 text-slate-400" size={18} />
                                         <input 
@@ -420,8 +437,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-400 uppercase">Devise</label>
                                     <select 
-                                        value={currency}
-                                        onChange={(e) => onCurrencyChange(e.target.value)}
+                                        value={localCurrency}
+                                        onChange={(e) => setLocalCurrency(e.target.value)}
                                         className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-brand-orange transition-colors cursor-pointer"
                                     >
                                         <option value="CHF">CHF (Franc Suisse)</option>
@@ -437,15 +454,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Signature Email</h4>
                                     <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                                         <button 
-                                            onClick={() => updateSignature('mode', 'standard')}
-                                            className={`p-1.5 rounded-md transition-all ${signatureSettings.mode === 'standard' ? 'bg-white dark:bg-slate-700 shadow text-brand-orange' : 'text-slate-400'}`}
+                                            onClick={() => updateLocalSignature('mode', 'standard')}
+                                            className={`p-1.5 rounded-md transition-all ${localSignature.mode === 'standard' ? 'bg-white dark:bg-slate-700 shadow text-brand-orange' : 'text-slate-400'}`}
                                             title="Standard"
                                         >
                                             <Type size={14} />
                                         </button>
                                         <button 
-                                            onClick={() => updateSignature('mode', 'html')}
-                                            className={`p-1.5 rounded-md transition-all ${signatureSettings.mode === 'html' ? 'bg-white dark:bg-slate-700 shadow text-brand-orange' : 'text-slate-400'}`}
+                                            onClick={() => updateLocalSignature('mode', 'html')}
+                                            className={`p-1.5 rounded-md transition-all ${localSignature.mode === 'html' ? 'bg-white dark:bg-slate-700 shadow text-brand-orange' : 'text-slate-400'}`}
                                             title="HTML Custom"
                                         >
                                             <Code size={14} />
@@ -453,7 +470,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     </div>
                                 </div>
 
-                                {signatureSettings.mode === 'standard' ? (
+                                {localSignature.mode === 'standard' ? (
                                     <div className="space-y-4 mb-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <input 
@@ -517,13 +534,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         placeholder="<div>Votre code HTML ici...</div>"
                                         value={localSignature.html}
                                         onChange={(e) => updateLocalSignature('html', e.target.value)}
-                                        className="w-full h-24 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-brand-orange mb-4 resize-none dark:text-white"
+                                        className="w-full h-24 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs tabular-nums outline-none focus:border-brand-orange mb-4 resize-none dark:text-white"
                                     />
                                 )}
 
                                 <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 relative overflow-hidden">
                                     <span className="absolute top-2 right-2 text-[10px] uppercase font-bold text-slate-300 tracking-widest">Aperçu</span>
-                                    {signatureSettings.mode === 'standard' ? (
+                                    {localSignature.mode === 'standard' ? (
                                         <div className="flex items-center gap-4">
                                             {localSignature.imageUrl && (
                                                 <img src={localSignature.imageUrl} alt="Sig" className="w-12 h-12 rounded-full object-cover border border-slate-200" />
@@ -535,7 +552,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             </div>
                                         </div>
                                     ) : (
-                                        <div dangerouslySetInnerHTML={{ __html: localSignature.html || '<span class="text-slate-400 italic">Aperçu HTML</span>' }} />
+                                        <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(localSignature.html || '<span class="text-slate-400 italic">Aperçu HTML</span>') }} />
                                     )}
                                 </div>
                             </div>
@@ -988,7 +1005,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     onClick={() => {
                                         // Clear session and reload
                                         sessionStorage.removeItem('marion_token');
-                                        fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+                                        fetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
                                         window.location.reload();
                                     }}
                                     className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium"
@@ -1217,7 +1234,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <p className="text-sm text-slate-500 mb-3">
                                     Vous pouvez aussi mettre à jour manuellement en double-cliquant sur :
                                 </p>
-                                <code className="block px-4 py-3 bg-slate-900 text-emerald-400 rounded-xl text-sm font-mono">
+                                <code className="block px-4 py-3 bg-slate-900 text-emerald-400 rounded-xl text-sm tabular-nums">
                                     METTRE_A_JOUR.command
                                 </code>
                                 <p className="text-xs text-slate-400 mt-2">

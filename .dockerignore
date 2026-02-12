@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Git
+.git/
+.gitignore
+
+# Environment files (secrets)
+.env
+.env.local
+
+# Database files
+*.db
+
+# Logs
+*.log
+
+# Test / Dev
+.pytest_cache/
+.cursor/
+tests/
+.storybook/
+
+# macOS artifacts
+Marion Web OS.app/
+LANCER_MARION.command
+METTRE_A_JOUR.command
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Plans & docs (not needed in image)
+*.plan.md

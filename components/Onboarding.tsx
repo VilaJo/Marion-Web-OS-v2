@@ -50,7 +50,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const response = await fetch('/setup', {
+            const response = await fetch('/api/v1/ai/setup', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ api_key: apiKey })

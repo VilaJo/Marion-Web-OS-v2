@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Volume2, MessageCircle, Send, Sparkles, Target, Brain, Heart, Zap, Coffee } from 'lucide-react';
 import { SOUNDS } from '../constants';
+import { apiFetch } from '../services/api';
 
 // Quick prompts for Coach Franck
 const COACH_PROMPTS = [
@@ -73,7 +74,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
         const context = chatHistory.map(msg => ({ role: msg.role, parts: [msg.text] }));
         
         try {
-             const response = await fetch('/api/chat/zen', {
+             const response = await apiFetch('/api/v1/chat/zen', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ history: context, message: userMsg })
@@ -123,19 +124,19 @@ export const FocusMode: React.FC<FocusModeProps> = ({
 
             <div className="relative z-10 text-center max-w-2xl w-full px-4">
                 
-                <h2 className="text-sm font-bold uppercase tracking-[0.3em] text-slate-400 mb-8 animate-in slide-in-from-top-8 duration-1000">Mode Focus</h2>
+                <h2 className="text-sm font-bold uppercase tracking-[0.3em] text-slate-400 mb-4 md:mb-8 animate-in slide-in-from-top-8 duration-1000">Mode Focus</h2>
                 
-                <div className="mb-12">
-                    <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 leading-tight animate-in zoom-in-95 duration-1000">
+                <div className="mb-8 md:mb-12">
+                    <h1 className="text-3xl sm:text-5xl md:text-7xl font-serif font-bold mb-4 md:mb-6 leading-tight animate-in zoom-in-95 duration-1000">
                         {currentTask || "Créer. Respirer. Avancer."}
                     </h1>
                     {!currentTask && (
-                        <p className="text-slate-400 text-lg italic">"La simplicité est la sophistication suprême."</p>
+                        <p className="text-slate-400 text-sm md:text-lg italic">"La simplicité est la sophistication suprême."</p>
                     )}
                 </div>
 
                 {/* Sound Controls */}
-                <div className="flex items-center justify-center gap-6 mb-12">
+                <div className="grid grid-cols-3 md:flex md:items-center md:justify-center gap-4 md:gap-6 mb-8 md:mb-12">
                     {SOUNDS.map(sound => (
                         <button 
                             key={sound.id}
@@ -156,7 +157,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
 
                 {/* Volume Slider */}
                 {currentSoundId && (
-                    <div className="w-48 mx-auto flex items-center gap-3 text-slate-500 mb-12 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="w-56 md:w-48 mx-auto flex items-center gap-3 text-slate-500 mb-8 md:mb-12 animate-in fade-in slide-in-from-bottom-4">
                         <Volume2 size={16} />
                         <input 
                             type="range" min="0" max="1" step="0.01" 
@@ -177,17 +178,17 @@ export const FocusMode: React.FC<FocusModeProps> = ({
             {!showChat && (
                 <button 
                     onClick={() => setShowChat(true)}
-                    className="absolute bottom-8 right-8 flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold backdrop-blur-sm transition-all animate-in fade-in slide-in-from-bottom-4 border border-white/5 hover:border-white/20 shadow-lg z-20"
+                    className="absolute bottom-6 right-4 md:bottom-8 md:right-8 flex items-center gap-3 px-5 py-3 md:px-6 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold backdrop-blur-sm transition-all animate-in fade-in slide-in-from-bottom-4 border border-white/5 hover:border-white/20 shadow-lg z-20"
                 >
-                    <MessageCircle size={18} className="text-brand-orange" /> Discuter avec Franck
+                    <MessageCircle size={18} className="text-brand-orange" /> <span className="hidden sm:inline">Discuter avec Franck</span><span className="sm:hidden">Franck</span>
                 </button>
             )}
 
             {/* Coach Franck Chat Window */}
             {showChat && (
-                <div className="absolute bottom-8 right-8 w-[420px] h-[550px] bg-gradient-to-b from-slate-800/98 to-slate-900/98 backdrop-blur-2xl border border-white/10 rounded-3xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 z-20">
+                <div className="absolute inset-0 md:inset-auto md:bottom-8 md:right-8 md:w-[420px] md:h-[550px] bg-slate-900 border-0 md:border md:border-slate-700/50 md:rounded-3xl flex flex-col overflow-hidden shadow-2xl shadow-black/50 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 z-20">
                     {/* Header */}
-                    <div className="p-4 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-orange-500/10 to-purple-500/10">
+                    <div className="p-4 border-b border-slate-700/50 flex justify-between items-center bg-gradient-to-r from-orange-500/10 to-purple-500/10">
                         <div className="flex items-center gap-3">
                             <div className="relative">
                                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-serif text-lg shadow-lg shadow-orange-500/30">
@@ -215,7 +216,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                                 {/* Welcome Message */}
                                 <div className="flex gap-3">
                                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-serif text-sm shrink-0 mt-1">F</div>
-                                    <div className="bg-white/10 p-4 rounded-2xl rounded-bl-none border border-white/5 text-sm text-slate-200 leading-relaxed">
+                                    <div className="bg-slate-800 p-4 rounded-2xl rounded-bl-none border border-slate-700/50 text-sm text-slate-200 leading-relaxed">
                                         <p className="mb-2">Hey Marion ! 🎯</p>
                                         <p className="mb-2">Mode Focus activé, je suis là en tant que coach. Pas de blabla, que du concret pour t'aider à avancer.</p>
                                         <p className="text-slate-400 text-xs">Dis-moi ce qui te bloque ou choisis un sujet ci-dessous.</p>
@@ -228,7 +229,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                                         <button
                                             key={idx}
                                             onClick={() => handleSendMessage(item.prompt)}
-                                            className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-500/30 rounded-xl text-xs text-slate-300 hover:text-white transition-all group"
+                                            className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-orange-500/50 rounded-xl text-xs text-slate-300 hover:text-white transition-all group"
                                         >
                                             <item.icon size={14} className="text-orange-400 group-hover:scale-110 transition-transform" />
                                             {item.label}
@@ -246,7 +247,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                                 <div className={`max-w-[80%] p-3.5 rounded-2xl text-sm leading-relaxed ${
                                     msg.role === 'user' 
                                     ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-br-none shadow-lg shadow-orange-500/20' 
-                                    : 'bg-white/10 text-slate-200 rounded-bl-none border border-white/5'
+                                    : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/50'
                                 }`}>
                                     {msg.text}
                                 </div>
@@ -256,7 +257,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                         {isTyping && (
                             <div className="flex gap-3">
                                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-serif text-sm shrink-0">F</div>
-                                <div className="bg-white/5 px-4 py-3 rounded-2xl rounded-bl-none flex gap-1.5 border border-white/5">
+                                <div className="bg-slate-800 px-4 py-3 rounded-2xl rounded-bl-none flex gap-1.5 border border-slate-700/50">
                                     <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
                                     <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                                     <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
@@ -267,10 +268,10 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                     </div>
 
                     {/* Input */}
-                    <div className="p-4 border-t border-white/5 bg-slate-900/50">
+                    <div className="p-4 border-t border-slate-700/50 bg-slate-900">
                         <div className="relative">
                             <input 
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-4 pr-12 py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all"
+                                className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-4 pr-12 py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-500/50 focus:bg-slate-750 transition-all"
                                 placeholder="Qu'est-ce qui te préoccupe ?"
                                 value={chatInput}
                                 onChange={(e) => setChatInput(e.target.value)}

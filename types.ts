@@ -21,12 +21,13 @@ export enum ProjectStatus {
   export interface Task {
     id: string;
     title: string;
-    description?: string; // Added description for objectives
+    description?: string;
     completed: boolean;
     column?: 'todo' | 'doing' | 'done'; // Kanban column state
     dueDate?: string;
     priority: 'Low' | 'Medium' | 'High';
     phase: WorkflowPhase;
+    sortOrder?: number;
   }
   
   export interface InvoiceItem {
@@ -54,7 +55,7 @@ export enum ProjectStatus {
     amount: number;
     currency?: string;
     status: 'Paid' | 'Pending' | 'Draft' | 'Partial';
-    type: 'Invoice';
+    type: 'Invoice' | 'Estimate';
     items: InvoiceItem[];
     payments?: InvoicePayment[];
     paymentLink?: string;
@@ -135,6 +136,7 @@ export enum ProjectStatus {
     contractSignDate?: string; // Date de signature du contrat de maintenance
     billingDates?: string[]; // Dates de facturation récurrentes
     hasContract: boolean; // Si un contrat de maintenance est signé
+    monthlyPrice?: number; // Tarif mensuel de la maintenance (peut varier par client)
   }
 
   export interface Project {
@@ -162,6 +164,7 @@ export enum ProjectStatus {
     portalSettings?: ClientPortalSettings;
     portalComments?: ClientPortalComment[];
     maintenance?: MaintenanceInfo; // Informations de maintenance
+    links?: Record<string, string>; // External links (figma, github, wordpress, etc.)
   }
   
 export interface CalendarEvent {
@@ -204,11 +207,12 @@ export interface NotificationAction {
 export interface Notification {
     id: string;
     type: NotificationType;
-    title: string; // Added title
+    title: string;
     message: string;
     timestamp: Date;
     read: boolean;
-    action?: NotificationAction; // Added action
+    action?: NotificationAction;
+    link?: string; // Route to navigate to on click (e.g. "/client/ProjectName", "/finances")
 }
 
 export interface Expense {
@@ -245,20 +249,95 @@ export interface Activity {
 }
 
 export interface ClientPortalComment {
-    id: string;
+    id: string | number;
     author: string;
     text: string;
-    timestamp: string;
+    timestamp?: string;
+    createdAt?: string;
     phaseRef?: WorkflowPhase;
+    isAdmin?: boolean;
+    seen?: boolean;
 }
 
 export interface ClientPortalSettings {
     enabled: boolean;
     shareToken: string;
+    pin?: string;
     showTasks: boolean;
     showTimeline: boolean;
     allowComments: boolean;
+    showDeliverables: boolean;
+    showUpdates: boolean;
+    allowUploads: boolean;
+    customMessage?: string;
+    clientName?: string;
     lastAccessed?: string;
+    showAccount?: boolean; // Enable "Mon Compte" section
+}
+
+export type PortalDeliverableType = 'link' | 'image' | 'file' | 'figma' | 'website';
+
+export interface PortalDeliverable {
+    id: number;
+    type: PortalDeliverableType;
+    title: string;
+    url?: string;
+    description?: string;
+    thumbnail?: string;
+    visible: boolean;
+    sortOrder: number;
+    createdAt?: string;
+    filePath?: string;
+    originalName?: string;
+}
+
+export interface PortalUpdate {
+    id: number;
+    phase?: string;
+    title: string;
+    content?: string;
+    attachments?: string[];
+    createdAt?: string;
+}
+
+export type PortalDocumentType = 'contract' | 'invoice' | 'quote' | 'report' | 'other';
+
+export interface PortalDocument {
+    id: number;
+    title: string;
+    docType: PortalDocumentType;
+    originalName: string;
+    mimeType?: string;
+    sizeBytes: number;
+    visible: boolean;
+    uploadedAt?: string;
+}
+
+export type PortalFileCategory = 'text' | 'image' | 'logo' | 'document' | 'other';
+
+export interface PortalClientFile {
+    id: number;
+    filename?: string;
+    originalName: string;
+    mimeType?: string;
+    sizeBytes: number;
+    category: PortalFileCategory;
+    note?: string;
+    authorName?: string;
+    seen?: boolean;
+    createdAt?: string;
+}
+
+export interface PortalActivityItem {
+    id: string;
+    type: 'update' | 'comment' | 'file';
+    title: string;
+    content?: string;
+    author: string;
+    isAdmin?: boolean;
+    phase?: string;
+    category?: string;
+    createdAt: string;
 }
 
 // --- Goals & KPIs ---

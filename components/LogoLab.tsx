@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Wand2, RefreshCw, Check, Type, Square, Circle, Triangle, MousePointer2, Move, Trash2, Layers, Download, Save, Grid, ZoomIn, ZoomOut, Undo, Redo, Image as ImageIcon, Minus, X, Search, Code, Upload, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import { sanitizeSVG } from '../utils/sanitize';
 
 // Filter out non-icon exports from Lucide
 const ICON_LIST = Object.keys(LucideIcons).filter(key => key !== 'createLucideIcon' && key !== 'default');
 
 interface DesignElement {
     id: string;
-    type: 'text' | 'icon' | 'shape' | 'image' | 'line' | 'svg';
+    type: 'text' | 'icon' | 'shape' | 'image' | 'line' | 'svg' | 'rect' | 'circle' | 'triangle';
     x: number;
     y: number;
     width: number;
@@ -34,7 +35,7 @@ interface LogoLabProps {
 
 const POPULAR_ICONS = ['Star', 'Heart', 'Zap', 'Hexagon', 'Anchor', 'Award', 'Feather', 'Sun', 'Moon', 'Cloud', 'Music', 'Camera', 'Video', 'Smile'];
 
-const FONTS = ['Inter', 'Playfair Display', 'Roboto', 'Montserrat', 'Lato', 'Merriweather', 'Open Sans', 'Oswald', 'Courier New'];
+const FONTS = ['Montserrat', 'Raleway', 'Roboto', 'Lato', 'Open Sans', 'Oswald', 'Merriweather', 'Playfair Display', 'Courier New'];
 
 export const LogoLab: React.FC<LogoLabProps> = ({ clientName, initialData, onSave, onClose }) => {
     const [mode, setMode] = useState<'design' | 'ai'>('design');
@@ -49,7 +50,7 @@ export const LogoLab: React.FC<LogoLabProps> = ({ clientName, initialData, onSav
     }, []);
 
     const [elements, setElements] = useState<DesignElement[]>(initialData?.elements || [
-        { id: '1', type: 'text', text: clientName, x: 400, y: 300, width: 40, height: 0, rotation: 0, fill: '#000000', stroke: 'none', strokeWidth: 0, fontFamily: 'Inter', fontWeight: 'bold', opacity: 1 }
+        { id: '1', type: 'text', text: clientName, x: 400, y: 300, width: 40, height: 0, rotation: 0, fill: '#000000', stroke: 'none', strokeWidth: 0, fontFamily: 'Montserrat', fontWeight: 'bold', opacity: 1 }
     ]);
     const [selectedId, setSelectedId] = useState<string | null>(initialData ? null : '1');
     const [bgColor, setBgColor] = useState(initialData?.bgColor || '#ffffff');
@@ -62,6 +63,23 @@ export const LogoLab: React.FC<LogoLabProps> = ({ clientName, initialData, onSav
         startEl: DesignElement | null;
         handle?: string; // nw, ne, sw, se for resize
     }>({ type: null, startPos: { x: 0, y: 0 }, startEl: null });
+
+    // AI mode state
+    const [aiSvg, setAiSvg] = useState<string | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const generateAiLogo = async () => {
+        setIsGenerating(true);
+        try {
+            // Placeholder: generate a simple SVG logo with the client name
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="20" fill="#6366f1"/><text x="100" y="110" text-anchor="middle" fill="white" font-size="24" font-weight="bold" font-family="sans-serif">${clientName.charAt(0).toUpperCase()}</text></svg>`;
+            setAiSvg(svg);
+        } catch (err) {
+            console.error('AI logo generation failed:', err);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const svgRef = useRef<SVGSVGElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +99,7 @@ export const LogoLab: React.FC<LogoLabProps> = ({ clientName, initialData, onSav
             stroke: type === 'line' ? '#000000' : 'none',
             strokeWidth: type === 'line' ? 4 : 0,
             text: type === 'text' ? 'Texte' : undefined,
-            fontFamily: 'Inter',
+            fontFamily: 'Montserrat',
             fontWeight: 'normal',
             iconName,
             svgContent,
@@ -422,7 +440,7 @@ export const LogoLab: React.FC<LogoLabProps> = ({ clientName, initialData, onSav
                     ) : (
                         <div className="bg-white p-10 rounded-2xl shadow-xl">
                             {aiSvg ? (
-                                <div className="w-64 h-64" dangerouslySetInnerHTML={{ __html: aiSvg }} />
+                                <div className="w-64 h-64" dangerouslySetInnerHTML={{ __html: sanitizeSVG(aiSvg) }} />
                             ) : (
                                 <div className="text-center">
                                     <Wand2 size={48} className="mx-auto mb-4 text-slate-300" />

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Project, Invoice, Expense } from '../types';
 import { Card, Badge, Modal } from './Shared';
-import { EmailClient } from './EmailClient'; // Import EmailClient
+import { EmailWidget as EmailClient } from './email/EmailWidget';
 import { formatCurrency } from '../utils';
 import { 
     TrendingUp, 
@@ -33,7 +33,7 @@ import {
     Receipt,
     PiggyBank
 } from 'lucide-react';
-import { apiFetch } from '../services/api';
+import { useExpenses, useDeleteExpense, useScanExpense } from '../services/queries';
 
 declare const confetti: any;
 
@@ -48,7 +48,7 @@ interface FinanceDashboardProps {
     onCreateEstimate?: () => void;
 }
 
-export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, onOpenInvoice, onUpdateProject, currency = 'CHF', currentTheme, onClose, onCreateInvoice, onCreateEstimate }) => {
+const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOpenInvoice, onUpdateProject, currency = 'CHF', currentTheme, onClose, onCreateInvoice, onCreateEstimate }) => {
     const [activeTab, setActiveTab] = useState<'revenus' | 'depenses' | 'analytics' | 'temps' | 'tresorerie' | 'export'>('revenus');
     const [period, setPeriod] = useState<'all' | 'year' | 'month'>('year');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
@@ -62,25 +62,13 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
     // Pizza Mode State
     const [showPizzaModal, setShowPizzaModal] = useState(false);
     
-    // Expenses State
-    const [expenses, setExpenses] = useState<Expense[]>([]);
+    // Expenses via React Query
+    const { data: expenses = [] } = useExpenses();
+    const deleteExpenseMutation = useDeleteExpense();
+    const scanExpenseMutation = useScanExpense();
     const [isScanning, setIsScanning] = useState(false);
     const [isReminding, setIsReminding] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    // Fetch expenses on mount
-    useEffect(() => {
-        const fetchExpenses = async () => {
-            try {
-                const res = await apiFetch('/api/expenses');
-                const data = await res.json();
-                if (data.expenses) setExpenses(data.expenses);
-            } catch (e) {
-                console.error("Failed to load expenses", e);
-            }
-        };
-        fetchExpenses();
-    }, []);
 
     // --- ACCOUNTING STATE & HELPERS ---
     const [showAccountingModal, setShowAccountingModal] = useState(false);
@@ -141,17 +129,18 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
             if (accountingView === 'purchases') filename = `Journal_Achats_${accountingYear}_MarionWeb.pdf`;
 
             const opt = {
-                margin: 0,
+                margin: [10, 10, 15, 10] as [number, number, number, number],
                 filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['tr', '.avoid-break'] }
             };
 
             try {
-                // @ts-ignore
+                // @ts-ignore - html2pdf.js lacks proper types
                 const html2pdf = (await import('html2pdf.js')).default;
-                await html2pdf().set(opt).from(element).save();
+                await html2pdf().set(opt as any).from(element).save();
                 confetti({ particleCount: 50, spread: 60, colors: ['#10B981', '#3B82F6'] });
             } catch (err) {
                 console.error("PDF Failed", err);
@@ -167,35 +156,26 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
         if (!file) return;
 
         setIsScanning(true);
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const res = await apiFetch('/api/expenses/scan', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (data.success) {
-                setExpenses([data.expense, ...expenses]);
-                confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-            } else {
-                alert("Erreur de scan: " + data.error);
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Erreur serveur.");
-        } finally {
-            setIsScanning(false);
-        }
+        scanExpenseMutation.mutate(file, {
+            onSuccess: (data) => {
+                if (data.success) {
+                    confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+                } else {
+                    alert("Erreur de scan: " + data.error);
+                }
+            },
+            onError: () => {
+                alert("Erreur serveur.");
+            },
+            onSettled: () => {
+                setIsScanning(false);
+            },
+        });
     };
 
     const handleDeleteExpense = async (id: string) => {
         if(!confirm("Supprimer cette dépense ?")) return;
-        try {
-            await apiFetch(`/api/expenses/${id}`, { method: 'DELETE' });
-            setExpenses(expenses.filter(e => e.id !== id));
-        } catch(e) { console.error(e); }
+        deleteExpenseMutation.mutate(id);
     };
 
     const handleMarkAsPaid = (e: React.MouseEvent, invoice: Invoice, project: Project) => {
@@ -214,7 +194,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
         let body = `Bonjour,\n\nSauf erreur de notre part, la facture ${invoice.number} du ${new Date(invoice.date).toLocaleDateString()} est toujours en attente de paiement.\n\nMerci de faire le nécessaire.\n\nCordialement,\nMarion`;
 
         try {
-            const res = await fetch('/api/invoices/remind', {
+            const res = await fetch('/api/v1/invoices/remind', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -416,7 +396,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                 <span className="text-xs text-slate-400 flex items-center gap-1 mb-1">
                                     <ArrowUpRight size={12} className="text-emerald-500" /> Entrées (CA)
                                 </span>
-                                <span className="font-mono font-bold text-slate-800 dark:text-white text-lg">
+                                <span className="tabular-nums font-bold text-slate-800 dark:text-white text-lg">
                                     {formatCurrency(totalRevenue)} {currency}
                                 </span>
                             </div>
@@ -424,7 +404,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                 <span className="text-xs text-slate-400 flex items-center gap-1 mb-1">
                                     <ArrowDownRight size={12} className="text-red-500" /> Sorties (Charges)
                                 </span>
-                                <span className="font-mono font-bold text-slate-800 dark:text-white text-lg">
+                                <span className="tabular-nums font-bold text-slate-800 dark:text-white text-lg">
                                     {formatCurrency(totalExpenses)} {currency}
                                 </span>
                             </div>
@@ -518,7 +498,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-slate-900 dark:text-slate-200">{new Date(inv.date).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                            <td className="px-6 py-4 text-right tabular-nums font-bold text-slate-900 dark:text-white">
                                                 {formatCurrency(inv.amount)} {currency}
                                             </td>
                                             <td className="px-6 py-4 text-center">
@@ -609,13 +589,13 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-slate-900 dark:text-slate-300 text-xs max-w-[200px] truncate" title={exp.description}>{exp.description}</td>
-                                            <td className="px-6 py-4 text-right font-mono font-bold text-red-600">
+                                            <td className="px-6 py-4 text-right tabular-nums font-bold text-red-600">
                                                 -{formatCurrency(exp.amount)} {currency}
                                             </td>
                                             <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                 {exp.fileUrl && (
                                                     <button 
-                                                        onClick={() => fetch('/api/files/open', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: `Dépenses/${exp.id}${exp.fileUrl.substring(exp.fileUrl.lastIndexOf('.'))}` }) }) } 
+                                                        onClick={() => fetch('/api/v1/files/open', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: `Dépenses/${exp.id}${exp.fileUrl.substring(exp.fileUrl.lastIndexOf('.'))}` }) }) } 
                                                         className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-blue-500 transition-colors"
                                                         title="Voir le justificatif"
                                                     >
@@ -663,7 +643,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                             <div className="flex-1">
                                                 <div className="flex justify-between mb-1">
                                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{client.name}</span>
-                                                    <span className="text-sm font-mono font-bold text-emerald-600">{formatCurrency(client.revenue)} {currency}</span>
+                                                    <span className="text-sm tabular-nums font-bold text-emerald-600">{formatCurrency(client.revenue)} {currency}</span>
                                                 </div>
                                                 <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex">
                                                     <div className="h-full bg-emerald-500" style={{ width: `${(client.revenue / maxRevenue) * 100}%` }} />
@@ -727,13 +707,13 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                         <div className="grid grid-cols-2 gap-6">
                             <Card className="p-4">
                                 <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Cette Année</h4>
-                                <div className="text-3xl font-bold text-emerald-600 font-mono">
+                                <div className="text-3xl font-bold text-emerald-600 tabular-nums">
                                     {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + i.amount, 0).toLocaleString('fr-CH')} {currency}
                                 </div>
                             </Card>
                             <Card className="p-4">
                                 <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Année Précédente</h4>
-                                <div className="text-3xl font-bold text-slate-500 font-mono">
+                                <div className="text-3xl font-bold text-slate-500 tabular-nums">
                                     {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + i.amount, 0).toLocaleString('fr-CH')} {currency}
                                 </div>
                                 {(() => {
@@ -826,11 +806,11 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                                 <span className="font-medium text-slate-800 dark:text-white">{p.name}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right font-mono">{p.hours}h</td>
-                                                        <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
+                                                        <td className="px-4 py-3 text-right tabular-nums">{p.hours}h</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-600">
                                                             {formatCurrency(p.revenue)} {currency}
                                                         </td>
-                                                        <td className="px-4 py-3 text-right font-mono">
+                                                        <td className="px-4 py-3 text-right tabular-nums">
                                                             {p.hourlyRate.toFixed(0)} {currency}/h
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
@@ -1288,7 +1268,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                     </div>
 
                                     {/* Quick Summary Cards */}
-                                    <div className="grid grid-cols-3 gap-4 mb-10">
+                                    <div className="grid grid-cols-3 gap-4 mb-10 avoid-break" style={{ pageBreakInside: 'avoid' }}>
                                         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 border border-emerald-200">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
@@ -1296,7 +1276,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                 </div>
                                                 <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Produits</span>
                                             </div>
-                                            <p className="text-2xl font-mono font-bold text-emerald-700">{formatCurrency(totalRevenue)}</p>
+                                            <p className="text-2xl tabular-nums font-bold text-emerald-700">{formatCurrency(totalRevenue)}</p>
                                             <p className="text-xs text-emerald-600 mt-1">{currency} TTC</p>
                                         </div>
                                         <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-5 border border-red-200">
@@ -1306,20 +1286,20 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                 </div>
                                                 <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Charges</span>
                                             </div>
-                                            <p className="text-2xl font-mono font-bold text-red-700">{formatCurrency(totalExpenses)}</p>
+                                            <p className="text-2xl tabular-nums font-bold text-red-700">{formatCurrency(totalExpenses)}</p>
                                             <p className="text-xs text-red-600 mt-1">{currency}</p>
                                         </div>
-                                        <div className={`bg-gradient-to-br ${netProfit >= 0 ? 'from-slate-800 to-slate-900' : 'from-red-800 to-red-900'} rounded-xl p-5 border border-slate-700`}>
+                                        <div className={`bg-gradient-to-br ${netProfit >= 0 ? 'from-blue-50 to-indigo-100 border-blue-200' : 'from-orange-50 to-red-100 border-red-200'} rounded-xl p-5 border`}>
                                             <div className="flex items-center gap-2 mb-2">
-                                                <div className={`w-8 h-8 ${netProfit >= 0 ? 'bg-emerald-500' : 'bg-red-500'} rounded-lg flex items-center justify-center`}>
+                                                <div className={`w-8 h-8 ${netProfit >= 0 ? 'bg-blue-500' : 'bg-red-500'} rounded-lg flex items-center justify-center`}>
                                                     <PiggyBank className="w-4 h-4 text-white" />
                                                 </div>
-                                                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Résultat</span>
+                                                <span className={`text-xs font-bold uppercase tracking-wider ${netProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>Résultat</span>
                                             </div>
-                                            <p className={`text-2xl font-mono font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            <p className={`text-2xl tabular-nums font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
                                                 {netProfit >= 0 ? '+' : ''}{formatCurrency(netProfit)}
                                             </p>
-                                            <p className="text-xs text-slate-400 mt-1">{currency} Net</p>
+                                            <p className={`text-xs mt-1 ${netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{currency} Net</p>
                                         </div>
                                     </div>
 
@@ -1341,18 +1321,18 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                     <span className="text-slate-700 font-medium">Chiffre d'Affaires HT</span>
                                                     <span className="text-xs text-slate-400 ml-2">(Prestations de services)</span>
                                                 </div>
-                                                <span className="font-mono font-bold text-slate-900 text-lg">{formatCurrency(totalRevenue / 1.081)}</span>
+                                                <span className="tabular-nums font-bold text-slate-900 text-lg">{formatCurrency(totalRevenue / 1.081)}</span>
                                             </div>
                                             <div className="flex justify-between items-center py-3 border-b border-slate-200">
                                                 <div>
                                                     <span className="text-slate-500">TVA Collectée</span>
                                                     <span className="text-xs text-slate-400 ml-2">(8.1%)</span>
                                                 </div>
-                                                <span className="font-mono text-slate-500">{formatCurrency(totalRevenue - (totalRevenue / 1.081))}</span>
+                                                <span className="tabular-nums text-slate-500">{formatCurrency(totalRevenue - (totalRevenue / 1.081))}</span>
                                             </div>
                                             <div className="flex justify-between items-center py-4 bg-emerald-100 -mx-6 px-6 rounded-b-xl mt-4">
                                                 <span className="font-bold text-emerald-800 text-lg">Total Produits TTC</span>
-                                                <span className="font-mono font-black text-emerald-800 text-xl">{formatCurrency(totalRevenue)} {currency}</span>
+                                                <span className="tabular-nums font-black text-emerald-800 text-xl">{formatCurrency(totalRevenue)} {currency}</span>
                                             </div>
                                         </div>
 
@@ -1379,7 +1359,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                                 <td className="px-4 py-3 text-slate-600">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
                                                                 <td className="px-4 py-3 font-medium text-slate-900">{inv.project.clientName}</td>
                                                                 <td className="px-4 py-3 text-slate-600">{inv.number}</td>
-                                                                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{formatCurrency(inv.amount)}</td>
+                                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-700">{formatCurrency(inv.amount)}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -1389,7 +1369,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                     </div>
 
                                     {/* Charges Section */}
-                                    <div className="mb-10">
+                                    <div className="mb-10" style={{ pageBreakBefore: 'auto', pageBreakInside: 'avoid' }}>
                                         <div className="flex items-center gap-3 mb-6">
                                             <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
                                                 <Receipt className="w-5 h-5 text-red-600" />
@@ -1410,12 +1390,12 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                         <span className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
                                                         <span className="text-slate-700 font-medium">{cat}</span>
                                                     </div>
-                                                    <span className="font-mono text-slate-700">{formatCurrency(amount)}</span>
+                                                    <span className="tabular-nums text-slate-700">{formatCurrency(amount)}</span>
                                                 </div>
                                             ))}
                                             <div className="flex justify-between items-center py-4 bg-red-100 -mx-6 px-6 rounded-b-xl mt-4">
                                                 <span className="font-bold text-red-800 text-lg">Total Charges</span>
-                                                <span className="font-mono font-black text-red-800 text-xl">{formatCurrency(totalExpenses)} {currency}</span>
+                                                <span className="tabular-nums font-black text-red-800 text-xl">{formatCurrency(totalExpenses)} {currency}</span>
                                             </div>
                                         </div>
 
@@ -1442,7 +1422,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                                                 <td className="px-4 py-3 text-slate-600">{new Date(exp.date).toLocaleDateString('fr-CH')}</td>
                                                                 <td className="px-4 py-3 font-medium text-slate-900">{exp.supplier}</td>
                                                                 <td className="px-4 py-3 text-slate-600">{exp.category}</td>
-                                                                <td className="px-4 py-3 text-right font-mono font-bold text-red-700">{formatCurrency(exp.amount)}</td>
+                                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-red-700">{formatCurrency(exp.amount)}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -1452,31 +1432,31 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                                     </div>
 
                                     {/* Final Result */}
-                                    <div className={`rounded-2xl p-8 ${netProfit >= 0 ? 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-r from-red-900 via-red-800 to-red-900'}`}>
+                                    <div className={`rounded-2xl p-8 border-2 ${netProfit >= 0 ? 'bg-gradient-to-br from-emerald-50 to-blue-50 border-emerald-300' : 'bg-gradient-to-br from-red-50 to-orange-50 border-red-300'}`} style={{ pageBreakInside: 'avoid' }}>
                                         <div className="flex justify-between items-center">
                                             <div>
-                                                <p className="text-slate-400 text-sm uppercase tracking-widest mb-1">Résultat de l'Exercice {accountingYear}</p>
-                                                <h3 className="text-2xl font-serif font-bold text-white">Bénéfice {netProfit >= 0 ? 'Net' : '(Perte)'}</h3>
+                                                <p className="text-slate-500 text-sm uppercase tracking-widest mb-1">Résultat de l'Exercice {accountingYear}</p>
+                                                <h3 className={`text-2xl font-serif font-bold ${netProfit >= 0 ? 'text-slate-900' : 'text-red-900'}`}>Bénéfice {netProfit >= 0 ? 'Net' : '(Perte)'}</h3>
                                             </div>
                                             <div className="text-right">
-                                                <p className={`text-4xl font-mono font-black ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                <p className={`text-4xl tabular-nums font-black ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                                     {netProfit >= 0 ? '+' : ''}{formatCurrency(netProfit)}
                                                 </p>
-                                                <p className="text-slate-400 text-sm mt-1">{currency}</p>
+                                                <p className="text-slate-500 text-sm mt-1">{currency}</p>
                                             </div>
                                         </div>
                                         
                                         {/* Profit Margin */}
-                                        <div className="mt-6 pt-6 border-t border-slate-700 flex justify-between items-center">
-                                            <span className="text-slate-400 text-sm">Marge bénéficiaire</span>
-                                            <span className={`font-mono font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        <div className={`mt-6 pt-6 border-t flex justify-between items-center ${netProfit >= 0 ? 'border-emerald-200' : 'border-red-200'}`}>
+                                            <span className="text-slate-600 text-sm font-medium">Marge bénéficiaire</span>
+                                            <span className={`tabular-nums font-bold text-lg ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                                 {totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0}%
                                             </span>
                                         </div>
                                     </div>
 
                                     {/* Footer */}
-                                    <div className="mt-10 pt-6 border-t border-slate-200 text-center">
+                                    <div className="mt-10 pt-6 border-t border-slate-200 text-center" style={{ pageBreakInside: 'avoid' }}>
                                         <p className="text-xs text-slate-400">
                                             Document généré automatiquement par Marion Web OS • {new Date().toLocaleDateString('fr-CH')} à {new Date().toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}
                                         </p>
@@ -1539,8 +1519,8 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
             </Modal>
 
             {/* Email Composer Modal */}
-            <Modal isOpen={showEmailComposer} onClose={() => setShowEmailComposer(false)} title="" width="max-w-4xl" noContentPadding={true}>
-                <div className="h-[600px]">
+            <Modal isOpen={showEmailComposer} onClose={() => setShowEmailComposer(false)} title="" width="max-w-[95vw] w-full h-[95vh]" noContentPadding={true}>
+                <div className="h-full">
                     {reminderData && (
                         <EmailClient 
                             initialCompose={reminderData} 
@@ -1561,7 +1541,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                     <div className="absolute bottom-10 right-10 text-6xl animate-spin-slow">🍕</div>
                     <div className="absolute top-1/2 left-10 text-2xl animate-pulse">🍅</div>
 
-                    <h2 className="font-serif text-4xl font-bold text-red-600 mb-2 tracking-tight" style={{ fontFamily: 'Comic Sans MS, cursive' }}>Marion Pizza Design Inc.</h2>
+                    <h2 className="font-serif text-4xl font-bold text-red-600 mb-2 tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>Marion Pizza Design Inc.</h2>
                     <p className="text-slate-600 font-bold italic mb-8">Bilan Officiel en Pizzanomics</p>
 
                     <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-orange-200 mb-8 relative z-10">
@@ -1588,7 +1568,7 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
                         </div>
                     </div>
 
-                    <p className="text-xs text-slate-400 font-mono">Taux de conversion : 1 Pizza = {PIZZA_PRICE} CHF (Margherita Standard GE)</p>
+                    <p className="text-xs text-slate-400 tabular-nums">Taux de conversion : 1 Pizza = {PIZZA_PRICE} CHF (Margherita Standard GE)</p>
                     
                     <button onClick={() => { setShowPizzaModal(false); confetti({ particleCount: 100, shapes: ['circle'], colors: ['#EF4444', '#F59E0B'] }); }} className="mt-6 px-8 py-3 bg-red-500 text-white rounded-full font-bold shadow-lg hover:scale-110 transition-transform border-b-4 border-red-700 active:border-b-0 active:translate-y-1">
                         Miam ! Fermer
@@ -1598,3 +1578,5 @@ export const FinanceDashboard: React.FC<FinanceDashboardProps> = ({ projects, on
         </div>
     );
 };
+
+export const FinanceDashboard = React.memo(FinanceDashboardInner);

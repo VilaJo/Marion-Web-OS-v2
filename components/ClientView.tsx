@@ -1,5 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen, GripVertical } from 'lucide-react';
+import {
+    DndContext, DragOverlay, closestCorners, PointerSensor, TouchSensor,
+    useSensor, useSensors, DragStartEvent, DragOverEvent, DragEndEvent,
+    useDroppable,
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential } from '../types';
 import { InvoiceBuilder } from './InvoiceBuilder';
 import { BrandCenter } from './BrandCenter';
@@ -7,13 +14,145 @@ import { formatCurrency } from '../utils';
 import { MeetingMode } from './MeetingMode';
 import { FileExplorer } from './FileExplorer';
 import { LogoLab } from './LogoLab';
-import { EmailClient } from './EmailClient';
+import { EmailWidget as EmailClient } from './email/EmailWidget';
 import { ClientPortal } from './ClientPortal';
 import { MaintenanceWidget } from './MaintenanceWidget';
-import { Badge, Card, Modal, Tooltip } from './Shared';
+import { Badge, Card, Modal, Tooltip, EmptyState } from './Shared';
 import { PROSPECT_PHASE_TEMPLATES, ACTIVE_PHASE_TEMPLATES, WORKFLOW_CONFIG, WORKFLOW_STEPS } from '../constants';
+import { apiFetch } from '../services/api';
+import { useOAuthStatus, useConnectGoogle, queryKeys } from '../services/queries';
+import { useQueryClient } from '@tanstack/react-query';
 
 declare const confetti: any;
+
+// --- SORTABLE TASK CARD COMPONENT ---
+interface SortableTaskCardProps {
+    task: Task;
+    isDragging: boolean;
+    onEdit: (task: Task) => void;
+    onDelete: (taskId: string, e: React.MouseEvent) => void;
+    onMove: (taskId: string, column: 'todo' | 'doing' | 'done') => void;
+    onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, task: Task, columnId: 'todo' | 'doing' | 'done') => void;
+    columnId: 'todo' | 'doing' | 'done';
+    prevColumn: 'todo' | 'doing' | 'done' | null;
+    nextColumn: 'todo' | 'doing' | 'done' | null;
+    getColumnLabel: (col: string) => string;
+}
+
+const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
+    task, isDragging, onEdit, onDelete, onMove, onKeyDown,
+    columnId, prevColumn, nextColumn, getColumnLabel,
+}) => {
+    const {
+        attributes, listeners, setNodeRef, transform, transition, isDragging: isSortableDragging,
+    } = useSortable({ id: task.id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isSortableDragging ? 0.4 : 1,
+        zIndex: isSortableDragging ? 50 : undefined,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 group hover:shadow-lg transition-shadow relative ${isDragging ? 'ring-2 ring-brand-orange/50' : ''}`}
+            onClick={() => onEdit(task)}
+            tabIndex={0}
+            role="listitem"
+            onKeyDown={(e) => onKeyDown(e, task, columnId)}
+        >
+            {/* Drag handle + Priority */}
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-1.5">
+                    <button
+                        {...attributes}
+                        {...listeners}
+                        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-300 hover:text-slate-500 transition-colors touch-none"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="Glisser pour réorganiser"
+                    >
+                        <GripVertical size={14} />
+                    </button>
+                    <Badge color={task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'yellow' : 'blue'}>{task.priority}</Badge>
+                </div>
+                <button 
+                    onClick={(e) => onDelete(task.id, e)} 
+                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full"
+                    aria-label="Supprimer la tâche"
+                >
+                    <Trash2 size={12} />
+                </button>
+            </div>
+
+            {/* Title */}
+            <div className={`text-sm font-bold mb-1 leading-snug ${task.completed ? 'line-through opacity-50 text-slate-400' : 'text-slate-800 dark:text-white'}`}>
+                {task.title}
+            </div>
+
+            {/* Description snippet */}
+            {task.description && (
+                <div className="text-xs text-slate-500 line-clamp-2 mb-2 leading-relaxed">
+                    {task.description}
+                </div>
+            )}
+
+            {/* Inline move arrows */}
+            <div className="flex justify-between items-center mb-2">
+                <button
+                    type="button"
+                    disabled={!prevColumn}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (prevColumn) onMove(task.id, prevColumn);
+                    }}
+                    className={`p-1 rounded-full border text-slate-300 hover:text-slate-600 hover:border-slate-300 bg-white/60 dark:bg-slate-800/60 transition-all ${
+                        !prevColumn ? 'opacity-20 cursor-default pointer-events-none' : 'opacity-70'
+                    }`}
+                    aria-label={prevColumn ? `Déplacer la tâche vers ${getColumnLabel(prevColumn)}` : undefined}
+                >
+                    <ChevronLeft size={12} />
+                </button>
+                <button
+                    type="button"
+                    disabled={!nextColumn}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (nextColumn) onMove(task.id, nextColumn);
+                    }}
+                    className={`p-1 rounded-full border text-slate-300 hover:text-slate-600 hover:border-slate-300 bg-white/60 dark:bg-slate-800/60 transition-all ${
+                        !nextColumn ? 'opacity-20 cursor-default pointer-events-none' : 'opacity-70'
+                    }`}
+                    aria-label={nextColumn ? `Déplacer la tâche vers ${getColumnLabel(nextColumn)}` : undefined}
+                >
+                    <ChevronRight size={12} />
+                </button>
+            </div>
+
+            {/* Footer (Date, Avatar placeholder) */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-700/50">
+                {task.dueDate ? (
+                    <div className={`text-[10px] font-medium flex items-center gap-1 ${new Date(task.dueDate) < new Date() && !task.completed ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
+                        <Clock size={10} /> {new Date(task.dueDate).toLocaleDateString()}
+                    </div>
+                ) : (
+                    <div className="text-[10px] text-slate-300 italic">Pas de date</div>
+                )}
+                <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-500">
+                    F
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- DROPPABLE COLUMN WRAPPER ---
+const DroppableColumn: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => {
+    const { setNodeRef } = useDroppable({ id });
+    return <div ref={setNodeRef} className="flex-1 flex flex-col min-h-0">{children}</div>;
+};
 
 interface ClientViewProps {
     project: Project;
@@ -24,9 +163,14 @@ interface ClientViewProps {
     currentTheme?: string;
 }
 
-export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdateProject, onNotify, onDelete, currentTheme }) => {
+const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateProject, onNotify, onDelete, currentTheme }) => {
     // Tabs: Tasks, Time, Finance, Files, Emails, Portal
     const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'finance' | 'files' | 'emails' | 'portal'>('tasks');
+    
+    // --- Google OAuth status (for Drive section) ---
+    const { data: oauthStatus } = useOAuthStatus();
+    const connectGoogleMutation = useConnectGoogle();
+    const queryClient = useQueryClient();
     
     // --- State: Modals ---
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -72,12 +216,28 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
     const [isLoadingFiles, setIsLoadingFiles] = useState(false);
     const [pathHistory, setPathHistory] = useState<string[]>([]);
     const [isSyncingToDrive, setIsSyncingToDrive] = useState(false);
-    const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+    const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
+        try { return localStorage.getItem(`marion_drive_sync_${project.id}`); } catch { return null; }
+    });
 
-    // --- State: Links ---
+    // --- State: Links (persisted in project.links) ---
     const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
-    const [links, setLinks] = useState<any>({ figma: '', github: '', wordpress: '', infomaniak: '' });
+    const [links, setLinks] = useState<Record<string, string>>(() => ({
+        figma: '', github: '', wordpress: '', infomaniak: '',
+        ...(project.links || {}),
+    }));
     const [hasVisitedFiles, setHasVisitedFiles] = useState(false);
+
+    // Persist links to project when they change (debounced via blur/Enter)
+    const saveLinks = (updated: Record<string, string>) => {
+        setLinks(updated);
+        // Filter out empty strings to keep project.json clean
+        const cleaned: Record<string, string> = {};
+        for (const [k, v] of Object.entries(updated)) {
+            if (v.trim()) cleaned[k] = v.trim();
+        }
+        onUpdateProject({ ...project, links: cleaned });
+    };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -106,7 +266,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
 
     const fetchTimeLogs = async () => {
         try {
-            const res = await fetch('/api/time/get', {
+            const res = await apiFetch('/api/v1/time/get', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId: project.id })
@@ -159,7 +319,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         };
 
         try {
-            await fetch('/api/time/log', {
+            await apiFetch('/api/v1/time/log', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId: project.id, entry: newEntry })
@@ -209,7 +369,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         const fullPath = subPath ? `${safeClientName}/${subPath}` : safeClientName;
 
         try {
-            const res = await fetch('/api/files/list', {
+            const res = await apiFetch('/api/v1/files/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: fullPath })
@@ -245,7 +405,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                 const relativeDir = currentPath ? `${safeClientName}/${currentPath}` : safeClientName;
                 const filePath = `${relativeDir}/${item.name}`;
                 
-                await fetch('/api/files/open', {
+                await apiFetch('/api/v1/files/open', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path: filePath })
@@ -270,7 +430,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             const relativeDir = currentPath ? `${safeClientName}/${currentPath}` : safeClientName;
             const oldPath = `${relativeDir}/${item.name}`;
             
-            const res = await fetch('/api/files/rename', {
+            const res = await apiFetch('/api/v1/files/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ oldPath, newName })
@@ -294,7 +454,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             const relativeDir = currentPath ? `${safeClientName}/${currentPath}` : safeClientName;
             const filePath = `${relativeDir}/${item.name}`;
 
-            const res = await fetch('/api/files/delete_item', {
+            const res = await apiFetch('/api/v1/files/delete_item', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: filePath })
@@ -317,7 +477,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         setIsSyncingToDrive(true);
         try {
             // Check if connected to Google Drive
-            const statusRes = await fetch('/api/oauth/google/status');
+            const statusRes = await apiFetch('/api/v1/oauth/google/status');
             const statusData = await statusRes.json();
             
             if (!statusData.connected) {
@@ -332,7 +492,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             const driveFolder = config.googleDrive?.folder || '';
 
             // Sync the client folder
-            const res = await fetch('/api/drive/sync', {
+            const res = await apiFetch('/api/v1/drive/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -344,7 +504,9 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             const data = await res.json();
 
             if (data.success) {
-                setLastSyncTime(new Date().toLocaleTimeString());
+                const syncTime = new Date().toLocaleString('fr-CH', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                setLastSyncTime(syncTime);
+                try { localStorage.setItem(`marion_drive_sync_${project.id}`, syncTime); } catch {}
                 onNotify('Sync réussie', `${data.synced_files?.length || 0} fichier(s) synchronisé(s) vers Google Drive`, 'success');
             } else {
                 onNotify('Erreur de sync', data.error || 'Une erreur est survenue', 'warning');
@@ -396,7 +558,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
     // --- PROMOTE/ARCHIVE/DELETE ---
     const handleChangeStatus = async (newStatus: ProjectStatus, category?: string) => {
         try {
-            const res = await fetch('/api/projects/move', {
+            const res = await apiFetch('/api/v1/projects/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -445,18 +607,11 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         handleChangeStatus(ProjectStatus.ARCHIVED, category);
     };
 
-    const handleDeleteClient = async () => {
+    const handleDeleteClient = () => {
         if (confirm(`SUPPRIMER DÉFINITIVEMENT ${project.clientName} ?`)) {
             if (!confirm("Vraiment certaine ?")) return;
-            try {
-                const res = await fetch(`/api/projects/delete?clientName=${encodeURIComponent(project.clientName)}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) {
-                    onNotify("Client Supprimé", "Dossier effacé.", 'warning');
-                    if (onDelete) onDelete(project.id);
-                    onBack();
-                }
-            } catch (e) { alert("Erreur serveur"); }
+            onNotify("Client Supprimé", "Dossier effacé.", 'warning');
+            if (onDelete) onDelete(project.id);
         }
     };
 
@@ -546,34 +701,132 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         onUpdateProject({ ...project, tasks, progress });
     };
 
-    // --- DRAG AND DROP HANDLERS ---
-    const handleDragStart = (e: React.DragEvent, taskId: string) => {
-        setDraggedTaskId(taskId);
-        e.dataTransfer.setData('taskId', taskId);
-        e.dataTransfer.effectAllowed = 'move';
-        // Make the drag ghost image semi-transparent if needed
-        const el = e.currentTarget as HTMLElement;
-        el.style.opacity = '0.5';
+    // --- DND-KIT DRAG AND DROP ---
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    );
+
+    const getTaskColumn = (task: Task): 'todo' | 'doing' | 'done' => {
+        if (task.column) return task.column;
+        if (task.completed) return 'done';
+        return 'todo';
     };
 
-    const handleDragEnd = (e: React.DragEvent) => {
-        setDraggedTaskId(null);
-        const el = e.currentTarget as HTMLElement;
-        el.style.opacity = '1';
+    const getColumnTasks = (columnId: 'todo' | 'doing' | 'done') => {
+        return project.tasks
+            .filter(t => getTaskColumn(t) === columnId)
+            .sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
+    const todoTasks = useMemo(() => getColumnTasks('todo'), [project.tasks]);
+    const doingTasks = useMemo(() => getColumnTasks('doing'), [project.tasks]);
+    const doneTasks = useMemo(() => getColumnTasks('done'), [project.tasks]);
+
+    const todoIds = useMemo(() => todoTasks.map(t => t.id), [todoTasks]);
+    const doingIds = useMemo(() => doingTasks.map(t => t.id), [doingTasks]);
+    const doneIds = useMemo(() => doneTasks.map(t => t.id), [doneTasks]);
+
+    const findColumnOfTask = (taskId: string): 'todo' | 'doing' | 'done' | null => {
+        if (todoIds.includes(taskId)) return 'todo';
+        if (doingIds.includes(taskId)) return 'doing';
+        if (doneIds.includes(taskId)) return 'done';
+        return null;
     };
 
-    const handleDrop = (e: React.DragEvent, columnId: 'todo' | 'doing' | 'done') => {
-        e.preventDefault();
-        const taskId = e.dataTransfer.getData('taskId');
-        if (taskId) {
-            moveTask(taskId, columnId);
+    const handleDndDragStart = (event: DragStartEvent) => {
+        setDraggedTaskId(event.active.id as string);
+    };
+
+    const handleDndDragOver = (event: DragOverEvent) => {
+        const { active, over } = event;
+        if (!over) return;
+
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        const activeColumn = findColumnOfTask(activeId);
+        // overId could be a task id OR a column id (when dropping on empty column)
+        let overColumn = findColumnOfTask(overId);
+        if (!overColumn && ['todo', 'doing', 'done'].includes(overId)) {
+            overColumn = overId as 'todo' | 'doing' | 'done';
         }
+
+        if (!activeColumn || !overColumn || activeColumn === overColumn) return;
+
+        // Move task to different column (live preview while dragging)
+        const activeTask = project.tasks.find(t => t.id === activeId);
+        if (!activeTask) return;
+
+        const isCompleted = overColumn === 'done';
+        const updatedTasks = project.tasks.map(t =>
+            t.id === activeId ? { ...t, column: overColumn as 'todo' | 'doing' | 'done', completed: isCompleted } : t
+        );
+        // Assign sort orders so the card appears at the end of the new column
+        const targetColTasks = updatedTasks.filter(t => getTaskColumn(t) === overColumn && t.id !== activeId);
+        const maxOrder = targetColTasks.reduce((max, t) => Math.max(max, t.sortOrder ?? 0), 0);
+        const finalTasks = updatedTasks.map(t =>
+            t.id === activeId ? { ...t, sortOrder: maxOrder + 1 } : t
+        );
+        updateProjectTasks(finalTasks);
+    };
+
+    const handleDndDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
         setDraggedTaskId(null);
+
+        if (!over) return;
+
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        const activeColumn = findColumnOfTask(activeId);
+        let overColumn = findColumnOfTask(overId);
+        if (!overColumn && ['todo', 'doing', 'done'].includes(overId)) {
+            overColumn = overId as 'todo' | 'doing' | 'done';
+        }
+
+        if (!activeColumn || !overColumn) return;
+
+        if (activeColumn === overColumn) {
+            // Reorder within the same column
+            const columnTasksList = getColumnTasks(activeColumn);
+            const oldIndex = columnTasksList.findIndex(t => t.id === activeId);
+            const newIndex = columnTasksList.findIndex(t => t.id === overId);
+
+            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+                const reordered = arrayMove(columnTasksList, oldIndex, newIndex);
+                // Re-assign sort orders
+                const reorderedWithOrder = reordered.map((t, i) => ({ ...t, sortOrder: i }));
+                const otherTasks = project.tasks.filter(t => getTaskColumn(t) !== activeColumn);
+                updateProjectTasks([...otherTasks, ...reorderedWithOrder]);
+            }
+        } else {
+            // Cross-column drop — finalize position
+            const targetColTasks = getColumnTasks(overColumn);
+            const overIndex = targetColTasks.findIndex(t => t.id === overId);
+            const insertIndex = overIndex !== -1 ? overIndex : targetColTasks.length;
+
+            const activeTask = project.tasks.find(t => t.id === activeId);
+            if (!activeTask) return;
+
+            const isCompleted = overColumn === 'done';
+            if (isCompleted && !activeTask.completed) {
+                const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
+                audio.volume = 0.2;
+                audio.play().catch(() => {});
+                confetti({ particleCount: 30, spread: 40, origin: { x: 0.7, y: 0.5 }, colors: ['#FF7E5F', '#FEB47B'] });
+            }
+
+            // Build the new column list with the dragged task inserted at the right position
+            const withoutActive = targetColTasks.filter(t => t.id !== activeId);
+            const movedTask = { ...activeTask, column: overColumn, completed: isCompleted };
+            withoutActive.splice(insertIndex, 0, movedTask);
+            const reorderedTarget = withoutActive.map((t, i) => ({ ...t, sortOrder: i }));
+
+            const otherTasks = project.tasks.filter(t => t.id !== activeId && getTaskColumn(t) !== overColumn);
+            updateProjectTasks([...otherTasks, ...reorderedTarget]);
+        }
     };
 
     // --- MEETING NOTES LOGIC ---
@@ -686,17 +939,40 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
     };
 
     // --- KANBAN RENDER HELPERS ---
-    const renderKanbanColumn = (columnId: 'todo' | 'doing' | 'done', title: string) => {
+    const getColumnLabel = (column: 'todo' | 'doing' | 'done') => {
+        switch (column) {
+            case 'todo':
+                return 'À Faire';
+            case 'doing':
+                return 'En Cours';
+            case 'done':
+                return 'Terminé';
+            default:
+                return column;
+        }
+    };
+
+    const handleTaskKeyDown = (
+        e: React.KeyboardEvent<HTMLDivElement>,
+        task: Task,
+        columnId: 'todo' | 'doing' | 'done',
+    ) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleOpenTaskModal(task);
+        } else if (e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            const targetColumn: 'todo' | 'doing' | 'done' =
+                task.completed || columnId === 'done' ? 'todo' : 'done';
+            moveTask(task.id, targetColumn);
+        }
+    };
+
+    const renderKanbanColumn = (columnId: 'todo' | 'doing' | 'done', title: string, columnTasks: Task[], taskIds: string[]) => {
         const kanbanOrder: Array<'todo' | 'doing' | 'done'> = ['todo', 'doing', 'done'];
         const currentIndex = kanbanOrder.indexOf(columnId);
         const prevColumn = currentIndex > 0 ? kanbanOrder[currentIndex - 1] : null;
         const nextColumn = currentIndex < kanbanOrder.length - 1 ? kanbanOrder[currentIndex + 1] : null;
-        const columnTasks = project.tasks.filter(t => {
-            if (t.column) return t.column === columnId;
-            if (columnId === 'done') return t.completed;
-            if (columnId === 'todo') return !t.completed;
-            return false;
-        });
 
         const bgColor = columnId === 'todo' ? 'bg-slate-50 dark:bg-slate-800/50' : 
                        columnId === 'doing' ? 'bg-blue-50 dark:bg-blue-900/10' : 
@@ -707,122 +983,72 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                           'text-green-500';
 
         return (
-            <div 
-                className={`flex-1 rounded-2xl ${bgColor} p-3 flex flex-col h-full min-h-[400px] transition-colors ${draggedTaskId ? 'border-2 border-dashed border-slate-300 dark:border-slate-700' : 'border border-transparent'}`}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, columnId)}
-            >
-                <div className="flex justify-between items-center mb-3">
-                    <h4 className={`text-xs font-bold uppercase tracking-widest ${titleColor} flex items-center gap-2`}>
-                        {title} <span className="px-2 py-0.5 rounded-full bg-white dark:bg-slate-700 text-slate-500 text-[10px] shadow-sm">{columnTasks.length}</span>
-                    </h4>
-                    <button 
-                        onClick={() => handleOpenTaskModal(undefined, columnId)} 
-                        className="p-1 rounded-full hover:bg-white/50 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <Plus size={14} />
-                    </button>
-                </div>
-
-                <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar pb-10">
-                    {columnTasks.map(task => (
-                        <div 
-                            key={task.id} 
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, task.id)}
-                            onDragEnd={handleDragEnd}
-                            className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 group hover:shadow-lg transition-all relative cursor-grab active:cursor-grabbing hover:-translate-y-1 ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
-                            onClick={() => handleOpenTaskModal(task)}
+            <DroppableColumn id={columnId}>
+                <div 
+                    className={`flex-1 rounded-2xl ${bgColor} p-3 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors ${draggedTaskId ? 'border-2 border-dashed border-slate-300 dark:border-slate-700' : 'border border-transparent'}`}
+                    role="list"
+                    aria-label={title}
+                >
+                    <div className="flex justify-between items-center mb-3">
+                        <h4 className={`text-xs font-bold uppercase tracking-widest ${titleColor} flex items-center gap-2`}>
+                            {title} <span className="px-2 py-0.5 rounded-full bg-white dark:bg-slate-700 text-slate-500 text-[10px] shadow-sm">{columnTasks.length}</span>
+                        </h4>
+                        <button 
+                            onClick={() => handleOpenTaskModal(undefined, columnId)} 
+                            className="p-1 rounded-full hover:bg-white/50 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition-colors"
+                            aria-label={`Ajouter une tâche dans la colonne ${getColumnLabel(columnId)}`}
                         >
-                            {/* Tags / Priority */}
-                            <div className="flex justify-between items-start mb-2">
-                                <Badge color={task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'yellow' : 'blue'}>{task.priority}</Badge>
-                                <button onClick={(e) => handleDeleteTask(task.id, e)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full"><Trash2 size={12} /></button>
-                            </div>
+                            <Plus size={14} />
+                        </button>
+                    </div>
 
-                            {/* Title */}
-                            <div className={`text-sm font-bold mb-1 leading-snug ${task.completed ? 'line-through opacity-50 text-slate-400' : 'text-slate-800 dark:text-white'}`}>
-                                {task.title}
-                            </div>
-                            
-                            {/* Description snippet */}
-                            {task.description && (
-                                <div className="text-xs text-slate-500 line-clamp-2 mb-2 leading-relaxed">
-                                    {task.description}
+                    <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+                        <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar pb-10">
+                            {columnTasks.map(task => (
+                                <SortableTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    isDragging={draggedTaskId === task.id}
+                                    onEdit={handleOpenTaskModal}
+                                    onDelete={handleDeleteTask}
+                                    onMove={moveTask}
+                                    onKeyDown={handleTaskKeyDown}
+                                    columnId={columnId}
+                                    prevColumn={prevColumn}
+                                    nextColumn={nextColumn}
+                                    getColumnLabel={getColumnLabel}
+                                />
+                            ))}
+                            {columnTasks.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-300 text-xs">
+                                    <Archive size={20} className="mb-2 opacity-50" />
+                                    <span>Vide</span>
                                 </div>
                             )}
-
-                            {/* Inline move arrows */}
-                            <div className="flex justify-between items-center mb-2">
-                                <button
-                                    type="button"
-                                    disabled={!prevColumn}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (prevColumn) moveTask(task.id, prevColumn);
-                                    }}
-                                    className={`p-1 rounded-full border text-slate-300 hover:text-slate-600 hover:border-slate-300 bg-white/60 dark:bg-slate-800/60 transition-all ${
-                                        !prevColumn ? 'opacity-20 cursor-default pointer-events-none' : 'opacity-70'
-                                    }`}
-                                >
-                                    <ChevronLeft size={12} />
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={!nextColumn}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (nextColumn) moveTask(task.id, nextColumn);
-                                    }}
-                                    className={`p-1 rounded-full border text-slate-300 hover:text-slate-600 hover:border-slate-300 bg-white/60 dark:bg-slate-800/60 transition-all ${
-                                        !nextColumn ? 'opacity-20 cursor-default pointer-events-none' : 'opacity-70'
-                                    }`}
-                                >
-                                    <ChevronRight size={12} />
-                                </button>
-                            </div>
-
-                            {/* Footer (Date, Avatar placeholder) */}
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-700/50">
-                                {task.dueDate ? (
-                                    <div className={`text-[10px] font-medium flex items-center gap-1 ${new Date(task.dueDate) < new Date() && !task.completed ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
-                                        <Clock size={10} /> {new Date(task.dueDate).toLocaleDateString()}
-                                    </div>
-                                ) : (
-                                    <div className="text-[10px] text-slate-300 italic">Pas de date</div>
-                                )}
-                                
-                                {/* Tiny Avatar (Example) */}
-                                <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-500">
-                                    F
-                                </div>
-                            </div>
                         </div>
-                    ))}
-                    {columnTasks.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-300 text-xs">
-                            <Archive size={20} className="mb-2 opacity-50" />
-                            <span>Vide</span>
-                        </div>
-                    )}
+                    </SortableContext>
                 </div>
-            </div>
+            </DroppableColumn>
         );
     };
 
     return (
         <div className="animate-in fade-in slide-in-from-right-8 duration-300">
             {/* Header */}
-            <div className="flex items-center justify-between gap-6 mb-8">
-                <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="p-2 rounded-full hover:bg-white/50 transition-colors">
+            <div className="flex items-center justify-between gap-3 md:gap-6 mb-4 md:mb-8">
+                <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                    <button 
+                        onClick={onBack} 
+                        className="p-2.5 rounded-full hover:bg-white/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
+                        aria-label="Revenir à la liste des clients"
+                    >
                         <ArrowLeft className="w-6 h-6" />
                     </button>
 
-                    <div className="flex-1">
-                        <h1 className="text-6xl font-sans text-slate-800 dark:text-white tracking-wide pt-2">{project.clientName}</h1>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-3xl md:text-6xl font-sans text-slate-800 dark:text-white tracking-wide pt-2 truncate">{project.clientName}</h1>
                         <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                        <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">{project.id.toUpperCase()}</span>
+                        <span className="tabular-nums bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">{project.id.toUpperCase()}</span>
                         <span>•</span>
                         <select 
                             value={project.status}
@@ -875,7 +1101,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                             <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white shadow-sm">
                                 {isTimerRunning ? <Square size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                             </span>
-                            <span className="font-mono text-sm">{formatDuration(timerSession)}</span>
+                            <span className="tabular-nums text-sm">{formatDuration(timerSession)}</span>
                         </button>
                     )}
                     {project.status !== ProjectStatus.ARCHIVED && (
@@ -887,37 +1113,132 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             </div>
 
             {/* Creative Workflow Timeline */}
-            <div className="mb-8 relative p-6 pt-8 rounded-3xl bg-white/50 dark:bg-slate-800/40 backdrop-blur-md border border-white/60 dark:border-white/5 shadow-sm">
-                <div className="absolute top-[5rem] left-14 right-14 h-0.5 bg-slate-200 dark:bg-slate-700 -z-10 rounded-full"></div>
-                <div className="absolute top-[5rem] left-14 h-0.5 bg-slate-400 dark:bg-slate-500 -z-10 rounded-full transition-all duration-1000 ease-out" style={{ width: `calc(${((WORKFLOW_STEPS.indexOf(project.phase)) / (WORKFLOW_STEPS.length - 1)) * 100}% - 60px)` }} />
-                
-                <div className="flex justify-between items-start overflow-x-auto pb-4 pt-6 no-scrollbar px-4">
-                    {WORKFLOW_STEPS.map((step, idx) => {
-                        // @ts-ignore
-                        const config = WORKFLOW_CONFIG?.[step] || { label: step, icon: Circle, color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200' };
-                        const Icon = config.icon || Circle;
-                        const hasStarted = project.tasks.length > 0;
-                        const isCurrent = project.phase === step && hasStarted;
-                        const isPast = WORKFLOW_STEPS.indexOf(project.phase) > idx;
+            {(() => {
+                const currentIdx = WORKFLOW_STEPS.indexOf(project.phase);
+                const progressPct = Math.round(((currentIdx + 1) / WORKFLOW_STEPS.length) * 100);
+                return (
+                <div className="mb-8 relative rounded-3xl bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-lg shadow-slate-200/30 dark:shadow-none">
+                    {/* Decorative gradient top strip */}
+                    <div className="h-1 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #facc15, #38bdf8, #ec4899, #8b5cf6, #f97316, #10b981)' }} />
 
-                        return (
-                            <div key={step} onClick={() => updatePhaseWithTemplates(step)} className={`flex flex-col items-center gap-3 cursor-pointer transition-all duration-500 group min-w-[100px] ${isCurrent ? 'scale-110 -mt-3' : 'hover:-translate-y-1'}`}>
-                                <div className={`relative z-10 flex items-center justify-center rounded-full border-2 transition-all duration-500 ${isCurrent ? `w-16 h-16 bg-white dark:bg-slate-900 ${config.border.replace('200', '500')} ${config.color} shadow-xl` : isPast ? `w-12 h-12 ${config.bg} ${config.border} ${config.color} opacity-80` : 'w-12 h-12 bg-white border-slate-100 text-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-700'}`}>
-                                    <Icon size={isCurrent ? 28 : 18} strokeWidth={isCurrent ? 2.5 : 2} />
-                                </div>
-                                <div className={`text-center transition-all duration-300 ${!isCurrent && !isPast ? 'opacity-30 group-hover:opacity-100' : 'opacity-100'}`}>
-                                    <div className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${isCurrent ? config.color : isPast ? 'text-slate-500 dark:text-slate-400' : 'text-slate-300'}`}>{config.label}</div>
+                    <div className="p-6 pb-8 pt-5">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Workflow</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    Phase actuelle : <span className={`font-bold ${WORKFLOW_CONFIG[project.phase]?.color || 'text-slate-700'}`}>{WORKFLOW_CONFIG[project.phase]?.label || project.phase}</span>
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">{progressPct}%</span>
                                 </div>
                             </div>
-                        )
-                    })}
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mb-8">
+                            <div
+                                className="h-full rounded-full transition-all duration-1000 ease-out"
+                                style={{
+                                    width: `${progressPct}%`,
+                                    background: 'linear-gradient(90deg, #facc15 0%, #38bdf8 20%, #ec4899 40%, #8b5cf6 60%, #f97316 80%, #10b981 100%)',
+                                }}
+                            />
+                        </div>
+
+                        {/* Phase nodes */}
+                        <div className="relative flex justify-between items-start">
+                            {/* Connecting line - aligned to center of node circles (22px badge + 6px margin + 24px half-node = ~52px) */}
+                            <div className="absolute top-[46px] left-0 right-0" style={{ left: `${100 / (WORKFLOW_STEPS.length * 2)}%`, right: `${100 / (WORKFLOW_STEPS.length * 2)}%` }}>
+                                <div className="w-full h-[3px] bg-slate-100 dark:bg-slate-700 rounded-full" />
+                                <div
+                                    className="absolute top-0 left-0 h-[3px] rounded-full transition-all duration-1000 ease-out"
+                                    style={{
+                                        width: currentIdx === 0 ? '0%' : `${(currentIdx / (WORKFLOW_STEPS.length - 1)) * 100}%`,
+                                        background: 'linear-gradient(90deg, #facc15, #38bdf8, #ec4899, #8b5cf6, #f97316, #10b981)',
+                                    }}
+                                />
+                            </div>
+
+                            {WORKFLOW_STEPS.map((step, idx) => {
+                                // @ts-ignore
+                                const config = WORKFLOW_CONFIG?.[step] || { label: step, icon: Circle, color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200', gradient: 'from-slate-400 to-slate-500', desc: '' };
+                                const Icon = config.icon || Circle;
+                                const isCurrent = idx === currentIdx;
+                                const isPast = idx < currentIdx;
+                                const isFuture = idx > currentIdx;
+
+                                return (
+                                    <div key={step} onClick={() => updatePhaseWithTemplates(step)}
+                                         className={`flex flex-col items-center flex-1 cursor-pointer transition-all duration-500 group relative z-10 ${isCurrent ? '' : 'hover:-translate-y-1'}`}>
+
+                                        {/* "En cours" badge */}
+                                        {isCurrent && (
+                                            <div className="mb-1.5 whitespace-nowrap">
+                                                <span className="text-[8px] font-bold text-white bg-gradient-to-r from-orange-500 to-pink-500 px-2.5 py-0.5 rounded-full shadow-md shadow-orange-200/50 dark:shadow-none">
+                                                    En cours
+                                                </span>
+                                            </div>
+                                        )}
+                                        {/* Spacer for non-current phases to align nodes */}
+                                        {!isCurrent && <div className="h-[22px]" />}
+
+                                        {/* Node */}
+                                        <div className={`relative flex items-center justify-center rounded-full transition-all duration-500 ${
+                                            isCurrent
+                                                ? `w-16 h-16 bg-gradient-to-br ${config.gradient} text-white shadow-xl scale-110`
+                                                : isPast
+                                                ? `w-12 h-12 bg-gradient-to-br ${config.gradient} text-white shadow-md`
+                                                : 'w-12 h-12 bg-white dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-600 text-slate-300 dark:text-slate-600'
+                                        }`}>
+                                            {/* Glow ring */}
+                                            {isCurrent && (
+                                                <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${config.gradient} opacity-25 animate-ping`}
+                                                     style={{ animationDuration: '2.5s' }} />
+                                            )}
+
+                                            <Icon size={isCurrent ? 26 : 18} strokeWidth={isCurrent ? 2.5 : 2} className="relative z-10" />
+
+                                            {/* Check badge for completed */}
+                                            {isPast && (
+                                                <div className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow border-2 border-emerald-500">
+                                                    <Check size={12} className="text-emerald-500" strokeWidth={3} />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Label + description */}
+                                        <div className={`text-center mt-3 transition-all duration-300 ${isFuture ? 'opacity-40 group-hover:opacity-100' : ''}`}>
+                                            <div className={`text-[10px] font-bold uppercase tracking-wider leading-tight ${
+                                                isCurrent ? config.color
+                                                : isPast ? 'text-slate-600 dark:text-slate-300'
+                                                : 'text-slate-400 dark:text-slate-500'
+                                            }`}>
+                                                {config.label}
+                                            </div>
+                                            <div className={`text-[8px] mt-0.5 leading-tight ${
+                                                isCurrent ? 'text-slate-500 dark:text-slate-400'
+                                                : isFuture ? 'text-slate-300 dark:text-slate-600'
+                                                : 'text-slate-400 dark:text-slate-500'
+                                            }`}>
+                                                {config.desc}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
-            </div>
+                );
+            })()}
 
             {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* Left Col: Info */}
-                <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
+                {/* Left Col: Info - collapsed on mobile */}
+                <div className="space-y-4 md:space-y-6">
                     {/* Visual Identity */}
                     <Card className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-white/50 dark:border-white/5 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -1089,24 +1410,24 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                 </div>
 
                 {/* Right Col: Tasks & Files */}
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="min-h-[600px] flex flex-col">
-                        <div className="flex items-center gap-6 mb-6 border-b border-slate-100 dark:border-slate-700 pb-4 overflow-x-auto">
+                <div className="lg:col-span-2 space-y-4 md:space-y-6">
+                    <Card className="min-h-[300px] md:min-h-[600px] flex flex-col">
+                        <div className="flex items-center gap-3 md:gap-6 mb-4 md:mb-6 border-b border-slate-100 dark:border-slate-700 pb-3 md:pb-4 overflow-x-auto no-scrollbar -mx-2 px-2">
                             {[
-                                { id: 'tasks', label: 'Tâches & Objectifs' },
+                                { id: 'tasks', label: 'Tâches' },
                                 { id: 'time', label: 'Temps' },
                                 { id: 'finance', label: 'Finances' },
-                                { id: 'files', label: 'Fichiers & Liens' },
+                                { id: 'files', label: 'Fichiers' },
                                 { id: 'emails', label: 'E-mails' },
                                 { id: 'portal', label: 'Portail' }
                             ].map(tab => (
                                 <button 
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
-                                    className={`text-lg font-serif transition-colors relative whitespace-nowrap px-2 ${activeTab === tab.id ? 'text-brand-orange' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                    className={`text-sm md:text-lg font-serif transition-colors relative whitespace-nowrap px-2 py-1 ${activeTab === tab.id ? 'text-brand-orange' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                                 >
                                     {tab.label}
-                                    {activeTab === tab.id && <div className="absolute -bottom-[17px] left-0 w-full h-0.5 bg-brand-orange"></div>}
+                                    {activeTab === tab.id && <div className="absolute -bottom-[13px] md:-bottom-[17px] left-0 w-full h-0.5 bg-brand-orange"></div>}
                                 </button>
                             ))}
                             <button 
@@ -1135,11 +1456,47 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                                 </div>
                                 
                                 {/* KANBAN BOARD */}
-                                <div className="flex-1 flex gap-4 overflow-x-auto pb-2">
-                                    {renderKanbanColumn('todo', 'À Faire')}
-                                    {renderKanbanColumn('doing', 'En Cours')}
-                                    {renderKanbanColumn('done', 'Terminé')}
-                                </div>
+                                {project.tasks.length === 0 ? (
+                                    <div className="flex-1 flex items-center justify-center">
+                                        <EmptyState
+                                            title="Aucune tâche pour l'instant"
+                                            message="Créez votre première tâche pour organiser ce projet."
+                                            icon={CheckCircle}
+                                            actionLabel="Ajouter une tâche"
+                                            onAction={() => handleOpenTaskModal()}
+                                        />
+                                    </div>
+                                ) : (
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCorners}
+                                        onDragStart={handleDndDragStart}
+                                        onDragOver={handleDndDragOver}
+                                        onDragEnd={handleDndDragEnd}
+                                    >
+                                        <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 overflow-x-auto pb-2">
+                                            {renderKanbanColumn('todo', 'À Faire', todoTasks, todoIds)}
+                                            {renderKanbanColumn('doing', 'En Cours', doingTasks, doingIds)}
+                                            {renderKanbanColumn('done', 'Terminé', doneTasks, doneIds)}
+                                        </div>
+                                        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+                                            {draggedTaskId ? (() => {
+                                                const t = project.tasks.find(t => t.id === draggedTaskId);
+                                                if (!t) return null;
+                                                return (
+                                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-2xl border-2 border-brand-orange/40 w-full max-w-xs rotate-[2deg] opacity-90">
+                                                        <div className="flex items-center gap-1.5 mb-2">
+                                                            <GripVertical size={14} className="text-slate-300" />
+                                                            <Badge color={t.priority === 'High' ? 'red' : t.priority === 'Medium' ? 'yellow' : 'blue'}>{t.priority}</Badge>
+                                                        </div>
+                                                        <div className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{t.title}</div>
+                                                        {t.description && <div className="text-xs text-slate-500 line-clamp-1 mt-1">{t.description}</div>}
+                                                    </div>
+                                                );
+                                            })() : null}
+                                        </DragOverlay>
+                                    </DndContext>
+                                )}
 
                                 {/* NEXT PHASE BUTTON */}
                                 {(() => {
@@ -1177,7 +1534,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                                             </div>
                                             <Badge color="yellow">{timeLogs.filter(l => l.status === 'pending').length} sessions</Badge>
                                         </div>
-                                        <div className="text-3xl font-mono font-bold text-orange-700 dark:text-orange-300">
+                                        <div className="text-3xl tabular-nums font-bold text-orange-700 dark:text-orange-300">
                                             {formatDuration(timeLogs.filter(l => l.status === 'pending').reduce((acc, l) => acc + l.duration, 0))}
                                         </div>
                                         <div className="mt-2 text-xs font-medium text-orange-600/60 dark:text-orange-400/60">
@@ -1189,7 +1546,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                                             <History size={18} className="text-slate-500" />
                                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Projet</span>
                                         </div>
-                                        <div className="text-3xl font-mono font-bold text-slate-700 dark:text-slate-300">
+                                        <div className="text-3xl tabular-nums font-bold text-slate-700 dark:text-slate-300">
                                             {formatDuration(timeLogs.reduce((acc, l) => acc + l.duration, 0))}
                                         </div>
                                         <div className="mt-2 text-xs font-medium text-slate-400">
@@ -1224,7 +1581,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                                                     {timeLogs.map(log => (
                                                         <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-sm group">
-                                                            <td className="p-4 text-slate-500 font-mono text-xs">{new Date(log.date).toLocaleDateString()}</td>
+                                                            <td className="p-4 text-slate-500 tabular-nums text-xs">{new Date(log.date).toLocaleDateString()}</td>
                                                             <td className="p-4">
                                                                 {editingLogId === log.id ? (
                                                                     <div className="flex gap-2">
@@ -1244,7 +1601,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                                                                     </div>
                                                                 )}
                                                             </td>
-                                                            <td className="p-4 text-right font-mono text-slate-600 dark:text-slate-300 font-bold">{formatDuration(log.duration)}</td>
+                                                            <td className="p-4 text-right tabular-nums text-slate-600 dark:text-slate-300 font-bold">{formatDuration(log.duration)}</td>
                                                             <td className="p-4 text-center">
                                                                 <Badge color={log.status === 'billed' ? 'green' : 'yellow'}>
                                                                     {log.status === 'billed' ? 'Facturé' : 'À faire'}
@@ -1291,7 +1648,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                                 <div>
                                     <div className="flex justify-between items-center mb-3">
                                         <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Factures</h4>
-                                        <button onClick={() => handleOpenInvoiceModal(undefined, 'Invoice')} className="px-4 py-2 bg-brand-orange text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                                        <button onClick={() => handleOpenInvoiceModal()} className="px-4 py-2 bg-brand-orange text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2">
                                             <Plus size={16} /> Facture +
                                         </button>
                                     </div>
@@ -1311,7 +1668,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="font-mono font-bold text-slate-700 dark:text-slate-200">{formatCurrency(inv.amount, 2)} CHF</div>
+                                                        <div className="tabular-nums font-bold text-slate-700 dark:text-slate-200">{formatCurrency(inv.amount, 2)} CHF</div>
                                                         <Badge color={inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'blue' : 'yellow'}>{inv.status === 'Partial' ? 'Acompte' : inv.status}</Badge>
                                                     </div>
                                                 </div>
@@ -1324,65 +1681,197 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
                         
                         {activeTab === 'files' && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                                {/* Google Drive Sync Button */}
-                                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                                            <Cloud size={20} className="text-blue-500" />
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-sm text-slate-800 dark:text-white">Google Drive</div>
-                                            <div className="text-xs text-slate-500">
-                                                {lastSyncTime ? `Dernière sync: ${lastSyncTime}` : 'Non synchronisé'}
-                                            </div>
-                                        </div>
+
+                                {/* ========== SECTION 1 : LIENS DU PROJET ========== */}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Link2 size={16} className="text-brand-orange" />
+                                        <h3 className="font-bold text-sm text-slate-800 dark:text-white">Liens du projet</h3>
                                     </div>
-                                    <button
-                                        onClick={handleSyncToDrive}
-                                        disabled={isSyncingToDrive}
-                                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-                                    >
-                                        {isSyncingToDrive ? (
-                                            <>
-                                                <RefreshCw size={16} className="animate-spin" /> Sync en cours...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <CloudUpload size={16} /> Sync vers Drive
-                                            </>
-                                        )}
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2.5">
+                                        {[
+                                            { id: 'figma', label: 'Figma', icon: Figma, color: 'bg-[#F24E1E]', textColor: 'text-white' },
+                                            { id: 'github', label: 'GitHub', icon: Github, color: 'bg-black dark:bg-white', textColor: 'text-white dark:text-black' },
+                                            { id: 'wordpress', label: 'WordPress', icon: Globe, color: 'bg-[#21759B]', textColor: 'text-white' },
+                                            { id: 'infomaniak', label: 'Infomaniak', icon: HardDrive, color: 'bg-[#0098FF]', textColor: 'text-white' },
+                                        ].map((link) => {
+                                            const hasUrl = !!links[link.id]?.trim();
+                                            const isEditing = editingLinkId === link.id;
+                                            return (
+                                                <div
+                                                    key={link.id}
+                                                    className={`group p-3 rounded-xl border flex items-center gap-3 transition-all ${
+                                                        hasUrl
+                                                            ? 'border-slate-200 dark:border-slate-700 hover:border-brand-orange/40 dark:hover:border-brand-orange/40 cursor-pointer'
+                                                            : 'border-dashed border-slate-200 dark:border-slate-700'
+                                                    }`}
+                                                    onClick={() => {
+                                                        if (isEditing) return;
+                                                        if (hasUrl) window.open(links[link.id].startsWith('http') ? links[link.id] : `https://${links[link.id]}`, '_blank');
+                                                    }}
+                                                >
+                                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${link.color} ${link.textColor}`}>
+                                                        <link.icon size={18} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-bold text-xs text-slate-800 dark:text-white">{link.label}</span>
+                                                            {hasUrl && !isEditing && (
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" title="Lien défini" />
+                                                            )}
+                                                        </div>
+                                                        {isEditing ? (
+                                                            <input
+                                                                autoFocus
+                                                                value={links[link.id] || ''}
+                                                                placeholder="https://..."
+                                                                onClick={e => e.stopPropagation()}
+                                                                onChange={e => setLinks({ ...links, [link.id]: e.target.value })}
+                                                                onBlur={() => { setEditingLinkId(null); saveLinks({ ...links }); }}
+                                                                onKeyDown={e => { if (e.key === 'Enter') { setEditingLinkId(null); saveLinks({ ...links }); } if (e.key === 'Escape') setEditingLinkId(null); }}
+                                                                className="w-full text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-2 py-1 rounded-lg mt-0.5 outline-none focus:ring-1 focus:ring-brand-orange"
+                                                            />
+                                                        ) : (
+                                                            <div className="text-[11px] text-slate-400 truncate">
+                                                                {hasUrl ? links[link.id].replace(/^https?:\/\//, '') : 'Non défini'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {!isEditing && (
+                                                        <button
+                                                            onClick={e => { e.stopPropagation(); setEditingLinkId(link.id); }}
+                                                            className="p-1.5 rounded-lg text-slate-300 hover:text-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                                                            title="Modifier le lien"
+                                                        >
+                                                            <Pencil size={13} />
+                                                        </button>
+                                                    )}
+                                                    {hasUrl && !isEditing && (
+                                                        <ExternalLink size={13} className="text-slate-300 group-hover:text-slate-500 flex-shrink-0 transition-colors" />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    {[ 
-                                        { id: 'figma', label: 'Figma', icon: Figma, color: 'bg-[#F24E1E]', textColor: 'text-white' },
-                                        { id: 'github', label: 'GitHub', icon: Github, color: 'bg-black dark:bg-white', textColor: 'text-white dark:text-black' },
-                                        { id: 'wordpress', label: 'WordPress', icon: Globe, color: 'bg-[#21759B]', textColor: 'text-white' },
-                                        { id: 'infomaniak', label: 'Infomaniak', icon: HardDrive, color: 'bg-[#0098FF]', textColor: 'text-white' },
-                                    ].map((link) => (
-                                        <div key={link.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => { if(links[link.id]) window.open(links[link.id].startsWith('http') ? links[link.id] : `https://${links[link.id]}`, '_blank'); else setEditingLinkId(link.id); }}>
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${link.color} ${link.textColor}`}><link.icon size={20} /></div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-bold text-sm text-slate-800 dark:text-white">{link.label}</div>
-                                                {editingLinkId === link.id ? (
-                                                    <input autoFocus value={links[link.id]} onClick={e => e.stopPropagation()} onChange={e => setLinks({ ...links, [link.id]: e.target.value })} onBlur={() => setEditingLinkId(null)} onKeyDown={e => e.key === 'Enter' && setEditingLinkId(null)} className="w-full text-xs bg-slate-100 dark:bg-slate-900 px-1 rounded" />
-                                                ) : (
-                                                    <div className="text-xs text-slate-400 truncate">{links[link.id] || 'Non défini'}</div>
-                                                )}
+                                {/* ========== SECTION 2 : FICHIERS DU PROJET ========== */}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <FolderOpen size={16} className="text-brand-orange" />
+                                        <h3 className="font-bold text-sm text-slate-800 dark:text-white">Fichiers du projet</h3>
+                                        {currentPath && (
+                                            <div className="flex items-center gap-1 ml-2 text-xs text-slate-400">
+                                                <button onClick={() => { setPathHistory([]); setCurrentPath(''); }} className="hover:text-brand-orange transition-colors">root</button>
+                                                {currentPath.split('/').map((seg, i, arr) => {
+                                                    const partial = arr.slice(0, i + 1).join('/');
+                                                    return (
+                                                        <React.Fragment key={i}>
+                                                            <ChevronRight size={10} className="text-slate-300" />
+                                                            <button
+                                                                onClick={() => {
+                                                                    setPathHistory(prev => prev.slice(0, i + 1));
+                                                                    setCurrentPath(partial);
+                                                                }}
+                                                                className={`hover:text-brand-orange transition-colors ${i === arr.length - 1 ? 'text-slate-700 dark:text-slate-200 font-medium' : ''}`}
+                                                            >
+                                                                {seg}
+                                                            </button>
+                                                        </React.Fragment>
+                                                    );
+                                                })}
                                             </div>
-                                        </div>
-                                    ))}
+                                        )}
+                                    </div>
+                                    <FileExplorer
+                                        items={fileItems}
+                                        currentPath={currentPath}
+                                        onNavigate={handleFileNavigate}
+                                        onBack={handleFileBack}
+                                        isLoading={isLoadingFiles}
+                                        onRename={handleRenameFile}
+                                        onDelete={handleDeleteFile}
+                                    />
                                 </div>
-                                <FileExplorer 
-                                    items={fileItems}
-                                    currentPath={currentPath}
-                                    onNavigate={handleFileNavigate}
-                                    onBack={handleFileBack}
-                                    isLoading={isLoadingFiles}
-                                    onRename={handleRenameFile}
-                                    onDelete={handleDeleteFile}
-                                />
+
+                                {/* ========== SECTION 3 : GOOGLE DRIVE ========== */}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Cloud size={16} className="text-blue-500" />
+                                        <h3 className="font-bold text-sm text-slate-800 dark:text-white">Google Drive</h3>
+                                    </div>
+                                    <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                                        {oauthStatus?.connected ? (
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 bg-white dark:bg-slate-800 rounded-lg shadow-sm flex items-center justify-center">
+                                                        <CloudUpload size={18} className="text-blue-500" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                            {oauthStatus.email}
+                                                        </div>
+                                                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                                                            {lastSyncTime ? `Sync: ${lastSyncTime}` : 'Jamais synchronisé'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={handleSyncToDrive}
+                                                    disabled={isSyncingToDrive}
+                                                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
+                                                >
+                                                    {isSyncingToDrive ? (
+                                                        <><RefreshCw size={14} className="animate-spin" /> Sync...</>
+                                                    ) : (
+                                                        <><CloudUpload size={14} /> Synchroniser</>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 bg-white dark:bg-slate-800 rounded-lg shadow-sm flex items-center justify-center">
+                                                        <Cloud size={18} className="text-slate-400" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-sm text-slate-700 dark:text-slate-300">Non connecté</div>
+                                                        <div className="text-[11px] text-slate-400">Connectez Google pour synchroniser les fichiers</div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        connectGoogleMutation.mutate(undefined, {
+                                                            onSuccess: (data: any) => {
+                                                                const popup = window.open(data.auth_url, 'Google Auth', 'width=500,height=600,left=200,top=100');
+                                                                const handleMessage = (event: MessageEvent) => {
+                                                                    if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                                                                        queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
+                                                                        queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
+                                                                        onNotify('Google connecté', `Connecté à ${event.data.email}`, 'success');
+                                                                        window.removeEventListener('message', handleMessage);
+                                                                    }
+                                                                    if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+                                                                        window.removeEventListener('message', handleMessage);
+                                                                    }
+                                                                };
+                                                                window.addEventListener('message', handleMessage);
+                                                                const checkClosed = setInterval(() => {
+                                                                    if (popup?.closed) { clearInterval(checkClosed); window.removeEventListener('message', handleMessage); }
+                                                                }, 1000);
+                                                            },
+                                                        });
+                                                    }}
+                                                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                    <Cloud size={14} /> Connecter
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
                             </div>
                         )}
 
@@ -1534,7 +2023,7 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
             <Modal isOpen={showTimeEntryModal} onClose={() => setShowTimeEntryModal(false)} title="Enregistrer l'activité" width="max-w-sm">
                 <div className="space-y-4">
                     <div className="flex justify-center mb-4">
-                        <div className="text-4xl font-mono font-bold text-brand-orange">
+                        <div className="text-4xl tabular-nums font-bold text-brand-orange">
                             {formatDuration(timerSession)}
                         </div>
                     </div>
@@ -1559,6 +2048,8 @@ export const ClientView: React.FC<ClientViewProps> = ({ project, onBack, onUpdat
         </div>
     );
 };
+
+export const ClientView = React.memo(ClientViewInner);
 
 interface CredentialModalContentProps {
     credential: Credential | null;

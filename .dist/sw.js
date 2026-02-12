@@ -1,11 +1,9 @@
 // Marion Web OS - Service Worker
-const CACHE_NAME = 'marion-web-os-v1';
+const CACHE_NAME = 'marion-web-os-v3';
 const OFFLINE_URL = '/offline.html';
 
-// Resources to cache immediately on install
+// Only cache truly static resources (NOT hashed JS/CSS - Vite handles those)
 const PRECACHE_RESOURCES = [
-  '/',
-  '/index.html',
   '/offline.html',
   '/manifest.json',
   '/logo-marion.png',
@@ -56,7 +54,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - network-first for HTML/assets, cache-first for static resources
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -75,26 +73,39 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== location.origin) {
     return;
   }
+
+  // Network-first for HTML pages and hashed assets (Vite build output)
+  // This ensures rebuilds are always picked up immediately
+  if (request.mode === 'navigate' || url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const cache_response = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, cache_response));
+          }
+          return response;
+        })
+        .catch(() => {
+          if (request.mode === 'navigate') {
+            return caches.match(OFFLINE_URL) || caches.match('/');
+          }
+          return caches.match(request);
+        })
+    );
+    return;
+  }
   
+  // Cache-first for truly static resources (icons, logo, manifest)
   event.respondWith(
     caches.match(request)
       .then((cachedResponse) => {
         if (cachedResponse) {
-          // Return cached version and update cache in background
-          fetchAndCache(request);
           return cachedResponse;
         }
-        
-        // Not in cache - fetch from network
         return fetchAndCache(request);
       })
       .catch(() => {
-        // Network failed and not in cache - show offline page for navigation
-        if (request.mode === 'navigate') {
-          return caches.match(OFFLINE_URL);
-        }
-        
-        // Return error for other requests
         return new Response('Offline', {
           status: 503,
           statusText: 'Service Unavailable'
