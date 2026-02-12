@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Project, ProjectStatus, CalendarEvent, WorkflowPhase, Invoice, Activity } from '../types';
 import { formatCurrency, formatCurrencyWithSymbol } from '../utils';
 import { sanitizeHTML } from '../utils/sanitize';
-import { useProjectStore, useUIStore, useNotificationStore } from '../stores';
+import { useProjectStore, useUIStore, useNotificationStore, useUndoStore } from '../stores';
 import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache, useDeleteCalendarEvent } from '../services/queries';
 import { generateBriefing } from '../services/geminiService';
 import { ProjectCard } from '../components/ProjectCard';
@@ -47,6 +47,7 @@ export const Dashboard: React.FC = () => {
     const initDatabase = useInitDatabase();
     const updateProjectCache = useUpdateProjectCache();
     const deleteCalendarEventMutation = useDeleteCalendarEvent();
+    const pushUndo = useUndoStore((s) => s.pushUndo);
 
     // --- Stores ---
     const {
@@ -371,14 +372,24 @@ export const Dashboard: React.FC = () => {
 
     const handleDeleteEvent = (eventId: string) => {
         const eventToDelete = events.find(e => e.id === eventId);
-        if (eventToDelete && eventToDelete.source === 'iCal' && eventToDelete.calendarName) {
+        if (!eventToDelete) return;
+
+        // Execute deletion
+        if (eventToDelete.source === 'iCal' && eventToDelete.calendarName) {
             deleteCalendarEventMutation.mutate({
                 id: eventId,
                 calendarName: eventToDelete.calendarName,
             });
         }
         deleteEvent(eventId);
-        addNotification('Agenda Nettoyé', "L'événement a été supprimé.", 'warning');
+
+        // Undo support
+        pushUndo({
+            description: `Événement "${eventToDelete.title}" supprimé`,
+            restore: () => {
+                addEvent(eventToDelete);
+            },
+        });
     };
 
     const handleStatusCycle = (e: React.MouseEvent, project: Project) => {

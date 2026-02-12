@@ -38,6 +38,7 @@ const Onboarding = React.lazy(() => import('./components/Onboarding'));
 
 import { AmbientPlayer } from './components/AmbientPlayer';
 import { GlobalSearch } from './components/GlobalSearch';
+import { UndoToastContainer } from './components/UndoToast';
 import { EmptyState } from './components/Shared';
 import { SplashScreen } from './components/SplashScreen';
 import { ToastItem } from './components/NotificationSystem';
@@ -382,6 +383,9 @@ const App: React.FC = () => {
 
             {/* Global Search (Cmd+K) */}
             <GlobalSearch />
+
+            {/* Undo Toasts */}
+            <UndoToastContainer />
         </div>
         </Suspense>
     );

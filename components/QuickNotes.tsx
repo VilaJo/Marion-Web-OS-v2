@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, StickyNote, Save, Search, Undo2, Pin, ArrowLeft, Mic, Sparkles, Wand2, Check, X, Command, MessageSquare, Palette, ChevronDown, Clock, Star, Grid, List, Filter } from 'lucide-react';
 import { Card } from './Shared';
+import { useUndoStore } from '../stores/useUndoStore';
 
 // --- Types & Constants ---
 
@@ -68,6 +69,9 @@ const formatRelativeDate = (dateStr: string) => {
 };
 
 export const QuickNotes: React.FC = () => {
+    // Undo support
+    const pushUndo = useUndoStore((s) => s.pushUndo);
+
     // Data
     const [notes, setNotes] = useState<Note[]>([]);
     const [history, setHistory] = useState<Note[][]>([]);
@@ -145,12 +149,27 @@ export const QuickNotes: React.FC = () => {
 
     const handleDelete = async (id: string, e?: React.MouseEvent) => {
         e?.stopPropagation();
-        if (confirm("Supprimer cette note ?")) {
-            saveToHistory();
-            setNotes(notes.filter(n => n.id !== id));
-            if (selectedNote?.id === id) setIsEditing(false);
-            try { await fetch(`/api/v1/notes?id=${id}`, { method: 'DELETE' }); } catch (err) {}
-        }
+        const note = notes.find(n => n.id === id);
+        if (!note) return;
+        const previousNotes = [...notes];
+        saveToHistory();
+        setNotes(notes.filter(n => n.id !== id));
+        if (selectedNote?.id === id) setIsEditing(false);
+        try { await fetch(`/api/v1/notes?id=${id}`, { method: 'DELETE' }); } catch (err) {}
+        pushUndo({
+            description: `Note "${note.title || 'Sans titre'}" supprimée`,
+            restore: async () => {
+                setNotes(previousNotes);
+                // Re-create on server
+                try {
+                    await fetch('/api/v1/notes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(note),
+                    });
+                } catch { /* ignore */ }
+            },
+        });
     };
 
     const handleTogglePin = async (note: Note, e?: React.MouseEvent) => {

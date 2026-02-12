@@ -5,13 +5,14 @@
  *
  * Shortcuts:
  *   Cmd/Ctrl+K → Open global search
+ *   Cmd/Ctrl+Z → Undo last destructive action
  *   Escape     → Close active overlay (search, chat, importer)
  *   /          → Focus dashboard search
  *   n          → Open importer
  */
 
 import { useEffect } from 'react';
-import { useUIStore } from '../stores';
+import { useUIStore, useUndoStore } from '../stores';
 
 export function useKeyboardShortcuts() {
     const showChat = useUIStore((s) => s.showChat);
@@ -22,6 +23,8 @@ export function useKeyboardShortcuts() {
     const setIsDraggingOver = useUIStore((s) => s.setIsDraggingOver);
     const showGlobalSearch = useUIStore((s) => s.showGlobalSearch);
     const setShowGlobalSearch = useUIStore((s) => s.setShowGlobalSearch);
+    const undoLast = useUndoStore((s) => s.undoLast);
+    const hasUndoEntries = useUndoStore((s) => s.entries.length > 0);
 
     useEffect(() => {
         const handleShortcuts = (e: KeyboardEvent) => {
@@ -30,6 +33,16 @@ export function useKeyboardShortcuts() {
                 e.preventDefault();
                 setShowGlobalSearch(!showGlobalSearch);
                 return;
+            }
+
+            // Cmd+Z / Ctrl+Z → undo last action (only when not in a text field)
+            if (e.key === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+                // Only intercept if we have undo entries and user is NOT in an editable field
+                if (hasUndoEntries && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).isContentEditable) {
+                    e.preventDefault();
+                    undoLast();
+                    return;
+                }
             }
 
             if (e.key === 'Escape') {
@@ -60,5 +73,5 @@ export function useKeyboardShortcuts() {
 
         window.addEventListener('keydown', handleShortcuts);
         return () => window.removeEventListener('keydown', handleShortcuts);
-    }, [showChat, showImporter, isDraggingOver, showGlobalSearch, setShowChat, setShowImporter, setIsDraggingOver, setShowGlobalSearch]);
+    }, [showChat, showImporter, isDraggingOver, showGlobalSearch, hasUndoEntries, setShowChat, setShowImporter, setIsDraggingOver, setShowGlobalSearch, undoLast]);
 }

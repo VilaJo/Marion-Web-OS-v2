@@ -12,6 +12,7 @@ import { formatCurrency } from '../utils';
 import { MaintenanceWidget } from './MaintenanceWidget';
 import { Badge, Card, Modal, Tooltip, EmptyState } from './Shared';
 import { Loader2 } from 'lucide-react';
+import { useUndoStore } from '../stores/useUndoStore';
 
 // Lazy-loaded heavy components (code-splitting)
 const InvoiceBuilder = React.lazy(() => import('./InvoiceBuilder').then(m => ({ default: m.InvoiceBuilder })));
@@ -174,6 +175,9 @@ interface ClientViewProps {
 }
 
 const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateProject, onNotify, onDelete, currentTheme }) => {
+    // Undo support
+    const pushUndo = useUndoStore((s) => s.pushUndo);
+
     // Tabs: Tasks, Time, Finance, Files, Emails, Portal
     const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'finance' | 'files' | 'emails' | 'portal'>('tasks');
     
@@ -700,9 +704,16 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
     const handleDeleteTask = (taskId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm("Supprimer cette tâche ?")) {
-            updateProjectTasks(project.tasks.filter(t => t.id !== taskId));
-        }
+        const task = project.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        const previousTasks = [...project.tasks];
+        updateProjectTasks(project.tasks.filter(t => t.id !== taskId));
+        pushUndo({
+            description: `Tâche "${task.title}" supprimée`,
+            restore: () => {
+                onUpdateProject({ ...project, tasks: previousTasks, progress: Math.round((previousTasks.filter(t => t.completed).length / previousTasks.length) * 100) });
+            },
+        });
     };
 
     const updateProjectTasks = (tasks: Task[]) => {
@@ -911,10 +922,16 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     };
 
     const handleDeleteCredential = (credId: string) => {
-        if (confirm("Supprimer cet identifiant ?")) {
-            onUpdateProject({ ...project, credentials: (project.credentials || []).filter(cred => cred.id !== credId) });
-            onNotify("Identifiant supprimé !", "L'accès a été effacé du coffre-fort.", "warning");
-        }
+        const cred = (project.credentials || []).find(c => c.id === credId);
+        if (!cred) return;
+        const previousCredentials = [...(project.credentials || [])];
+        onUpdateProject({ ...project, credentials: previousCredentials.filter(c => c.id !== credId) });
+        pushUndo({
+            description: `Identifiant "${cred.service}" supprimé`,
+            restore: () => {
+                onUpdateProject({ ...project, credentials: previousCredentials });
+            },
+        });
     };
 
     // --- INVOICE LOGIC ---
@@ -933,7 +950,16 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
     const handleDeleteInvoice = (invId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm("Supprimer ?")) onUpdateProject({ ...project, invoices: project.invoices.filter(i => i.id !== invId) });
+        const invoice = project.invoices.find(i => i.id === invId);
+        if (!invoice) return;
+        const previousInvoices = [...project.invoices];
+        onUpdateProject({ ...project, invoices: project.invoices.filter(i => i.id !== invId) });
+        pushUndo({
+            description: `Facture ${invoice.number || invId.slice(0, 8)} supprimée`,
+            restore: () => {
+                onUpdateProject({ ...project, invoices: previousInvoices });
+            },
+        });
     }
 
     // --- WORKFLOW HELPERS ---

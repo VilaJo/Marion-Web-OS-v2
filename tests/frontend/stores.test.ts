@@ -5,7 +5,7 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock fetch, sessionStorage, localStorage, and window before importing stores
 const mockFetch = vi.fn();
@@ -213,6 +213,257 @@ describe('useUIStore', () => {
         expect(useUIStore.getState().signatureSettings).toEqual(sig);
         const stored = JSON.parse(localStorage.getItem('marion_signature') || '{}');
         expect(stored.name).toBe('Test');
+    });
+});
+
+
+// ============================================================================
+// PROJECT STORE
+// ============================================================================
+
+describe('useProjectStore', () => {
+    let useProjectStore: typeof import('../../stores/useProjectStore').useProjectStore;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        localStorage.clear();
+        const mod = await import('../../stores/useProjectStore');
+        useProjectStore = mod.useProjectStore;
+    });
+
+    it('initial state: empty events and activities', () => {
+        const state = useProjectStore.getState();
+        expect(state.events).toEqual([]);
+        expect(state.activities).toEqual([]);
+        expect(state.filter).toBe('Tous');
+        expect(state.searchQuery).toBe('');
+    });
+
+    it('addEvent: adds event and persists to localStorage', () => {
+        const event = {
+            id: 'ev-1', title: 'Test Meeting', date: '2026-03-15',
+            startTime: '10:00', duration: 60, type: 'Meeting' as const,
+        };
+        useProjectStore.getState().addEvent(event);
+        const state = useProjectStore.getState();
+        expect(state.events).toHaveLength(1);
+        expect(state.events[0].title).toBe('Test Meeting');
+
+        const stored = JSON.parse(localStorage.getItem('marion_calendar_events') || '[]');
+        expect(stored).toHaveLength(1);
+    });
+
+    it('updateEvent: updates existing event', () => {
+        const event = {
+            id: 'ev-1', title: 'Original', date: '2026-03-15',
+            startTime: '10:00', duration: 60, type: 'Meeting' as const,
+        };
+        useProjectStore.getState().addEvent(event);
+        useProjectStore.getState().updateEvent({ ...event, title: 'Updated' });
+
+        expect(useProjectStore.getState().events[0].title).toBe('Updated');
+    });
+
+    it('deleteEvent: removes event', () => {
+        const event = {
+            id: 'ev-1', title: 'To Delete', date: '2026-03-15',
+            startTime: '10:00', duration: 60, type: 'Meeting' as const,
+        };
+        useProjectStore.getState().addEvent(event);
+        expect(useProjectStore.getState().events).toHaveLength(1);
+
+        useProjectStore.getState().deleteEvent('ev-1');
+        expect(useProjectStore.getState().events).toHaveLength(0);
+    });
+
+    it('addActivity: adds activity and persists', () => {
+        useProjectStore.getState().addActivity('project_created', 'New Project', 'p1', 'Client X');
+        const state = useProjectStore.getState();
+        expect(state.activities).toHaveLength(1);
+        expect(state.activities[0].title).toBe('New Project');
+        expect(state.activities[0].type).toBe('project_created');
+
+        const stored = JSON.parse(localStorage.getItem('marion_activities') || '[]');
+        expect(stored).toHaveLength(1);
+    });
+
+    it('addActivity: limits to 100 activities', () => {
+        for (let i = 0; i < 110; i++) {
+            useProjectStore.getState().addActivity('project_created', `Activity ${i}`);
+        }
+        expect(useProjectStore.getState().activities.length).toBeLessThanOrEqual(100);
+    });
+
+    it('setFilter: updates filter state', () => {
+        useProjectStore.getState().setFilter('Active');
+        expect(useProjectStore.getState().filter).toBe('Active');
+    });
+
+    it('setSearchQuery: updates search state', () => {
+        useProjectStore.getState().setSearchQuery('test');
+        expect(useProjectStore.getState().searchQuery).toBe('test');
+    });
+});
+
+
+// ============================================================================
+// NOTIFICATION STORE
+// ============================================================================
+
+describe('useNotificationStore', () => {
+    let useNotificationStore: typeof import('../../stores/useNotificationStore').useNotificationStore;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        vi.useFakeTimers();
+        const mod = await import('../../stores/useNotificationStore');
+        useNotificationStore = mod.useNotificationStore;
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('initial state: empty notifications and toasts', () => {
+        const state = useNotificationStore.getState();
+        expect(state.notifications).toEqual([]);
+        expect(state.toasts).toEqual([]);
+    });
+
+    it('addNotification: adds to both notifications and toasts', () => {
+        useNotificationStore.getState().addNotification('Test', 'Hello', 'info');
+        const state = useNotificationStore.getState();
+        expect(state.notifications).toHaveLength(1);
+        expect(state.toasts).toHaveLength(1);
+        expect(state.notifications[0].title).toBe('Test');
+        expect(state.notifications[0].read).toBe(false);
+    });
+
+    it('addNotification: auto-removes toast after 5s', () => {
+        useNotificationStore.getState().addNotification('Toast Test', 'Auto remove');
+        expect(useNotificationStore.getState().toasts).toHaveLength(1);
+
+        vi.advanceTimersByTime(5100);
+        expect(useNotificationStore.getState().toasts).toHaveLength(0);
+        // Notification should remain
+        expect(useNotificationStore.getState().notifications).toHaveLength(1);
+    });
+
+    it('addNotification: supports link parameter', () => {
+        useNotificationStore.getState().addNotification('With Link', 'Click me', 'success', '/client/123');
+        expect(useNotificationStore.getState().notifications[0].link).toBe('/client/123');
+    });
+
+    it('markAsRead: marks specific notification', () => {
+        useNotificationStore.getState().addNotification('Read Me', 'Test');
+        const id = useNotificationStore.getState().notifications[0].id;
+        useNotificationStore.getState().markAsRead(id);
+        expect(useNotificationStore.getState().notifications[0].read).toBe(true);
+    });
+
+    it('markAllAsRead: marks all notifications', () => {
+        useNotificationStore.getState().addNotification('One', 'Test');
+        useNotificationStore.getState().addNotification('Two', 'Test');
+        useNotificationStore.getState().markAllAsRead();
+        const allRead = useNotificationStore.getState().notifications.every(n => n.read);
+        expect(allRead).toBe(true);
+    });
+
+    it('removeNotification: removes from list', () => {
+        useNotificationStore.getState().addNotification('Remove Me', 'Test');
+        const id = useNotificationStore.getState().notifications[0].id;
+        useNotificationStore.getState().removeNotification(id);
+        expect(useNotificationStore.getState().notifications).toHaveLength(0);
+    });
+
+    it('clearAll: empties notification list', () => {
+        useNotificationStore.getState().addNotification('One', 'Test');
+        useNotificationStore.getState().addNotification('Two', 'Test');
+        useNotificationStore.getState().clearAll();
+        expect(useNotificationStore.getState().notifications).toEqual([]);
+    });
+
+    it('unreadCount: returns correct count', () => {
+        useNotificationStore.getState().addNotification('A', 'Test');
+        useNotificationStore.getState().addNotification('B', 'Test');
+        expect(useNotificationStore.getState().unreadCount()).toBe(2);
+
+        const id = useNotificationStore.getState().notifications[0].id;
+        useNotificationStore.getState().markAsRead(id);
+        expect(useNotificationStore.getState().unreadCount()).toBe(1);
+    });
+
+    it('notifications: limited to 50', () => {
+        for (let i = 0; i < 60; i++) {
+            useNotificationStore.getState().addNotification(`Notif ${i}`, 'Test');
+        }
+        expect(useNotificationStore.getState().notifications.length).toBeLessThanOrEqual(50);
+    });
+});
+
+
+// ============================================================================
+// OFFLINE STORE
+// ============================================================================
+
+describe('useOfflineStore', () => {
+    let useOfflineStore: typeof import('../../stores/useOfflineStore').useOfflineStore;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        localStorage.clear();
+        // Mock navigator.onLine
+        Object.defineProperty(globalThis, 'navigator', {
+            value: { onLine: true },
+            writable: true,
+            configurable: true,
+        });
+        const mod = await import('../../stores/useOfflineStore');
+        useOfflineStore = mod.useOfflineStore;
+    });
+
+    it('initial state: online', () => {
+        expect(useOfflineStore.getState().isOnline).toBe(true);
+    });
+
+    it('setOnline: toggles online state', () => {
+        useOfflineStore.getState().setOnline(false);
+        expect(useOfflineStore.getState().isOnline).toBe(false);
+        useOfflineStore.getState().setOnline(true);
+        expect(useOfflineStore.getState().isOnline).toBe(true);
+    });
+
+    it('enqueue: adds mutation to queue', () => {
+        useOfflineStore.getState().enqueue({
+            url: '/api/v1/projects/save',
+            method: 'POST',
+            body: '{"test": true}',
+            description: 'Save project',
+        });
+        expect(useOfflineStore.getState().queue).toHaveLength(1);
+        expect(useOfflineStore.getState().queue[0].url).toBe('/api/v1/projects/save');
+    });
+
+    it('enqueue: persists queue to localStorage', () => {
+        useOfflineStore.getState().enqueue({
+            url: '/api/v1/notes',
+            method: 'POST',
+            body: '{}',
+            description: 'Save note',
+        });
+        const stored = JSON.parse(localStorage.getItem('marion_offline_queue') || '[]');
+        expect(stored).toHaveLength(1);
+    });
+
+    it('clearQueue: empties the queue', () => {
+        useOfflineStore.getState().enqueue({
+            url: '/api/v1/test',
+            method: 'POST',
+            body: '{}',
+            description: 'Test',
+        });
+        useOfflineStore.getState().clearQueue();
+        expect(useOfflineStore.getState().queue).toHaveLength(0);
     });
 });
 

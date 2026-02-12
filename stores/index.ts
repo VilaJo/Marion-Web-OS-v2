@@ -10,3 +10,4 @@ export { useNotificationStore } from './useNotificationStore';
 export { useWorkspaceStore } from './useWorkspaceStore';
 export type { Workspace, WorkspaceBranding, WorkspaceMember } from './useWorkspaceStore';
 export { useOfflineStore } from './useOfflineStore';
+export { useUndoStore } from './useUndoStore';

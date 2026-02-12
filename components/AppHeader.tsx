@@ -29,7 +29,9 @@ interface AppHeaderProps {
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDown, onReconnect }) => {
     const navigate = useNavigate();
-    const { isOnline } = useOfflineStore();
+    const isOnline = useOfflineStore((s) => s.isOnline);
+    const queueCount = useOfflineStore((s) => s.queue.length);
+    const isSyncing = useOfflineStore((s) => s.isSyncing);
 
     const {
         theme, setTheme,
@@ -236,8 +238,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             <MobileDrawer />
         </header>
         {!isOnline && (
-            <div className="sticky top-0 z-40 w-full bg-amber-400/90 text-slate-900 dark:text-slate-900 text-xs md:text-sm px-3 md:px-6 py-1.5 md:py-2 text-center font-medium shadow-sm">
-                Mode hors-ligne — Les modifications seront synchronisées à la reconnexion.
+            <div className="sticky top-0 z-40 w-full bg-amber-400/90 text-slate-900 dark:text-slate-900 text-xs md:text-sm px-3 md:px-6 py-1.5 md:py-2 text-center font-medium shadow-sm flex items-center justify-center gap-2">
+                {isSyncing ? (
+                    <>
+                        <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                        Synchronisation en cours...
+                    </>
+                ) : (
+                    <>
+                        Mode hors-ligne
+                        {queueCount > 0
+                            ? ` — ${queueCount} modification${queueCount > 1 ? 's' : ''} en attente`
+                            : ' — Les modifications seront synchronisées à la reconnexion.'}
+                    </>
+                )}
             </div>
         )}
         </>
