@@ -14,6 +14,9 @@ from typing import Optional, Dict, List, Any, Tuple
 import threading
 
 from config import get_current_config
+from services.logger import get_logger
+
+logger = get_logger('database')
 
 # Thread-local storage for connections
 _local = threading.local()
@@ -63,7 +66,7 @@ def init_database():
         with open(schema_path, 'r') as f:
             conn.executescript(f.read())
     
-    print(f"Database initialized at: {get_db_path()}")
+    logger.info("Database initialized at: %s", get_db_path())
 
 
 def row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
@@ -1187,9 +1190,9 @@ def _safe_add_column(conn, table: str, column: str, col_type: str = "TEXT"):
         cols = [row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()]
         if column not in cols:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-            print(f"[Migration] Added column {table}.{column}")
+            logger.info("Migration: Added column %s.%s", table, column)
     except Exception as e:
-        print(f"[Migration] Could not add {table}.{column}: {e}")
+        logger.error("Migration: Could not add %s.%s: %s", table, column, e, exc_info=True)
 
 
 def run_migrations():
@@ -1230,7 +1233,7 @@ def run_migrations():
             if version in applied:
                 continue
 
-            print(f"[Migration] Applying {mf.name} (v{version})...")
+            logger.info("Migration: Applying %s (v%s)...", mf.name, version)
             try:
                 sql = mf.read_text()
                 conn.executescript(sql)
@@ -1238,9 +1241,9 @@ def run_migrations():
                     "INSERT INTO schema_migrations (version, filename) VALUES (?, ?)",
                     (version, mf.name)
                 )
-                print(f"[Migration] Applied {mf.name}")
+                logger.info("Migration: Applied %s", mf.name)
             except Exception as e:
-                print(f"[Migration] FAILED {mf.name}: {e}")
+                logger.error("Migration: FAILED %s: %s", mf.name, e, exc_info=True)
                 # Don't break -- skip to next (or raise depending on policy)
 
         # Safe column additions (for columns that can't use IF NOT EXISTS in SQLite)
@@ -1272,24 +1275,24 @@ def backup_database(max_backups: int = 5) -> Optional[str]:
         source.backup(dest)
         dest.close()
         source.close()
-        print(f"[Backup] Created: {backup_path}")
+        logger.info("Backup created: %s", backup_path)
 
         # Rotation: keep only the N most recent backups
         backups = sorted(backup_dir.glob("marion_*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
         for old in backups[max_backups:]:
             try:
                 old.unlink()
-                print(f"[Backup] Rotated out: {old.name}")
+                logger.info("Backup rotated out: %s", old.name)
             except OSError:
                 pass
 
         return str(backup_path)
     except Exception as e:
-        print(f"[Backup] Failed: {e}")
+        logger.error("Backup error: %s", e, exc_info=True)
         return None
 
 
 # Initialize on import if running directly
 if __name__ == '__main__':
     init_database()
-    print("Database initialized successfully!")
+    logger.info("Database initialized successfully!")

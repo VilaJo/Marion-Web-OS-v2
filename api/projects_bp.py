@@ -8,6 +8,7 @@ import json
 import shutil
 from flask import Blueprint, request, jsonify
 
+from services.logger import get_logger
 from api.shared import (
     DESKTOP_PATH, get_safe_path, init_db_structure,
     load_project_data, save_project_data_file, get_project_progress,
@@ -16,6 +17,7 @@ from api.shared import (
     error_response, validate_json,
 )
 
+logger = get_logger('api.projects')
 projects_bp = Blueprint('projects', __name__, url_prefix='/api/v1/projects')
 
 
@@ -212,7 +214,7 @@ def save_project():
                              portal_json, maintenance_json, progress)
                         )
             except Exception as sync_err:
-                print(f"[Sync] DB sync warning: {sync_err}")
+                logger.warning("[Sync] DB sync warning: %s", sync_err)
                 pass  # non-critical
 
         return jsonify({"success": True, "progress": progress})

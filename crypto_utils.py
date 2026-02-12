@@ -15,6 +15,10 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+from services.logger import get_logger
+
+logger = get_logger('crypto')
+
 # Constantes
 SALT_LENGTH = 16
 ITERATIONS = 480000  # OWASP recommande 600k pour SHA256, 480k est un bon compromis
@@ -111,7 +115,7 @@ def encrypt_to_file(data: Any, password: str, filepath: Path) -> bool:
         
         return True
     except Exception as e:
-        print(f"Erreur chiffrement: {e}")
+        logger.error("Erreur chiffrement: %s", e, exc_info=True)
         return False
 
 
@@ -134,7 +138,7 @@ def decrypt_from_file(filepath: Path, password: str) -> Optional[Any]:
     except InvalidToken:
         raise ValueError("Mot de passe incorrect")
     except Exception as e:
-        print(f"Erreur dechiffrement: {e}")
+        logger.error("Erreur dechiffrement: %s", e, exc_info=True)
         return None
 
 
@@ -188,7 +192,7 @@ def migrate_json_to_encrypted(json_path: Path, enc_path: Path, password: str) ->
             return True
         return False
     except Exception as e:
-        print(f"Erreur migration: {e}")
+        logger.error("Erreur migration: %s", e, exc_info=True)
         return False
 
 

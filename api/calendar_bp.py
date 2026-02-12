@@ -7,7 +7,10 @@ Note: Google Calendar routes are in oauth_bp.py.
 import subprocess
 from flask import Blueprint, request, jsonify
 
+from services.logger import get_logger
 from api.shared import DESKTOP_PATH, error_response
+
+logger = get_logger('api.calendar')
 
 calendar_bp = Blueprint('calendar', __name__, url_prefix='/api/v1/calendar')
 
@@ -15,7 +18,7 @@ calendar_bp = Blueprint('calendar', __name__, url_prefix='/api/v1/calendar')
 @calendar_bp.route('/fetch', methods=['GET'])
 def fetch_calendar():
     """Fetch events from macOS Calendar (iCal) via AppleScript."""
-    print("Fetching calendar events (V3)...")
+    logger.info("Fetching calendar events (V3)...")
 
     script = '''
     set eventList to {}
@@ -81,12 +84,12 @@ def fetch_calendar():
         result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
 
         if result.returncode != 0:
-            print(f"AppleScript Error: {result.stderr}")
+            logger.error("AppleScript Error: %s", result.stderr)
             return jsonify({"events": [], "error": result.stderr})
 
         if result.stdout:
             raw_data = result.stdout.strip().split('@@@')
-            print(f"AppleScript found {len(raw_data)} raw elements.")
+            logger.info("AppleScript found %s raw elements.", len(raw_data))
 
             for line in raw_data:
                 if not line.strip():
@@ -126,11 +129,11 @@ def fetch_calendar():
                         "type": event_type,
                         "source": "iCal",
                     })
-            print(f"{len(events)} events parsed successfully.")
+            logger.info("%s events parsed successfully.", len(events))
         else:
-            print("No stdout from AppleScript.")
+            logger.warning("No stdout from AppleScript.")
     except Exception as e:
-        print(f"Exception in fetch_calendar: {e}")
+        logger.error("Exception in fetch_calendar: %s", e, exc_info=True)
 
     return jsonify({"events": events})
 
@@ -170,7 +173,7 @@ def create_calendar_event():
         subprocess.run(['osascript', '-e', script], check=True)
         return jsonify({"success": True})
     except Exception as e:
-        print(f"Create event error: {e}")
+        logger.error("Create event error: %s", e, exc_info=True)
         return error_response(e)
 
 
@@ -242,12 +245,12 @@ def update_calendar_event():
 
         if result.returncode != 0 or result.stdout.strip().startswith("ERROR:"):
             error_msg = result.stderr.strip() or result.stdout.strip()
-            print(f"Calendar update error: {error_msg}")
+            logger.error("Calendar update error: %s", error_msg)
             return jsonify({"success": False, "error": error_msg}), 500
 
         return jsonify({"success": True})
     except Exception as e:
-        print(f"Update event error: {e}")
+        logger.error("Update event error: %s", e, exc_info=True)
         return error_response(e)
 
 
@@ -309,10 +312,10 @@ def delete_calendar_event():
 
         if result.returncode != 0 or result.stdout.strip().startswith("ERROR:"):
             error_msg = result.stderr.strip() or result.stdout.strip()
-            print(f"Calendar delete error: {error_msg}")
+            logger.error("Calendar delete error: %s", error_msg)
             return jsonify({"success": False, "error": error_msg}), 500
 
         return jsonify({"success": True, "message": "Événement supprimé"})
     except Exception as e:
-        print(f"Delete event error: {e}")
+        logger.error("Delete event error: %s", e, exc_info=True)
         return error_response(e)

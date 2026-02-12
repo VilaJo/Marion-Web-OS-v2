@@ -35,6 +35,7 @@ export const queryKeys = {
     workspaces: ['workspaces'] as const,
     workspaceMembers: ['workspace', 'members'] as const,
     workspaceBranding: ['workspace', 'branding'] as const,
+    analytics: ['analytics'] as const,
 };
 
 // ============================================================================
@@ -1391,5 +1392,58 @@ export function useRemoveWorkspaceMember() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.workspaceMembers });
         },
+    });
+}
+
+// ============================================================================
+// ANALYTICS
+// ============================================================================
+
+export interface AnalyticsTopClient {
+    client: string;
+    hours: number;
+    revenue: number;
+    hourlyRate: number;
+}
+
+export interface AnalyticsMonthlyRevenue {
+    month: string;
+    label: string;
+    revenue: number;
+    revenuePrevYear: number;
+}
+
+export interface AnalyticsSummary {
+    timeByClient: Record<string, { hours: number; entries: number }>;
+    conversionRates: {
+        estimateToInvoice: number;
+        invoiceToPaid: number;
+    };
+    avgPaymentDelay: number;
+    monthlyRevenue: AnalyticsMonthlyRevenue[];
+    newClientsByMonth: Record<string, number>;
+    topClients: AnalyticsTopClient[];
+    totals: {
+        totalInvoices: number;
+        totalPaid: number;
+        totalEstimates: number;
+        totalRevenue: number;
+    };
+}
+
+/**
+ * Fetch aggregated analytics summary.
+ * Includes real time tracking, conversion rates, monthly revenue trends.
+ */
+export function useAnalytics() {
+    return useQuery<AnalyticsSummary>({
+        queryKey: queryKeys.analytics,
+        queryFn: async () => {
+            const res = await apiFetch('/api/v1/analytics/summary');
+            if (!res.ok) throw new Error('Failed to load analytics');
+            const data = await res.json();
+            return data as AnalyticsSummary;
+        },
+        staleTime: 5 * 60 * 1000,  // Consider stale after 5 min
     });
 }

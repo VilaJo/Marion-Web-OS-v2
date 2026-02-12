@@ -7,7 +7,10 @@ import json
 import base64
 from flask import Blueprint, request, jsonify
 
+from services.logger import get_logger
 from config import get_current_config
+
+logger = get_logger('api.auth')
 from crypto_utils import generate_salt, hash_password, verify_password
 from database.db import (
     create_session as db_create_session,

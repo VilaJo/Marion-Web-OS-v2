@@ -23,8 +23,10 @@ import {
     Zap,
     X,
     ChevronDown,
-    Check
+    Check,
+    Download
 } from 'lucide-react';
+import { exportCSV, type CSVColumn } from '../utils/exportUtils';
 
 interface GoalsKPIsProps {
     projects: Project[];
@@ -328,9 +330,48 @@ export const GoalsKPIs: React.FC<GoalsKPIsProps> = ({ projects, currency = 'CHF'
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                        <X className="w-5 h-5 text-gray-500" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                const kpiColumns: CSVColumn[] = [
+                                    { header: 'KPI', key: 'name' },
+                                    { header: 'Valeur actuelle', key: 'value', format: (v) => typeof v === 'number' ? v.toLocaleString('fr-CH') : String(v) },
+                                    { header: 'Valeur précédente', key: 'previousValue', format: (v) => v != null ? (typeof v === 'number' ? v.toLocaleString('fr-CH') : String(v)) : '' },
+                                    { header: 'Unité', key: 'unit' },
+                                    { header: 'Tendance', key: 'trend' },
+                                    { header: 'Catégorie', key: 'category' },
+                                ];
+                                const goalColumns: CSVColumn[] = [
+                                    { header: 'Objectif', key: 'title' },
+                                    { header: 'Type', key: 'type' },
+                                    { header: 'Cible', key: 'target' },
+                                    { header: 'Actuel', key: 'current', format: (_, row) => String(getGoalProgress(row)) },
+                                    { header: 'Progression %', key: 'progress', format: (_, row) => {
+                                        const progress = getGoalProgress(row);
+                                        const target = row.target || 1;
+                                        return `${Math.min(Math.round((progress / target) * 100), 100)}%`;
+                                    }},
+                                    { header: 'Période', key: 'period' },
+                                    { header: 'Année', key: 'year' },
+                                ];
+                                // Export KPIs
+                                exportCSV(kpis, kpiColumns, `KPIs_${new Date().getFullYear()}.csv`);
+                                // Export Goals after a small delay
+                                if (goals.length > 0) {
+                                    setTimeout(() => {
+                                        exportCSV(goals, goalColumns, `Objectifs_${new Date().getFullYear()}.csv`);
+                                    }, 500);
+                                }
+                            }}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                            title="Exporter KPIs et objectifs (CSV)"
+                        >
+                            <Download className="w-5 h-5 text-emerald-500" />
+                        </button>
+                        <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                            <X className="w-5 h-5 text-gray-500" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6 space-y-6">

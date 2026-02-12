@@ -27,8 +27,9 @@ const MessagingHub = React.lazy(() => import('../components/MessagingHub').then(
 import {
     Search, Plus, RefreshCw, Database, Clock, DollarSign,
     FolderPlus, Archive, CheckCircle, User, Palette,
-    Calendar, Upload, FileText, Coffee, Briefcase
+    Calendar, Upload, FileText, Coffee, Briefcase, Download
 } from 'lucide-react';
+import { exportCSV, exportSingleSheetXLSX, type CSVColumn } from '../utils/exportUtils';
 
 declare const confetti: any;
 
@@ -632,6 +633,27 @@ export const Dashboard: React.FC = () => {
                         ) : (
                             <><Plus size={12} className="group-hover:rotate-90 transition-transform duration-300" /> <span>Nouveau</span></>
                         )}
+                    </button>
+                    <button
+                        onClick={() => {
+                            const clientColumns: CSVColumn[] = [
+                                { header: 'Nom', key: 'clientName' },
+                                { header: 'Email', key: 'email', format: (_, row) => row.profile?.email || '' },
+                                { header: 'Téléphone', key: 'phone', format: (_, row) => row.profile?.phone || '' },
+                                { header: 'Statut', key: 'status' },
+                                { header: 'Date création', key: 'createdAt', format: (v) => v ? new Date(v).toLocaleDateString('fr-CH') : '' },
+                                { header: 'CA Total (payé)', key: 'revenue', format: (_, row) => String(row.invoices?.filter((i: any) => i.status === 'Paid').reduce((s: number, i: any) => s + (i.amount || 0), 0) || 0) },
+                                { header: 'Nb Projets', key: 'projectCount', format: () => '1' },
+                                { header: 'Nb Tâches', key: 'taskCount', format: (_, row) => String(row.tasks?.length || 0) },
+                                { header: 'Factures en attente', key: 'pending', format: (_, row) => String(row.invoices?.filter((i: any) => i.status !== 'Paid').reduce((s: number, i: any) => s + (i.amount || 0), 0) || 0) },
+                            ];
+                            const clientData = projects.map(p => ({ ...p }));
+                            exportCSV(clientData, clientColumns, `Export_Clients_${new Date().getFullYear()}.csv`);
+                        }}
+                        className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-emerald-500 hover:shadow-md transition-all flex-shrink-0 dark:border dark:border-slate-700/50"
+                        title="Exporter la liste clients (CSV)"
+                    >
+                        <Download size={16} />
                     </button>
                     <button
                         onClick={() => refetchProjects()}

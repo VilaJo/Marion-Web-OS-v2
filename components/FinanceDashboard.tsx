@@ -33,7 +33,8 @@ import {
     Receipt,
     PiggyBank
 } from 'lucide-react';
-import { useExpenses, useDeleteExpense, useScanExpense } from '../services/queries';
+import { useExpenses, useDeleteExpense, useScanExpense, useAnalytics } from '../services/queries';
+import { exportSimpleCSV } from '../utils/exportUtils';
 
 declare const confetti: any;
 
@@ -70,6 +71,9 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
     const [isReminding, setIsReminding] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Analytics data from backend (real time tracking, conversions, trends)
+    const { data: analyticsData } = useAnalytics();
+
     // --- ACCOUNTING STATE & HELPERS ---
     const [showAccountingModal, setShowAccountingModal] = useState(false);
     const [accountingYear, setAccountingYear] = useState(new Date().getFullYear());
@@ -86,7 +90,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                 return [
                     item.date,
                     item.number,
-                    item.project?.clientName || 'Inconnu',
+                    item.clientName || item.project?.clientName || 'Inconnu',
                     "Prestations de services",
                     formatCurrency(item.amount / 1.081), 
                     formatCurrency(item.amount),
@@ -103,16 +107,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
             }
         });
 
-        const csvContent = [
-            headers.join(';'),
-            ...rows.map((r: any[]) => r.join(';'))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `Export_${type}_${accountingYear}.csv`;
-        link.click();
+        exportSimpleCSV(headers, rows, `Export_${type}_${accountingYear}.csv`);
     };
 
     const handleDownloadAccountingPDF = async () => {
@@ -620,40 +615,170 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                 {/* ANALYTICS TAB */}
                 {activeTab === 'analytics' && (
                     <div className="p-6 space-y-8">
-                        {/* Revenue by Client */}
+                        {/* Conversion KPIs */}
+                        {analyticsData && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <Card className="p-4 text-center">
+                                    <div className="text-2xl font-bold text-blue-600 tabular-nums">{analyticsData.conversionRates.estimateToInvoice}%</div>
+                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">Devis → Facture</div>
+                                </Card>
+                                <Card className="p-4 text-center">
+                                    <div className="text-2xl font-bold text-emerald-600 tabular-nums">{analyticsData.conversionRates.invoiceToPaid}%</div>
+                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">Facture → Payée</div>
+                                </Card>
+                                <Card className="p-4 text-center">
+                                    <div className="text-2xl font-bold text-purple-600 tabular-nums">{analyticsData.avgPaymentDelay}j</div>
+                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">Délai paiement moy.</div>
+                                </Card>
+                                <Card className="p-4 text-center">
+                                    <div className="text-2xl font-bold text-orange-600 tabular-nums">{formatCurrency(analyticsData.totals.totalRevenue)}</div>
+                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">CA Total {currency}</div>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* SVG Line Chart - Monthly Revenue Trend */}
+                        {analyticsData && analyticsData.monthlyRevenue.length > 0 && (
+                            <div>
+                                <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                                    <TrendingUp className="text-emerald-500" size={20} />
+                                    Tendance CA Mensuel (12 mois)
+                                </h3>
+                                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
+                                    {(() => {
+                                        const data = analyticsData.monthlyRevenue;
+                                        const maxRev = Math.max(...data.map(d => d.revenue), 1);
+                                        const W = 600, H = 180, padX = 40, padY = 20;
+                                        const chartW = W - padX * 2;
+                                        const chartH = H - padY * 2;
+                                        const points = data.map((d, i) => ({
+                                            x: padX + (i / Math.max(data.length - 1, 1)) * chartW,
+                                            y: padY + chartH - (d.revenue / maxRev) * chartH,
+                                            label: d.label,
+                                            value: d.revenue,
+                                        }));
+                                        const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                                        const areaPath = `${linePath} L ${points[points.length - 1].x} ${padY + chartH} L ${points[0].x} ${padY + chartH} Z`;
+                                        // Y-axis labels
+                                        const yLabels = [0, maxRev / 2, maxRev].map(v => ({
+                                            y: padY + chartH - (v / maxRev) * chartH,
+                                            label: v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0),
+                                        }));
+                                        return (
+                                            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+                                                {/* Grid lines */}
+                                                {yLabels.map((yl, i) => (
+                                                    <g key={i}>
+                                                        <line x1={padX} y1={yl.y} x2={W - padX} y2={yl.y} stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4 2" />
+                                                        <text x={padX - 4} y={yl.y + 3} textAnchor="end" className="fill-slate-400 text-[8px]">{yl.label}</text>
+                                                    </g>
+                                                ))}
+                                                {/* Area fill */}
+                                                <path d={areaPath} fill="url(#areaGradient)" />
+                                                <defs>
+                                                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                                                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                                                    </linearGradient>
+                                                </defs>
+                                                {/* Line */}
+                                                <path d={linePath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                {/* Data points */}
+                                                {points.map((p, i) => (
+                                                    <g key={i}>
+                                                        <circle cx={p.x} cy={p.y} r="3.5" fill="#10b981" stroke="white" strokeWidth="1.5" />
+                                                        {/* X-axis labels */}
+                                                        {i % 2 === 0 && (
+                                                            <text x={p.x} y={H - 4} textAnchor="middle" className="fill-slate-400 text-[7px]">{p.label.split(' ')[0]}</text>
+                                                        )}
+                                                        <title>{`${p.label}: ${formatCurrency(p.value)} ${currency}`}</title>
+                                                    </g>
+                                                ))}
+                                            </svg>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Top Clients with Real Time & Profitability */}
                         <div>
                             <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
                                 <Users className="text-blue-500" size={20} />
-                                Revenus par Client
+                                Top Clients (Revenus & Temps réel)
                             </h3>
-                            <div className="space-y-3">
-                                {(() => {
-                                    const revenueByClient = projects.map(p => ({
-                                        name: p.clientName,
-                                        initials: p.avatarInitials,
-                                        revenue: p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0),
-                                        pending: p.invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0)
-                                    })).filter(c => c.revenue > 0 || c.pending > 0).sort((a, b) => b.revenue - a.revenue);
-                                    const maxRevenue = Math.max(...revenueByClient.map(c => c.revenue + c.pending), 1);
-                                    return revenueByClient.slice(0, 10).map((client, idx) => (
-                                        <div key={idx} className="flex items-center gap-4">
-                                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
-                                                {client.initials}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between mb-1">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{client.name}</span>
-                                                    <span className="text-sm tabular-nums font-bold text-emerald-600">{formatCurrency(client.revenue)} {currency}</span>
+                            {analyticsData && analyticsData.topClients.length > 0 ? (
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase text-xs">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left">Client</th>
+                                            <th className="px-4 py-3 text-right">Revenus</th>
+                                            <th className="px-4 py-3 text-right">Heures réelles</th>
+                                            <th className="px-4 py-3 text-right">CHF/h</th>
+                                            <th className="px-4 py-3 text-center">Rentabilité</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                        {analyticsData.topClients.slice(0, 15).map((c, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold">
+                                                            {c.client.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-medium text-slate-800 dark:text-white">{c.client}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-600">{formatCurrency(c.revenue)} {currency}</td>
+                                                <td className="px-4 py-3 text-right tabular-nums">{c.hours > 0 ? `${c.hours}h` : '—'}</td>
+                                                <td className="px-4 py-3 text-right tabular-nums">{c.hourlyRate > 0 ? `${c.hourlyRate.toFixed(0)} ${currency}/h` : '—'}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {c.hourlyRate >= 150 ? (
+                                                        <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-full text-xs font-bold">Excellent</span>
+                                                    ) : c.hourlyRate >= 100 ? (
+                                                        <span className="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">Bon</span>
+                                                    ) : c.hourlyRate >= 50 ? (
+                                                        <span className="px-2 py-1 bg-yellow-100 text-yellow-600 rounded-full text-xs font-bold">Moyen</span>
+                                                    ) : c.hours > 0 ? (
+                                                        <span className="px-2 py-1 bg-red-100 text-red-600 rounded-full text-xs font-bold">Faible</span>
+                                                    ) : (
+                                                        <span className="text-slate-400 text-xs">—</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="space-y-3">
+                                    {(() => {
+                                        const revenueByClient = projects.map(p => ({
+                                            name: p.clientName,
+                                            initials: p.avatarInitials,
+                                            revenue: p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0),
+                                            pending: p.invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0)
+                                        })).filter(c => c.revenue > 0 || c.pending > 0).sort((a, b) => b.revenue - a.revenue);
+                                        const maxRevenue = Math.max(...revenueByClient.map(c => c.revenue + c.pending), 1);
+                                        return revenueByClient.slice(0, 10).map((client, idx) => (
+                                            <div key={idx} className="flex items-center gap-4">
+                                                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
+                                                    {client.initials}
                                                 </div>
-                                                <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex">
-                                                    <div className="h-full bg-emerald-500" style={{ width: `${(client.revenue / maxRevenue) * 100}%` }} />
-                                                    <div className="h-full bg-yellow-400" style={{ width: `${(client.pending / maxRevenue) * 100}%` }} />
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between mb-1">
+                                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{client.name}</span>
+                                                        <span className="text-sm tabular-nums font-bold text-emerald-600">{formatCurrency(client.revenue)} {currency}</span>
+                                                    </div>
+                                                    <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex">
+                                                        <div className="h-full bg-emerald-500" style={{ width: `${(client.revenue / maxRevenue) * 100}%` }} />
+                                                        <div className="h-full bg-yellow-400" style={{ width: `${(client.pending / maxRevenue) * 100}%` }} />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ));
-                                })()}
-                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            )}
                         </div>
 
                         {/* Revenue by Month with N-1 Comparison */}
@@ -767,19 +892,24 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                         {/* Time by Project */}
                         <div className="space-y-4">
                             {(() => {
-                                // Fetch time logs would be from backend - for now simulate from project data
+                                // Use real time tracking data from analytics if available, fall back to estimates
+                                const timeByClient = analyticsData?.timeByClient || {};
                                 const projectsWithTime = projects.map(p => {
-                                    // In a real app, this would come from time tracking data
+                                    const realData = timeByClient[p.clientName];
+                                    const realHours = realData?.hours || 0;
                                     const estimatedHours = p.tasks.filter(t => t.completed).length * 2 + p.tasks.filter(t => !t.completed).length * 4;
+                                    const hours = realHours > 0 ? realHours : estimatedHours;
+                                    const isReal = realHours > 0;
                                     const revenue = p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
-                                    const hourlyRate = estimatedHours > 0 ? revenue / estimatedHours : 0;
+                                    const hourlyRate = hours > 0 ? revenue / hours : 0;
                                     return {
                                         name: p.clientName,
                                         initials: p.avatarInitials,
-                                        hours: estimatedHours,
+                                        hours,
                                         revenue,
                                         hourlyRate,
-                                        status: p.status
+                                        status: p.status,
+                                        isReal,
                                     };
                                 }).filter(p => p.hours > 0 || p.revenue > 0).sort((a, b) => b.hours - a.hours);
 
@@ -789,7 +919,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase text-xs">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left">Client</th>
-                                                    <th className="px-4 py-3 text-right">Heures (est.)</th>
+                                                    <th className="px-4 py-3 text-right">Heures</th>
                                                     <th className="px-4 py-3 text-right">Revenus</th>
                                                     <th className="px-4 py-3 text-right">Taux horaire</th>
                                                     <th className="px-4 py-3 text-center">Rentabilité</th>
@@ -806,7 +936,10 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                                                 <span className="font-medium text-slate-800 dark:text-white">{p.name}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right tabular-nums">{p.hours}h</td>
+                                                        <td className="px-4 py-3 text-right tabular-nums">
+                                                            {p.hours}h
+                                                            {!p.isReal && <span className="text-[9px] text-slate-400 ml-1" title="Estimation basée sur les tâches">est.</span>}
+                                                        </td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-600">
                                                             {formatCurrency(p.revenue)} {currency}
                                                         </td>
@@ -873,12 +1006,11 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             hourlyRate: hours > 0 ? (revenue / hours).toFixed(2) : '0'
                                         };
                                     });
-                                    const csv = ['Client;Heures;Revenus;Taux Horaire', ...data.map(d => `${d.client};${d.hours};${d.revenue};${d.hourlyRate}`)].join('\n');
-                                    const blob = new Blob([csv], { type: 'text/csv' });
-                                    const link = document.createElement('a');
-                                    link.href = URL.createObjectURL(blob);
-                                    link.download = `Rapport_Temps_${new Date().getFullYear()}.csv`;
-                                    link.click();
+                                    exportSimpleCSV(
+                                        ['Client', 'Heures', 'Revenus', 'Taux Horaire'],
+                                        data.map(d => [d.client, d.hours, d.revenue, d.hourlyRate]),
+                                        `Rapport_Temps_${new Date().getFullYear()}.csv`
+                                    );
                                 }}
                                 className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-200 flex items-center gap-2"
                             >
@@ -1108,12 +1240,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             inv.amount.toFixed(2),
                                             inv.status === 'Paid' ? 'Payé' : 'En attente'
                                         ].join(';'));
-                                        const csv = [headers.join(';'), ...rows].join('\n');
-                                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-                                        const link = document.createElement('a');
-                                        link.href = URL.createObjectURL(blob);
-                                        link.download = `Export_Bexio_${new Date().getFullYear()}.csv`;
-                                        link.click();
+                                        exportSimpleCSV(headers, rows.map(r => r.split(';')), `Export_Bexio_${new Date().getFullYear()}.csv`);
                                     }}
                                     className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
                                 >
@@ -1144,12 +1271,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             inv.status === 'Paid' ? inv.amount.toFixed(2) : '',
                                             inv.status === 'Paid' ? '1020' : '1100' // Bank or Accounts Receivable
                                         ].join('\t'));
-                                        const tsv = [headers.join('\t'), ...rows].join('\n');
-                                        const blob = new Blob(['\uFEFF' + tsv], { type: 'text/tab-separated-values;charset=utf-8' });
-                                        const link = document.createElement('a');
-                                        link.href = URL.createObjectURL(blob);
-                                        link.download = `Export_Banana_${new Date().getFullYear()}.txt`;
-                                        link.click();
+                                        exportSimpleCSV(headers, rows.map(r => r.split('\t')), `Export_Banana_${new Date().getFullYear()}.txt`, '\t');
                                     }}
                                     className="w-full px-4 py-3 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
                                 >
@@ -1179,12 +1301,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             inv.status === 'Paid' ? inv.amount.toFixed(2) : '',
                                             inv.number
                                         ].join(';'));
-                                        const csv = [headers.join(';'), ...rows].join('\n');
-                                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-                                        const link = document.createElement('a');
-                                        link.href = URL.createObjectURL(blob);
-                                        link.download = `Export_Cresus_${new Date().getFullYear()}.csv`;
-                                        link.click();
+                                        exportSimpleCSV(headers, rows.map(r => r.split(';')), `Export_Cresus_${new Date().getFullYear()}.csv`);
                                     }}
                                     className="w-full px-4 py-3 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
                                 >

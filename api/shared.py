@@ -6,9 +6,11 @@ This module provides access to global state and utility functions used across bl
 import os
 import sys
 import json
+from services.logger import get_logger
+
+logger = get_logger('api.shared')
 import base64
 import shutil
-import traceback
 from pathlib import Path
 from flask import jsonify
 from config import get_current_config
@@ -114,11 +116,11 @@ def load_project_data(project_path):
                     salt = base64.b64decode(auth_data["salt"])
                     data = decrypt_sensitive_fields(data, pwd, salt, SENSITIVE_PROJECT_FIELDS)
                 except Exception as e:
-                    print(f"Warning: Could not decrypt sensitive fields: {e}", file=sys.stderr)
+                    logger.warning("Could not decrypt sensitive fields: %s", e)
 
             return data
         except Exception as e:
-            print(f"Error loading project data: {e}", file=sys.stderr)
+            logger.error("Error loading project data: %s", e, exc_info=True)
     return {}
 
 
@@ -140,7 +142,7 @@ def save_project_data_file(project_path, data):
             salt = base64.b64decode(auth_data["salt"])
             data_to_save = encrypt_sensitive_fields(data_to_save, pwd, salt, SENSITIVE_PROJECT_FIELDS)
         except Exception as e:
-            print(f"Warning: Could not encrypt sensitive fields: {e}", file=sys.stderr)
+            logger.warning("Could not encrypt sensitive fields: %s", e)
 
     with open(json_path, 'w') as f:
         json.dump(data_to_save, f, indent=2)
@@ -214,8 +216,7 @@ def error_response(e: Exception, status: int = 500, user_msg: str = "Erreur inte
     - Returns a generic message to the client (no internal details leaked).
     For 400-class errors, pass a specific user_msg.
     """
-    print(f"[ERROR {status}] {user_msg}", file=sys.stderr)
-    traceback.print_exc(file=sys.stderr)
+    logger.error("[ERROR %s] %s", status, user_msg, exc_info=True)
     return jsonify({"error": user_msg}), status
 
 

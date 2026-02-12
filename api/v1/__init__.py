@@ -5,7 +5,9 @@ Legacy routes in franck_server.py will gradually migrate to v1.
 """
 
 from flask import Blueprint
+from services.logger import get_logger
 
+logger = get_logger('api.v1')
 api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 
 # Import route modules to register them with the blueprint

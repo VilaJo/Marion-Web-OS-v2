@@ -136,17 +136,21 @@ class Config:
         has_google = '✓' if (cls.GOOGLE_CLIENT_ID and cls.GOOGLE_CLIENT_SECRET) else '✗'
         has_github = '✓' if cls.GITHUB_TOKEN else '✗'
         has_smtp = '✓' if cls.SMTP_HOST else '✗'
-        print(f"""
-╔══════════════════════════════════════════╗
-║  {cls.APP_NAME} v{cls.APP_VERSION}
-║  Environment : {cls.ENVIRONMENT}
-║  Debug       : {cls.DEBUG}
-║  Log level   : {cls.LOG_LEVEL}
-║  Database    : {cls.get_db_path()}
-║  Data path   : {cls.DATA_PATH}
-║  Server      : {cls.HOST}:{cls.PORT}
-║  Integrations: Gemini {has_gemini}  Google {has_google}  GitHub {has_github}  SMTP {has_smtp}
-╚══════════════════════════════════════════╝""")
+        _config_logger.info(
+            "\n╔══════════════════════════════════════════╗\n"
+            "║  %s v%s\n"
+            "║  Environment : %s\n"
+            "║  Debug       : %s\n"
+            "║  Log level   : %s\n"
+            "║  Database    : %s\n"
+            "║  Data path   : %s\n"
+            "║  Server      : %s:%s\n"
+            "║  Integrations: Gemini %s  Google %s  GitHub %s  SMTP %s\n"
+            "╚══════════════════════════════════════════╝",
+            cls.APP_NAME, cls.APP_VERSION, cls.ENVIRONMENT, cls.DEBUG, cls.LOG_LEVEL,
+            cls.get_db_path(), cls.DATA_PATH, cls.HOST, cls.PORT,
+            has_gemini, has_google, has_github, has_smtp,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -174,10 +178,12 @@ class ProductionConfig(Config):
             generated = secrets.token_urlsafe(64)
             os.environ['SECRET_KEY'] = generated
             cls.SECRET_KEY = generated
-            print("⚠  Warning: SECRET_KEY not set — auto-generated for this session. "
-                  "Set SECRET_KEY in .env for persistent sessions across restarts.")
+            _config_logger.warning(
+                "SECRET_KEY not set — auto-generated for this session. "
+                "Set SECRET_KEY in .env for persistent sessions across restarts."
+            )
         if not cls.GEMINI_API_KEY:
-            print("⚠  Warning: GEMINI_API_KEY not set — Franck chatbot will not work")
+            _config_logger.warning("GEMINI_API_KEY not set — Franck chatbot will not work")
 
 
 class TestingConfig(Config):
@@ -187,6 +193,10 @@ class TestingConfig(Config):
     ENVIRONMENT = 'testing'
     LOG_LEVEL = 'DEBUG'
     DATABASE_URL = 'sqlite:///:memory:'
+
+
+# Use standard logging.getLogger to avoid circular import (logger imports config)
+_config_logger = logging.getLogger('marion.config')
 
 
 # ---------------------------------------------------------------------------

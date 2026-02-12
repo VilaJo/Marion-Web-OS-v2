@@ -9,7 +9,10 @@ import time
 from pathlib import Path
 from flask import Blueprint, request, jsonify
 
+from services.logger import get_logger
 from api.shared import DESKTOP_PATH, get_safe_path, load_project_data, save_project_data_file, error_response
+
+logger = get_logger('api.invoices')
 
 invoices_bp = Blueprint('invoices', __name__, url_prefix='/api/v1')
 
@@ -120,7 +123,7 @@ def scan_expense():
                 extracted = json.loads(response.text)
                 expense_data.update(extracted)
             except Exception as ai_e:
-                print(f"AI Expense Scan Error: {ai_e}")
+                logger.warning("AI Expense Scan Error: %s", ai_e)
 
         json_path = expenses_path / f"{expense_id}.json"
         with open(json_path, 'w') as f:

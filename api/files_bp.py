@@ -10,12 +10,14 @@ import shutil
 from pathlib import Path
 from flask import Blueprint, request, jsonify
 
+from services.logger import get_logger
 from api.shared import (
     DESKTOP_PATH, get_safe_path, init_db_structure,
     STATUS_FOLDER_MAP,
     error_response, validate_json,
 )
 
+logger = get_logger('api.files')
 files_bp = Blueprint('files', __name__, url_prefix='/api/v1/files')
 
 

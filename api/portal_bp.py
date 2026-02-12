@@ -36,6 +36,9 @@ import time
 from pathlib import Path
 from flask import Blueprint, request, jsonify, send_file
 from werkzeug.utils import secure_filename
+from services.logger import get_logger
+
+logger = get_logger('api.portal')
 
 from database.db import (
     get_project_by_portal_token, verify_portal_pin, get_project,

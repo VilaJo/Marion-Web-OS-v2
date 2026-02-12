@@ -7,6 +7,9 @@ Handles: OAuth login/callback/status/disconnect, Drive list/upload/sync,
 import sys
 import time
 import json
+from services.logger import get_logger
+
+logger = get_logger('api.oauth')
 import urllib.parse
 import requests
 from datetime import datetime, timedelta
@@ -429,7 +432,7 @@ def gcal_list_events():
         _gcal_cache["timestamp"] = time.time()
         return jsonify({"events": events, "cached": False})
     except Exception as e:
-        print(f"Error fetching calendar events: {e}", file=sys.stderr)
+        logger.error("Error fetching calendar events: %s", e, exc_info=True)
         return error_response(e)
 
 
@@ -508,7 +511,7 @@ def gcal_create_event():
             })
         return jsonify({"error": response.text}), response.status_code
     except Exception as e:
-        print(f"Error creating calendar event: {e}", file=sys.stderr)
+        logger.error("Error creating calendar event: %s", e, exc_info=True)
         return error_response(e)
 
 
@@ -695,7 +698,7 @@ def _parse_gcal_events(items: list) -> list:
                 local_time = "00:00"
                 duration = 1440
         except Exception as parse_err:
-            print(f"Date parsing error for {ev.get('summary')}: {parse_err}", file=sys.stderr)
+            logger.warning("Date parsing error for %s: %s", ev.get('summary'), parse_err)
             local_date = start_dt_str[:10] if start_dt_str else ""
             local_time = start_dt_str[11:16] if "T" in start_dt_str else "00:00"
             duration = 60

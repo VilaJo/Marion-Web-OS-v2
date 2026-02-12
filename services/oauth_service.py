@@ -7,7 +7,6 @@ blueprints dealing with Google APIs can stay thin.
 Tokens are encrypted at rest using Fernet (via crypto_utils).
 """
 
-import sys
 import time
 import base64
 import json
@@ -23,7 +22,9 @@ from database.db import (
     get_user_by_email,
 )
 from crypto_utils import encrypt_field, decrypt_field, is_encrypted_field
+from services.logger import get_logger
 
+logger = get_logger('services.oauth')
 cfg = get_current_config()
 
 # In-memory cache  (email -> {access_token, refresh_token, expires_in, user_info})
@@ -58,7 +59,7 @@ def _encrypt_token(value: str) -> str:
         try:
             return encrypt_field(value, pwd, salt)
         except Exception as e:
-            print(f"[OAuth] Token encryption failed, storing plain: {e}", file=sys.stderr)
+            logger.warning("[OAuth] Token encryption failed, storing plain: %s", e)
     return value
 
 
@@ -71,7 +72,7 @@ def _decrypt_token(value: str) -> str:
         try:
             return decrypt_field(value, pwd, salt)
         except Exception as e:
-            print(f"[OAuth] Token decryption failed (may be plain-text): {e}", file=sys.stderr)
+            logger.warning("[OAuth] Token decryption failed (may be plain-text): %s", e)
     return value
 
 
@@ -96,7 +97,7 @@ def persist_to_db(email: str):
             scope=cfg.GOOGLE_SCOPES,
         )
     except Exception as e:
-        print(f"Failed to persist OAuth token to DB: {e}", file=sys.stderr)
+        logger.error("Failed to persist OAuth token to DB: %s", e, exc_info=True)
 
 
 def load_from_db(user_id: int = None):
@@ -119,9 +120,9 @@ def load_from_db(user_id: int = None):
                 "expires_at": 0,  # unknown from DB, will be refreshed proactively
                 "user_info": {"email": email},
             }
-            print(f"OAuth tokens loaded from DB for: {email}", file=sys.stderr)
+            logger.info("OAuth tokens loaded from DB for: %s", email)
     except Exception as e:
-        print(f"Failed to load OAuth tokens from DB: {e}", file=sys.stderr)
+        logger.error("Failed to load OAuth tokens from DB: %s", e, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -158,10 +159,10 @@ def refresh_google_token(email: str) -> bool:
             oauth_tokens[email]['expires_in'] = expires_in
             oauth_tokens[email]['expires_at'] = time.time() + int(expires_in) if expires_in else 0
             persist_to_db(email)
-            print(f"Token refreshed for {email}, expires in {expires_in}s", file=sys.stderr)
+            logger.info("Token refreshed for %s, expires in %ss", email, expires_in)
             return True
     except Exception as e:
-        print(f"Token refresh failed: {e}", file=sys.stderr)
+        logger.error("Token refresh failed: %s", e, exc_info=True)
 
     return False
 
@@ -214,7 +215,7 @@ def disconnect():
         if user:
             db_delete_oauth_token(user['id'], 'google')
     except Exception as e:
-        print(f"Failed to delete OAuth token from DB: {e}", file=sys.stderr)
+        logger.error("Failed to delete OAuth token from DB: %s", e, exc_info=True)
     oauth_tokens = {}
 
 

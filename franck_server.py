@@ -14,10 +14,12 @@ import os
 import sys
 import json
 import base64
+import threading
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 from config import get_current_config
+from services.logger import init_logging, get_logger
 from database.db import (
     init_database,
     validate_session as db_validate_session,
@@ -34,6 +36,14 @@ from api.shared import (
 # ---------------------------------------------------------------------------
 cfg = get_current_config()
 
+# Initialise structured logging before anything else
+init_logging(
+    log_level=cfg.LOG_LEVEL,
+    data_path=str(cfg.DATA_PATH),
+    environment=cfg.ENVIRONMENT,
+)
+logger = get_logger('server')
+
 app = Flask(__name__, static_folder=cfg.STATIC_FOLDER)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.secret_key = cfg.SECRET_KEY
@@ -46,7 +56,35 @@ CORS(app, origins=cfg.CORS_ORIGINS, supports_credentials=True)
 init_database()
 run_migrations()  # Apply pending DB migrations
 init_db_structure()
-backup_database()  # Auto-backup on startup (keeps last 5)
+backup_database(max_backups=10)  # Auto-backup on startup (keeps last 10)
+
+# ---------------------------------------------------------------------------
+# Scheduled backup daemon (every 6 hours by default)
+# ---------------------------------------------------------------------------
+BACKUP_INTERVAL_HOURS = int(os.getenv('BACKUP_INTERVAL_HOURS', '6'))
+
+
+def _scheduled_backup():
+    """Run a database backup and schedule the next one."""
+    try:
+        path = backup_database(max_backups=10)
+        if path:
+            logger.info("Scheduled backup completed: %s", path)
+        else:
+            logger.warning("Scheduled backup returned no path")
+    except Exception as e:
+        logger.error("Scheduled backup failed: %s", e, exc_info=True)
+    # Schedule next backup
+    timer = threading.Timer(BACKUP_INTERVAL_HOURS * 3600, _scheduled_backup)
+    timer.daemon = True
+    timer.start()
+
+
+# Start the first scheduled backup timer
+_backup_timer = threading.Timer(BACKUP_INTERVAL_HOURS * 3600, _scheduled_backup)
+_backup_timer.daemon = True
+_backup_timer.start()
+logger.info("Backup scheduler started — interval: every %dh", BACKUP_INTERVAL_HOURS)
 
 # ---------------------------------------------------------------------------
 # Blueprint registration
@@ -68,6 +106,7 @@ from api.email_bp import email_bp
 from api.updates_bp import updates_bp
 from api.backup_bp import backup_bp
 from api.portal_bp import portal_bp
+from api.analytics_bp import analytics_bp
 
 app.register_blueprint(auth_bp)        # /api/v1/auth/*
 app.register_blueprint(projects_bp)    # /api/v1/projects/*
@@ -79,7 +118,8 @@ app.register_blueprint(oauth_bp)       # /api/v1/oauth/*, /api/v1/drive/*, /api/
 app.register_blueprint(email_bp)       # /api/v1/email/*
 app.register_blueprint(updates_bp)     # /api/v1/version, /api/v1/updates/*, /api/v1/report-bug
 app.register_blueprint(backup_bp)      # /api/v1/backup
-app.register_blueprint(portal_bp)      # /api/v1/portal/*
+app.register_blueprint(portal_bp)
+app.register_blueprint(analytics_bp)     # /api/v1/analytics/*      # /api/v1/portal/*
 
 # ---------------------------------------------------------------------------
 # Authentication middleware
@@ -205,12 +245,12 @@ if __name__ == '__main__':
 
         # Initialise Gemini client
         from services.gemini_service import init_client, get_client
-        print("Initializing Gemini Client...", file=sys.stderr)
+        logger.info("Initializing Gemini Client...")
         init_client()
         client = get_client()
-        print(f"Client Status: {'Configured' if client else 'Not Configured'}", file=sys.stderr)
+        logger.info("Client Status: %s", 'Configured' if client else 'Not Configured')
 
-        print(f"Starting Marion Web OS on {cfg.HOST}:{cfg.PORT}...", file=sys.stderr)
+        logger.info("Starting Marion Web OS on %s:%s...", cfg.HOST, cfg.PORT)
         app.run(host=cfg.HOST, port=cfg.PORT, debug=cfg.DEBUG, use_reloader=False)
     except Exception as e:
-        print(f"CRITICAL STARTUP ERROR: {e}", file=sys.stderr)
+        logger.critical("CRITICAL STARTUP ERROR: %s", e, exc_info=True)

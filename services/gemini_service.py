@@ -6,13 +6,14 @@ can import a thin API instead of touching the google.genai SDK directly.
 """
 
 import os
-import sys
 import time
 import json
 from typing import Optional
 
 from config import get_current_config
+from services.logger import get_logger
 
+logger = get_logger('services.gemini')
 cfg = get_current_config()
 
 # ---------------------------------------------------------------------------
@@ -31,12 +32,12 @@ def init_client():
             from google import genai
             clean_key = api_key.strip().replace('"', '').replace("'", "")
             _client = genai.Client(api_key=clean_key)
-            print("Gemini Client Initialized", file=sys.stderr)
+            logger.info("Gemini Client Initialized")
         except Exception as e:
-            print(f"Gemini Client Init Failed: {e}", file=sys.stderr)
+            logger.error("Gemini Client Init Failed: %s", e, exc_info=True)
             _client = None
     else:
-        print("No Gemini API Key found", file=sys.stderr)
+        logger.warning("No Gemini API Key found")
 
 
 def get_client():

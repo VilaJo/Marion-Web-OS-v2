@@ -7,6 +7,9 @@ Handles: /api/version, /api/updates/check, /api/updates/apply, /api/updates/chan
 import os
 import sys
 import threading
+from services.logger import get_logger
+
+logger = get_logger('api.updates')
 from pathlib import Path
 from datetime import datetime
 from flask import Blueprint, request, jsonify
@@ -128,7 +131,7 @@ def apply_update():
                     start_new_session=True,
                 )
             except Exception as e:
-                print(f"Update error: {e}", file=sys.stderr)
+                logger.error("Update error: %s", e, exc_info=True)
 
         update_thread = threading.Thread(target=run_update, daemon=True)
         update_thread.start()

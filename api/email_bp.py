@@ -11,6 +11,9 @@ crypto_utils) using the session password as encryption key.
 
 import base64
 from flask import Blueprint, request, jsonify, Response
+from services.logger import get_logger
+
+logger = get_logger('api.email')
 from services.email_service import (
     list_emails as svc_list_emails,
     get_email_body as svc_get_email_body,
@@ -276,8 +279,7 @@ def unseen_count():
                 return jsonify({"count": count, "connected": True, "newest": newest_info})
             return jsonify({"count": 0, "connected": True})
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error("Unseen count error: %s", e, exc_info=True)
         return jsonify({"count": 0, "connected": True, "error": str(e)})
 
 

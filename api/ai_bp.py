@@ -8,6 +8,9 @@ Handles: chat, zen, briefing, greeting, suggestions, media processing,
 import os
 import sys
 import json
+from services.logger import get_logger
+
+logger = get_logger('api.ai')
 import time
 import base64
 import io
@@ -211,7 +214,7 @@ SUGGESTIONS POSSIBLES:
             memory['last_seen'] = time.strftime('%Y-%m-%d %H:%M')
             save_franck_memory(memory)
         except Exception as e:
-            print(f"Chat error: {e}", file=sys.stderr)
+            logger.error("Chat error: %s", e, exc_info=True)
             yield "Aie, mes circuits grincent un peu... Erreur technique, ma belle. Reessaie dans quelques secondes."
 
     return Response(generate(), mimetype='text/plain')
