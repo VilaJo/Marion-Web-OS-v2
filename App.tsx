@@ -37,6 +37,7 @@ const TourGuide = React.lazy(() => import('./components/TourGuide').then(m => ({
 const Onboarding = React.lazy(() => import('./components/Onboarding'));
 
 import { AmbientPlayer } from './components/AmbientPlayer';
+import { GlobalSearch } from './components/GlobalSearch';
 import { EmptyState } from './components/Shared';
 import { SplashScreen } from './components/SplashScreen';
 import { ToastItem } from './components/NotificationSystem';
@@ -378,6 +379,9 @@ const App: React.FC = () => {
 
             {/* Global Overlays */}
             <GlobalOverlays projects={projects} events={events} />
+
+            {/* Global Search (Cmd+K) */}
+            <GlobalSearch />
         </div>
         </Suspense>
     );

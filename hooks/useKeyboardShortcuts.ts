@@ -4,9 +4,10 @@
  * Extracted from App.tsx for maintainability.
  *
  * Shortcuts:
- *   Escape  → Close active overlay (chat, importer)
- *   /       → Focus dashboard search
- *   n       → Open importer
+ *   Cmd/Ctrl+K → Open global search
+ *   Escape     → Close active overlay (search, chat, importer)
+ *   /          → Focus dashboard search
+ *   n          → Open importer
  */
 
 import { useEffect } from 'react';
@@ -19,12 +20,23 @@ export function useKeyboardShortcuts() {
     const setShowImporter = useUIStore((s) => s.setShowImporter);
     const isDraggingOver = useUIStore((s) => s.isDraggingOver);
     const setIsDraggingOver = useUIStore((s) => s.setIsDraggingOver);
+    const showGlobalSearch = useUIStore((s) => s.showGlobalSearch);
+    const setShowGlobalSearch = useUIStore((s) => s.setShowGlobalSearch);
 
     useEffect(() => {
         const handleShortcuts = (e: KeyboardEvent) => {
+            // Cmd+K / Ctrl+K → global search (works even in inputs)
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setShowGlobalSearch(!showGlobalSearch);
+                return;
+            }
+
             if (e.key === 'Escape') {
                 // Escape always closes the drag overlay first (even when in input)
                 if (isDraggingOver) { setIsDraggingOver(false); return; }
+                // Close global search first
+                if (showGlobalSearch) { setShowGlobalSearch(false); return; }
             }
 
             // Ignore when typing in form fields
@@ -48,5 +60,5 @@ export function useKeyboardShortcuts() {
 
         window.addEventListener('keydown', handleShortcuts);
         return () => window.removeEventListener('keydown', handleShortcuts);
-    }, [showChat, showImporter, isDraggingOver, setShowChat, setShowImporter, setIsDraggingOver]);
+    }, [showChat, showImporter, isDraggingOver, showGlobalSearch, setShowChat, setShowImporter, setIsDraggingOver, setShowGlobalSearch]);
 }

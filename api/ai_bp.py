@@ -452,22 +452,84 @@ def analyze_meeting():
 
 @ai_bp.route('/media/vectorize', methods=['POST'])
 def vectorize_media():
-    """Vectorize an image (placeholder)."""
+    """Vectorize an image into SVG using contour tracing."""
     if 'file' not in request.files:
         return jsonify({"error": "No file"}), 400
     try:
+        import numpy as np
+
+        # Load and prepare image
         img = Image.open(request.files['file'].stream).convert('L')
-        width, height = 100, int(100 * img.height / img.width)
-        svg = (
-            f'<svg width="{img.width}" height="{img.height}" viewBox="0 0 {width} {height}" '
-            f'xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#eee"/>'
-            f'<text x="10" y="50" font-family="sans-serif">Vectorization Placeholder</text></svg>'
-        )
+        threshold = int(request.form.get('threshold', 128))
+        max_dim = 800
+        if max(img.size) > max_dim:
+            ratio = max_dim / max(img.size)
+            img = img.resize((int(img.width * ratio), int(img.height * ratio)), Image.LANCZOS)
+
+        w, h = img.size
+        arr = np.array(img)
+
+        # Binarize
+        binary = (arr < threshold).astype(np.uint8)
+
+        # Simple contour extraction using edge detection
+        # Detect edges: a pixel is an edge if it differs from any neighbor
+        padded = np.pad(binary, 1, mode='constant', constant_values=0)
+        edges = np.zeros_like(binary)
+        for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            shifted = padded[1 + dy:h + 1 + dy, 1 + dx:w + 1 + dx]
+            edges |= (binary != shifted)
+
+        # Convert edge pixels to SVG paths using scanline approach
+        # Group consecutive edge pixels per row into horizontal line segments
+        paths = []
+        for y in range(h):
+            x = 0
+            while x < w:
+                if edges[y, x]:
+                    x_start = x
+                    while x < w and edges[y, x]:
+                        x += 1
+                    paths.append(f"M{x_start},{y}h{x - x_start}")
+                else:
+                    x += 1
+
+        # Also add filled rectangles for solid regions (better visual quality)
+        rects = []
+        for y in range(0, h, 2):  # Sample every 2 rows for performance
+            x = 0
+            while x < w:
+                if binary[y, x]:
+                    x_start = x
+                    while x < w and binary[y, x]:
+                        x += 1
+                    rects.append(f'<rect x="{x_start}" y="{y}" width="{x - x_start}" height="2" />')
+                else:
+                    x += 1
+
+        svg_parts = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}">',
+            '<g fill="#000" stroke="none">',
+        ]
+        svg_parts.extend(rects)
+        svg_parts.append('</g>')
+
+        if paths:
+            svg_parts.append(f'<path d="{" ".join(paths)}" fill="none" stroke="#000" stroke-width="0.5" opacity="0.3" />')
+
+        svg_parts.append('</svg>')
+        svg = '\n'.join(svg_parts)
+
         return jsonify({
             "success": True,
             "image": f"data:image/svg+xml;base64,{base64.b64encode(svg.encode()).decode()}",
             "format": "svg",
+            "width": w,
+            "height": h,
         })
+    except ImportError:
+        # numpy not available — minimal fallback
+        return jsonify({"error": "numpy is required for vectorization. Install with: pip install numpy"}), 500
     except Exception as e:
         return error_response(e)
 

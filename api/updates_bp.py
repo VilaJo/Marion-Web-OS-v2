@@ -158,7 +158,46 @@ def get_changelog():
 
 @updates_bp.route('/report-bug', methods=['POST'])
 def report_bug():
-    """Report a bug (placeholder - requires GitHub token)."""
+    """Report a bug by creating a GitHub issue."""
     if not cfg.GITHUB_TOKEN:
-        return jsonify({"error": "No GitHub Token"}), 503
-    return jsonify({"success": True})
+        return jsonify({"error": "Token GitHub non configuré. Ajoutez GITHUB_TOKEN dans .env"}), 503
+
+    data = request.json or {}
+    title = data.get('title', '').strip()
+    body = data.get('body', '').strip()
+    labels = data.get('labels', ['bug', 'user-report'])
+
+    if not title:
+        return jsonify({"error": "Le titre est requis"}), 400
+
+    try:
+        response = http_requests.post(
+            f"{GITHUB_REPO_API}/issues",
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": f"token {cfg.GITHUB_TOKEN}",
+            },
+            json={
+                "title": title,
+                "body": body,
+                "labels": labels,
+            },
+            timeout=15,
+        )
+
+        if response.status_code in (200, 201):
+            issue = response.json()
+            return jsonify({
+                "success": True,
+                "issueUrl": issue.get("html_url", ""),
+                "issueNumber": issue.get("number"),
+                "message": f"Issue #{issue.get('number')} créée avec succès.",
+            })
+        else:
+            error_detail = response.json().get("message", response.text)
+            return jsonify({"error": f"GitHub API: {error_detail}"}), response.status_code
+
+    except http_requests.exceptions.Timeout:
+        return jsonify({"error": "Timeout lors de la création de l'issue GitHub"}), 504
+    except Exception as e:
+        return error_response(e)

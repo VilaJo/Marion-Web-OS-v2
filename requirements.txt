@@ -16,5 +16,8 @@ gunicorn>=22.0.0
 # Testing
 pytest>=8.0.0
 
+# Image processing
+numpy>=1.26.0
+
 # Optional
 segno>=1.6.0

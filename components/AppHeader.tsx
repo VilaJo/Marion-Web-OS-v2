@@ -17,7 +17,7 @@ import { useEmailStatus, useEmailUnseen } from '../services/queries';
 import {
     LayoutGrid, Bell, Settings, Sun, Moon,
     HelpCircle, Sparkles, MessageCircle, Wand2, Tent,
-    FileText, StickyNote, Target, Mail, Menu,
+    FileText, StickyNote, Target, Mail, Menu, Search,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
 
@@ -37,7 +37,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         showNotifCenter, setShowNotifCenter,
         setShowMediaWorkshop, setShowNotes, setShowFileDispatcher,
         setShowGuide, setShowGoalsKPIs, setShowDocTemplates,
-        setShowMessagingHub, setShowMondayBriefing,
+        setShowMessagingHub, setShowMondayBriefing, setShowGlobalSearch,
         setIsFocusMode,
         setDroppedFiles, setShowImporter,
         isMobileMenuOpen, setIsMobileMenuOpen,
@@ -120,6 +120,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 <button onClick={() => setShowMondayBriefing(true)} className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-gradient-to-r from-brand-orange to-pink-500 text-white flex items-center gap-1.5">
                     <LayoutGrid size={14} /> Briefing
                 </button>
+                <Tooltip content="Recherche (⌘K)">
+                    <button onClick={() => setShowGlobalSearch(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors">
+                        <Search size={18} className="text-slate-500 dark:text-slate-300" />
+                    </button>
+                </Tooltip>
                 <Tooltip content="Notes Rapides">
                     <button onClick={() => setShowNotes(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors">
                         <StickyNote size={18} className="text-amber-500" />

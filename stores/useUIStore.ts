@@ -29,6 +29,7 @@ interface UIState {
     showDocTemplates: boolean;
     showMessagingHub: boolean;
     showNotifCenter: boolean;
+    showGlobalSearch: boolean;
     showMediaWorkshop: boolean;
     showNotes: boolean;
     showFileDispatcher: boolean;
@@ -87,6 +88,7 @@ interface UIState {
     setShowDocTemplates: (v: boolean) => void;
     setShowMessagingHub: (v: boolean) => void;
     setShowNotifCenter: (v: boolean) => void;
+    setShowGlobalSearch: (v: boolean) => void;
     setShowMediaWorkshop: (v: boolean) => void;
     setShowNotes: (v: boolean) => void;
     setShowFileDispatcher: (v: boolean) => void;
@@ -131,6 +133,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     showDocTemplates: false,
     showMessagingHub: false,
     showNotifCenter: false,
+    showGlobalSearch: false,
     showMediaWorkshop: false,
     showNotes: false,
     showFileDispatcher: false,
@@ -238,6 +241,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     setShowDocTemplates: (v) => set({ showDocTemplates: v }),
     setShowMessagingHub: (v) => set({ showMessagingHub: v }),
     setShowNotifCenter: (v) => set({ showNotifCenter: v }),
+    setShowGlobalSearch: (v) => set({ showGlobalSearch: v }),
     setShowMediaWorkshop: (v) => set({ showMediaWorkshop: v }),
     setShowNotes: (v) => set({ showNotes: v }),
     setShowFileDispatcher: (v) => set({ showFileDispatcher: v }),

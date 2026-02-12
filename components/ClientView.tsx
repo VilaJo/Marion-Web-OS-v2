@@ -8,16 +8,26 @@ import {
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential } from '../types';
-import { InvoiceBuilder } from './InvoiceBuilder';
-import { BrandCenter } from './BrandCenter';
 import { formatCurrency } from '../utils';
-import { MeetingMode } from './MeetingMode';
-import { FileExplorer } from './FileExplorer';
-import { LogoLab } from './LogoLab';
-import { EmailWidget as EmailClient } from './email/EmailWidget';
-import { ClientPortal } from './ClientPortal';
 import { MaintenanceWidget } from './MaintenanceWidget';
 import { Badge, Card, Modal, Tooltip, EmptyState } from './Shared';
+import { Loader2 } from 'lucide-react';
+
+// Lazy-loaded heavy components (code-splitting)
+const InvoiceBuilder = React.lazy(() => import('./InvoiceBuilder').then(m => ({ default: m.InvoiceBuilder })));
+const BrandCenter = React.lazy(() => import('./BrandCenter').then(m => ({ default: m.BrandCenter })));
+const MeetingMode = React.lazy(() => import('./MeetingMode').then(m => ({ default: m.MeetingMode })));
+const FileExplorer = React.lazy(() => import('./FileExplorer').then(m => ({ default: m.FileExplorer })));
+const LogoLab = React.lazy(() => import('./LogoLab').then(m => ({ default: m.LogoLab })));
+const EmailClient = React.lazy(() => import('./email/EmailWidget').then(m => ({ default: m.EmailWidget })));
+const ClientPortal = React.lazy(() => import('./ClientPortal').then(m => ({ default: m.ClientPortal })));
+
+const LazyFallback = () => (
+    <div className="flex items-center justify-center p-12">
+        <Loader2 className="animate-spin text-brand-orange" size={28} />
+    </div>
+);
+
 import { PROSPECT_PHASE_TEMPLATES, ACTIVE_PHASE_TEMPLATES, WORKFLOW_CONFIG, WORKFLOW_STEPS } from '../constants';
 import { apiFetch } from '../services/api';
 import { useOAuthStatus, useConnectGoogle, queryKeys } from '../services/queries';
@@ -1783,15 +1793,17 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                             </div>
                                         )}
                                     </div>
-                                    <FileExplorer
-                                        items={fileItems}
-                                        currentPath={currentPath}
-                                        onNavigate={handleFileNavigate}
-                                        onBack={handleFileBack}
-                                        isLoading={isLoadingFiles}
-                                        onRename={handleRenameFile}
-                                        onDelete={handleDeleteFile}
-                                    />
+                                    <React.Suspense fallback={<LazyFallback />}>
+                                        <FileExplorer
+                                            items={fileItems}
+                                            currentPath={currentPath}
+                                            onNavigate={handleFileNavigate}
+                                            onBack={handleFileBack}
+                                            isLoading={isLoadingFiles}
+                                            onRename={handleRenameFile}
+                                            onDelete={handleDeleteFile}
+                                        />
+                                    </React.Suspense>
                                 </div>
 
                                 {/* ========== SECTION 3 : GOOGLE DRIVE ========== */}
@@ -1877,17 +1889,21 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
                         {activeTab === 'emails' && (
                             <div className="h-full min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
-                                <EmailClient clientEmail={project.profile.email} />
+                                <React.Suspense fallback={<LazyFallback />}>
+                                    <EmailClient clientEmail={project.profile.email} />
+                                </React.Suspense>
                             </div>
                         )}
 
                         {activeTab === 'portal' && (
                             <div className="h-full min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
-                                <ClientPortal 
-                                    project={project}
-                                    onUpdateProject={onUpdateProject}
-                                    onNotify={onNotify}
-                                />
+                                <React.Suspense fallback={<LazyFallback />}>
+                                    <ClientPortal 
+                                        project={project}
+                                        onUpdateProject={onUpdateProject}
+                                        onNotify={onNotify}
+                                    />
+                                </React.Suspense>
                             </div>
                         )}
                     </Card>
@@ -1961,11 +1977,13 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
             {/* Smart Invoice Builder Modal */}
             <Modal isOpen={showInvoiceModal} onClose={() => setShowInvoiceModal(false)} title="" width="max-w-6xl">
-                {selectedInvoice && <InvoiceBuilder invoice={selectedInvoice} project={project} onClose={() => setShowInvoiceModal(false)} onSave={handleSaveInvoice} currentTheme={currentTheme} allProjects={[]} />}
+                {selectedInvoice && <React.Suspense fallback={<LazyFallback />}><InvoiceBuilder invoice={selectedInvoice} project={project} onClose={() => setShowInvoiceModal(false)} onSave={handleSaveInvoice} currentTheme={currentTheme} allProjects={[]} /></React.Suspense>}
             </Modal>
 
             {/* Brand Center Modal */}
-            <BrandCenter isOpen={showBrandCenter} onClose={() => setShowBrandCenter(false)} project={project} onUpdate={onUpdateProject} />
+            <React.Suspense fallback={<LazyFallback />}>
+                <BrandCenter isOpen={showBrandCenter} onClose={() => setShowBrandCenter(false)} project={project} onUpdate={onUpdateProject} />
+            </React.Suspense>
 
             {/* Danger Zone */}
             <div className="mt-20 pt-10 border-t border-red-100 dark:border-red-900/30 opacity-60 hover:opacity-100 transition-opacity">
@@ -1975,11 +1993,13 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
             {/* Meeting Mode Modal */}
             <Modal isOpen={showMeetingMode} onClose={() => setShowMeetingMode(false)} title="" width="max-w-6xl" showCloseButton={false}>
-                <MeetingMode 
-                    clientName={project.clientName} 
-                    onClose={() => setShowMeetingMode(false)}
-                    onSaveNotes={handleSaveMeetingNotes}
-                />
+                <React.Suspense fallback={<LazyFallback />}>
+                    <MeetingMode 
+                        clientName={project.clientName} 
+                        onClose={() => setShowMeetingMode(false)}
+                        onSaveNotes={handleSaveMeetingNotes}
+                    />
+                </React.Suspense>
             </Modal>
 
             {/* Credential Modal */}
@@ -2011,12 +2031,14 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
             {/* Logo Lab Modal */}
             <Modal isOpen={showLogoLab} onClose={() => setShowLogoLab(false)} title="Laboratoire de Logo (IA)" width="max-w-4xl">
-                <LogoLab 
-                    clientName={project.clientName} 
-                    initialData={project.logoLabData}
-                    onClose={() => setShowLogoLab(false)}
-                    onSave={(svgDataUrl, logoData) => onUpdateProject({ ...project, avatarImage: svgDataUrl, logoLabData: logoData })}
-                />
+                <React.Suspense fallback={<LazyFallback />}>
+                    <LogoLab 
+                        clientName={project.clientName} 
+                        initialData={project.logoLabData}
+                        onClose={() => setShowLogoLab(false)}
+                        onSave={(svgDataUrl, logoData) => onUpdateProject({ ...project, avatarImage: svgDataUrl, logoLabData: logoData })}
+                    />
+                </React.Suspense>
             </Modal>
 
             {/* Time Entry Modal */}

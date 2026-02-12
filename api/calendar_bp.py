@@ -176,19 +176,143 @@ def create_calendar_event():
 
 @calendar_bp.route('/update', methods=['POST'])
 def update_calendar_event():
-    """Update an existing calendar event (placeholder)."""
+    """Update an existing calendar event in macOS Calendar via AppleScript."""
     data = request.json
     try:
-        print(f"Update request received for: {data.get('title')}")
+        event_id = data.get('id', '')
+        calendar_name = data.get('calendarName', 'Travail')
+        title = data.get('title', '').replace('"', '\\"')
+        date_str = data.get('date')
+        time_str = data.get('startTime', '09:00')
+        duration_min = int(data.get('duration', 60))
+
+        if not event_id or not date_str:
+            return jsonify({"error": "id and date are required"}), 400
+
+        y, m, d = date_str.split('-')
+        h, mn = time_str.split(':')
+        duration_seconds = duration_min * 60
+
+        # Escape calendar name for AppleScript
+        safe_cal = calendar_name.replace('"', '\\"')
+
+        script = f'''
+        set eventStart to (current date)
+        set year of eventStart to {y}
+        set month of eventStart to {m}
+        set day of eventStart to {d}
+        set hours of eventStart to {h}
+        set minutes of eventStart to {mn}
+        set seconds of eventStart to 0
+
+        set eventEnd to eventStart + {duration_seconds}
+
+        tell application "Calendar"
+            set targetCal to null
+            try
+                set targetCal to calendar "{safe_cal}"
+            on error
+                -- Fallback: search all calendars
+                repeat with cal in (every calendar)
+                    try
+                        set ev to (first event of cal whose uid is "{event_id}")
+                        set targetCal to cal
+                        exit repeat
+                    end try
+                end repeat
+            end try
+
+            if targetCal is not null then
+                try
+                    set ev to (first event of targetCal whose uid is "{event_id}")
+                    set summary of ev to "{title}"
+                    set start date of ev to eventStart
+                    set end date of ev to eventEnd
+                    reload calendars
+                    return "OK"
+                on error errMsg
+                    return "ERROR:" & errMsg
+                end try
+            else
+                return "ERROR:Calendar not found"
+            end if
+        end tell
+        '''
+        result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
+
+        if result.returncode != 0 or result.stdout.strip().startswith("ERROR:"):
+            error_msg = result.stderr.strip() or result.stdout.strip()
+            print(f"Calendar update error: {error_msg}")
+            return jsonify({"success": False, "error": error_msg}), 500
+
         return jsonify({"success": True})
     except Exception as e:
+        print(f"Update event error: {e}")
         return error_response(e)
 
 
 @calendar_bp.route('/delete', methods=['POST'])
 def delete_calendar_event():
-    """Delete a local calendar event (placeholder)."""
-    event_id = request.args.get('id') or (request.json or {}).get('id')
+    """Delete a calendar event from macOS Calendar via AppleScript."""
+    data = request.json or {}
+    event_id = request.args.get('id') or data.get('id')
+    calendar_name = data.get('calendarName', '')
+
     if not event_id:
         return jsonify({"error": "Event ID required"}), 400
-    return jsonify({"success": True, "message": "Event deletion noted"})
+
+    try:
+        # Escape for AppleScript
+        safe_cal = calendar_name.replace('"', '\\"') if calendar_name else ''
+
+        # Build search strategy: try specific calendar first, then all
+        if safe_cal:
+            search_block = f'''
+            try
+                set targetCal to calendar "{safe_cal}"
+                set ev to (first event of targetCal whose uid is "{event_id}")
+                delete ev
+                reload calendars
+                return "OK"
+            on error
+                -- Fallback: search all calendars
+                repeat with cal in (every calendar)
+                    try
+                        set ev to (first event of cal whose uid is "{event_id}")
+                        delete ev
+                        reload calendars
+                        return "OK"
+                    end try
+                end repeat
+                return "ERROR:Event not found"
+            end try
+            '''
+        else:
+            search_block = f'''
+            repeat with cal in (every calendar)
+                try
+                    set ev to (first event of cal whose uid is "{event_id}")
+                    delete ev
+                    reload calendars
+                    return "OK"
+                end try
+            end repeat
+            return "ERROR:Event not found"
+            '''
+
+        script = f'''
+        tell application "Calendar"
+            {search_block}
+        end tell
+        '''
+        result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
+
+        if result.returncode != 0 or result.stdout.strip().startswith("ERROR:"):
+            error_msg = result.stderr.strip() or result.stdout.strip()
+            print(f"Calendar delete error: {error_msg}")
+            return jsonify({"success": False, "error": error_msg}), 500
+
+        return jsonify({"success": True, "message": "Événement supprimé"})
+    except Exception as e:
+        print(f"Delete event error: {e}")
+        return error_response(e)
