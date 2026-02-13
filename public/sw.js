@@ -1,5 +1,5 @@
 // Marion Web OS - Service Worker
-const CACHE_NAME = 'marion-web-os-v3';
+const CACHE_NAME = 'marion-web-os-v4';
 const OFFLINE_URL = '/offline.html';
 
 // Only cache truly static resources (NOT hashed JS/CSS - Vite handles those)
@@ -31,24 +31,26 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - PURGE ALL caches (including current) on version change,
+// then claim clients so the new SW takes effect immediately.
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating Service Worker...');
+  console.log('[SW] Activating Service Worker v4 – purging all caches...');
   
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
+        // Delete ALL caches, then recreate ours fresh
         return Promise.all(
-          cacheNames
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => {
-              console.log('[SW] Deleting old cache:', name);
-              return caches.delete(name);
-            })
+          cacheNames.map((name) => {
+            console.log('[SW] Deleting cache:', name);
+            return caches.delete(name);
+          })
         );
       })
+      .then(() => caches.open(CACHE_NAME))
+      .then((cache) => cache.addAll(PRECACHE_RESOURCES))
       .then(() => {
-        console.log('[SW] Service Worker activated');
+        console.log('[SW] Service Worker v4 activated – all caches purged');
         return self.clients.claim();
       })
   );

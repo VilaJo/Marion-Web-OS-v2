@@ -1,12 +1,40 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen, GripVertical } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen } from 'lucide-react';
 import {
     DndContext, DragOverlay, closestCorners, PointerSensor, TouchSensor,
-    useSensor, useSensors, DragStartEvent, DragOverEvent, DragEndEvent,
-    useDroppable,
+    useSensor, useSensors, DragStartEvent, DragEndEvent,
+    useDroppable, MeasuringStrategy,
 } from '@dnd-kit/core';
+import type { Modifier } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+
+/**
+ * Custom modifier: snaps the center of the DragOverlay to the pointer.
+ * This fixes offset issues caused by scrollable containers, flex layouts,
+ * or CSS transforms in parent elements.
+ */
+const snapOverlayToCursor: Modifier = ({ activatorEvent, draggingNodeRect, transform }) => {
+    if (activatorEvent && draggingNodeRect) {
+        const event = activatorEvent as MouseEvent | TouchEvent;
+        let clientX: number, clientY: number;
+        if ('touches' in event) {
+            clientX = event.touches[0].clientX;
+            clientY = event.touches[0].clientY;
+        } else {
+            clientX = (event as MouseEvent).clientX;
+            clientY = (event as MouseEvent).clientY;
+        }
+        // Offset so the overlay center aligns with where the user initially clicked
+        const offsetX = clientX - draggingNodeRect.left - draggingNodeRect.width / 2;
+        const offsetY = clientY - draggingNodeRect.top - draggingNodeRect.height / 2;
+        return {
+            ...transform,
+            x: transform.x + offsetX,
+            y: transform.y + offsetY,
+        };
+    }
+    return transform;
+};
 import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential } from '../types';
 import { formatCurrency } from '../utils';
 import { MaintenanceWidget } from './MaintenanceWidget';
@@ -36,6 +64,40 @@ import { useQueryClient } from '@tanstack/react-query';
 
 declare const confetti: any;
 
+// --- PRIORITY BASED ON DUE DATE ---
+/**
+ * Compute the effective priority of a task.
+ * If a dueDate is set and the task is not completed, the priority escalates:
+ *   - Overdue or due today → High
+ *   - Due within 3 days    → at least Medium (upgrades Low)
+ *   - Due within 7 days    → keeps original, but Low becomes Medium
+ * The returned priority is always >= the manually set priority (never downgrades).
+ */
+function getEffectivePriority(task: Task): 'Low' | 'Medium' | 'High' {
+    if (!task.dueDate || task.completed) return task.priority;
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const due = new Date(task.dueDate);
+    due.setHours(0, 0, 0, 0);
+    const daysLeft = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Priority ranking for comparison: Low=0, Medium=1, High=2
+    const rank = { Low: 0, Medium: 1, High: 2 };
+    let computed: 'Low' | 'Medium' | 'High' = task.priority;
+
+    if (daysLeft <= 0) {
+        computed = 'High'; // Overdue or due today
+    } else if (daysLeft <= 3) {
+        computed = rank[task.priority] >= rank['Medium'] ? task.priority : 'Medium';
+    } else if (daysLeft <= 7 && task.priority === 'Low') {
+        computed = 'Medium';
+    }
+
+    // Never downgrade: return the highest between manual and computed
+    return rank[computed] >= rank[task.priority] ? computed : task.priority;
+}
+
 // --- SORTABLE TASK CARD COMPONENT ---
 interface SortableTaskCardProps {
     task: Task;
@@ -59,35 +121,37 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
     } = useSortable({ id: task.id });
 
     const style: React.CSSProperties = {
-        transform: CSS.Transform.toString(transform),
+        transform: transform ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` : undefined,
         transition,
-        opacity: isSortableDragging ? 0.4 : 1,
-        zIndex: isSortableDragging ? 50 : undefined,
+        // When actively dragging, hide this card — the DragOverlay shows the visual clone
+        opacity: isSortableDragging ? 0.25 : 1,
+        zIndex: isSortableDragging ? 0 : undefined,
     };
 
     return (
         <div
             ref={setNodeRef}
             style={style}
-            className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 group hover:shadow-lg transition-shadow relative ${isDragging ? 'ring-2 ring-brand-orange/50' : ''}`}
-            onClick={() => onEdit(task)}
+            {...attributes}
+            {...listeners}
+            className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 group hover:shadow-lg transition-shadow relative cursor-grab active:cursor-grabbing touch-none`}
+            onClick={() => !isSortableDragging && onEdit(task)}
             tabIndex={0}
             role="listitem"
             onKeyDown={(e) => onKeyDown(e, task, columnId)}
         >
-            {/* Drag handle + Priority */}
+            {/* Priority (auto-escalates based on due date) */}
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-1.5">
-                    <button
-                        {...attributes}
-                        {...listeners}
-                        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-300 hover:text-slate-500 transition-colors touch-none"
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label="Glisser pour réorganiser"
-                    >
-                        <GripVertical size={14} />
-                    </button>
-                    <Badge color={task.priority === 'High' ? 'red' : task.priority === 'Medium' ? 'yellow' : 'blue'}>{task.priority}</Badge>
+                    {(() => {
+                        const ep = getEffectivePriority(task);
+                        const escalated = ep !== task.priority;
+                        return (
+                            <Badge color={ep === 'High' ? 'red' : ep === 'Medium' ? 'yellow' : 'blue'}>
+                                {ep}{escalated ? ' ⚡' : ''}
+                            </Badge>
+                        );
+                    })()}
                 </div>
                 <button 
                     onClick={(e) => onDelete(task.id, e)} 
@@ -724,8 +788,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
     // --- DND-KIT DRAG AND DROP ---
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
     );
 
     const getTaskColumn = (task: Task): 'todo' | 'doing' | 'done' => {
@@ -734,10 +798,19 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         return 'todo';
     };
 
+    const priorityRank = { High: 0, Medium: 1, Low: 2 };
+
     const getColumnTasks = (columnId: 'todo' | 'doing' | 'done') => {
         return project.tasks
             .filter(t => getTaskColumn(t) === columnId)
-            .sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
+            .sort((a, b) => {
+                // Primary: effective priority (High first)
+                const pa = priorityRank[getEffectivePriority(a)];
+                const pb = priorityRank[getEffectivePriority(b)];
+                if (pa !== pb) return pa - pb;
+                // Secondary: manual sort order
+                return (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999);
+            });
     };
 
     const todoTasks = useMemo(() => getColumnTasks('todo'), [project.tasks]);
@@ -759,38 +832,9 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         setDraggedTaskId(event.active.id as string);
     };
 
-    const handleDndDragOver = (event: DragOverEvent) => {
-        const { active, over } = event;
-        if (!over) return;
-
-        const activeId = active.id as string;
-        const overId = over.id as string;
-
-        const activeColumn = findColumnOfTask(activeId);
-        // overId could be a task id OR a column id (when dropping on empty column)
-        let overColumn = findColumnOfTask(overId);
-        if (!overColumn && ['todo', 'doing', 'done'].includes(overId)) {
-            overColumn = overId as 'todo' | 'doing' | 'done';
-        }
-
-        if (!activeColumn || !overColumn || activeColumn === overColumn) return;
-
-        // Move task to different column (live preview while dragging)
-        const activeTask = project.tasks.find(t => t.id === activeId);
-        if (!activeTask) return;
-
-        const isCompleted = overColumn === 'done';
-        const updatedTasks = project.tasks.map(t =>
-            t.id === activeId ? { ...t, column: overColumn as 'todo' | 'doing' | 'done', completed: isCompleted } : t
-        );
-        // Assign sort orders so the card appears at the end of the new column
-        const targetColTasks = updatedTasks.filter(t => getTaskColumn(t) === overColumn && t.id !== activeId);
-        const maxOrder = targetColTasks.reduce((max, t) => Math.max(max, t.sortOrder ?? 0), 0);
-        const finalTasks = updatedTasks.map(t =>
-            t.id === activeId ? { ...t, sortOrder: maxOrder + 1 } : t
-        );
-        updateProjectTasks(finalTasks);
-    };
+    // No onDragOver handler — we do NOT move items between columns during drag.
+    // All moves (same-column reorder + cross-column) happen in onDragEnd only.
+    // This avoids DOM thrashing that breaks useSortable transforms.
 
     const handleDndDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -802,6 +846,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         const overId = over.id as string;
 
         const activeColumn = findColumnOfTask(activeId);
+        // overId could be a task id OR a column id (when dropping on empty column)
         let overColumn = findColumnOfTask(overId);
         if (!overColumn && ['todo', 'doing', 'done'].includes(overId)) {
             overColumn = overId as 'todo' | 'doing' | 'done';
@@ -817,17 +862,12 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
             if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
                 const reordered = arrayMove(columnTasksList, oldIndex, newIndex);
-                // Re-assign sort orders
                 const reorderedWithOrder = reordered.map((t, i) => ({ ...t, sortOrder: i }));
                 const otherTasks = project.tasks.filter(t => getTaskColumn(t) !== activeColumn);
                 updateProjectTasks([...otherTasks, ...reorderedWithOrder]);
             }
         } else {
-            // Cross-column drop — finalize position
-            const targetColTasks = getColumnTasks(overColumn);
-            const overIndex = targetColTasks.findIndex(t => t.id === overId);
-            const insertIndex = overIndex !== -1 ? overIndex : targetColTasks.length;
-
+            // Cross-column drop
             const activeTask = project.tasks.find(t => t.id === activeId);
             if (!activeTask) return;
 
@@ -839,7 +879,11 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 confetti({ particleCount: 30, spread: 40, origin: { x: 0.7, y: 0.5 }, colors: ['#FF7E5F', '#FEB47B'] });
             }
 
-            // Build the new column list with the dragged task inserted at the right position
+            // Insert at the position of the over item, or at the end
+            const targetColTasks = getColumnTasks(overColumn);
+            const overIndex = targetColTasks.findIndex(t => t.id === overId);
+            const insertIndex = overIndex !== -1 ? overIndex : targetColTasks.length;
+
             const withoutActive = targetColTasks.filter(t => t.id !== activeId);
             const movedTask = { ...activeTask, column: overColumn, completed: isCompleted };
             withoutActive.splice(insertIndex, 0, movedTask);
@@ -1507,23 +1551,25 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                         sensors={sensors}
                                         collisionDetection={closestCorners}
                                         onDragStart={handleDndDragStart}
-                                        onDragOver={handleDndDragOver}
                                         onDragEnd={handleDndDragEnd}
+                                        measuring={{
+                                            droppable: { strategy: MeasuringStrategy.Always },
+                                        }}
                                     >
                                         <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 overflow-x-auto pb-2">
                                             {renderKanbanColumn('todo', 'À Faire', todoTasks, todoIds)}
                                             {renderKanbanColumn('doing', 'En Cours', doingTasks, doingIds)}
                                             {renderKanbanColumn('done', 'Terminé', doneTasks, doneIds)}
                                         </div>
-                                        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+                                        <DragOverlay dropAnimation={null} modifiers={[snapOverlayToCursor]}>
                                             {draggedTaskId ? (() => {
                                                 const t = project.tasks.find(t => t.id === draggedTaskId);
                                                 if (!t) return null;
+                                                const ep = getEffectivePriority(t);
                                                 return (
-                                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-2xl border-2 border-brand-orange/40 w-full max-w-xs rotate-[2deg] opacity-90">
+                                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-2xl border-2 border-brand-orange/40 rotate-[2deg] w-[220px] pointer-events-none">
                                                         <div className="flex items-center gap-1.5 mb-2">
-                                                            <GripVertical size={14} className="text-slate-300" />
-                                                            <Badge color={t.priority === 'High' ? 'red' : t.priority === 'Medium' ? 'yellow' : 'blue'}>{t.priority}</Badge>
+                                                            <Badge color={ep === 'High' ? 'red' : ep === 'Medium' ? 'yellow' : 'blue'}>{ep}</Badge>
                                                         </div>
                                                         <div className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{t.title}</div>
                                                         {t.description && <div className="text-xs text-slate-500 line-clamp-1 mt-1">{t.description}</div>}

@@ -141,27 +141,51 @@ def _select_folder(mail: imaplib.IMAP4_SSL, folder_alias: str) -> str:
 
 
 def get_body_from_msg(msg) -> str:
-    """Extract plain-text (or fallback HTML) body from an email.message.Message."""
+    """
+    Extract the best body from an email.message.Message.
+    Prioritises HTML (for proper rendering), falls back to plain text
+    converted to basic HTML with line breaks preserved.
+    """
+    html_body = None
+    plain_body = None
+
     if msg.is_multipart():
         for part in msg.walk():
             ctype = part.get_content_type()
             cdispo = str(part.get("Content-Disposition"))
-            if ctype == "text/plain" and "attachment" not in cdispo:
+            if "attachment" in cdispo:
+                continue
+            if ctype == "text/html" and html_body is None:
                 try:
-                    return part.get_payload(decode=True).decode()
+                    html_body = part.get_payload(decode=True).decode()
                 except Exception:
                     pass
-        for part in msg.walk():
-            if part.get_content_type() == "text/html":
+            elif ctype == "text/plain" and plain_body is None:
                 try:
-                    return part.get_payload(decode=True).decode()
+                    plain_body = part.get_payload(decode=True).decode()
                 except Exception:
                     pass
     else:
+        ctype = msg.get_content_type()
         try:
-            return msg.get_payload(decode=True).decode()
+            payload = msg.get_payload(decode=True).decode()
         except Exception:
-            pass
+            payload = None
+        if ctype == "text/html":
+            html_body = payload
+        else:
+            plain_body = payload
+
+    # Prefer HTML — it preserves formatting, links, images, etc.
+    if html_body:
+        return html_body
+
+    # Convert plain text to basic HTML so line breaks render correctly
+    if plain_body:
+        import html as html_mod
+        escaped = html_mod.escape(plain_body)
+        return escaped.replace('\n', '<br>\n')
+
     return ""
 
 
