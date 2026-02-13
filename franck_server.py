@@ -65,11 +65,22 @@ BACKUP_INTERVAL_HOURS = int(os.getenv('BACKUP_INTERVAL_HOURS', '6'))
 
 
 def _scheduled_backup():
-    """Run a database backup and schedule the next one."""
+    """Run a database backup and optionally upload to Google Drive."""
     try:
         path = backup_database(max_backups=10)
         if path:
             logger.info("Scheduled backup completed: %s", path)
+            # Cloud upload (best-effort)
+            try:
+                from api.backup_bp import upload_backup_to_drive, is_cloud_backup_enabled
+                if is_cloud_backup_enabled():
+                    result = upload_backup_to_drive(path)
+                    if result:
+                        logger.info("Cloud backup uploaded: %s", result.get('name'))
+                    else:
+                        logger.debug("Cloud backup skipped or failed (non-critical)")
+            except Exception as cloud_err:
+                logger.warning("Cloud backup error (non-critical): %s", cloud_err)
         else:
             logger.warning("Scheduled backup returned no path")
     except Exception as e:

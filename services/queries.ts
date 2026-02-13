@@ -36,6 +36,8 @@ export const queryKeys = {
     workspaceMembers: ['workspace', 'members'] as const,
     workspaceBranding: ['workspace', 'branding'] as const,
     analytics: ['analytics'] as const,
+    backupStatus: ['backup', 'status'] as const,
+    cloudBackupConfig: ['backup', 'cloud', 'config'] as const,
 };
 
 // ============================================================================
@@ -1445,5 +1447,114 @@ export function useAnalytics() {
             return data as AnalyticsSummary;
         },
         staleTime: 5 * 60 * 1000,  // Consider stale after 5 min
+    });
+}
+
+// ============================================================================
+// BACKUP & CLOUD BACKUP HOOKS
+// ============================================================================
+
+export interface CloudBackupFile {
+    id: string;
+    name: string;
+    date: string;
+    size: number;
+    link: string;
+}
+
+export interface BackupStatus {
+    success: boolean;
+    lastBackup: string | null;
+    backupCount: number;
+    totalSizeBytes: number;
+    totalSizeMB: number;
+    nextBackupInSeconds: number;
+    nextBackupInHours: number;
+    backups: { name: string; date: string; size: number }[];
+    cloudEnabled: boolean;
+    lastCloudBackup: string | null;
+    lastCloudBackupLink: string | null;
+    cloudBackups: CloudBackupFile[];
+}
+
+export interface CloudBackupConfig {
+    success: boolean;
+    cloudBackupEnabled: boolean;
+    lastCloudBackup: string | null;
+    lastCloudBackupLink: string | null;
+}
+
+/**
+ * Fetch backup status (local + cloud).
+ */
+export function useBackupStatus(enabled: boolean = true) {
+    return useQuery<BackupStatus>({
+        queryKey: queryKeys.backupStatus,
+        queryFn: async () => {
+            const res = await apiFetch('/api/v1/backup/status');
+            if (!res.ok) throw new Error('Failed to load backup status');
+            return res.json();
+        },
+        enabled,
+        staleTime: 60 * 1000, // 1 minute
+    });
+}
+
+/**
+ * Fetch cloud backup config.
+ */
+export function useCloudBackupConfig() {
+    return useQuery<CloudBackupConfig>({
+        queryKey: queryKeys.cloudBackupConfig,
+        queryFn: async () => {
+            const res = await apiFetch('/api/v1/backup/cloud/config');
+            if (!res.ok) throw new Error('Failed to load cloud backup config');
+            return res.json();
+        },
+    });
+}
+
+/**
+ * Toggle cloud backup on/off.
+ */
+export function useSetCloudBackupConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (cloudBackupEnabled: boolean) => {
+            const res = await apiFetch('/api/v1/backup/cloud/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cloudBackupEnabled }),
+            });
+            if (!res.ok) throw new Error('Failed to update cloud backup config');
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.cloudBackupConfig });
+            queryClient.invalidateQueries({ queryKey: queryKeys.backupStatus });
+        },
+    });
+}
+
+/**
+ * Trigger a manual cloud backup (local + upload to Drive).
+ */
+export function useCloudBackup() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async () => {
+            const res = await apiFetch('/api/v1/backup/cloud', {
+                method: 'POST',
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Cloud backup failed');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.backupStatus });
+            queryClient.invalidateQueries({ queryKey: queryKeys.cloudBackupConfig });
+        },
     });
 }

@@ -37,9 +37,11 @@ import {
     Shield,
     Lock,
     LogOut,
-    Key
+    Key,
+    Upload,
+    CloudUpload,
 } from 'lucide-react';
-import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, queryKeys } from '../services/queries';
+import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, useCloudBackupConfig, useSetCloudBackupConfig, useCloudBackup, useBackupStatus, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores';
 
@@ -114,6 +116,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const { data: oauthData } = useOAuthStatus();
     const connectGoogleMutation = useConnectGoogle();
     const disconnectGoogleMutation = useDisconnectGoogle();
+
+    // Cloud backup hooks
+    const { data: cloudBackupConfig } = useCloudBackupConfig();
+    const { data: backupStatus } = useBackupStatus(cloudConfig.googleDrive.connected);
+    const setCloudBackupConfigMutation = useSetCloudBackupConfig();
+    const cloudBackupMutation = useCloudBackup();
+    const isCloudBackupEnabled = cloudBackupConfig?.cloudBackupEnabled ?? false;
 
     // Sync OAuth status from React Query into local cloud config
     React.useEffect(() => {
@@ -810,6 +819,81 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             >
                                                 <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${cloudConfig.googleDrive.enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
                                             </button>
+                                        </div>
+
+                                        {/* Cloud Backup Section */}
+                                        <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-600">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <CloudUpload size={16} className="text-blue-500" />
+                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Sauvegardes sur Drive</span>
+                                            </div>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-sm text-slate-600 dark:text-slate-300">Sauvegardes automatiques</span>
+                                                <button
+                                                    onClick={() => setCloudBackupConfigMutation.mutate(!isCloudBackupEnabled)}
+                                                    className={`w-12 h-6 rounded-full transition-colors ${isCloudBackupEnabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                                >
+                                                    <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${isCloudBackupEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                                                </button>
+                                            </div>
+                                            {isCloudBackupEnabled && (
+                                                <p className="text-xs text-slate-400 mb-3">
+                                                    Les backups seront uploadés sur Google Drive toutes les {parseInt(localStorage.getItem('BACKUP_INTERVAL_HOURS') || '6')}h dans le dossier "Marion Backups".
+                                                </p>
+                                            )}
+                                            <button
+                                                onClick={() => cloudBackupMutation.mutate()}
+                                                disabled={cloudBackupMutation.isPending}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
+                                            >
+                                                {cloudBackupMutation.isPending ? (
+                                                    <>
+                                                        <Loader2 size={14} className="animate-spin" /> Sauvegarde en cours...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload size={14} /> Sauvegarder maintenant sur Drive
+                                                    </>
+                                                )}
+                                            </button>
+                                            {cloudBackupMutation.isSuccess && cloudBackupMutation.data?.driveLink && (
+                                                <div className="mt-2 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                                                    <CheckCircle size={12} />
+                                                    <span>Sauvegarde réussie</span>
+                                                    <a href={cloudBackupMutation.data.driveLink} target="_blank" rel="noopener noreferrer" className="underline ml-1">Ouvrir sur Drive</a>
+                                                </div>
+                                            )}
+                                            {cloudBackupMutation.isError && (
+                                                <div className="mt-2 flex items-center gap-2 text-xs text-red-500">
+                                                    <AlertCircle size={12} />
+                                                    <span>{(cloudBackupMutation.error as Error)?.message || 'Erreur lors de la sauvegarde'}</span>
+                                                </div>
+                                            )}
+                                            {backupStatus?.lastCloudBackup && (
+                                                <div className="mt-3 p-2.5 bg-white dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-slate-500">Dernier backup cloud</span>
+                                                        <span className="text-slate-700 dark:text-slate-200 font-medium">
+                                                            {new Date(backupStatus.lastCloudBackup).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                    {backupStatus.lastCloudBackupLink && (
+                                                        <a 
+                                                            href={backupStatus.lastCloudBackupLink} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="mt-1.5 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600"
+                                                        >
+                                                            <ExternalLink size={10} /> Ouvrir sur Drive
+                                                        </a>
+                                                    )}
+                                                    {backupStatus.cloudBackups && backupStatus.cloudBackups.length > 0 && (
+                                                        <div className="mt-2 text-xs text-slate-400">
+                                                            {backupStatus.cloudBackups.length} sauvegarde{backupStatus.cloudBackups.length > 1 ? 's' : ''} sur Drive
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
