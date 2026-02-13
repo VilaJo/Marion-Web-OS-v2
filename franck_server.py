@@ -110,7 +110,6 @@ from api.auth_bp import auth_bp
 from api.projects_bp import projects_bp
 from api.files_bp import files_bp
 from api.ai_bp import ai_bp
-from api.calendar_bp import calendar_bp
 from api.invoices_bp import invoices_bp
 from api.oauth_bp import oauth_bp
 from api.email_bp import email_bp
@@ -123,7 +122,6 @@ app.register_blueprint(auth_bp)        # /api/v1/auth/*
 app.register_blueprint(projects_bp)    # /api/v1/projects/*
 app.register_blueprint(files_bp)       # /api/v1/files/*
 app.register_blueprint(ai_bp)          # /api/v1/chat, /api/v1/ai/*, /api/v1/franck/*, /api/v1/media/*, etc.
-app.register_blueprint(calendar_bp)    # /api/v1/calendar/*
 app.register_blueprint(invoices_bp)    # /api/v1/expenses, /api/v1/notes, /api/v1/time/*
 app.register_blueprint(oauth_bp)       # /api/v1/oauth/*, /api/v1/drive/*, /api/v1/gcal/*
 app.register_blueprint(email_bp)       # /api/v1/email/*

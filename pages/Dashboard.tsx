@@ -9,7 +9,7 @@ import { Project, ProjectStatus, CalendarEvent, WorkflowPhase, Invoice, Activity
 import { formatCurrency, formatCurrencyWithSymbol } from '../utils';
 import { sanitizeHTML } from '../utils/sanitize';
 import { useProjectStore, useUIStore, useNotificationStore, useUndoStore } from '../stores';
-import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache, useDeleteCalendarEvent } from '../services/queries';
+import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache } from '../services/queries';
 import { generateBriefing } from '../services/geminiService';
 import { ProjectCard } from '../components/ProjectCard';
 import { Card, Modal, EmptyState } from '../components/Shared';
@@ -47,7 +47,6 @@ export const Dashboard: React.FC = () => {
     const createClientFolder = useCreateClientFolder();
     const initDatabase = useInitDatabase();
     const updateProjectCache = useUpdateProjectCache();
-    const deleteCalendarEventMutation = useDeleteCalendarEvent();
     const pushUndo = useUndoStore((s) => s.pushUndo);
 
     // --- Stores ---
@@ -376,12 +375,6 @@ export const Dashboard: React.FC = () => {
         if (!eventToDelete) return;
 
         // Execute deletion
-        if (eventToDelete.source === 'iCal' && eventToDelete.calendarName) {
-            deleteCalendarEventMutation.mutate({
-                id: eventId,
-                calendarName: eventToDelete.calendarName,
-            });
-        }
         deleteEvent(eventId);
 
         // Undo support

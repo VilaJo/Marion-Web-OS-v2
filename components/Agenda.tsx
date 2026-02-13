@@ -6,7 +6,7 @@ import { Calendar as CalIcon, ChevronLeft, ChevronRight, Plus, Clock, Video, Cop
 import { toZonedTime, format, formatInTimeZone } from 'date-fns-tz';
 import { fr } from 'date-fns/locale';
 import { addMinutes, differenceInMinutes, parse, isBefore, startOfDay, parseISO } from 'date-fns';
-import { useCalendarSync, useICalEvents, useGoogleCalendarEvents, useCreateGoogleEvent, useUpdateGoogleEvent, useUpdateICalEvent, useConnectGoogle, queryKeys } from '../services/queries';
+import { useCalendarSync, useGoogleCalendarEvents, useCreateGoogleEvent, useUpdateGoogleEvent, useConnectGoogle, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface AgendaProps {
@@ -89,11 +89,9 @@ const COMMON_CITIES = [
 const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
     // === React Query hooks for external calendar data ===
     const { data: syncStatus } = useCalendarSync();
-    const { data: icalData } = useICalEvents();
     const { data: gcalEvents = [], isFetching: isSyncingGcal } = useGoogleCalendarEvents();
     const createGoogleEventMutation = useCreateGoogleEvent();
     const updateGoogleEventMutation = useUpdateGoogleEvent();
-    const updateICalEventMutation = useUpdateICalEvent();
     const connectGoogleMutation = useConnectGoogle();
     const queryClient = useQueryClient();
 
@@ -143,21 +141,16 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     const externalEvents = useMemo(() => {
         const allEvents: CalendarEvent[] = [];
         
-        // Add iCal events
-        if (icalData?.events) {
-            allEvents.push(...icalData.events.map((e: any) => ({ ...e, source: 'iCal' as const })));
-        }
-        
         // Add Google Calendar events
         if (gcalEvents.length > 0) {
             allEvents.push(...gcalEvents.map(mapGoogleEvent));
         }
         
         return allEvents;
-    }, [icalData, gcalEvents, mapGoogleEvent]);
+    }, [gcalEvents, mapGoogleEvent]);
     
     // Calendar source visibility filters
-    const [visibleSources, setVisibleSources] = useState<{ local: boolean, google: boolean, ical: boolean }>({ local: true, google: true, ical: true });
+    const [visibleSources, setVisibleSources] = useState<{ local: boolean, google: boolean }>({ local: true, google: true });
 
     // Merge local and external events for display (avoiding duplicates)
     const allMergedEvents = useMemo(() => {
@@ -183,7 +176,6 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     const events = useMemo(() => {
         return allMergedEvents.filter(e => {
             if (e.source === 'google') return visibleSources.google;
-            if (e.source === 'iCal') return visibleSources.ical;
             return visibleSources.local; // local or undefined source
         });
     }, [allMergedEvents, visibleSources]);
@@ -612,18 +604,6 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         if (isEditing) {
             onUpdateEvent(finalEvent);
             
-            // Handle iCal Update via React Query mutation
-            if (finalEvent.source === 'iCal' && finalEvent.calendarName) {
-                updateICalEventMutation.mutate({
-                    id: finalEvent.id,
-                    calendarName: finalEvent.calendarName,
-                    title: finalEvent.title,
-                    date: finalEvent.date,
-                    startTime: finalEvent.startTime,
-                    duration: finalEvent.duration || 60,
-                });
-            }
-            
             // Handle Google Calendar Update via React Query mutation
             if (finalEvent.source === 'google' && finalEvent.googleEventId) {
                 updateGoogleEventMutation.mutate({
@@ -881,9 +861,6 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                     const width = 85 / ev.totalCols;
                     const left = ev.colIndex * width;
                     
-                    // Consider as "External iCal" only if it's NOT an event created by our App
-                    const isICal = ev.source === 'iCal' && !ev.isAppEvent;
-
                     return (
                         <div
                             key={ev.id}
@@ -894,7 +871,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                 setEventForm({...ev}); 
                                 setShowEventModal(true); 
                             }}
-                            className={`absolute rounded-lg p-2 text-xs shadow-sm cursor-pointer z-10 hover:z-20 hover:shadow-md transition-all flex flex-col overflow-hidden border ${getEventStyle(ev.type)} ${isICal ? 'border-dashed opacity-90' : ''}`}
+                            className={`absolute rounded-lg p-2 text-xs shadow-sm cursor-pointer z-10 hover:z-20 hover:shadow-md transition-all flex flex-col overflow-hidden border ${getEventStyle(ev.type)}`}
                             style={{ 
                                 top: `${ev.top}px`, 
                                 height: `${ev.height}px`, 
@@ -904,7 +881,6 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             }}
                         >
                             <div className="font-bold truncate leading-tight flex items-center gap-1">
-                                {isICal && <span className="text-[10px]">🍎</span>}
                                 {ev.title}
                             </div>
                             {ev.height > 40 && (
@@ -1064,18 +1040,6 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                         <div className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Google Calendar</div>
                                         {googleCalendarEmail && <div className="text-[11px] text-slate-400 truncate">{googleCalendarEmail}</div>}
                                     </div>
-                                </label>
-                            )}
-                            {allMergedEvents.some(e => e.source === 'iCal') && (
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={visibleSources.ical} 
-                                        onChange={() => setVisibleSources(prev => ({ ...prev, ical: !prev.ical }))}
-                                        className="w-4 h-4 rounded accent-gray-500 cursor-pointer"
-                                    />
-                                    <span className="w-3 h-3 rounded-sm bg-slate-500 flex-shrink-0" />
-                                    <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">iCal</span>
                                 </label>
                             )}
                         </div>

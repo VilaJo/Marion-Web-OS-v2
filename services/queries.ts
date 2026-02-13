@@ -22,7 +22,6 @@ export const queryKeys = {
     project: (id: string) => ['projects', id] as const,
     events: ['events'] as const,
     calendarSync: ['calendar', 'sync'] as const,
-    calendarFetch: ['calendar', 'fetch'] as const,
     expenses: ['expenses'] as const,
     notes: ['notes'] as const,
     version: ['version'] as const,
@@ -814,22 +813,6 @@ export function useCalendarSync() {
 }
 
 /**
- * Fetch iCal events.
- */
-export function useICalEvents() {
-    return useQuery({
-        queryKey: queryKeys.calendarFetch,
-        queryFn: async () => {
-            const res = await apiFetch('/api/v1/calendar/fetch');
-            if (!res.ok) return { events: [] };
-            return res.json();
-        },
-        staleTime: 60 * 1000,
-        refetchInterval: 3 * 60 * 1000,
-    });
-}
-
-/**
  * Create a Google Calendar event.
  */
 export function useCreateGoogleEvent() {
@@ -885,50 +868,6 @@ export function useUpdateGoogleEvent() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.events });
-        },
-    });
-}
-
-/**
- * Update an iCal event.
- */
-export function useUpdateICalEvent() {
-    return useMutation({
-        mutationFn: async ({ id, calendarName, ...fields }: {
-            id: string;
-            calendarName: string;
-            title: string;
-            date: string;
-            startTime: string;
-            duration: number;
-        }) => {
-            const res = await apiFetch('/api/v1/calendar/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, calendarName, ...fields }),
-            });
-            if (!res.ok) throw new Error('Failed to update iCal event');
-            return res.json();
-        },
-    });
-}
-
-/**
- * Delete an external calendar event.
- */
-export function useDeleteCalendarEvent() {
-    return useMutation({
-        mutationFn: async ({ id, calendarName }: { id: string; calendarName: string }) => {
-            const res = await apiFetch(
-                `/api/v1/calendar/delete?id=${encodeURIComponent(id)}&calendarName=${encodeURIComponent(calendarName)}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, calendarName }),
-                }
-            );
-            if (!res.ok) throw new Error('Failed to delete calendar event');
-            return res.json();
         },
     });
 }
