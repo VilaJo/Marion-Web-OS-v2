@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-import { Bot, Send, X, Sparkles, Calendar, FileText, DollarSign, Clock, Lightbulb, Mic, MicOff } from 'lucide-react';
+import { Bot, Send, X, Sparkles, Calendar, FileText, DollarSign, Clock, Lightbulb, Mic, MicOff, CreditCard, AlertTriangle, Mail, Coffee, CheckSquare, Zap } from 'lucide-react';
+import { QueryClient } from '@tanstack/react-query';
 
 import { ChatMessage, Project, CalendarEvent } from '../types';
 
-import { createChatSession, fetchFranckData, clearFranckData } from '../services/geminiService';
+import { createChatSession, fetchFranckData, clearFranckData, fetchFranckSuggestions } from '../services/geminiService';
 import { useFranckGreeting } from '../services/queries';
 
 // @ts-ignore
@@ -34,17 +35,52 @@ interface FranckChatProps {
 
     onAddEvent?: (event: CalendarEvent) => void;
 
+    queryClient?: QueryClient;
+
 }
 
 
 
-export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, projects = [], events = [], todos = [], onAddTodo, onAddEvent }) => {
+function formatFranckMessage(text: string): string {
+    if (!text) return '';
+    let html = text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs">$1</code>');
+
+    const lines = html.split('\n');
+    const result: string[] = [];
+    let inList = false;
+
+    for (const line of lines) {
+        const bulletMatch = line.match(/^(\s*)[•\-\*]\s+(.+)/);
+        const numberMatch = line.match(/^(\s*)\d+[\.\)]\s+(.+)/);
+        if (bulletMatch || numberMatch) {
+            if (!inList) { result.push('<ul class="space-y-1 my-1.5">'); inList = true; }
+            const content = bulletMatch ? bulletMatch[2] : numberMatch![2];
+            result.push(`<li class="flex items-start gap-1.5"><span class="text-brand-orange mt-0.5 shrink-0">•</span><span>${content}</span></li>`);
+        } else {
+            if (inList) { result.push('</ul>'); inList = false; }
+            if (line.trim() === '') {
+                result.push('<div class="h-2"></div>');
+            } else {
+                result.push(`<p class="leading-relaxed">${line}</p>`);
+            }
+        }
+    }
+    if (inList) result.push('</ul>');
+    return result.join('');
+}
+
+export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, projects = [], events = [], todos = [], onAddTodo, onAddEvent, queryClient }) => {
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
 
     const [input, setInput] = useState('');
 
     const [isThinking, setIsThinking] = useState(false);
+    const [thinkingLabel, setThinkingLabel] = useState('');
 
     const chatSession = useRef<any>(null);
 
@@ -59,7 +95,27 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
     const recognitionRef = useRef<any>(null);
 
     
-    // Quick actions for common tasks
+    const [dynamicSuggestions, setDynamicSuggestions] = useState<Array<{
+        text: string; prompt: string; priority: string; category: string; icon: string;
+    }>>([]);
+
+    const suggestionIconMap: Record<string, any> = {
+        'credit-card': CreditCard,
+        'alert-triangle': AlertTriangle,
+        'file-text': FileText,
+        'mail': Mail,
+        'calendar': Calendar,
+        'coffee': Coffee,
+        'check-square': CheckSquare,
+    };
+
+    const suggestionColorMap: Record<string, string> = {
+        'high': 'border-red-300 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300',
+        'medium': 'border-orange-300 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300',
+        'low': 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
+    };
+
+    // Static fallback quick actions
     const quickActions = [
         { icon: Calendar, label: 'Agenda', prompt: 'Comment se présente ma journée ?' },
         { icon: DollarSign, label: 'Finances', prompt: 'Comment vont mes finances ?' },
@@ -172,8 +228,19 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
     useEffect(() => {
         chatSession.current = createChatSession(getAppContext);
     }, [projects, events, todos]);
+
+    // Fetch proactive suggestions when chat opens
+    useEffect(() => {
+        if (isOpen && messages.length <= 1) {
+            fetchFranckSuggestions().then(data => {
+                if (data.suggestions && data.suggestions.length > 0) {
+                    setDynamicSuggestions(data.suggestions);
+                }
+            });
+        }
+    }, [isOpen]);
     
-    // Sync Franck's created data after each message
+    // Sync Franck's created data after each message + invalidate React Query caches
     const syncFranckData = async () => {
         const data = await fetchFranckData();
         
@@ -184,9 +251,21 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         if (data.events && data.events.length > 0 && onAddEvent) {
             data.events.forEach((event: any) => onAddEvent(event));
         }
+
+        const actions = data.actions_performed || [];
+        if (queryClient && actions.length > 0) {
+            await new Promise(r => setTimeout(r, 1500));
+            if (actions.includes('projects')) {
+                await queryClient.refetchQueries({ queryKey: ['projects'] });
+            }
+            if (actions.includes('events')) {
+                await queryClient.refetchQueries({ queryKey: ['events'] });
+                await queryClient.refetchQueries({ queryKey: ['calendar', 'sync'] });
+            }
+        }
         
-        // Clear after syncing
-        if (data.todos?.length > 0 || data.events?.length > 0) {
+        const hasData = (data.todos?.length > 0 || data.events?.length > 0 || actions.length > 0);
+        if (hasData) {
             await clearFranckData();
         }
     };
@@ -209,12 +288,19 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         if (!chatSession.current) return;
         
         setIsThinking(true);
+        setThinkingLabel('');
+
+        const workingTimer = setTimeout(() => {
+            setThinkingLabel('Franck travaille...');
+        }, 2500);
         
         try {
             const result = await chatSession.current.sendMessageStream({ history });
             
             let fullText = '';
             setMessages(prev => [...prev, { role: 'model', text: '', timestamp: new Date() }]);
+            clearTimeout(workingTimer);
+            setThinkingLabel('');
             
             for await (const chunk of result) {
                 const chunkText = chunk.text;
@@ -228,10 +314,13 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                 }
             }
         } catch (error) {
+            clearTimeout(workingTimer);
             const errorMsg = "Aïe mes vieux os... J'ai eu un petit souci technique là. Réessaie ma belle ! 🔧";
             setMessages(prev => [...prev, { role: 'model', text: errorMsg, timestamp: new Date() }]);
         } finally {
+            clearTimeout(workingTimer);
             setIsThinking(false);
+            setThinkingLabel('');
             await syncFranckData();
         }
     };
@@ -276,7 +365,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
     return (
 
-        <div className="fixed inset-0 md:inset-auto md:bottom-6 md:right-6 md:w-96 md:h-[500px] glass md:rounded-3xl shadow-2xl flex flex-col z-40 animate-in slide-in-from-bottom-10 border-0 md:border border-orange-200 dark:border-orange-900">
+        <div className="fixed inset-0 md:inset-auto md:top-[105px] md:bottom-4 md:right-4 md:w-[600px] glass md:rounded-3xl shadow-2xl flex flex-col z-40 animate-in slide-in-from-bottom-10 border-0 md:border border-orange-200 dark:border-orange-900">
 
             {/* Header */}
 
@@ -318,32 +407,74 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                             <FranckAvatar className="w-8 h-8 mr-2 self-end mb-1" />
                         )}
 
-                        <div className={`max-w-[80%] p-3 rounded-2xl text-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-orange-100 text-orange-900 rounded-br-none' : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-bl-none'}`}>
-
-                            {msg.text}
-
-                        </div>
+                        {msg.role === 'user' ? (
+                            <div className="max-w-[80%] p-3 rounded-2xl text-sm whitespace-pre-wrap bg-orange-100 text-orange-900 rounded-br-none">
+                                {msg.text}
+                            </div>
+                        ) : (
+                            <div className="max-w-[85%] p-4 rounded-2xl text-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-bl-none franck-message"
+                                dangerouslySetInnerHTML={{ __html: formatFranckMessage(msg.text) }}
+                            />
+                        )}
 
                     </div>
 
                 ))}
                 
-                {/* Quick Actions */}
+                {/* Dynamic Suggestions or Static Quick Actions */}
                 {showQuickActions && messages.length <= 1 && !isThinking && (
                     <div className="mt-4">
-                        <p className="text-xs text-slate-400 mb-2 text-center">Actions rapides</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {quickActions.map((action, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => handleQuickAction(action.prompt)}
-                                    className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all text-sm text-slate-600 dark:text-slate-300"
-                                >
-                                    <action.icon size={16} className="text-brand-orange" />
-                                    {action.label}
-                                </button>
-                            ))}
-                        </div>
+                        {dynamicSuggestions.length > 0 ? (
+                            <>
+                                <p className="text-xs text-slate-400 mb-2 text-center flex items-center justify-center gap-1">
+                                    <Zap size={12} /> Suggestions de Franck
+                                </p>
+                                <div className="flex flex-col gap-2">
+                                    {dynamicSuggestions.map((suggestion, idx) => {
+                                        const SuggIcon = suggestionIconMap[suggestion.icon] || Lightbulb;
+                                        const colorClass = suggestionColorMap[suggestion.priority] || suggestionColorMap.low;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleQuickAction(suggestion.prompt)}
+                                                className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left text-xs leading-tight hover:scale-[1.02] ${colorClass}`}
+                                            >
+                                                <SuggIcon size={15} className="shrink-0" />
+                                                <span>{suggestion.text}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="grid grid-cols-4 gap-1.5 mt-3">
+                                    {quickActions.map((action, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleQuickAction(action.prompt)}
+                                            className="flex flex-col items-center gap-1 p-1.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-brand-orange transition-all text-[10px] text-slate-500"
+                                        >
+                                            <action.icon size={14} className="text-brand-orange" />
+                                            {action.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-xs text-slate-400 mb-2 text-center">Actions rapides</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {quickActions.map((action, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleQuickAction(action.prompt)}
+                                            className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-orange hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all text-sm text-slate-600 dark:text-slate-300"
+                                        >
+                                            <action.icon size={16} className="text-brand-orange" />
+                                            {action.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -351,14 +482,15 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
                     <div className="flex justify-start items-center">
                         <FranckAvatar className="w-8 h-8 mr-2" />
-                        <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-bl-none shadow-sm flex gap-1">
-
-                            <span className="w-2 h-2 bg-brand-orange rounded-full animate-bounce"></span>
-
-                            <span className="w-2 h-2 bg-brand-orange rounded-full animate-bounce delay-75"></span>
-
-                            <span className="w-2 h-2 bg-brand-orange rounded-full animate-bounce delay-150"></span>
-
+                        <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-bl-none shadow-sm flex items-center gap-2">
+                            <div className="flex gap-1">
+                                <span className="w-2 h-2 bg-brand-orange rounded-full animate-bounce"></span>
+                                <span className="w-2 h-2 bg-brand-orange rounded-full animate-bounce delay-75"></span>
+                                <span className="w-2 h-2 bg-brand-orange rounded-full animate-bounce delay-150"></span>
+                            </div>
+                            {thinkingLabel && (
+                                <span className="text-xs text-slate-400 ml-1 animate-pulse">{thinkingLabel}</span>
+                            )}
                         </div>
 
                     </div>

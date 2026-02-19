@@ -47,8 +47,14 @@ export const createChatSession = (getAppContext?: () => any) => {
   };
 };
 
-// Fetch any todos/events Franck created
-export const fetchFranckData = async () => {
+// Fetch any todos/events Franck created + action signals for React Query invalidation
+export const fetchFranckData = async (): Promise<{
+    todos: any[];
+    events: any[];
+    invoices: any[];
+    emails: any[];
+    actions_performed: string[];
+}> => {
     try {
         const response = await fetch(`${BACKEND_URL}/api/v1/franck/data`, {
             headers: getAuthHeaders()
@@ -56,7 +62,28 @@ export const fetchFranckData = async () => {
         return await response.json();
     } catch (e) {
         console.error('Failed to fetch Franck data:', e);
-        return { todos: [], events: [] };
+        return { todos: [], events: [], invoices: [], emails: [], actions_performed: [] };
+    }
+};
+
+// Fetch proactive suggestions from Franck
+export const fetchFranckSuggestions = async (): Promise<{
+    suggestions: Array<{
+        text: string;
+        prompt: string;
+        priority: string;
+        category: string;
+        icon: string;
+    }>;
+}> => {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/v1/franck/suggestions`, {
+            headers: getAuthHeaders()
+        });
+        return await response.json();
+    } catch (e) {
+        console.error('Failed to fetch Franck suggestions:', e);
+        return { suggestions: [] };
     }
 };
 

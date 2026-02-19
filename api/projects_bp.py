@@ -53,6 +53,7 @@ def scan_projects():
                     "avatarColor": data.get('avatarColor'),
                     "avatarInitials": data.get('avatarInitials', entry.name[:2].upper()),
                     "logoLabData": data.get('logoLabData'),
+                    "logoTransform": data.get('logoTransform'),
                     "phase": data.get('phase'),
                     "maintenance": data.get('maintenance'),
                     "createdAt": data.get('createdAt'),
@@ -63,7 +64,7 @@ def scan_projects():
 
             for entry in status_path.iterdir():
                 if entry.is_dir() and not entry.name.startswith('.'):
-                    if folder_name == "Archivé" and entry.name in ARCHIVE_CATEGORIES:
+                    if folder_name in ("5. Archivés", "Archivé") and entry.name in ARCHIVE_CATEGORIES:
                         for sub in entry.iterdir():
                             if sub.is_dir() and not sub.name.startswith('.'):
                                 p = process_entry(sub)
@@ -236,13 +237,14 @@ def move_project_status():
 
         # Find the current project folder
         source_path = None
-        for folder in ["Prospect", "Actif", "Pro bono", "Perso", "Archivé"]:
+        for folder in ["1. En cours", "2. Maintenances", "3. Associations", "4. Prospects", "5. Archivés",
+                       "Prospect", "Actif", "Pro bono", "Perso", "Archivé"]:
             p = DESKTOP_PATH / folder / safe_name
             if p.exists():
                 source_path = p
                 break
-            if folder == "Archivé":
-                archive_path = DESKTOP_PATH / "Archivé"
+            if folder in ("5. Archivés", "Archivé"):
+                archive_path = DESKTOP_PATH / folder
                 if archive_path.exists():
                     for sub in [d for d in archive_path.iterdir() if d.is_dir()]:
                         if (sub / safe_name).exists():
@@ -253,7 +255,7 @@ def move_project_status():
             return jsonify({"error": "Project not found"}), 404
 
         # Determine destination
-        dest_base = DESKTOP_PATH / STATUS_FOLDER_MAP.get(new_status, "Prospect")
+        dest_base = DESKTOP_PATH / STATUS_FOLDER_MAP.get(new_status, "4. Prospects")
         if new_status in ("Archived", "Archivé") and archive_category:
             dest_path = dest_base / archive_category / safe_name
         else:
@@ -310,14 +312,15 @@ def delete_project():
     try:
         safe_name = "".join([c for c in client_name if c.isalnum() or c in (' ', '-', '_')]).strip()
         target_path = None
-        for folder in ["Prospect", "Actif", "Archivé", "Pro bono", "Perso"]:
+        for folder in ["1. En cours", "2. Maintenances", "3. Associations", "4. Prospects", "5. Archivés",
+                       "Prospect", "Actif", "Archivé", "Pro bono", "Perso"]:
             p = DESKTOP_PATH / folder / safe_name
             if p.exists():
                 target_path = p
                 break
             # Also search inside archive sub-categories
-            if folder == "Archivé":
-                archive_path = DESKTOP_PATH / "Archivé"
+            if folder in ("5. Archivés", "Archivé"):
+                archive_path = DESKTOP_PATH / folder
                 if archive_path.exists():
                     for sub in [d for d in archive_path.iterdir() if d.is_dir()]:
                         if (sub / safe_name).exists():

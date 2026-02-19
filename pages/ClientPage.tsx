@@ -12,7 +12,7 @@ import { SplashScreen } from '../components/SplashScreen';
 const ClientView = React.lazy(() => import('../components/ClientView').then(m => ({ default: m.ClientView })));
 
 export const ClientPage: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+    const params = useParams();
     const navigate = useNavigate();
     const { data: projects = [], isLoading } = useProjects();
     const saveProjectMutation = useSaveProject();
@@ -21,8 +21,9 @@ export const ClientPage: React.FC = () => {
     const { theme } = useUIStore();
     const { addNotification } = useNotificationStore();
 
-    // Find the project by ID (URL-decoded)
-    const decodedId = id ? decodeURIComponent(id) : '';
+    // Find the project by ID — supports both :id and wildcard * routes
+    const rawId = params['*'] || params.id || '';
+    const decodedId = decodeURIComponent(rawId);
     const project = projects.find(p => p.id === decodedId);
 
     // If project not found and projects are loaded, redirect to dashboard

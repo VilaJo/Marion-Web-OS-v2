@@ -27,7 +27,8 @@ const MessagingHub = React.lazy(() => import('../components/MessagingHub').then(
 import {
     Search, Plus, RefreshCw, Database, Clock, DollarSign,
     FolderPlus, Archive, CheckCircle, User, Palette,
-    Calendar, Upload, FileText, Coffee, Briefcase, Download
+    Calendar, Upload, FileText, Coffee, Briefcase, Download,
+    ChevronRight, ArrowRight, X, History,
 } from 'lucide-react';
 import { exportCSV, exportSingleSheetXLSX, type CSVColumn } from '../utils/exportUtils';
 
@@ -68,13 +69,14 @@ export const Dashboard: React.FC = () => {
     const { addNotification } = useNotificationStore();
 
     // --- Local State ---
-    const [newClientStatus, setNewClientStatus] = useState<ProjectStatus>(ProjectStatus.PROSPECT);
+    const [newClientStatus, setNewClientStatus] = useState<ProjectStatus>(ProjectStatus.EN_COURS);
     const [newClientEmail, setNewClientEmail] = useState('');
     const [newClientPhone, setNewClientPhone] = useState('');
     const [newClientWebsite, setNewClientWebsite] = useState('');
     const [isCreatingClient, setIsCreatingClient] = useState(false);
     const [briefingContent, setBriefingContent] = useState('');
     const [isBriefingLoading, setIsBriefingLoading] = useState(false);
+    const [showAllActivities, setShowAllActivities] = useState(false);
 
     // --- Notification Scheduling Refs ---
     const notifiedEventsRef = useRef(new Set<string>());
@@ -158,7 +160,7 @@ export const Dashboard: React.FC = () => {
         const checkInactiveClients = () => {
             const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
             const now = Date.now();
-            const activeProjects = projects.filter(p => p.status === ProjectStatus.ACTIVE);
+            const activeProjects = projects.filter(p => p.status === ProjectStatus.EN_COURS);
             activeProjects.forEach(project => {
                 const projectActivities = activities.filter(a => a.projectId === project.id);
                 const lastActivity = projectActivities.length > 0
@@ -253,7 +255,14 @@ export const Dashboard: React.FC = () => {
         if (isCreatingClient) return;
         setIsCreatingClient(true);
 
-        const targetFolder = newClientStatus === ProjectStatus.ACTIVE ? 'Actifs' : 'Prospects';
+        const statusFolderMap: Record<string, string> = {
+            [ProjectStatus.EN_COURS]: '1. En cours',
+            [ProjectStatus.MAINTENANCE]: '2. Maintenances',
+            [ProjectStatus.ASSOCIATION]: '3. Associations',
+            [ProjectStatus.PROSPECT]: '4. Prospects',
+            [ProjectStatus.ARCHIVED]: '5. Archivés',
+        };
+        const targetFolder = statusFolderMap[newClientStatus] || '4. Prospects';
         const predictedPath = `${targetFolder}/${safeName}`;
 
         createClientFolder.mutate(
@@ -282,7 +291,7 @@ export const Dashboard: React.FC = () => {
                     setNewClientEmail('');
                     setNewClientPhone('');
                     setNewClientWebsite('');
-                    setNewClientStatus(ProjectStatus.PROSPECT);
+                    setNewClientStatus(ProjectStatus.EN_COURS);
                     setShowImporter(false);
                     navigate(`/client/${encodeURIComponent(newProject.id)}`);
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
@@ -337,6 +346,13 @@ export const Dashboard: React.FC = () => {
     };
 
     const handleSaveGlobalInvoice = (invoice: Invoice, projectId: string) => {
+        if (!projectId) {
+            addNotification('Facture Créée', `La facture ${invoice.number} a été générée (sans client associé). Télécharge le PDF.`, 'finance', '/finances');
+            addActivity('invoice_created', `Facture ${invoice.number} créée`, undefined, invoice.clientDisplayName || 'Sans client', `${formatCurrency(invoice.amount, 2)} ${invoice.currency || 'CHF'}`);
+            setShowGlobalInvoiceModal(false);
+            return;
+        }
+
         const projectIndex = projects.findIndex(p => p.id === projectId);
         if (projectIndex === -1) return;
 
@@ -388,7 +404,7 @@ export const Dashboard: React.FC = () => {
 
     const handleStatusCycle = (e: React.MouseEvent, project: Project) => {
         e.stopPropagation();
-        const statuses = [ProjectStatus.ACTIVE, ProjectStatus.PROSPECT, ProjectStatus.PRO_BONO, ProjectStatus.PERSO];
+        const statuses = [ProjectStatus.EN_COURS, ProjectStatus.MAINTENANCE, ProjectStatus.ASSOCIATION, ProjectStatus.PROSPECT];
         const currentIndex = statuses.indexOf(project.status);
         const nextStatus = currentIndex === -1 ? statuses[0] : statuses[(currentIndex + 1) % statuses.length];
         const previousStatus = project.status;
@@ -427,7 +443,7 @@ export const Dashboard: React.FC = () => {
         setShowMondayBriefing(true);
         setIsBriefingLoading(true);
         setBriefingContent('');
-        const activeProjects = projects.filter(p => p.status === ProjectStatus.ACTIVE);
+        const activeProjects = projects.filter(p => p.status === ProjectStatus.EN_COURS);
         const revenue = projects.flatMap(p => p.invoices).filter(i => i.status === 'Paid').reduce((acc, i) => acc + i.amount, 0);
         const urgentTasks = projects.flatMap(p => p.tasks).filter(t => t.priority === 'High' && !t.completed);
         const nextEvents = events.filter(e => new Date(e.date) >= new Date()).slice(0, 3);
@@ -458,10 +474,10 @@ export const Dashboard: React.FC = () => {
     // ========================================================================
 
     const statusPriority: Record<string, number> = {
-        [ProjectStatus.ACTIVE]: 1,
-        [ProjectStatus.PROSPECT]: 2,
-        [ProjectStatus.PERSO]: 3,
-        [ProjectStatus.PRO_BONO]: 4,
+        [ProjectStatus.EN_COURS]: 1,
+        [ProjectStatus.MAINTENANCE]: 2,
+        [ProjectStatus.ASSOCIATION]: 3,
+        [ProjectStatus.PROSPECT]: 4,
         [ProjectStatus.ARCHIVED]: 5
     };
 
@@ -469,10 +485,10 @@ export const Dashboard: React.FC = () => {
         .filter(p => {
             let matchesFilter = filter === 'Tous';
             if (!matchesFilter) {
-                if (filter === 'Actif') matchesFilter = p.status === ProjectStatus.ACTIVE;
+                if (filter === 'En cours') matchesFilter = p.status === ProjectStatus.EN_COURS;
+                else if (filter === 'Maintenance') matchesFilter = p.status === ProjectStatus.MAINTENANCE;
+                else if (filter === 'Association') matchesFilter = p.status === ProjectStatus.ASSOCIATION;
                 else if (filter === 'Prospect') matchesFilter = p.status === ProjectStatus.PROSPECT;
-                else if (filter === 'Pro Bono') matchesFilter = p.status === ProjectStatus.PRO_BONO;
-                else if (filter === 'Perso') matchesFilter = p.status === ProjectStatus.PERSO;
                 else if (filter === 'Archivé') matchesFilter = p.status === ProjectStatus.ARCHIVED;
             }
             const matchesSearch = p.clientName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -533,56 +549,146 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* ACTIVITY WIDGET */}
-            {activities.length > 0 && (
-                <div className="mb-4 md:mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <Card className="p-5">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                <Clock size={18} className="text-brand-orange" /> Activité récente
-                            </h3>
-                            <span className="text-xs text-slate-400">{activities.length} actions</span>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 no-scrollbar">
-                            {activities.slice(0, 8).map((act) => {
-                                const icons: Record<Activity['type'], React.ReactNode> = {
-                                    invoice_created: <FileText size={14} className="text-emerald-500" />,
-                                    invoice_paid: <DollarSign size={14} className="text-green-500" />,
-                                    project_created: <FolderPlus size={14} className="text-blue-500" />,
-                                    project_archived: <Archive size={14} className="text-slate-500" />,
-                                    project_status_changed: <RefreshCw size={14} className="text-purple-500" />,
-                                    task_completed: <CheckCircle size={14} className="text-emerald-500" />,
-                                    client_updated: <User size={14} className="text-orange-500" />,
-                                    brand_updated: <Palette size={14} className="text-pink-500" />,
-                                    meeting_scheduled: <Calendar size={14} className="text-blue-500" />,
-                                    file_uploaded: <Upload size={14} className="text-cyan-500" />,
-                                };
-                                const timeAgo = (ts: string) => {
-                                    const diff = Date.now() - new Date(ts).getTime();
-                                    const mins = Math.floor(diff / 60000);
-                                    if (mins < 1) return "À l'instant";
-                                    if (mins < 60) return `Il y a ${mins} min`;
-                                    const hours = Math.floor(mins / 60);
-                                    if (hours < 24) return `Il y a ${hours}h`;
-                                    return `Il y a ${Math.floor(hours / 24)}j`;
-                                };
-                                return (
-                                    <div key={act.id} className="flex-shrink-0 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 min-w-[200px] max-w-[250px] border border-slate-100 dark:border-slate-700/50 hover:border-brand-orange/50 transition-colors cursor-default">
-                                        <div className="flex items-start gap-2">
-                                            <div className="p-1.5 bg-white dark:bg-slate-700/80 rounded-lg shadow-sm">{icons[act.type]}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{act.title}</p>
-                                                {act.projectName && <p className="text-xs text-slate-500 truncate">{act.projectName}</p>}
-                                                {act.description && <p className="text-xs text-slate-400 truncate">{act.description}</p>}
+            {activities.length > 0 && (() => {
+                const activityConfig: Record<Activity['type'], { icon: React.ReactNode; color: string; borderColor: string; getLink: (act: Activity) => string | null; label: string }> = {
+                    invoice_created: { icon: <FileText size={14} />, color: 'text-emerald-500', borderColor: 'border-l-emerald-500', getLink: () => '/finances', label: 'Facture' },
+                    invoice_paid: { icon: <DollarSign size={14} />, color: 'text-green-500', borderColor: 'border-l-green-500', getLink: () => '/finances', label: 'Paiement' },
+                    project_created: { icon: <FolderPlus size={14} />, color: 'text-blue-500', borderColor: 'border-l-blue-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Nouveau client' },
+                    project_archived: { icon: <Archive size={14} />, color: 'text-slate-500', borderColor: 'border-l-slate-400', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Archivage' },
+                    project_status_changed: { icon: <RefreshCw size={14} />, color: 'text-purple-500', borderColor: 'border-l-purple-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Statut' },
+                    task_completed: { icon: <CheckCircle size={14} />, color: 'text-emerald-500', borderColor: 'border-l-emerald-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Tâche' },
+                    client_updated: { icon: <User size={14} />, color: 'text-orange-500', borderColor: 'border-l-orange-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Client' },
+                    brand_updated: { icon: <Palette size={14} />, color: 'text-pink-500', borderColor: 'border-l-pink-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Branding' },
+                    meeting_scheduled: { icon: <Calendar size={14} />, color: 'text-blue-500', borderColor: 'border-l-blue-500', getLink: () => '/agenda', label: 'Réunion' },
+                    file_uploaded: { icon: <Upload size={14} />, color: 'text-cyan-500', borderColor: 'border-l-cyan-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Fichier' },
+                };
+
+                const timeAgo = (ts: string) => {
+                    const diff = Date.now() - new Date(ts).getTime();
+                    const mins = Math.floor(diff / 60000);
+                    if (mins < 1) return "À l'instant";
+                    if (mins < 60) return `Il y a ${mins} min`;
+                    const hours = Math.floor(mins / 60);
+                    if (hours < 24) return `Il y a ${hours}h`;
+                    return `Il y a ${Math.floor(hours / 24)}j`;
+                };
+
+                const groupByDay = (acts: Activity[]) => {
+                    const now = new Date();
+                    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                    const yesterdayStart = todayStart - 86400000;
+                    const weekStart = todayStart - 6 * 86400000;
+
+                    const groups: { label: string; items: Activity[] }[] = [
+                        { label: "Aujourd'hui", items: [] },
+                        { label: 'Hier', items: [] },
+                        { label: 'Cette semaine', items: [] },
+                        { label: 'Plus ancien', items: [] },
+                    ];
+
+                    for (const act of acts) {
+                        const t = new Date(act.timestamp).getTime();
+                        if (t >= todayStart) groups[0].items.push(act);
+                        else if (t >= yesterdayStart) groups[1].items.push(act);
+                        else if (t >= weekStart) groups[2].items.push(act);
+                        else groups[3].items.push(act);
+                    }
+                    return groups.filter(g => g.items.length > 0);
+                };
+
+                const renderActivityRow = (act: Activity, compact = false) => {
+                    const cfg = activityConfig[act.type];
+                    const link = cfg.getLink(act);
+                    const Tag = link ? 'button' : 'div';
+                    return (
+                        <Tag
+                            key={act.id}
+                            {...(link ? { onClick: () => { navigate(link); setShowAllActivities(false); } } : {})}
+                            className={`w-full text-left flex items-center gap-3 ${compact ? 'py-2' : 'py-2.5'} px-3 rounded-xl border-l-[3px] ${cfg.borderColor} transition-all ${
+                                link 
+                                    ? 'hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer group' 
+                                    : 'cursor-default'
+                            }`}
+                        >
+                            <div className={`p-1.5 bg-white dark:bg-slate-700/80 rounded-lg shadow-sm ${cfg.color} flex-shrink-0`}>
+                                {cfg.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-slate-700 dark:text-slate-200 truncate`}>{act.title}</p>
+                                <div className="flex items-center gap-2">
+                                    {act.projectName && <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{act.projectName}</span>}
+                                    {act.description && <span className="text-[11px] text-slate-400 truncate">· {act.description}</span>}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className="text-[10px] text-slate-400 whitespace-nowrap">{timeAgo(act.timestamp)}</span>
+                                {link && <ChevronRight size={14} className="text-slate-300 dark:text-slate-600 group-hover:text-brand-orange transition-colors" />}
+                            </div>
+                        </Tag>
+                    );
+                };
+
+                return (
+                    <>
+                    <div className="mb-4 md:mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card className="p-5">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                    <Clock size={18} className="text-brand-orange" /> Activité récente
+                                </h3>
+                                <button
+                                    onClick={() => setShowAllActivities(true)}
+                                    className="flex items-center gap-1 text-xs text-slate-400 hover:text-brand-orange transition-colors font-medium"
+                                >
+                                    {activities.length} actions <ArrowRight size={12} />
+                                </button>
+                            </div>
+                            <div className="space-y-1">
+                                {activities.slice(0, 5).map((act) => renderActivityRow(act))}
+                            </div>
+                            {activities.length > 5 && (
+                                <button
+                                    onClick={() => setShowAllActivities(true)}
+                                    className="mt-3 w-full py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand-orange transition-colors flex items-center justify-center gap-1 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800"
+                                >
+                                    Voir tout l'historique <History size={12} />
+                                </button>
+                            )}
+                        </Card>
+                    </div>
+
+                    {/* Full Activity History Modal */}
+                    {showAllActivities && (
+                        <Modal onClose={() => setShowAllActivities(false)}>
+                            <div className="w-full max-w-2xl mx-auto max-h-[80vh] flex flex-col">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="font-serif text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                                        <History size={22} className="text-brand-orange" /> Historique d'activité
+                                    </h2>
+                                    <button onClick={() => setShowAllActivities(false)} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                        <X size={20} className="text-slate-400" />
+                                    </button>
+                                </div>
+                                <div className="overflow-y-auto flex-1 -mx-2 px-2 space-y-6">
+                                    {groupByDay(activities).map((group) => (
+                                        <div key={group.label}>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{group.label}</h3>
+                                                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700/50" />
+                                                <span className="text-[10px] text-slate-400">{group.items.length}</span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                {group.items.map((act) => renderActivityRow(act, true))}
                                             </div>
                                         </div>
-                                        <p className="text-[10px] text-slate-400 mt-2 text-right">{timeAgo(act.timestamp)}</p>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </Card>
-                </div>
-            )}
+                                    ))}
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+                    </>
+                );
+            })()}
 
             {/* SEARCH, FILTERS & PROJECT CARDS */}
             <div className="space-y-4 md:space-y-8 mb-4 md:mb-8">
@@ -598,7 +704,7 @@ export const Dashboard: React.FC = () => {
                         />
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto flex-1 no-scrollbar">
-                        {['Actif', 'Archivé', 'Perso', 'Pro Bono', 'Prospect', 'Tous'].map(f => (
+                        {['En cours', 'Maintenance', 'Association', 'Prospect', 'Archivé', 'Tous'].map(f => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}

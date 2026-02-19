@@ -59,16 +59,27 @@ ARCHIVE_CATEGORIES = [
 ]
 
 STATUS_FOLDER_MAP = {
-    "Prospect": "Prospect", "Actif": "Actif", "Active": "Actif",
-    "Archivé": "Archivé", "Archived": "Archivé",
-    "Pro bono": "Pro bono", "Pro Bono": "Pro bono",
-    "Perso": "Perso"
+    "Prospect": "4. Prospects",
+    "En cours": "1. En cours", "Active": "1. En cours",
+    "Maintenance": "2. Maintenances",
+    "Association": "3. Associations",
+    "Archivé": "5. Archivés", "Archived": "5. Archivés",
+    # Legacy mappings for migration
+    "Actif": "1. En cours",
+    "Pro bono": "3. Associations", "Pro Bono": "3. Associations",
+    "Perso": "1. En cours",
 }
 
 FOLDER_STATUS_MAP = {
-    "Prospect": "Prospect", "Actif": "Active",
-    "Archivé": "Archived", "Pro bono": "Pro Bono",
-    "Perso": "Perso"
+    "1. En cours": "En cours",
+    "2. Maintenances": "Maintenance",
+    "3. Associations": "Association",
+    "4. Prospects": "Prospect",
+    "5. Archivés": "Archivé",
+    # Legacy folder names (in case old folders still exist)
+    "Prospect": "Prospect", "Actif": "En cours",
+    "Archivé": "Archivé", "Pro bono": "Association",
+    "Perso": "En cours",
 }
 
 
@@ -80,7 +91,7 @@ def init_db_structure():
         except OSError:
             pass
 
-    folders = ["Prospect", "Actif", "Archivé", "Pro bono", "Perso",
+    folders = ["1. En cours", "2. Maintenances", "3. Associations", "4. Prospects", "5. Archivés",
                "Notes", "Dépenses", "00_INBOX"]
     for folder in folders:
         path = DESKTOP_PATH / folder
@@ -88,7 +99,7 @@ def init_db_structure():
             os.makedirs(path)
 
     for sub in ARCHIVE_CATEGORIES:
-        path = DESKTOP_PATH / "Archivé" / sub
+        path = DESKTOP_PATH / "5. Archivés" / sub
         if not path.exists():
             os.makedirs(path)
 

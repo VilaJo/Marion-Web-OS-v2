@@ -6,11 +6,13 @@
  *           floating chat button, scroll-to-top, PWA prompt, BugReporter, WhatsNew.
  */
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore, useProjectStore, useNotificationStore } from '../stores';
 import { Modal } from './Shared';
 import { QuickNotes } from './QuickNotes';
 import { Project, CalendarEvent } from '../types';
+import { useGoogleCalendarEvents } from '../services/queries';
 
 import {
     Bot, Sparkles, Heart,
@@ -47,6 +49,15 @@ export const GlobalOverlays: React.FC<GlobalOverlaysProps> = ({ projects, events
     } = useUIStore();
 
     const { addNotification } = useNotificationStore();
+    const queryClient = useQueryClient();
+
+    const { data: gcalEvents = [] } = useGoogleCalendarEvents();
+
+    const mergedEvents = useMemo(() => {
+        const localIds = new Set(events.filter(e => e.googleEventId).map(e => e.googleEventId));
+        const uniqueGcal = gcalEvents.filter(e => !localIds.has(e.id) && !localIds.has(e.googleEventId));
+        return [...events, ...uniqueGcal];
+    }, [events, gcalEvents]);
 
     return (
         <>
@@ -56,7 +67,8 @@ export const GlobalOverlays: React.FC<GlobalOverlaysProps> = ({ projects, events
                     isOpen={showChat}
                     onClose={() => setShowChat(false)}
                     projects={projects}
-                    events={events}
+                    events={mergedEvents}
+                    queryClient={queryClient}
                     onAddEvent={(event) => {
                         useProjectStore.getState().addEvent(event);
                         addNotification('Événement ajouté', `Franck a ajouté "${event.title}" à ton agenda`, 'success');

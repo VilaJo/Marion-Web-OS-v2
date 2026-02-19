@@ -622,22 +622,37 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
             
             // Sync to Google Calendar if connected (except Personal events)
             if (googleCalendarConnected && finalEvent.type !== 'Personal') {
-                createGoogleEventMutation.mutate(
-                    {
-                        title: finalEvent.title,
-                        description: finalEvent.description || '',
-                        date: finalEvent.date,
-                        startTime: finalEvent.startTime,
-                        duration: finalEvent.duration || 60,
-                    },
-                    {
-                        onSuccess: (data) => {
-                            if (data.success && data.event?.googleEventId) {
-                                onUpdateEvent({ ...finalEvent, googleEventId: data.event.googleEventId });
-                            }
+                if (finalEvent.googleEventId) {
+                    // Event already created on Google (e.g. via Meet link generation) — update it
+                    updateGoogleEventMutation.mutate({
+                        googleEventId: finalEvent.googleEventId,
+                        event: {
+                            title: finalEvent.title,
+                            description: finalEvent.description || '',
+                            date: finalEvent.date,
+                            startTime: finalEvent.startTime,
+                            duration: finalEvent.duration || 60,
                         },
-                    }
-                );
+                    });
+                } else {
+                    // Brand new event — create on Google Calendar
+                    createGoogleEventMutation.mutate(
+                        {
+                            title: finalEvent.title,
+                            description: finalEvent.description || '',
+                            date: finalEvent.date,
+                            startTime: finalEvent.startTime,
+                            duration: finalEvent.duration || 60,
+                        },
+                        {
+                            onSuccess: (data) => {
+                                if (data.success && data.event?.googleEventId) {
+                                    onUpdateEvent({ ...finalEvent, googleEventId: data.event.googleEventId });
+                                }
+                            },
+                        }
+                    );
+                }
             }
             
             // Navigate to the event's date and scroll to its time

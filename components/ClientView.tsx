@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen, ZoomIn, ZoomOut, Move, RotateCcw } from 'lucide-react';
 import {
     DndContext, DragOverlay, closestCorners, PointerSensor, TouchSensor,
     useSensor, useSensors, DragStartEvent, DragEndEvent,
@@ -256,6 +256,10 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     const [showBrandCenter, setShowBrandCenter] = useState(false);
     const [showMeetingMode, setShowMeetingMode] = useState(false);
     const [showLogoLab, setShowLogoLab] = useState(false);
+    const [showLogoEditor, setShowLogoEditor] = useState(false);
+    const [logoEditorTransform, setLogoEditorTransform] = useState(project.logoTransform || { x: 0, y: 0, scale: 1 });
+    const [logoDragging, setLogoDragging] = useState(false);
+    const [logoDragStart, setLogoDragStart] = useState({ x: 0, y: 0, tx: 0, ty: 0 });
     
     // --- State: Timer & Time Tracking ---
     const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -599,7 +603,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
     // --- Helpers: Templates ---
     const updatePhaseWithTemplates = (newPhase: WorkflowPhase) => {
-        const templatesSource = project.status === ProjectStatus.PROSPECT 
+        const templatesSource = project.status === ProjectStatus.PROSPECT
             ? PROSPECT_PHASE_TEMPLATES 
             : ACTIVE_PHASE_TEMPLATES;
 
@@ -648,7 +652,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
             const data = await res.json();
             
             if (data.success) {
-                if (newStatus === ProjectStatus.ACTIVE) {
+                if (newStatus === ProjectStatus.EN_COURS) {
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                 }
                 
@@ -669,8 +673,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     };
 
     const handlePromote = () => {
-        if (confirm(`Passer ${project.clientName} en mode ACTIF ?`)) {
-            handleChangeStatus(ProjectStatus.ACTIVE);
+        if (confirm(`Passer ${project.clientName} en mode EN COURS ?`)) {
+            handleChangeStatus(ProjectStatus.EN_COURS);
         }
     };
 
@@ -949,6 +953,50 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         }
     };
 
+    // --- LOGO EDITOR ---
+    const handleLogoEditorOpen = () => {
+        if (!project.avatarImage) return;
+        setLogoEditorTransform(project.logoTransform || { x: 0, y: 0, scale: 1 });
+        setShowLogoEditor(true);
+    };
+
+    const handleLogoEditorSave = () => {
+        onUpdateProject({ ...project, logoTransform: logoEditorTransform });
+        setShowLogoEditor(false);
+        onNotify("Logo ajusté", "La position du logo est enregistrée.", "success");
+    };
+
+    const handleLogoEditorReset = () => {
+        setLogoEditorTransform({ x: 0, y: 0, scale: 1 });
+    };
+
+    const handleLogoDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+        e.preventDefault();
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        setLogoDragging(true);
+        setLogoDragStart({ x: clientX, y: clientY, tx: logoEditorTransform.x, ty: logoEditorTransform.y });
+    }, [logoEditorTransform]);
+
+    const handleLogoDragMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+        if (!logoDragging) return;
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        const dx = clientX - logoDragStart.x;
+        const dy = clientY - logoDragStart.y;
+        setLogoEditorTransform(prev => ({ ...prev, x: logoDragStart.tx + dx, y: logoDragStart.ty + dy }));
+    }, [logoDragging, logoDragStart]);
+
+    const handleLogoDragEnd = useCallback(() => {
+        setLogoDragging(false);
+    }, []);
+
+    const handleLogoWheel = useCallback((e: React.WheelEvent) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.08 : 0.08;
+        setLogoEditorTransform(prev => ({ ...prev, scale: Math.max(0.5, Math.min(4, prev.scale + delta)) }));
+    }, []);
+
     // --- CREDENTIALS LOGIC ---
     const handleAddCredential = (newCred: Credential) => {
         onUpdateProject({ ...project, credentials: [...(project.credentials || []), newCred] });
@@ -1128,7 +1176,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                     <div className="flex-1 min-w-0">
                         <h1 className="text-3xl md:text-6xl font-sans text-slate-800 dark:text-white tracking-wide pt-2 truncate">{project.clientName}</h1>
                         <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                        <span className="tabular-nums bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">{project.id.toUpperCase()}</span>
+                        <span className="tabular-nums bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">{project.status.toUpperCase()}/{project.clientName.toUpperCase()}</span>
                         <span>•</span>
                         <select 
                             value={project.status}
@@ -1166,10 +1214,10 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                     )}
                     {project.status === ProjectStatus.PROSPECT && (
                         <button onClick={handlePromote} className="px-5 py-2 bg-gradient-to-r from-brand-orange to-rose-500 text-white rounded-full font-bold text-sm hover:scale-105 transition-all flex items-center gap-2">
-                            <Rocket size={16} /> Passer en Actif
+                            <Rocket size={16} /> Passer en cours
                         </button>
                     )}
-                    {project.status === ProjectStatus.ACTIVE && (
+                    {project.status === ProjectStatus.EN_COURS && (
                         <button 
                             onClick={handleToggleTimer}
                             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold tracking-wider uppercase shadow-sm transition-all duration-300 border ${
@@ -1321,7 +1369,12 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 <div className="space-y-4 md:space-y-6">
                     {/* Visual Identity */}
                     <Card className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-white/50 dark:border-white/5 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
+                             {project.avatarImage && (
+                                <button onClick={handleLogoEditorOpen} className="p-2 bg-white/50 rounded-full hover:bg-white transition-colors" title="Ajuster le logo">
+                                    <Move size={14} />
+                                </button>
+                             )}
                              <button onClick={handleRandomizeAvatar} className="p-2 bg-white/50 rounded-full hover:bg-white transition-colors"><RefreshCw size={14} /></button>
                         </div>
                         <div className="relative z-10 flex flex-col items-center gap-6 py-4">
@@ -1329,7 +1382,14 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                              <div className="relative cursor-pointer transition-transform hover:scale-105" onClick={() => fileInputRef.current?.click()}>
                                 {project.avatarImage ? (
                                     <div className="w-32 h-32 rounded-full overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none border-4 border-white dark:border-slate-700">
-                                        <img src={project.avatarImage} alt="Client Avatar" className="w-full h-full object-cover" />
+                                        <img 
+                                            src={project.avatarImage} 
+                                            alt="Client Avatar" 
+                                            className="w-full h-full object-cover"
+                                            style={project.logoTransform ? {
+                                                transform: `translate(${project.logoTransform.x}px, ${project.logoTransform.y}px) scale(${project.logoTransform.scale})`,
+                                            } : undefined}
+                                        />
                                     </div>
                                 ) : (
                                     <div className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl shadow-slate-200/50 dark:shadow-none bg-gradient-to-br ${project.avatarColor || 'from-brand-primary to-brand-secondary'} text-white text-5xl font-serif`}>
@@ -1340,15 +1400,129 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                     <Upload size={16} />
                                 </div>
                              </div>
-                             <button 
-                                onClick={(e) => { e.stopPropagation(); setShowLogoLab(true); }}
-                                className="text-xs font-bold text-slate-400 hover:text-brand-orange flex items-center gap-1 transition-colors"
-                             >
-                                <Wand2 size={12} /> Ouvrir Logo Lab
-                             </button>
+                             <div className="flex items-center gap-3">
+                                {project.avatarImage && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleLogoEditorOpen(); }}
+                                        className="text-xs font-bold text-slate-400 hover:text-blue-500 flex items-center gap-1 transition-colors"
+                                    >
+                                        <Move size={12} /> Ajuster
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowLogoLab(true); }}
+                                    className="text-xs font-bold text-slate-400 hover:text-brand-orange flex items-center gap-1 transition-colors"
+                                >
+                                    <Wand2 size={12} /> Ouvrir Logo Lab
+                                </button>
+                             </div>
                              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg, image/jpg, image/gif" />
                         </div>
                     </Card>
+
+                    {/* Logo Editor Modal */}
+                    {showLogoEditor && project.avatarImage && (
+                        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowLogoEditor(false)}>
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-700">
+                                    <h3 className="font-bold text-sm dark:text-white flex items-center gap-2">
+                                        <Move size={14} className="text-brand-orange" /> Ajuster le logo
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={handleLogoEditorReset} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                                            <RotateCcw size={12} /> Réinitialiser
+                                        </button>
+                                        <button onClick={() => setShowLogoEditor(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">
+                                            <X size={16} className="text-slate-400" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Preview area - drag to reposition */}
+                                <div className="p-6 flex flex-col items-center gap-4 bg-slate-50 dark:bg-slate-900/50">
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Glissez pour déplacer • Molette pour zoomer</p>
+                                    <div 
+                                        className={`w-48 h-48 rounded-full overflow-hidden border-4 border-white dark:border-slate-700 shadow-2xl relative select-none ${logoDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                                        onMouseDown={handleLogoDragStart}
+                                        onMouseMove={handleLogoDragMove}
+                                        onMouseUp={handleLogoDragEnd}
+                                        onMouseLeave={handleLogoDragEnd}
+                                        onTouchStart={handleLogoDragStart}
+                                        onTouchMove={handleLogoDragMove}
+                                        onTouchEnd={handleLogoDragEnd}
+                                        onWheel={handleLogoWheel}
+                                    >
+                                        <img 
+                                            src={project.avatarImage} 
+                                            alt="Logo preview" 
+                                            className="w-full h-full object-cover pointer-events-none"
+                                            draggable={false}
+                                            style={{
+                                                transform: `translate(${logoEditorTransform.x}px, ${logoEditorTransform.y}px) scale(${logoEditorTransform.scale})`,
+                                            }}
+                                        />
+                                        {/* Center crosshair guide */}
+                                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-20">
+                                            <div className="w-px h-full bg-slate-400 absolute" />
+                                            <div className="h-px w-full bg-slate-400 absolute" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Controls */}
+                                <div className="px-5 py-4 space-y-3">
+                                    {/* Scale slider */}
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            onClick={() => setLogoEditorTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale - 0.1) }))}
+                                            className="p-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                        >
+                                            <ZoomOut size={14} className="text-slate-500" />
+                                        </button>
+                                        <input 
+                                            type="range" 
+                                            min="0.5" 
+                                            max="4" 
+                                            step="0.05" 
+                                            value={logoEditorTransform.scale}
+                                            onChange={e => setLogoEditorTransform(prev => ({ ...prev, scale: parseFloat(e.target.value) }))}
+                                            className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-brand-orange"
+                                        />
+                                        <button 
+                                            onClick={() => setLogoEditorTransform(prev => ({ ...prev, scale: Math.min(4, prev.scale + 0.1) }))}
+                                            className="p-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                        >
+                                            <ZoomIn size={14} className="text-slate-500" />
+                                        </button>
+                                        <span className="text-xs text-slate-400 w-10 text-right tabular-nums">{Math.round(logoEditorTransform.scale * 100)}%</span>
+                                    </div>
+
+                                    {/* Position display */}
+                                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                        <span>X: {Math.round(logoEditorTransform.x)}px • Y: {Math.round(logoEditorTransform.y)}px</span>
+                                        <span>Zoom: {Math.round(logoEditorTransform.scale * 100)}%</span>
+                                    </div>
+                                </div>
+
+                                {/* Footer actions */}
+                                <div className="flex gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-700">
+                                    <button 
+                                        onClick={() => setShowLogoEditor(false)}
+                                        className="flex-1 px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button 
+                                        onClick={handleLogoEditorSave}
+                                        className="flex-1 px-4 py-2 text-sm bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 transition-colors"
+                                    >
+                                        Enregistrer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Client Profile */}
                     <Card>

@@ -60,7 +60,7 @@ const router = createBrowserRouter([
                 ),
             },
             {
-                path: 'client/:id',
+                path: 'client/*',
                 errorElement: <RouteErrorFallback />,
                 element: (
                     <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement du client..." />}>

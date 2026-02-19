@@ -1,1 +1,0 @@
-var E=(e=>(e.PROSPECT="Prospect",e.ACTIVE="Active",e.ARCHIVED="Archived",e.PRO_BONO="Pro Bono",e.PERSO="Perso",e))(E||{}),n=(e=>(e.DISCOVERY="Découverte",e.STRATEGY="Stratégie",e.DESIGN="Design",e.DEV="Développement",e.QA="Recettage",e.MAINTENANCE="Maintenance",e))(n||{});export{E as P,n as W};

@@ -25,7 +25,7 @@ from services.gemini_service import (
     FRANCK_SYSTEM_PROMPT, COACH_FRANCK_SYSTEM_PROMPT,
     load_franck_memory, save_franck_memory, get_time_greeting,
     set_context, get_context,
-    franck_todos, franck_events, franck_invoices, franck_emails,
+    franck_todos, franck_events, franck_invoices, franck_emails, franck_actions,
     clear_franck_data as svc_clear_franck_data,
     get_proactive_suggestions, execute_tool, TOOLS_LIST,
 )
@@ -189,6 +189,8 @@ SUGGESTIONS POSSIBLES:
             )
         )
 
+    MAX_TOOL_ROUNDS = 5
+
     def generate():
         try:
             chat_session = client.chats.create(
@@ -198,16 +200,18 @@ SUGGESTIONS POSSIBLES:
             )
             response = chat_session.send_message(history_contents[-1].parts[0].text)
 
-            part = response.candidates[0].content.parts[0]
-            if hasattr(part, 'function_call') and part.function_call:
+            for _round in range(MAX_TOOL_ROUNDS):
+                part = response.candidates[0].content.parts[0]
+                if not (hasattr(part, 'function_call') and part.function_call):
+                    yield response.text
+                    break
                 func_name = part.function_call.name
                 func_args = dict(part.function_call.args) if part.function_call.args else {}
+                logger.info("Franck tool call [%d]: %s(%s)", _round + 1, func_name, func_args)
                 res = execute_tool(func_name, func_args)
-
-                final_response = chat_session.send_message(
+                response = chat_session.send_message(
                     types.Part.from_function_response(name=func_name, response={"result": res})
                 )
-                yield final_response.text
             else:
                 yield response.text
 
@@ -282,12 +286,13 @@ def franck_greeting():
 
 @ai_bp.route('/franck/data', methods=['GET'])
 def get_franck_data():
-    """Get Franck's stored data (todos, events, invoices, emails)."""
+    """Get Franck's stored data (todos, events, invoices, emails) and action signals."""
     return jsonify({
         "todos": franck_todos,
         "events": franck_events,
         "invoices": franck_invoices,
         "emails": franck_emails,
+        "actions_performed": list(franck_actions),
     })
 
 
@@ -298,15 +303,21 @@ def clear_franck_data():
     return jsonify({"success": True})
 
 
-@ai_bp.route('/franck/suggestions', methods=['POST'])
+@ai_bp.route('/franck/suggestions', methods=['GET', 'POST'])
 def franck_suggestions():
-    """Get proactive suggestions."""
-    data = request.json or {}
-    suggestions = get_proactive_suggestions(
-        data.get('projects', []),
-        data.get('events', []),
-        data.get('todos', []),
-    )
+    """Get proactive structured suggestions. Accepts GET (uses cached context) or POST (with data)."""
+    if request.method == 'POST':
+        data = request.json or {}
+        projects = data.get('projects', [])
+        events_list = data.get('events', [])
+        todos_list = data.get('todos', [])
+    else:
+        ctx = get_context()
+        projects = ctx.get('projects', [])
+        events_list = ctx.get('events', [])
+        todos_list = ctx.get('todos', [])
+
+    suggestions = get_proactive_suggestions(projects, events_list, todos_list)
     return jsonify({"suggestions": suggestions})
 
 
@@ -655,7 +666,8 @@ def dispatch_file():
             f.write(file_content)
 
         clients = []
-        for status in ["Prospect", "Actif", "Archive", "Pro bono", "Perso"]:
+        for status in ["1. En cours", "2. Maintenances", "3. Associations", "4. Prospects", "5. Archivés",
+                       "Prospect", "Actif", "Archivé", "Pro bono", "Perso"]:
             p = DESKTOP_PATH / status
             if p.exists():
                 clients.extend([d.name for d in p.iterdir() if d.is_dir() and not d.name.startswith('.')])

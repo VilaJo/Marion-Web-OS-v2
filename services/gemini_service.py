@@ -8,7 +8,11 @@ can import a thin API instead of touching the google.genai SDK directly.
 import os
 import time
 import json
+import urllib.parse
+from datetime import datetime, timedelta
 from typing import Optional
+
+import requests as http_requests
 
 from config import get_current_config
 from services.logger import get_logger
@@ -66,6 +70,7 @@ franck_todos: list = []
 franck_events: list = []
 franck_invoices: list = []
 franck_emails: list = []
+franck_actions: list = []
 
 # Current context (set before each chat request)
 current_context: dict = {
@@ -84,18 +89,29 @@ def get_context() -> dict:
     return current_context
 
 
+def _record_action(category: str):
+    """Record that a persistent action was performed so the frontend can refresh."""
+    global franck_actions
+    if category not in franck_actions:
+        franck_actions.append(category)
+
+
 def clear_franck_data():
-    global franck_todos, franck_events, franck_invoices, franck_emails
+    global franck_todos, franck_events, franck_invoices, franck_emails, franck_actions
     franck_todos = []
     franck_events = []
     franck_invoices = []
     franck_emails = []
+    franck_actions = []
 
 
 # ---------------------------------------------------------------------------
 # Memory persistence
 # ---------------------------------------------------------------------------
-from api.shared import DESKTOP_PATH
+from api.shared import (
+    DESKTOP_PATH, get_safe_path, load_project_data, save_project_data_file,
+    STATUS_FOLDER_MAP, FOLDER_STATUS_MAP,
+)
 
 MEMORY_FILE = DESKTOP_PATH / ".franck_memory.json"
 
@@ -119,14 +135,40 @@ def save_franck_memory(memory: dict):
 
 
 # ---------------------------------------------------------------------------
+# Helper: find project path on disk from a client name
+# ---------------------------------------------------------------------------
+
+def _find_project_by_name(client_name: str):
+    """Search all status folders for a project matching *client_name*.
+    Returns (project_path, data_dict) or (None, None)."""
+    search_name = client_name.lower().strip()
+    for folder_name in FOLDER_STATUS_MAP:
+        status_path = DESKTOP_PATH / folder_name
+        if not status_path.exists():
+            continue
+        for entry in status_path.iterdir():
+            if not entry.is_dir() or entry.name.startswith('.'):
+                continue
+            if search_name in entry.name.lower():
+                data = load_project_data(entry)
+                return entry, data
+    return None, None
+
+
+def _project_id_from_path(project_path) -> str:
+    """Convert an absolute project path to the relative id used by the app."""
+    return str(project_path.relative_to(DESKTOP_PATH))
+
+
+# ---------------------------------------------------------------------------
 # Franck tools  (callable by Gemini function-calling)
 # ---------------------------------------------------------------------------
 
 def create_client_folder_tool(client_name: str):
-    """Cree un nouveau dossier client avec la structure standard."""
+    """Cree un nouveau dossier client avec la structure standard et persiste les donnees."""
     try:
         safe_name = "".join([c for c in client_name if c.isalnum() or c in (' ', '-', '_')]).strip()
-        project_path = DESKTOP_PATH / "Prospect" / safe_name
+        project_path = DESKTOP_PATH / "4. Prospects" / safe_name
         if project_path.exists():
             return f"Le dossier '{safe_name}' existe deja, ma belle !"
 
@@ -142,27 +184,124 @@ def create_client_folder_tool(client_name: str):
         os.makedirs(site_root / "3. Commentaires")
         if not (project_path / ".99_Admin").exists():
             os.makedirs(project_path / ".99_Admin")
+
+        initial_data = {
+            "id": f"4. Prospects/{safe_name}",
+            "clientName": safe_name,
+            "status": "Prospect",
+            "phase": "Découverte",
+            "tasks": [],
+            "invoices": [],
+        }
+        save_project_data_file(project_path, initial_data)
+        _record_action("projects")
         return f"Et voila cocotte ! J'ai cree le dossier '{safe_name}' avec toute la structure. Prete a bosser !"
     except Exception as e:
         return f"Oups, probleme technique: {str(e)}"
 
 
-def add_todo_tool(text: str, priority: str = "medium"):
-    """Ajoute une tache a la to-do list du jour."""
-    global franck_todos
-    todo = {
-        "id": f"franck-todo-{int(time.time() * 1000)}",
-        "text": text,
-        "priority": priority,
-        "done": False,
-        "createdAt": time.strftime('%Y-%m-%dT%H:%M:%S')
-    }
-    franck_todos.append(todo)
-    return f"Tache ajoutee a ta to-do: '{text}'. C'est note ma belle !"
+def add_todo_tool(text: str, priority: str = "Medium", project_name: str = None):
+    """Ajoute une tache a un projet. Si project_name n'est pas fourni, ajoute au premier projet actif."""
+    try:
+        project_path = None
+        data = None
+
+        if project_name:
+            project_path, data = _find_project_by_name(project_name)
+
+        if not project_path:
+            projects = current_context.get("projects", [])
+            for p in projects:
+                if p.get('status') in ('En cours', 'Active'):
+                    candidate, cdata = _find_project_by_name(p.get('clientName', ''))
+                    if candidate:
+                        project_path, data = candidate, cdata
+                        break
+
+        if not project_path or data is None:
+            global franck_todos
+            todo = {
+                "id": f"franck-todo-{int(time.time() * 1000)}",
+                "text": text,
+                "priority": priority,
+                "done": False,
+                "createdAt": time.strftime('%Y-%m-%dT%H:%M:%S')
+            }
+            franck_todos.append(todo)
+            return f"Tache ajoutee (en memoire): '{text}'. C'est note ma belle !"
+
+        tasks = data.get('tasks', [])
+        new_task = {
+            "id": f"task-{int(time.time() * 1000)}",
+            "title": text,
+            "completed": False,
+            "priority": priority.capitalize(),
+            "column": "todo",
+            "createdAt": time.strftime('%Y-%m-%dT%H:%M:%S'),
+        }
+        tasks.append(new_task)
+        data['tasks'] = tasks
+        save_project_data_file(project_path, data)
+        _record_action("projects")
+        client = data.get('clientName', project_path.name)
+        return f"Tache '{text}' ajoutee au projet {client}. C'est note ma belle !"
+    except Exception as e:
+        logger.error("add_todo_tool error: %s", e, exc_info=True)
+        return f"Oups, probleme technique: {str(e)}"
 
 
-def add_event_tool(title: str, date: str, start_time: str = "09:00", duration: int = 60):
-    """Ajoute un evenement a l'agenda."""
+def add_event_tool(title: str, date: str, start_time: str = "09:00", duration: int = 60, add_meet: bool = False):
+    """Cree un evenement dans Google Calendar (ou en local si Google n'est pas connecte)."""
+    try:
+        from services.oauth_service import get_first_email, get_valid_token
+        email = get_first_email()
+        if email:
+            access_token = get_valid_token(email)
+            if access_token:
+                event_body = {
+                    "summary": title,
+                    "description": "",
+                }
+                start_datetime = f"{date}T{start_time}:00"
+                start_dt = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M")
+                end_dt = start_dt + timedelta(minutes=duration)
+                end_datetime = end_dt.strftime("%Y-%m-%dT%H:%M:00")
+                tz = "Europe/Zurich"
+                event_body["start"] = {"dateTime": start_datetime, "timeZone": tz}
+                event_body["end"] = {"dateTime": end_datetime, "timeZone": tz}
+
+                if add_meet:
+                    event_body["conferenceData"] = {
+                        "createRequest": {
+                            "requestId": f"franck-meet-{int(time.time())}",
+                            "conferenceSolutionKey": {"type": "hangoutsMeet"},
+                        }
+                    }
+
+                url = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+                if add_meet:
+                    url += "?conferenceDataVersion=1"
+
+                headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+                resp = http_requests.post(url, headers=headers, json=event_body, timeout=15)
+                if resp.status_code in (200, 201):
+                    created = resp.json()
+                    meet_link = created.get("hangoutLink", "")
+                    try:
+                        from api.oauth_bp import invalidate_gcal_cache
+                        invalidate_gcal_cache()
+                    except Exception:
+                        pass
+                    _record_action("events")
+                    msg = f"Evenement '{title}' cree dans Google Calendar le {date} a {start_time}."
+                    if meet_link:
+                        msg += f" Lien Meet: {meet_link}"
+                    return msg
+                else:
+                    logger.warning("GCal create failed (%s): %s", resp.status_code, resp.text[:200])
+    except Exception as e:
+        logger.warning("Google Calendar not available, falling back to local: %s", e)
+
     global franck_events
     event = {
         "id": f"franck-event-{int(time.time() * 1000)}",
@@ -174,11 +313,12 @@ def add_event_tool(title: str, date: str, start_time: str = "09:00", duration: i
         "source": "franck"
     }
     franck_events.append(event)
+    _record_action("events")
     return f"Evenement '{title}' ajoute a ton agenda le {date} a {start_time}. C'est note cocotte !"
 
 
 def get_project_info_tool(client_name: str):
-    """Recupere les informations sur un projet/client specifique."""
+    """Recupere les informations detaillees sur un projet/client specifique."""
     projects = current_context.get("projects", [])
     for p in projects:
         if client_name.lower() in p.get('clientName', '').lower():
@@ -186,53 +326,102 @@ def get_project_info_tool(client_name: str):
             tasks = p.get('tasks', [])
             paid = sum(i.get('amount', 0) for i in invoices if i.get('status') == 'Paid')
             pending = sum(i.get('amount', 0) for i in invoices if i.get('status') != 'Paid')
+            overdue_tasks = [t for t in tasks if not t.get('completed') and t.get('dueDate') and t['dueDate'] < time.strftime('%Y-%m-%d')]
             return (
                 f"Client: {p.get('clientName')}\n"
                 f"Statut: {p.get('status')}\n"
                 f"Phase: {p.get('phase')}\n"
                 f"Taches: {len([t for t in tasks if not t.get('completed')])} en cours, "
                 f"{len([t for t in tasks if t.get('completed')])} terminees\n"
-                f"Facture paye: {paid} CHF\n"
+                f"Taches en retard: {len(overdue_tasks)}\n"
+                f"Factures payees: {paid} CHF\n"
                 f"En attente: {pending} CHF"
             )
     return f"Je n'ai pas trouve de client nomme '{client_name}', ma belle."
 
 
 def create_invoice_tool(client_name: str, amount: float, description: str = "Prestations de services"):
-    """Cree une facture pour un client."""
-    global franck_invoices
-    invoice = {
-        "id": f"franck-inv-{int(time.time() * 1000)}",
-        "clientName": client_name,
-        "amount": amount,
-        "description": description,
-        "date": time.strftime('%Y-%m-%d'),
-        "status": "Draft"
-    }
-    franck_invoices.append(invoice)
-    return (
-        f"Facture creee pour {client_name}: {amount} CHF ({description}). "
-        f"Elle est en brouillon, prete a etre envoyee ma belle !"
-    )
+    """Cree une facture pour un client et la persiste dans ses donnees projet."""
+    try:
+        project_path, data = _find_project_by_name(client_name)
+        if not project_path or data is None:
+            return f"Je n'ai pas trouve de projet pour '{client_name}', ma belle. Cree d'abord le dossier client !"
+
+        invoices = data.get('invoices', [])
+        inv_number = f"F-{time.strftime('%Y%m')}-{len(invoices) + 1:03d}"
+        new_invoice = {
+            "id": f"inv-{int(time.time() * 1000)}",
+            "number": inv_number,
+            "clientDisplayName": data.get('clientName', client_name),
+            "amount": amount,
+            "currency": "CHF",
+            "date": time.strftime('%Y-%m-%d'),
+            "dueDate": (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+            "status": "Draft",
+            "items": [{"description": description, "quantity": 1, "unitPrice": amount}],
+            "payments": [],
+        }
+        invoices.append(new_invoice)
+        data['invoices'] = invoices
+        save_project_data_file(project_path, data)
+        _record_action("projects")
+        return (
+            f"Facture {inv_number} creee pour {data.get('clientName')}: {amount} CHF ({description}). "
+            f"Echeance dans 30 jours. Elle est en brouillon, prete a etre envoyee ma belle !"
+        )
+    except Exception as e:
+        logger.error("create_invoice_tool error: %s", e, exc_info=True)
+        return f"Oups, probleme technique: {str(e)}"
 
 
 def check_availability_tool(date: str, start_time: str = None):
-    """Verifie la disponibilite dans l'agenda pour une date donnee."""
-    events = current_context.get("events", [])
-    day_events = [e for e in events if e.get('date', '') == date]
+    """Verifie la disponibilite dans l'agenda pour une date donnee (donnees live Google Calendar)."""
+    day_events = []
+    try:
+        from services.oauth_service import get_first_email, get_valid_token
+        email = get_first_email()
+        if email:
+            access_token = get_valid_token(email)
+            if access_token:
+                time_min = f"{date}T00:00:00Z"
+                time_max = f"{date}T23:59:59Z"
+                url = (
+                    f"https://www.googleapis.com/calendar/v3/calendars/primary/events"
+                    f"?timeMin={urllib.parse.quote(time_min)}&timeMax={urllib.parse.quote(time_max)}"
+                    f"&singleEvents=true&orderBy=startTime"
+                )
+                headers = {"Authorization": f"Bearer {access_token}"}
+                resp = http_requests.get(url, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    for item in resp.json().get("items", []):
+                        start = item.get("start", {})
+                        s_time = ""
+                        if "dateTime" in start:
+                            s_time = start["dateTime"][11:16]
+                        day_events.append({
+                            "title": item.get("summary", "?"),
+                            "startTime": s_time,
+                            "duration": 60,
+                        })
+    except Exception:
+        pass
+
+    if not day_events:
+        ctx_events = current_context.get("events", [])
+        day_events = [e for e in ctx_events if e.get('date', '') == date]
 
     if not day_events:
         return f"Tu es completement libre le {date}, ma belle ! Aucun rendez-vous prevu."
 
     event_list = "\n".join([
-        f"- {e.get('startTime', '?')} : {e.get('title', '?')} ({e.get('duration', 60)} min)"
+        f"- {e.get('startTime', '?')} : {e.get('title', '?')}"
         for e in day_events
     ])
 
     if start_time:
         for e in day_events:
             e_start = e.get('startTime', '00:00')
-            if e_start <= start_time < e_start:
+            if e_start and e_start <= start_time:
                 return f"Aie, tu as deja quelque chose a {e_start} ce jour-la : {e.get('title')}"
 
     return (
@@ -288,13 +477,12 @@ def analyze_finances_tool():
 
 
 def send_reminder_email_tool(client_name: str, subject: str = None, message_type: str = "facture"):
-    """Prepare un email de relance pour un client."""
-    global franck_emails
+    """Envoie un email de relance pour un client via le vrai serveur SMTP."""
     if message_type == "facture":
         subject = subject or f"Relance facture - {client_name}"
         body = (
             "Bonjour,\n\nSauf erreur de ma part, la facture pour nos prestations est toujours "
-            "en attente de reglement.\n\nMerci de faire le necessaire.\n\nCordialement,\nMarion"
+            "en attente de règlement.\n\nMerci de faire le nécessaire.\n\nCordialement,\nMarion"
         )
     else:
         subject = subject or f"Suivi projet - {client_name}"
@@ -303,18 +491,145 @@ def send_reminder_email_tool(client_name: str, subject: str = None, message_type
             "\n\nCordialement,\nMarion"
         )
 
-    email_entry = {
-        "id": f"franck-email-{int(time.time() * 1000)}",
-        "to": client_name,
-        "subject": subject,
-        "body": body,
-        "created": time.strftime('%Y-%m-%d %H:%M')
-    }
-    franck_emails.append(email_entry)
+    to_email = None
+    projects = current_context.get("projects", [])
+    for p in projects:
+        if client_name.lower() in p.get('clientName', '').lower():
+            profile = p.get('profile', {})
+            to_email = profile.get('email') or profile.get('contactEmail')
+            break
+
+    if not to_email:
+        _record_action("emails")
+        return (
+            f"Je n'ai pas trouve d'email pour {client_name}. "
+            f"Email prepare avec sujet '{subject}' — ajoute l'adresse manuellement, ma belle."
+        )
+
+    try:
+        from services.email_service import send_email as svc_send_email
+        from api.email_bp import _get_creds
+        username, password = _get_creds()
+        if username and password:
+            svc_send_email(username, password, to_email, subject, body)
+            _record_action("emails")
+            return f"Email de relance envoye a {to_email} ! Sujet: '{subject}'. Et toc, le vieux a encore de beaux restes !"
+    except Exception as e:
+        logger.warning("Could not send email via SMTP: %s", e)
+
+    _record_action("emails")
     return (
-        f"Email de relance prepare pour {client_name} ! Sujet: '{subject}'. "
-        "Je l'ai mis de cote, tu peux le relire et l'envoyer quand tu veux, ma belle."
+        f"Email prepare pour {client_name} ({to_email}) ! Sujet: '{subject}'. "
+        "Les identifiants SMTP ne sont pas configures — envoie-le manuellement, ma belle."
     )
+
+
+def update_task_status_tool(project_name: str, task_title: str, completed: bool = True):
+    """Marque une tache comme terminee ou non-terminee dans un projet."""
+    try:
+        project_path, data = _find_project_by_name(project_name)
+        if not project_path or data is None:
+            return f"Je n'ai pas trouve de projet pour '{project_name}', ma belle."
+
+        tasks = data.get('tasks', [])
+        found = False
+        for task in tasks:
+            if task_title.lower() in task.get('title', '').lower():
+                task['completed'] = completed
+                task['column'] = 'done' if completed else 'todo'
+                found = True
+                break
+
+        if not found:
+            return f"Je n'ai pas trouve de tache '{task_title}' dans le projet {data.get('clientName')}."
+
+        data['tasks'] = tasks
+        save_project_data_file(project_path, data)
+        _record_action("projects")
+        status_txt = "terminee" if completed else "rouverte"
+        return f"Tache '{task_title}' marquee comme {status_txt} dans {data.get('clientName')}. C'est note !"
+    except Exception as e:
+        logger.error("update_task_status_tool error: %s", e, exc_info=True)
+        return f"Oups, probleme technique: {str(e)}"
+
+
+def update_project_status_tool(client_name: str, new_status: str):
+    """Deplace un projet vers un nouveau statut (En cours, Maintenance, Association, Prospect, Archive)."""
+    try:
+        project_path, data = _find_project_by_name(client_name)
+        if not project_path or data is None:
+            return f"Je n'ai pas trouve de projet pour '{client_name}', ma belle."
+
+        valid_statuses = list(STATUS_FOLDER_MAP.keys())
+        matched_status = None
+        for s in valid_statuses:
+            if new_status.lower() in s.lower():
+                matched_status = s
+                break
+        if not matched_status:
+            return f"Statut '{new_status}' non reconnu. Statuts valides: {', '.join(valid_statuses)}"
+
+        target_folder = STATUS_FOLDER_MAP[matched_status]
+        dest_base = DESKTOP_PATH / target_folder
+        if not dest_base.exists():
+            os.makedirs(dest_base)
+        dest_path = dest_base / project_path.name
+
+        if dest_path.exists():
+            return f"Un dossier '{project_path.name}' existe deja dans {target_folder}."
+
+        import shutil
+        shutil.move(str(project_path), str(dest_path))
+
+        data['status'] = matched_status
+        data['id'] = f"{target_folder}/{project_path.name}"
+        save_project_data_file(dest_path, data)
+        _record_action("projects")
+        return f"Projet {data.get('clientName')} deplace vers '{matched_status}'. C'est fait, ma belle !"
+    except Exception as e:
+        logger.error("update_project_status_tool error: %s", e, exc_info=True)
+        return f"Oups, probleme technique: {str(e)}"
+
+
+def update_invoice_status_tool(client_name: str, invoice_number: str = None, new_status: str = "Paid"):
+    """Change le statut d'une facture (Paid, Pending, Draft) pour un client."""
+    try:
+        project_path, data = _find_project_by_name(client_name)
+        if not project_path or data is None:
+            return f"Je n'ai pas trouve de projet pour '{client_name}', ma belle."
+
+        invoices = data.get('invoices', [])
+        if not invoices:
+            return f"Aucune facture trouvee pour {data.get('clientName')}."
+
+        target_inv = None
+        if invoice_number:
+            for inv in invoices:
+                if invoice_number.lower() in (inv.get('number', '') or inv.get('id', '')).lower():
+                    target_inv = inv
+                    break
+        else:
+            pending = [i for i in invoices if i.get('status') in ('Pending', 'Draft')]
+            if pending:
+                target_inv = pending[0]
+
+        if not target_inv:
+            return f"Facture '{invoice_number or 'en attente'}' non trouvee pour {data.get('clientName')}."
+
+        old_status = target_inv.get('status')
+        target_inv['status'] = new_status
+        if new_status == 'Paid' and not target_inv.get('paidDate'):
+            target_inv['paidDate'] = time.strftime('%Y-%m-%d')
+        data['invoices'] = invoices
+        save_project_data_file(project_path, data)
+        _record_action("projects")
+        return (
+            f"Facture {target_inv.get('number', target_inv.get('id'))} de {data.get('clientName')} "
+            f"passee de '{old_status}' a '{new_status}'. C'est note !"
+        )
+    except Exception as e:
+        logger.error("update_invoice_status_tool error: %s", e, exc_info=True)
+        return f"Oups, probleme technique: {str(e)}"
 
 
 def remember_fact_tool(fact: str):
@@ -328,25 +643,191 @@ def remember_fact_tool(fact: str):
     return "C'est note dans ma petite tete chauve ! Je m'en souviendrai, ma belle."
 
 
+# ---------------------------------------------------------------------------
+# Composite tools (Level 2 — multi-step workflows)
+# ---------------------------------------------------------------------------
+
+def onboard_client_tool(client_name: str, email: str = None, meeting_date: str = None, meeting_time: str = "10:00"):
+    """Onboarde un nouveau client: cree le dossier, planifie un kickoff, et ajoute des taches de bienvenue."""
+    results = []
+
+    folder_result = create_client_folder_tool(client_name)
+    results.append(folder_result)
+
+    if meeting_date:
+        event_result = add_event_tool(
+            title=f"Kickoff - {client_name}",
+            date=meeting_date,
+            start_time=meeting_time,
+            duration=60,
+            add_meet=True,
+        )
+        results.append(event_result)
+
+    welcome_tasks = [
+        f"Envoyer le contrat a {client_name}",
+        f"Preparer le brief creatif pour {client_name}",
+        f"Configurer l'acces au portail client pour {client_name}",
+    ]
+    for task_text in welcome_tasks:
+        add_todo_tool(text=task_text, priority="High", project_name=client_name)
+
+    results.append(f"{len(welcome_tasks)} taches de bienvenue ajoutees au projet.")
+    _record_action("projects")
+    _record_action("events")
+    return "\n".join(results)
+
+
+def close_project_tool(client_name: str, final_amount: float = None, archive_category: str = "Sites web"):
+    """Cloture un projet: cree la facture finale si montant fourni, puis archive le projet."""
+    results = []
+
+    if final_amount and final_amount > 0:
+        inv_result = create_invoice_tool(client_name, final_amount, "Facture finale - Solde de tout compte")
+        results.append(inv_result)
+
+    status_result = update_project_status_tool(client_name, "Archivé")
+    results.append(status_result)
+
+    _record_action("projects")
+    return "\n".join(results)
+
+
+def weekly_review_tool():
+    """Genere un bilan complet de la semaine: finances, taches, prochains RDV."""
+    finance_summary = analyze_finances_tool()
+
+    projects = current_context.get("projects", [])
+    events = current_context.get("events", [])
+    todos = current_context.get("todos", [])
+
+    today = datetime.now()
+    week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+    week_end = (today + timedelta(days=6 - today.weekday())).strftime('%Y-%m-%d')
+
+    week_events = [e for e in events if week_start <= e.get('date', '') <= week_end]
+    pending_tasks = [t for t in todos if not t.get('completed', False)]
+    overdue_tasks = [t for t in pending_tasks if t.get('dueDate') and t['dueDate'] < today.strftime('%Y-%m-%d')]
+
+    review = f"BILAN HEBDOMADAIRE ({week_start} -> {week_end}):\n\n"
+    review += finance_summary + "\n\n"
+
+    review += f"AGENDA CETTE SEMAINE: {len(week_events)} evenement(s)\n"
+    for e in week_events[:8]:
+        review += f"- {e.get('date', '?')} {e.get('startTime', '')} : {e.get('title', '?')}\n"
+
+    review += f"\nTACHES: {len(pending_tasks)} en attente"
+    if overdue_tasks:
+        review += f", {len(overdue_tasks)} EN RETARD"
+    review += "\n"
+    for t in overdue_tasks[:5]:
+        review += f"- [RETARD] {t.get('title', '?')} ({t.get('projectName', '?')})\n"
+
+    active_projects = [p for p in projects if p.get('status') in ('En cours', 'Active')]
+    review += f"\nPROJETS ACTIFS: {len(active_projects)}\n"
+    for p in active_projects[:5]:
+        tasks = p.get('tasks', [])
+        done = len([t for t in tasks if t.get('completed')])
+        total = len(tasks)
+        review += f"- {p.get('clientName')} ({p.get('phase', '?')}) - {done}/{total} taches\n"
+
+    return review
+
+
 def get_proactive_suggestions(projects: list, events: list, todos: list) -> list:
-    """Genere des suggestions proactives pour Marion."""
+    """Genere des suggestions proactives structurees pour Marion."""
     suggestions = []
     today = time.strftime('%Y-%m-%d')
+    thirty_days_ago = time.strftime('%Y-%m-%d', time.localtime(time.time() - 30 * 24 * 3600))
+    seven_days_ago = time.strftime('%Y-%m-%d', time.localtime(time.time() - 7 * 24 * 3600))
+    tomorrow = time.strftime('%Y-%m-%d', time.localtime(time.time() + 24 * 3600))
 
     for p in projects:
+        client = p.get('clientName', '?')
         for inv in p.get('invoices', []):
-            if inv.get('status') in ['Pending'] and inv.get('date', '') < today:
-                suggestions.append(f"La facture de {p.get('clientName')} attend depuis un moment...")
+            if inv.get('status') in ['Pending'] and inv.get('date', '') < thirty_days_ago:
+                inv_date = inv.get('date', '')
+                days_late = (datetime.now() - datetime.strptime(inv_date, '%Y-%m-%d')).days if inv_date else 0
+                suggestions.append({
+                    "text": f"Relancer la facture de {client} ({days_late}j de retard)",
+                    "prompt": f"Envoie une relance de facture a {client}",
+                    "priority": "high",
+                    "category": "finance",
+                    "icon": "credit-card",
+                })
+
+    for p in projects:
+        client = p.get('clientName', '?')
+        tasks = p.get('tasks', [])
+        overdue = [t for t in tasks if not t.get('completed') and t.get('dueDate') and t['dueDate'] < today]
+        if len(overdue) >= 2:
+            suggestions.append({
+                "text": f"{len(overdue)} taches en retard sur {client}",
+                "prompt": f"Quelles sont les taches en retard sur le projet {client} ?",
+                "priority": "high",
+                "category": "tasks",
+                "icon": "alert-triangle",
+            })
+
+    for p in projects:
+        client = p.get('clientName', '?')
+        if p.get('status') in ('En cours', 'Active'):
+            invoices = p.get('invoices', [])
+            if not invoices and p.get('phase') in ('Livraison', 'Finalisation', 'Terminé'):
+                suggestions.append({
+                    "text": f"Projet {client} termine mais pas facture",
+                    "prompt": f"Cree une facture pour le projet {client}",
+                    "priority": "medium",
+                    "category": "finance",
+                    "icon": "file-text",
+                })
+
+    for p in projects:
+        client = p.get('clientName', '?')
+        if p.get('status') == 'Prospect':
+            suggestions.append({
+                "text": f"Faire le suivi du prospect {client}",
+                "prompt": f"Envoie un email de suivi au prospect {client}",
+                "priority": "medium",
+                "category": "sales",
+                "icon": "mail",
+            })
+
+    tomorrow_events = [e for e in events if e.get('date', '') == tomorrow]
+    if not tomorrow_events:
+        active_projects = [p for p in projects if p.get('status') in ('En cours', 'Active')]
+        if active_projects:
+            proj = active_projects[0]
+            suggestions.append({
+                "text": f"Agenda vide demain — bloquer du temps pour {proj.get('clientName', '?')} ?",
+                "prompt": f"Planifie un creneau de travail demain matin pour le projet {proj.get('clientName')}",
+                "priority": "low",
+                "category": "planning",
+                "icon": "calendar",
+            })
 
     today_events = [e for e in events if e.get('date', '') == today]
     if not today_events:
-        suggestions.append("Journee libre aujourd'hui ! Parfait pour avancer sur les projets.")
+        suggestions.append({
+            "text": "Journee libre ! Parfait pour avancer sur les projets",
+            "prompt": "Fais-moi un bilan de la semaine",
+            "priority": "low",
+            "category": "planning",
+            "icon": "coffee",
+        })
 
-    pending_todos = [t for t in todos if not t.get('done', False)]
+    pending_todos = [t for t in todos if not t.get('done', False) and not t.get('completed', False)]
     if len(pending_todos) > 5:
-        suggestions.append(f"T'as {len(pending_todos)} taches en attente, on s'y met ?")
+        suggestions.append({
+            "text": f"{len(pending_todos)} taches en attente",
+            "prompt": "Quelles sont mes taches prioritaires ?",
+            "priority": "medium",
+            "category": "tasks",
+            "icon": "check-square",
+        })
 
-    return suggestions
+    suggestions.sort(key=lambda s: {"high": 0, "medium": 1, "low": 2}.get(s.get("priority", "low"), 2))
+    return suggestions[:6]
 
 
 # The list of callable tools exposed to Gemini function-calling
@@ -359,7 +840,13 @@ TOOLS_LIST = [
     check_availability_tool,
     analyze_finances_tool,
     send_reminder_email_tool,
+    update_task_status_tool,
+    update_project_status_tool,
+    update_invoice_status_tool,
     remember_fact_tool,
+    onboard_client_tool,
+    close_project_tool,
+    weekly_review_tool,
 ]
 
 # Map of tool name -> callable for dispatch
@@ -410,25 +897,65 @@ EXPRESSIONS SIGNATURES:
 - "Mes neurones sont encore vaillants !"
 - Quand il reussit quelque chose : "Et toc ! Le vieux a encore de beaux restes !"
 
-CAPACITES (utilise les outils disponibles):
-- Creer des dossiers clients
-- Ajouter des taches a la to-do list
-- Ajouter des evenements a l'agenda
-- Consulter les infos des projets/clients
-- Creer des factures
-- Verifier la disponibilite dans l'agenda
-- Analyser les finances (revenus, en attente, etc.)
-- Envoyer des rappels par email
+CAPACITES (TOUTES tes actions sont PERSISTANTES et REELLES):
+- Creer des dossiers clients (cree un vrai dossier sur le disque avec la structure standard)
+- Ajouter des taches a un projet (persistees dans les donnees du projet)
+- Creer des evenements dans Google Calendar (vrais evenements synchronises, avec option Meet)
+- Consulter les infos detaillees des projets/clients
+- Creer des factures (persistees dans le projet avec numero, echeance, etc.)
+- Verifier la disponibilite dans l'agenda (donnees live Google Calendar)
+- Analyser les finances (revenus, en attente, retard, top clients)
+- Envoyer de vrais emails de relance via SMTP
+- Marquer des taches comme terminees ou les rouvrir
+- Deplacer un projet vers un autre statut (En cours, Maintenance, Prospect, Archive)
+- Changer le statut d'une facture (Payee, En attente, Brouillon)
+- Memoriser des faits importants sur Marion
+
+ACTIONS COMPOSITES:
+- Si Marion demande d'onboarder un client: utilise create_client_folder_tool PUIS add_event_tool PUIS add_todo_tool
+- Si Marion demande de cloturer un projet: utilise update_project_status_tool PUIS create_invoice_tool
+- Tu peux enchainer plusieurs outils dans un seul echange pour completer des taches complexes
+
+REGLE ABSOLUE — CONFIRMATION OBLIGATOIRE:
+Avant d'executer TOUTE action qui modifie des donnees, tu DOIS d'abord resumer ce que tu vas faire et demander confirmation. Ne lance JAMAIS un outil avant d'avoir recu un "oui", "go", "ok", "vas-y", "fais-le", "c'est bon", "envoie" ou equivalent.
+Exemples:
+- "Envoie un email de relance a Migros" → Tu reponds avec un resume du mail et demandes "On envoie ?"
+- "Ajoute une reunion demain a 10h" → Tu reponds "Je vais creer: **Reunion** le XX/XX a 10h (1h). C'est bon pour toi ?"
+- "Cree une facture pour Maison de la Fleur" → Tu reponds avec les details et demandes confirmation
+Les SEULES exceptions ou tu peux agir sans confirmation : consulter des infos, verifier la dispo, analyser les finances (actions en lecture seule).
 
 CONTEXTE:
 Tu travailles dans "Marion Web OS", une application de gestion pour webdesigners.
 Marion gere des clients, des factures, des projets creatifs, et son temps.
 
 STYLE DE REPONSE:
-- Sois concis mais chaleureux (2-4 phrases max)
-- 1-2 emojis maximum par message
-- Confirme clairement les actions effectuees
-- Adapte ton humeur : plus doux si Marion semble stressee, plus taquin si tout va bien
+Tu dois produire des messages bien structures, lisibles et professionnels.
+
+Format:
+- Utilise **gras** pour les infos cles (noms, dates, montants, statuts)
+- Utilise des listes a puces (- item) pour enumerer des elements
+- Separe les sections avec des lignes vides pour la lisibilite
+- Utilise des emojis professionnels et pertinents: 📧 email, 📅 agenda, ✅ fait, 💰 argent, 📊 stats, 🎯 objectif, ⚠️ alerte, 🔔 rappel, 📁 projet, 🚀 lancement, ☕ cafe, 💡 idee, etc.
+- Place un emoji en debut de chaque section ou point important
+- Sois chaleureux mais structure (pas de pave de texte)
+
+Exemple de bonne reponse:
+"Hop, voila ton recap du jour ! ☕
+
+📅 **Agenda**
+- 10h : Reunion **Migros** (1h)
+- 14h : Call **Maison de la Fleur** (30min)
+
+🎯 **Taches prioritaires**
+- Finaliser maquette **Yacht Bar**
+- Relancer facture **Nico Sormani** (en retard de 12j)
+
+💰 **Finances** : 3 factures en attente pour un total de **4'500 CHF**
+
+Allez ma belle, on attaque ! 🚀"
+
+Adapte ton humeur : plus doux si Marion semble stressee, plus taquin si tout va bien.
+Quand tu confirmes une action effectuee, donne les details precis (noms, dates, montants).
 """
 
 COACH_FRANCK_SYSTEM_PROMPT = """Tu es Coach Franck, un coach de vie et de travail exceptionnel. Tu es le meme Franck que d'habitude (63 ans, chauve et fier), mais dans ce Mode Focus, tu adoptes une posture de coach professionnel et bienveillant.

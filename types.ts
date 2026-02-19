@@ -1,10 +1,10 @@
 
 export enum ProjectStatus {
+    EN_COURS = 'En cours',
+    MAINTENANCE = 'Maintenance',
+    ASSOCIATION = 'Association',
     PROSPECT = 'Prospect',
-    ACTIVE = 'Active',
-    ARCHIVED = 'Archived',
-    PRO_BONO = 'Pro Bono',
-    PERSO = 'Perso'
+    ARCHIVED = 'Archivé'
   }
   
   export enum WorkflowPhase {
@@ -145,6 +145,7 @@ export enum ProjectStatus {
     avatarInitials: string;
     avatarColor?: string; // CSS gradient class string
     avatarImage?: string; // URL or Base64 string for custom image
+    logoTransform?: { x: number; y: number; scale: number }; // Position & scale adjustment
     status: ProjectStatus;
     phase: WorkflowPhase;
     tasks: Task[];
@@ -273,6 +274,7 @@ export interface ClientPortalSettings {
     clientName?: string;
     lastAccessed?: string;
     showAccount?: boolean; // Enable "Mon Compte" section
+    language?: 'fr' | 'en' | 'es'; // Portal language
 }
 
 export type PortalDeliverableType = 'link' | 'image' | 'file' | 'figma' | 'website';

@@ -71,7 +71,7 @@ def create_project_folder():
 
     try:
         safe_name = "".join([c for c in client_name if c.isalnum() or c in (' ', '-', '_')]).strip()
-        target_folder = STATUS_FOLDER_MAP.get(str(status_req).strip(), "Prospect")
+        target_folder = STATUS_FOLDER_MAP.get(str(status_req).strip(), "4. Prospects")
         project_path = DESKTOP_PATH / target_folder / safe_name
 
         if project_path.exists():
@@ -113,14 +113,15 @@ def move_file():
 
         # Find client root
         client_root = None
-        for status in ["Prospect", "Actif", "Archivé", "Pro bono", "Perso"]:
+        for status in ["1. En cours", "2. Maintenances", "3. Associations", "4. Prospects", "5. Archivés",
+                       "Prospect", "Actif", "Archivé", "Pro bono", "Perso"]:
             p = DESKTOP_PATH / status / data.get('client')
             if p.exists():
                 client_root = p
                 break
 
         if not client_root:
-            client_root = DESKTOP_PATH / "Prospect" / data.get('client')
+            client_root = DESKTOP_PATH / "4. Prospects" / data.get('client')
             os.makedirs(client_root)
 
         target_dir = client_root / data.get('folder', '')

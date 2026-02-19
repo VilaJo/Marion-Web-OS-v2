@@ -125,7 +125,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ projects = [], client 
 
     // --- FLOATING MODE (Global) ---
     // Filter only active projects
-    const activeProjects = projects.filter(p => p.status === ProjectStatus.ACTIVE);
+    const activeProjects = projects.filter(p => p.status === ProjectStatus.EN_COURS);
 
     return (
         <div 

@@ -72,49 +72,65 @@ export const formatRelativeDate = (dateString: string): string => {
 // Status color configurations
 export const getStatusColors = (status: ProjectStatus) => {
     switch (status) {
-        case ProjectStatus.ACTIVE:
+        case ProjectStatus.EN_COURS:
             return {
                 primary: '#10B981', secondary: '#34D399',
                 cardBg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
                 border: 'border-emerald-100/50 dark:border-emerald-900/30',
-                glow1: 'bg-brand-orange/60', glow2: 'bg-purple-500/50',
+                glow1: 'bg-emerald-500/60', glow2: 'bg-teal-400/50',
                 bar: 'bg-gradient-to-b from-emerald-400 to-teal-500',
+                barHover: 'from-emerald-400 to-teal-500',
                 avatarBg: 'from-emerald-50 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30',
                 avatarText: 'text-emerald-600 dark:text-emerald-400',
-                progress: 'from-emerald-400 via-teal-400 to-cyan-400'
+                progress: 'from-emerald-400 via-teal-400 to-cyan-400',
+                hoverBorder: 'hover:border-emerald-400/60 dark:hover:border-emerald-500/60',
+                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(16,185,129,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(16,185,129,0.3)]',
+                hoverText: 'group-hover:text-emerald-600 dark:group-hover:text-emerald-300',
             };
-        case ProjectStatus.PROSPECT:
+        case ProjectStatus.MAINTENANCE:
             return {
-                primary: '#F59E0B', secondary: '#FBBF24',
-                cardBg: 'bg-amber-50/50 dark:bg-amber-950/20',
-                border: 'border-amber-100/50 dark:border-amber-900/30',
-                glow1: 'bg-brand-orange/60', glow2: 'bg-purple-500/50',
-                bar: 'bg-gradient-to-b from-amber-400 to-yellow-500',
-                avatarBg: 'from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30',
-                avatarText: 'text-amber-600 dark:text-amber-400',
-                progress: 'from-amber-400 via-yellow-400 to-orange-400'
+                primary: '#F97316', secondary: '#FB923C',
+                cardBg: 'bg-orange-50/50 dark:bg-orange-950/20',
+                border: 'border-orange-100/50 dark:border-orange-900/30',
+                glow1: 'bg-orange-500/60', glow2: 'bg-amber-400/50',
+                bar: 'bg-gradient-to-b from-orange-400 to-amber-500',
+                barHover: 'from-orange-400 to-amber-500',
+                avatarBg: 'from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30',
+                avatarText: 'text-orange-600 dark:text-orange-400',
+                progress: 'from-orange-400 via-amber-400 to-yellow-400',
+                hoverBorder: 'hover:border-orange-400/60 dark:hover:border-orange-500/60',
+                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(249,115,22,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(249,115,22,0.3)]',
+                hoverText: 'group-hover:text-orange-600 dark:group-hover:text-orange-300',
             };
-        case ProjectStatus.PRO_BONO:
+        case ProjectStatus.ASSOCIATION:
             return {
                 primary: '#8B5CF6', secondary: '#A78BFA',
                 cardBg: 'bg-violet-50/50 dark:bg-violet-950/20',
                 border: 'border-violet-100/50 dark:border-violet-900/30',
-                glow1: 'bg-brand-orange/60', glow2: 'bg-purple-500/50',
+                glow1: 'bg-violet-500/60', glow2: 'bg-purple-400/50',
                 bar: 'bg-gradient-to-b from-violet-400 to-purple-500',
+                barHover: 'from-violet-400 to-purple-500',
                 avatarBg: 'from-violet-50 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30',
                 avatarText: 'text-violet-600 dark:text-violet-400',
-                progress: 'from-violet-400 via-purple-400 to-fuchsia-400'
+                progress: 'from-violet-400 via-purple-400 to-fuchsia-400',
+                hoverBorder: 'hover:border-violet-400/60 dark:hover:border-violet-500/60',
+                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(139,92,246,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(139,92,246,0.3)]',
+                hoverText: 'group-hover:text-violet-600 dark:group-hover:text-violet-300',
             };
-        case ProjectStatus.PERSO:
+        case ProjectStatus.PROSPECT:
             return {
-                primary: '#EC4899', secondary: '#F472B6',
-                cardBg: 'bg-pink-50/50 dark:bg-pink-950/20',
-                border: 'border-pink-100/50 dark:border-pink-900/30',
-                glow1: 'bg-brand-orange/60', glow2: 'bg-purple-500/50',
-                bar: 'bg-gradient-to-b from-pink-400 to-rose-500',
-                avatarBg: 'from-pink-50 to-rose-100 dark:from-pink-900/30 dark:to-rose-900/30',
-                avatarText: 'text-pink-600 dark:text-pink-400',
-                progress: 'from-pink-400 via-rose-400 to-red-400'
+                primary: '#3B82F6', secondary: '#60A5FA',
+                cardBg: 'bg-blue-50/50 dark:bg-blue-950/20',
+                border: 'border-blue-100/50 dark:border-blue-900/30',
+                glow1: 'bg-blue-500/60', glow2: 'bg-indigo-400/50',
+                bar: 'bg-gradient-to-b from-blue-400 to-indigo-500',
+                barHover: 'from-blue-400 to-indigo-500',
+                avatarBg: 'from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30',
+                avatarText: 'text-blue-600 dark:text-blue-400',
+                progress: 'from-blue-400 via-indigo-400 to-sky-400',
+                hoverBorder: 'hover:border-blue-400/60 dark:hover:border-blue-500/60',
+                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(59,130,246,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(59,130,246,0.3)]',
+                hoverText: 'group-hover:text-blue-600 dark:group-hover:text-blue-300',
             };
         case ProjectStatus.ARCHIVED:
         default:
@@ -122,11 +138,15 @@ export const getStatusColors = (status: ProjectStatus) => {
                 primary: '#64748B', secondary: '#94A3B8',
                 cardBg: 'bg-slate-50/50 dark:bg-slate-900/20',
                 border: 'border-slate-100/50 dark:border-slate-800/30',
-                glow1: 'bg-brand-orange/60', glow2: 'bg-purple-500/50',
+                glow1: 'bg-slate-400/60', glow2: 'bg-gray-400/50',
                 bar: 'bg-gradient-to-b from-slate-400 to-gray-500',
+                barHover: 'from-slate-400 to-gray-500',
                 avatarBg: 'from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-800',
                 avatarText: 'text-slate-500 dark:text-slate-400',
-                progress: 'from-slate-400 via-gray-400 to-slate-500'
+                progress: 'from-slate-400 via-gray-400 to-slate-500',
+                hoverBorder: 'hover:border-slate-400/60 dark:hover:border-slate-500/60',
+                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(100,116,139,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(100,116,139,0.3)]',
+                hoverText: 'group-hover:text-slate-600 dark:group-hover:text-slate-300',
             };
     }
 };
@@ -154,8 +174,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({ project, on
             onClick={onClick}
             className={`group transition-all duration-500 cursor-pointer 
             ${colors.cardBg} ${colors.border}
-            hover:scale-[1.03] hover:border-brand-orange/60 dark:hover:border-brand-orange/60
-            hover:shadow-[0_20px_50px_-12px_rgba(255,126,95,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(255,126,95,0.3)] 
+            hover:scale-[1.03] ${colors.hoverBorder}
+            ${colors.hoverShadow} 
             relative overflow-hidden`}
         >
             {/* Hover Glow Effects */}
@@ -163,7 +183,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({ project, on
             <div className={`absolute -left-20 -bottom-20 w-64 h-64 ${colors.glow2} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none z-0`}></div>
 
             {/* Left Accent Bar */}
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-brand-orange to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-[0_0_10px_rgba(255,126,95,0.5)] z-10" />
+            <div className={`absolute top-0 left-0 w-1.5 h-full ${colors.bar} opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10`} style={{ boxShadow: `0 0 10px ${colors.primary}80` }} />
 
             {/* Health Indicator */}
             <div className={`absolute top-3 right-3 w-2 h-2 rounded-full z-20 ${
@@ -181,7 +201,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({ project, on
                         {project.avatarInitials}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="font-serif text-lg md:text-xl leading-tight text-slate-800 dark:text-slate-100 group-hover:text-brand-orange dark:group-hover:text-orange-300 transition-colors truncate">
+                        <h3 className={`font-serif text-lg md:text-xl leading-tight text-slate-800 dark:text-slate-100 ${colors.hoverText} transition-colors truncate`}>
                             {project.clientName}
                         </h3>
                         <div className="flex items-center gap-2">
@@ -191,10 +211,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({ project, on
                 </div>
                 <div className="flex-shrink-0 ml-2">
                     <Badge color={
-                        project.status === ProjectStatus.ACTIVE ? 'green' :
-                        project.status === ProjectStatus.PROSPECT ? 'yellow' :
-                        project.status === ProjectStatus.PRO_BONO ? 'purple' :
-                        project.status === ProjectStatus.PERSO ? 'pink' : 'gray'
+                        project.status === ProjectStatus.EN_COURS ? 'green' :
+                        project.status === ProjectStatus.MAINTENANCE ? 'orange' :
+                        project.status === ProjectStatus.ASSOCIATION ? 'purple' :
+                        project.status === ProjectStatus.PROSPECT ? 'blue' : 'gray'
                     }>
                         {project.status === ProjectStatus.ARCHIVED && project.archiveCategory
                             ? `Archivé - ${project.archiveCategory}`
@@ -281,7 +301,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({ project, on
 
 export const StatusChart = ({ projects, onClick }: { projects: Project[], onClick: () => void }) => {
     const total = projects.length;
-    const active = projects.filter(p => p.status === ProjectStatus.ACTIVE).length;
+    const active = projects.filter(p => p.status === ProjectStatus.EN_COURS).length;
     const prospect = projects.filter(p => p.status === ProjectStatus.PROSPECT).length;
     const archived = projects.filter(p => p.status === ProjectStatus.ARCHIVED).length;
 

@@ -16,6 +16,7 @@ import {
 import { WorkflowPhase } from '../types';
 import { WorkflowTimeline } from '../components/WorkflowTimeline';
 import { WORKFLOW_CONFIG } from '../constants';
+import { Language, portalT, DATE_LOCALES } from '../translations/i18n';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -25,22 +26,22 @@ const API_BASE = '';  // same origin
 
 const PHASES = Object.values(WorkflowPhase);
 
-const FILE_CATEGORIES = [
-    { value: 'image', label: 'Image', icon: Image },
-    { value: 'logo', label: 'Logo', icon: Eye },
-    { value: 'text', label: 'Texte', icon: FileText },
-    { value: 'document', label: 'Document', icon: File },
-    { value: 'other', label: 'Autre', icon: Paperclip },
+const FILE_CATEGORIES_RAW = [
+    { value: 'image', labelKey: 'catImage', icon: Image },
+    { value: 'logo', labelKey: 'catLogo', icon: Eye },
+    { value: 'text', labelKey: 'catText', icon: FileText },
+    { value: 'document', labelKey: 'catDocument', icon: File },
+    { value: 'other', labelKey: 'catOther', icon: Paperclip },
 ] as const;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatDate(dateStr?: string): string {
+function formatDate(dateStr?: string, locale = 'fr-CH'): string {
     if (!dateStr) return '';
     try {
-        return new Intl.DateTimeFormat('fr-CH', {
+        return new Intl.DateTimeFormat(locale, {
             day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
         }).format(new Date(dateStr));
     } catch { return dateStr; }
@@ -107,6 +108,12 @@ const PortalPublicPage: React.FC = () => {
 
     // Account data is now included in main portal data (data.account)
 
+    // Language - derived from portal settings (returned in API response)
+    const lang: Language = (data?.settings?.language as Language) || 'fr';
+    const t = portalT[lang];
+    const dateLocale = DATE_LOCALES[lang];
+    const FILE_CATEGORIES = FILE_CATEGORIES_RAW.map(c => ({ ...c, label: t[c.labelKey] || c.labelKey }));
+
     // ------ Check portal exists ------
     useEffect(() => {
         if (!token) { setAuthState('not_found'); return; }
@@ -152,8 +159,8 @@ const PortalPublicPage: React.FC = () => {
                 body: JSON.stringify({ pin }),
             });
             if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: 'Erreur' }));
-                setPinError(err.error || 'Code incorrect');
+                const err = await res.json().catch(() => ({ error: t.incorrectCode }));
+                setPinError(err.error || t.incorrectCode);
                 return;
             }
             const { sessionToken } = await res.json();
@@ -161,7 +168,7 @@ const PortalPublicPage: React.FC = () => {
             setAuthState('authenticated');
             await loadPortalData();
         } catch {
-            setPinError('Erreur de connexion.');
+            setPinError(t.connectionError);
         }
     };
 
@@ -238,8 +245,8 @@ const PortalPublicPage: React.FC = () => {
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <AlertCircle className="text-red-500" size={32} />
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-2">Portail introuvable</h1>
-                    <p className="text-gray-500">Ce lien n'est plus actif ou n'existe pas.</p>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-2">{t.notFound}</h1>
+                    <p className="text-gray-500">{t.notFoundDesc}</p>
                 </div>
             </div>
         );
@@ -263,11 +270,11 @@ const PortalPublicPage: React.FC = () => {
                         <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                             <Lock className="text-white" size={28} />
                         </div>
-                        <h1 className="text-2xl font-serif font-bold text-gray-800">Portail Client</h1>
+                        <h1 className="text-2xl font-serif font-bold text-gray-800">{t.clientPortal}</h1>
                         {clientNamePreview && <p className="text-gray-500 mt-1">{clientNamePreview}</p>}
                     </div>
                     <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-                        <label className="block text-sm font-bold text-gray-600 mb-2">Code d'accès</label>
+                        <label className="block text-sm font-bold text-gray-600 mb-2">{t.accessCode}</label>
                         <input
                             type="password"
                             inputMode="numeric"
@@ -287,10 +294,10 @@ const PortalPublicPage: React.FC = () => {
                             disabled={pinInput.length < 4}
                             className="w-full mt-4 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl hover:shadow-lg disabled:opacity-40 transition-all"
                         >
-                            Accéder au portail
+                            {t.accessPortal}
                         </button>
                     </div>
-                    <p className="text-center text-xs text-gray-400 mt-6">Propulsé par Marion Web</p>
+                    <p className="text-center text-xs text-gray-400 mt-6">{t.poweredBy} Marion Web</p>
                 </div>
             </div>
         );
@@ -320,12 +327,12 @@ const PortalPublicPage: React.FC = () => {
                     </div>
                     <nav className="hidden sm:flex items-center gap-1 bg-gray-100 rounded-xl p-1 text-sm">
                         {[
-                            ...(settings.showAccount ? [{ id: 'section-account', label: 'Mon Compte' }] : []),
-                            { id: 'section-overview', label: 'Aperçu' },
-                            ...(settings.showDeliverables ? [{ id: 'section-deliverables', label: 'Livrables' }] : []),
-                            { id: 'section-activity', label: 'Activité' },
-                            ...(settings.allowComments ? [{ id: 'section-comments', label: 'Commentaires' }] : []),
-                            ...(settings.allowUploads ? [{ id: 'section-files', label: 'Fichiers' }] : []),
+                            ...(settings.showAccount ? [{ id: 'section-account', label: t.myAccount }] : []),
+                            { id: 'section-overview', label: t.overview },
+                            ...(settings.showDeliverables ? [{ id: 'section-deliverables', label: t.deliverables }] : []),
+                            { id: 'section-activity', label: t.activity },
+                            ...(settings.allowComments ? [{ id: 'section-comments', label: t.comments }] : []),
+                            ...(settings.allowUploads ? [{ id: 'section-files', label: t.files }] : []),
                         ].map(sec => (
                             <button
                                 key={sec.id}
@@ -341,7 +348,7 @@ const PortalPublicPage: React.FC = () => {
 
             {/* Project hero */}
             <div className="max-w-5xl mx-auto px-4 pt-8 pb-2 text-center">
-                <p className="text-xs font-medium uppercase tracking-widest text-orange-500 mb-1">Portail projet</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-orange-500 mb-1">{t.projectPortal}</p>
                 <h1 className="font-serif font-bold text-2xl sm:text-3xl text-gray-800">
                     {settings.clientName || data.clientName}
                 </h1>
@@ -357,7 +364,7 @@ const PortalPublicPage: React.FC = () => {
                     <section id="section-account" className="scroll-mt-24 pt-2 space-y-6">
                         <h2 className="font-serif font-bold text-gray-800 text-xl flex items-center gap-2">
                             <User size={20} className="text-orange-500" />
-                            Mon Compte
+                            {t.myAccount}
                         </h2>
 
                         {data.account ? (
@@ -365,7 +372,7 @@ const PortalPublicPage: React.FC = () => {
                                 {/* ---- Subscription Overview ---- */}
                                 <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                                     <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                                        <Shield size={16} className="text-emerald-500" /> Abonnement & Maintenance
+                                        <Shield size={16} className="text-emerald-500" /> {t.subscriptionMaintenance}
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {/* Contract status */}
@@ -374,17 +381,17 @@ const PortalPublicPage: React.FC = () => {
                                                 <FileCheck size={18} className="text-blue-600" />
                                             </div>
                                             <div>
-                                                <p className="text-xs text-gray-500">Contrat</p>
+                                                <p className="text-xs text-gray-500">{t.contract}</p>
                                                 <p className="text-sm font-semibold text-gray-800">
                                                     {data.account.maintenance?.hasContract ? (
-                                                        <span className="text-emerald-600">Actif</span>
+                                                        <span className="text-emerald-600">{t.active}</span>
                                                     ) : (
-                                                        <span className="text-gray-400">Non souscrit</span>
+                                                        <span className="text-gray-400">{t.notSubscribed}</span>
                                                     )}
                                                 </p>
                                                 {data.account.maintenance?.contractSignDate && (
                                                     <p className="text-[10px] text-gray-400">
-                                                        Depuis le {formatDate(data.account.maintenance.contractSignDate)}
+                                                        {t.since} {formatDate(data.account.maintenance.contractSignDate, dateLocale)}
                                                     </p>
                                                 )}
                                             </div>
@@ -396,10 +403,10 @@ const PortalPublicPage: React.FC = () => {
                                                 <CreditCard size={18} className="text-purple-600" />
                                             </div>
                                             <div>
-                                                <p className="text-xs text-gray-500">Tarif mensuel</p>
+                                                <p className="text-xs text-gray-500">{t.monthlyRate}</p>
                                                 <p className="text-sm font-semibold text-gray-800">
                                                     {data.account.maintenance?.monthlyPrice != null && data.account.maintenance.monthlyPrice > 0
-                                                        ? `${data.account.maintenance.monthlyPrice.toLocaleString('fr-CH')} CHF / mois`
+                                                        ? `${data.account.maintenance.monthlyPrice.toLocaleString(dateLocale)} ${t.perMonth}`
                                                         : <span className="text-gray-400">--</span>}
                                                 </p>
                                             </div>
@@ -412,9 +419,9 @@ const PortalPublicPage: React.FC = () => {
                                                     <Calendar size={18} className="text-orange-600" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs text-gray-500">Maintenance offerte jusqu'au</p>
+                                                    <p className="text-xs text-gray-500">{t.freeMaintenanceUntil}</p>
                                                     <p className="text-sm font-semibold text-gray-800">
-                                                        {formatDate(data.account.maintenance.freeMaintenanceEndDate)}
+                                                        {formatDate(data.account.maintenance.freeMaintenanceEndDate, dateLocale)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -426,25 +433,25 @@ const PortalPublicPage: React.FC = () => {
                                 {data.account.invoices?.length > 0 && (
                                     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                                         <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                                            <DollarSign size={16} className="text-emerald-500" /> Historique de facturation
+                                            <DollarSign size={16} className="text-emerald-500" /> {t.billingHistory}
                                         </h3>
                                         <div className="overflow-x-auto -mx-2">
                                             <table className="w-full text-sm">
                                                 <thead>
                                                     <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
-                                                        <th className="pb-2 px-2 font-medium">N°</th>
-                                                        <th className="pb-2 px-2 font-medium">Date</th>
-                                                        <th className="pb-2 px-2 font-medium text-right">Montant</th>
-                                                        <th className="pb-2 px-2 font-medium text-center">Statut</th>
+                                                        <th className="pb-2 px-2 font-medium">{t.tableNumber}</th>
+                                                        <th className="pb-2 px-2 font-medium">{t.tableDate}</th>
+                                                        <th className="pb-2 px-2 font-medium text-right">{t.tableAmount}</th>
+                                                        <th className="pb-2 px-2 font-medium text-center">{t.tableStatus}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-50">
                                                     {data.account.invoices.map((inv: any) => (
                                                         <tr key={inv.id} className="hover:bg-gray-50/50">
                                                             <td className="py-3 px-2 font-medium text-gray-700">{inv.number}</td>
-                                                            <td className="py-3 px-2 text-gray-500">{formatDate(inv.date)}</td>
+                                                            <td className="py-3 px-2 text-gray-500">{formatDate(inv.date, dateLocale)}</td>
                                                             <td className="py-3 px-2 text-right font-semibold text-gray-800">
-                                                                {inv.amount?.toLocaleString('fr-CH')} {inv.currency || 'CHF'}
+                                                                {inv.amount?.toLocaleString(dateLocale)} {inv.currency || 'CHF'}
                                                             </td>
                                                             <td className="py-3 px-2 text-center">
                                                                 <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -455,9 +462,9 @@ const PortalPublicPage: React.FC = () => {
                                                                 }`}>
                                                                     {inv.status === 'Paid' && <CheckCircle size={12} />}
                                                                     {inv.status === 'Pending' && <Clock size={12} />}
-                                                                    {inv.status === 'Paid' ? 'Payée' :
-                                                                     inv.status === 'Pending' ? 'En attente' :
-                                                                     inv.status === 'Partial' ? 'Partiel' : 'Brouillon'}
+                                                                    {inv.status === 'Paid' ? t.statusPaid :
+                                                                     inv.status === 'Pending' ? t.statusPending :
+                                                                     inv.status === 'Partial' ? t.statusPartial : t.statusDraft}
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -472,16 +479,16 @@ const PortalPublicPage: React.FC = () => {
                                 {data.account.documents?.length > 0 && (
                                     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                                         <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                                            <FileText size={16} className="text-blue-500" /> Mes Documents
+                                            <FileText size={16} className="text-blue-500" /> {t.myDocuments}
                                         </h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {data.account.documents.map((doc: any) => {
                                                 const typeConfig: Record<string, { color: string; bg: string; label: string }> = {
-                                                    contract: { color: 'text-blue-600', bg: 'bg-blue-100', label: 'Contrat' },
-                                                    invoice: { color: 'text-emerald-600', bg: 'bg-emerald-100', label: 'Facture' },
-                                                    quote: { color: 'text-purple-600', bg: 'bg-purple-100', label: 'Devis' },
-                                                    report: { color: 'text-orange-600', bg: 'bg-orange-100', label: 'Rapport' },
-                                                    other: { color: 'text-gray-600', bg: 'bg-gray-100', label: 'Autre' },
+                                                    contract: { color: 'text-blue-600', bg: 'bg-blue-100', label: t.typeContract },
+                                                    invoice: { color: 'text-emerald-600', bg: 'bg-emerald-100', label: t.typeInvoice },
+                                                    quote: { color: 'text-purple-600', bg: 'bg-purple-100', label: t.typeQuote },
+                                                    report: { color: 'text-orange-600', bg: 'bg-orange-100', label: t.typeReport },
+                                                    other: { color: 'text-gray-600', bg: 'bg-gray-100', label: t.typeOther },
                                                 };
                                                 const cfg = typeConfig[doc.docType] || typeConfig.other;
                                                 return (
@@ -511,11 +518,10 @@ const PortalPublicPage: React.FC = () => {
                                 {/* ---- Contact Support ---- */}
                                 <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                                     <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                        <Mail size={16} className="text-orange-500" /> Besoin d'aide ?
+                                        <Mail size={16} className="text-orange-500" /> {t.needHelp}
                                     </h3>
                                     <p className="text-sm text-gray-500 mb-4">
-                                        Pour toute question concernant votre abonnement, facturation ou projet,
-                                        n'hésitez pas à nous contacter.
+                                        {t.helpDescription}
                                     </p>
                                     <div className="flex flex-wrap gap-3">
                                         <a
@@ -529,7 +535,7 @@ const PortalPublicPage: React.FC = () => {
                                                 onClick={() => scrollTo('section-comments')}
                                                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-all"
                                             >
-                                                <MessageSquare size={14} /> Envoyer un message
+                                                <MessageSquare size={14} /> {t.sendMessage}
                                             </button>
                                         )}
                                     </div>
@@ -551,9 +557,9 @@ const PortalPublicPage: React.FC = () => {
                     {/* Tasks */}
                     {settings.showTasks && data.tasks?.length > 0 && (
                         <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm mt-6">
-                            <h2 className="font-serif font-bold text-gray-800 mb-4">Tâches en cours</h2>
+                            <h2 className="font-serif font-bold text-gray-800 mb-4">{t.currentTasks}</h2>
                             <div className="space-y-2">
-                                {data.tasks.filter((t: any) => !t.completed).slice(0, 8).map((task: any) => (
+                                {data.tasks.filter((tk: any) => !tk.completed).slice(0, 8).map((task: any) => (
                                     <div key={task.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                                         <Circle size={14} className="text-gray-300 flex-shrink-0" />
                                         <span className="text-sm text-gray-700 flex-1">{task.title}</span>
@@ -564,9 +570,9 @@ const PortalPublicPage: React.FC = () => {
                                         }`}>{task.priority}</span>
                                     </div>
                                 ))}
-                                {data.tasks.filter((t: any) => t.completed).length > 0 && (
+                                {data.tasks.filter((tk: any) => tk.completed).length > 0 && (
                                     <p className="text-xs text-emerald-500 font-medium mt-2">
-                                        {data.tasks.filter((t: any) => t.completed).length} tâche(s) terminée(s)
+                                        {data.tasks.filter((tk: any) => tk.completed).length} {t.completedTasks}
                                     </p>
                                 )}
                             </div>
@@ -576,7 +582,7 @@ const PortalPublicPage: React.FC = () => {
                     {/* Recent updates */}
                     {settings.showUpdates && data.updates?.length > 0 && (
                         <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm mt-6">
-                            <h2 className="font-serif font-bold text-gray-800 mb-4">Dernières mises à jour</h2>
+                            <h2 className="font-serif font-bold text-gray-800 mb-4">{t.latestUpdates}</h2>
                             <div className="space-y-4">
                                 {data.updates.map((u: any) => (
                                     <div key={u.id} className="border-l-2 border-orange-300 pl-4">
@@ -586,7 +592,7 @@ const PortalPublicPage: React.FC = () => {
                                                     {WORKFLOW_CONFIG[u.phase as WorkflowPhase]?.label || u.phase}
                                                 </span>
                                             )}
-                                            <span className="text-xs text-gray-400">{formatDate(u.createdAt)}</span>
+                                            <span className="text-xs text-gray-400">{formatDate(u.createdAt, dateLocale)}</span>
                                         </div>
                                         <h3 className="font-bold text-sm text-gray-800">{u.title}</h3>
                                         {u.content && <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{u.content}</p>}
@@ -600,11 +606,11 @@ const PortalPublicPage: React.FC = () => {
                 {/* ============ DELIVERABLES ============ */}
                 {settings.showDeliverables && (
                     <section id="section-deliverables" className="scroll-mt-24 pt-2">
-                        <h2 className="font-serif font-bold text-gray-800 text-xl mb-4">Livrables</h2>
+                        <h2 className="font-serif font-bold text-gray-800 text-xl mb-4">{t.deliverables}</h2>
                         {(!data.deliverables || data.deliverables.length === 0) ? (
                             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
                                 <File size={40} className="text-gray-300 mx-auto mb-3" />
-                                <p className="text-gray-400">Aucun livrable pour l'instant</p>
+                                <p className="text-gray-400">{t.noDeliverablesYet}</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -653,7 +659,7 @@ const PortalPublicPage: React.FC = () => {
                                                     {downloadUrl && (
                                                         <a href={downloadUrl} download
                                                            className="p-2 bg-gray-50 text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
-                                                           title="Télécharger">
+                                                           title={t.download}>
                                                             <Download size={16} />
                                                         </a>
                                                     )}
@@ -677,7 +683,7 @@ const PortalPublicPage: React.FC = () => {
 
                 {/* ============ ACTIVITY ============ */}
                 <section id="section-activity" className="scroll-mt-24 pt-2">
-                        <h2 className="font-serif font-bold text-gray-800 text-xl mb-4">Fil d'activité</h2>
+                        <h2 className="font-serif font-bold text-gray-800 text-xl mb-4">{t.activityFeed}</h2>
                         {(() => {
                             // Merge updates + comments into chronological feed
                             const items: any[] = [];
@@ -690,7 +696,7 @@ const PortalPublicPage: React.FC = () => {
                                 return (
                                     <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
                                         <Clock size={40} className="text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-400">Aucune activité pour l'instant</p>
+                                        <p className="text-gray-400">{t.noActivity}</p>
                                     </div>
                                 );
                             }
@@ -715,7 +721,7 @@ const PortalPublicPage: React.FC = () => {
                                                      item._type === 'file' ? (item.authorName || 'Client') :
                                                      item.author}
                                                 </span>
-                                                <span className="text-[10px] text-gray-400 ml-auto">{formatDate(item._date)}</span>
+                                                <span className="text-[10px] text-gray-400 ml-auto">{formatDate(item._date, dateLocale)}</span>
                                             </div>
                                             <div className="pl-9">
                                                 {item._type === 'update' && (
@@ -747,7 +753,7 @@ const PortalPublicPage: React.FC = () => {
                     <section id="section-comments" className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm scroll-mt-24">
                         <h2 className="font-serif font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <MessageSquare size={18} className="text-orange-500" />
-                            Commentaires ({data.comments?.length || 0})
+                            {t.comments} ({data.comments?.length || 0})
                         </h2>
                         {/* Comment list */}
                         <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
@@ -761,13 +767,13 @@ const PortalPublicPage: React.FC = () => {
                                         </div>
                                         <span className="text-sm font-bold text-gray-700">{c.author}</span>
                                         {c.isAdmin && <span className="text-[9px] font-bold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">Marion Web</span>}
-                                        <span className="text-[10px] text-gray-400 ml-auto">{formatDate(c.createdAt)}</span>
+                                        <span className="text-[10px] text-gray-400 ml-auto">{formatDate(c.createdAt, dateLocale)}</span>
                                     </div>
                                     <p className="text-sm text-gray-600 pl-8">{c.text}</p>
                                 </div>
                             ))}
                             {(!data.comments || data.comments.length === 0) && (
-                                <p className="text-sm text-gray-400 text-center py-4 italic">Aucun commentaire pour l'instant</p>
+                                <p className="text-sm text-gray-400 text-center py-4 italic">{t.noCommentsYet}</p>
                             )}
                         </div>
                         {/* New comment form */}
@@ -777,7 +783,7 @@ const PortalPublicPage: React.FC = () => {
                                     type="text"
                                     value={commentAuthor}
                                     onChange={e => setCommentAuthor(e.target.value)}
-                                    placeholder="Votre nom"
+                                    placeholder={t.yourName}
                                     className="w-36 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-300"
                                 />
                                 <input
@@ -785,7 +791,7 @@ const PortalPublicPage: React.FC = () => {
                                     value={commentText}
                                     onChange={e => setCommentText(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleComment()}
-                                    placeholder="Votre message..."
+                                    placeholder={t.yourMessage}
                                     className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-300"
                                 />
                                 <button
@@ -803,7 +809,7 @@ const PortalPublicPage: React.FC = () => {
                 {/* ============ FILES (Upload) ============ */}
                 {settings.allowUploads && (
                     <section id="section-files" className="space-y-6 scroll-mt-24">
-                        <h2 className="font-serif font-bold text-gray-800 text-xl">Envoyer des fichiers</h2>
+                        <h2 className="font-serif font-bold text-gray-800 text-xl">{t.sendFiles}</h2>
 
                         {/* Upload zone */}
                         <div
@@ -827,14 +833,14 @@ const PortalPublicPage: React.FC = () => {
                                 }}
                             />
                             <Upload size={40} className={`mx-auto mb-3 ${dragOver ? 'text-orange-500' : 'text-gray-300'}`} />
-                            <p className="text-gray-600 font-medium">Glissez vos fichiers ici</p>
-                            <p className="text-xs text-gray-400 mt-1">ou cliquez pour sélectionner (max 20 Mo)</p>
+                            <p className="text-gray-600 font-medium">{t.dropFilesHere}</p>
+                            <p className="text-xs text-gray-400 mt-1">{t.orClickToSelect}</p>
                         </div>
 
                         {/* Selected files */}
                         {uploadFiles.length > 0 && (
                             <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
-                                <h3 className="text-sm font-bold text-gray-600">Fichiers sélectionnés ({uploadFiles.length})</h3>
+                                <h3 className="text-sm font-bold text-gray-600">{t.selectedFiles} ({uploadFiles.length})</h3>
                                 <div className="space-y-2">
                                     {uploadFiles.map((f, idx) => (
                                         <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg text-sm">
@@ -851,7 +857,7 @@ const PortalPublicPage: React.FC = () => {
 
                                 {/* Category */}
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Catégorie</label>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">{t.category}</label>
                                     <div className="flex gap-2 flex-wrap">
                                         {FILE_CATEGORIES.map(cat => (
                                             <button
@@ -875,14 +881,14 @@ const PortalPublicPage: React.FC = () => {
                                         type="text"
                                         value={uploadAuthor}
                                         onChange={e => setUploadAuthor(e.target.value)}
-                                        placeholder="Votre nom"
+                                        placeholder={t.yourName}
                                         className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-300"
                                     />
                                     <input
                                         type="text"
                                         value={uploadNote}
                                         onChange={e => setUploadNote(e.target.value)}
-                                        placeholder="Note (optionnel)"
+                                        placeholder={t.noteOptional}
                                         className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-300"
                                     />
                                 </div>
@@ -900,9 +906,9 @@ const PortalPublicPage: React.FC = () => {
                                     className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl hover:shadow-lg disabled:opacity-40 transition-all flex items-center justify-center gap-2"
                                 >
                                     {uploading ? (
-                                        <><Loader2 size={16} className="animate-spin" /> Envoi en cours... {uploadProgress}%</>
+                                        <><Loader2 size={16} className="animate-spin" /> {t.uploadingProgress} {uploadProgress}%</>
                                     ) : (
-                                        <><Upload size={16} /> Envoyer {uploadFiles.length} fichier{uploadFiles.length > 1 ? 's' : ''}</>
+                                        <><Upload size={16} /> {t.sendNFiles.replace('{n}', String(uploadFiles.length)).replace('{s}', uploadFiles.length > 1 ? 's' : '')}</>
                                     )}
                                 </button>
                             </div>
@@ -911,7 +917,7 @@ const PortalPublicPage: React.FC = () => {
                         {/* Already uploaded files */}
                         {data.clientFiles?.length > 0 && (
                             <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-                                <h3 className="text-sm font-bold text-gray-600 mb-3">Fichiers déjà envoyés</h3>
+                                <h3 className="text-sm font-bold text-gray-600 mb-3">{t.filesAlreadySent}</h3>
                                 <div className="space-y-2">
                                     {data.clientFiles.map((f: any) => (
                                         <div key={f.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
@@ -927,7 +933,7 @@ const PortalPublicPage: React.FC = () => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-gray-700 truncate">{f.originalName}</p>
-                                                <p className="text-xs text-gray-400">{formatSize(f.sizeBytes)} · {formatDate(f.createdAt)}</p>
+                                                <p className="text-xs text-gray-400">{formatSize(f.sizeBytes)} · {formatDate(f.createdAt, dateLocale)}</p>
                                             </div>
                                             <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
                                         </div>
@@ -942,7 +948,7 @@ const PortalPublicPage: React.FC = () => {
             {/* Footer */}
             <footer className="border-t border-gray-100 mt-12 py-6 text-center">
                 <p className="text-xs text-gray-400">
-                    Propulsé par{' '}
+                    {t.poweredBy}{' '}
                     <a href="https://marionweb.ch" target="_blank" rel="noopener noreferrer"
                        className="text-orange-500 hover:underline font-medium">
                         Marion Web
@@ -976,7 +982,7 @@ const PortalPublicPage: React.FC = () => {
                         onClick={e => e.stopPropagation()}
                         className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white text-sm font-medium transition-colors"
                     >
-                        <Download size={16} /> Télécharger
+                        <Download size={16} /> {t.download}
                     </a>
 
                     {/* Image */}

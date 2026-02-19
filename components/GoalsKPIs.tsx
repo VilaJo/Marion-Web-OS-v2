@@ -130,8 +130,8 @@ export const GoalsKPIs: React.FC<GoalsKPIsProps> = ({ projects, currency = 'CHF'
             .reduce((sum, inv) => sum + inv.amount, 0);
 
         // Client calculations
-        const activeClients = projects.filter(p => p.status === 'Active').length;
-        const totalClients = projects.filter(p => p.status !== 'Perso').length;
+        const activeClients = projects.filter(p => p.status === 'En cours').length;
+        const totalClients = projects.length;
         
         const thisYearClients = projects.filter(p => {
             const created = new Date(p.createdAt);
@@ -139,7 +139,7 @@ export const GoalsKPIs: React.FC<GoalsKPIsProps> = ({ projects, currency = 'CHF'
         }).length;
 
         // Project calculations
-        const completedProjects = projects.filter(p => p.status === 'Archived').length;
+        const completedProjects = projects.filter(p => p.status === 'Archivé').length;
         const pendingInvoicesAmount = allInvoices
             .filter(inv => inv.status === 'Pending')
             .reduce((sum, inv) => sum + inv.amount, 0);
@@ -246,13 +246,13 @@ export const GoalsKPIs: React.FC<GoalsKPIsProps> = ({ projects, currency = 'CHF'
                 if (goal.period === 'yearly') {
                     return projects.filter(p => {
                         const created = new Date(p.createdAt);
-                        return created.getFullYear() === goal.year && p.status !== 'Perso';
+                        return created.getFullYear() === goal.year;
                     }).length;
                 }
                 break;
             case 'projects':
                 if (goal.period === 'yearly') {
-                    return projects.filter(p => p.status === 'Archived').length;
+                    return projects.filter(p => p.status === 'Archivé').length;
                 }
                 break;
             default:

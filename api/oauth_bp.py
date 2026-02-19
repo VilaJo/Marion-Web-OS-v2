@@ -332,6 +332,10 @@ def google_drive_sync():
 # Server-side cache for Google Calendar events
 _gcal_cache = {"events": [], "timestamp": 0, "ttl": 60}
 
+def invalidate_gcal_cache():
+    """Invalidate the GCal cache so the next fetch hits Google directly."""
+    _gcal_cache["timestamp"] = 0
+
 
 @oauth_bp.route('/gcal/calendars')
 def gcal_list_calendars():

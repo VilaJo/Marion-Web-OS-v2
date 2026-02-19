@@ -295,8 +295,8 @@ describe('useProjectStore', () => {
     });
 
     it('setFilter: updates filter state', () => {
-        useProjectStore.getState().setFilter('Active');
-        expect(useProjectStore.getState().filter).toBe('Active');
+        useProjectStore.getState().setFilter('En cours');
+        expect(useProjectStore.getState().filter).toBe('En cours');
     });
 
     it('setSearchQuery: updates search state', () => {
