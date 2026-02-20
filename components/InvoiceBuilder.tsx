@@ -128,15 +128,18 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
             label: 'Compte Principal (Suisse)',
             bankName: 'Banque Suisse',
             iban: 'CH91 0020 6206 7850 8040 G',
+            beneficiary: 'Marion Kindynis',
             address: '4A chemin du Port, 1246 Corsier',
             currency: 'CHF'
         },
         {
             id: 'revolut',
-            label: 'Revolut (EUR/USD)',
+            label: 'Revolut (EUR)',
             bankName: 'Revolut Bank UAB',
             iban: 'LT35 3250 0771 7520 9958',
             bic: 'REVOLT21',
+            correspondentBic: 'CHASDEFX',
+            beneficiary: 'Marion Kindynis',
             address: 'Konstitucijos ave. 21B, 08130, Vilnius, Lithuania',
             currency: 'EUR'
         }
@@ -811,14 +814,44 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                             </div>
                         </div>
                     ) : (
-                        <div className="w-full border-t-2 border-slate-100 p-8 text-center text-slate-500 bg-slate-50">
-                            <p className="font-bold text-sm mb-2 uppercase tracking-widest">{t.paymentInfo}</p>
-                            <p>{t.sepaInstruction} <strong>{formatCurrency(calculateTotal(), 2)} {currentInvoice.currency}</strong> {t.sepaInstructionEnd}</p>
-                            <div className="mt-4 p-4 bg-white border border-slate-200 inline-block rounded-xl shadow-sm text-left relative">
-                                <p><span className="font-bold text-slate-400 w-20 inline-block">{t.bank}</span> {activeBank.bankName}</p>
-                                <p><span className="font-bold text-slate-400 w-20 inline-block">{t.iban}</span> {activeBank.iban}</p>
-                                {activeBank.bic && <p><span className="font-bold text-slate-400 w-20 inline-block">{t.bic}</span> {activeBank.bic}</p>}
-                                <p><span className="font-bold text-slate-400 w-20 inline-block">{t.address}</span> {activeBank.address}</p>
+                        <div className="w-full border-t-2 border-slate-100 px-8 py-10 text-center text-slate-600 bg-gradient-to-b from-slate-50 to-white">
+                            <p className="font-bold text-xs mb-1 uppercase tracking-[0.25em] text-slate-400">{t.paymentInfo}</p>
+                            <p className="text-sm mt-2">{t.sepaInstruction} <strong className="text-slate-800">{formatCurrency(calculateTotal(), 2)} {currentInvoice.currency}</strong> {t.sepaInstructionEnd}</p>
+                            <div className="mt-6 mx-auto max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden text-left">
+                                <table className="w-full text-sm">
+                                    <tbody>
+                                        {activeBank.beneficiary && (
+                                            <tr className="border-b border-slate-100">
+                                                <td className="py-2.5 pl-5 pr-3 font-semibold text-slate-400 whitespace-nowrap w-44">{t.beneficiary}</td>
+                                                <td className="py-2.5 pr-5 text-slate-700">{activeBank.beneficiary}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="border-b border-slate-100">
+                                            <td className="py-2.5 pl-5 pr-3 font-semibold text-slate-400 whitespace-nowrap w-44">{t.iban}</td>
+                                            <td className="py-2.5 pr-5 text-slate-700 font-mono tracking-wide">{activeBank.iban}</td>
+                                        </tr>
+                                        {activeBank.bic && (
+                                            <tr className="border-b border-slate-100">
+                                                <td className="py-2.5 pl-5 pr-3 font-semibold text-slate-400 whitespace-nowrap w-44">{t.bic}</td>
+                                                <td className="py-2.5 pr-5 text-slate-700 font-mono">{activeBank.bic}</td>
+                                            </tr>
+                                        )}
+                                        {activeBank.correspondentBic && (
+                                            <tr className="border-b border-slate-100">
+                                                <td className="py-2.5 pl-5 pr-3 font-semibold text-slate-400 whitespace-nowrap w-44">{t.correspondentBic}</td>
+                                                <td className="py-2.5 pr-5 text-slate-700 font-mono">{activeBank.correspondentBic}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="border-b border-slate-100">
+                                            <td className="py-2.5 pl-5 pr-3 font-semibold text-slate-400 whitespace-nowrap w-44">{t.bank}</td>
+                                            <td className="py-2.5 pr-5 text-slate-700">{activeBank.bankName}</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="py-2.5 pl-5 pr-3 font-semibold text-slate-400 whitespace-nowrap w-44">{t.address}</td>
+                                            <td className="py-2.5 pr-5 text-slate-700">{activeBank.address}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     )}

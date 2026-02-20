@@ -468,6 +468,10 @@ def gcal_create_event():
             "location": data.get("location", ""),
         }
 
+        color_id = data.get("colorId")
+        if color_id:
+            event["colorId"] = str(color_id)
+
         event_date = data.get("date")
         start_time_str = data.get("startTime", "09:00")
         duration = data.get("duration", 60)
@@ -547,6 +551,10 @@ def gcal_update_event(event_id):
             "description": data.get("description", ""),
             "location": data.get("location", ""),
         }
+
+        color_id = data.get("colorId")
+        if color_id:
+            event["colorId"] = str(color_id)
 
         event_date = data.get("date")
         start_time_str = data.get("startTime", "09:00")
@@ -719,6 +727,7 @@ def _parse_gcal_events(items: list) -> list:
             "meetLink": ev.get("hangoutLink", ""),
             "source": "google",
             "googleEventId": ev.get("id"),
+            "colorId": ev.get("colorId", ""),
             "originalTimezone": start.get("timeZone", "Europe/Zurich"),
             "originalDateTime": start_dt_str,
         })

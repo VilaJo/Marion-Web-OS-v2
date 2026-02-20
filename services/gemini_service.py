@@ -252,11 +252,14 @@ def add_todo_tool(text: str, priority: str = "Medium", project_name: str = None)
 
 def add_event_tool(title: str, date: str, start_time: str = "09:00", duration: int = 60, add_meet: bool = False):
     """Cree un evenement dans Google Calendar (ou en local si Google n'est pas connecte)."""
+    logger.info("add_event_tool called: title=%s, date=%s, time=%s, duration=%s, meet=%s", title, date, start_time, duration, add_meet)
     try:
         from services.oauth_service import get_first_email, get_valid_token
         email = get_first_email()
+        logger.info("add_event_tool: email=%s", email)
         if email:
             access_token = get_valid_token(email)
+            logger.info("add_event_tool: got access_token=%s", bool(access_token))
             if access_token:
                 event_body = {
                     "summary": title,
@@ -284,15 +287,18 @@ def add_event_tool(title: str, date: str, start_time: str = "09:00", duration: i
 
                 headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
                 resp = http_requests.post(url, headers=headers, json=event_body, timeout=15)
+                logger.info("add_event_tool: GCal API response status=%s", resp.status_code)
                 if resp.status_code in (200, 201):
                     created = resp.json()
                     meet_link = created.get("hangoutLink", "")
                     try:
                         from api.oauth_bp import invalidate_gcal_cache
                         invalidate_gcal_cache()
-                    except Exception:
-                        pass
+                        logger.info("add_event_tool: gcal cache invalidated")
+                    except Exception as cache_err:
+                        logger.warning("add_event_tool: cache invalidation failed: %s", cache_err)
                     _record_action("events")
+                    logger.info("add_event_tool: SUCCESS - event created, action recorded")
                     msg = f"Evenement '{title}' cree dans Google Calendar le {date} a {start_time}."
                     if meet_link:
                         msg += f" Lien Meet: {meet_link}"
@@ -309,7 +315,7 @@ def add_event_tool(title: str, date: str, start_time: str = "09:00", duration: i
         "date": date,
         "startTime": start_time,
         "duration": duration,
-        "type": "Personal",
+        "type": "Perso",
         "source": "franck"
     }
     franck_events.append(event)
@@ -858,7 +864,26 @@ def execute_tool(name: str, args: dict):
     fn = TOOLS_MAP.get(name)
     if fn is None:
         return f"Fonction inconnue: {name}"
-    return fn(**args)
+    clean_args = {}
+    import inspect
+    sig = inspect.signature(fn)
+    for k, v in args.items():
+        if k in sig.parameters:
+            ann = sig.parameters[k].annotation
+            if ann == int and not isinstance(v, int):
+                try: v = int(float(v))
+                except (ValueError, TypeError): pass
+            elif ann == float and not isinstance(v, (int, float)):
+                try: v = float(v)
+                except (ValueError, TypeError): pass
+            elif ann == bool and not isinstance(v, bool):
+                v = str(v).lower() in ('true', '1', 'yes', 'oui')
+        clean_args[k] = v
+    try:
+        return fn(**clean_args)
+    except Exception as e:
+        logger.error("Tool execution error %s: %s", name, e, exc_info=True)
+        return f"Erreur lors de l'execution de {name}: {str(e)}"
 
 
 # ---------------------------------------------------------------------------
@@ -923,6 +948,13 @@ Exemples:
 - "Ajoute une reunion demain a 10h" → Tu reponds "Je vais creer: **Reunion** le XX/XX a 10h (1h). C'est bon pour toi ?"
 - "Cree une facture pour Maison de la Fleur" → Tu reponds avec les details et demandes confirmation
 Les SEULES exceptions ou tu peux agir sans confirmation : consulter des infos, verifier la dispo, analyser les finances (actions en lecture seule).
+
+REGLE CRITIQUE — EXECUTION DES OUTILS:
+Quand Marion confirme (oui, ok, go, vas-y, c'est bon, envoie, parfait, etc.), tu DOIS OBLIGATOIREMENT appeler la fonction/outil correspondant. Ne reponds JAMAIS "c'est fait" ou "c'est note" sans avoir REELLEMENT appele l'outil. Si tu n'appelles pas l'outil, l'action N'EST PAS executee. Tu ne peux pas creer d'evenement, envoyer d'email, ou creer de facture juste en le disant — tu DOIS utiliser la function_call correspondante.
+Exemple correct apres confirmation:
+1. Marion dit "oui" → Tu appelles add_event_tool(...) → Tu recois le resultat → Tu confirmes avec les details
+Exemple INCORRECT:
+1. Marion dit "oui" → Tu reponds "C'est fait !" sans appeler l'outil → L'action N'A PAS ete executee !
 
 CONTEXTE:
 Tu travailles dans "Marion Web OS", une application de gestion pour webdesigners.

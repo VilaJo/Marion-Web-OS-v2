@@ -203,12 +203,14 @@ SUGGESTIONS POSSIBLES:
             for _round in range(MAX_TOOL_ROUNDS):
                 part = response.candidates[0].content.parts[0]
                 if not (hasattr(part, 'function_call') and part.function_call):
+                    logger.info("Franck final text (round %d, no tool call): %.200s", _round, response.text or "(empty)")
                     yield response.text
                     break
                 func_name = part.function_call.name
                 func_args = dict(part.function_call.args) if part.function_call.args else {}
-                logger.info("Franck tool call [%d]: %s(%s)", _round + 1, func_name, func_args)
+                logger.info("Franck EXECUTING tool [round %d]: %s(%s)", _round + 1, func_name, func_args)
                 res = execute_tool(func_name, func_args)
+                logger.info("Franck tool result [%s]: %.300s", func_name, str(res))
                 response = chat_session.send_message(
                     types.Part.from_function_response(name=func_name, response={"result": res})
                 )

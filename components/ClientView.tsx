@@ -1567,13 +1567,10 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                         </div>
                     </Card>
 
-                    {/* Maintenance Widget - Only visible in Maintenance phase */}
-                    {project.phase === WorkflowPhase.MAINTENANCE && (
-                        <MaintenanceWidget 
-                            project={project} 
-                            onUpdateProject={onUpdateProject}
-                        />
-                    )}
+                    <MaintenanceWidget 
+                        project={project} 
+                        onUpdateProject={onUpdateProject}
+                    />
 
                     {/* Brand Center Trigger */}
                     <Card className="relative overflow-hidden group cursor-pointer hover:border-brand-orange transition-all" onClick={() => setShowBrandCenter(true)}>

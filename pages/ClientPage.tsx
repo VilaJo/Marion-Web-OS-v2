@@ -6,7 +6,7 @@
 import React, { Suspense, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUIStore, useNotificationStore } from '../stores';
-import { useProjects, useSaveProject, useDeleteProject, useUpdateProjectCache } from '../services/queries';
+import { useProjects, useSaveProject, useDeleteProject } from '../services/queries';
 import { SplashScreen } from '../components/SplashScreen';
 
 const ClientView = React.lazy(() => import('../components/ClientView').then(m => ({ default: m.ClientView })));
@@ -17,7 +17,6 @@ export const ClientPage: React.FC = () => {
     const { data: projects = [], isLoading } = useProjects();
     const saveProjectMutation = useSaveProject();
     const deleteProjectMutation = useDeleteProject();
-    const updateProjectCache = useUpdateProjectCache();
     const { theme } = useUIStore();
     const { addNotification } = useNotificationStore();
 
@@ -43,9 +42,9 @@ export const ClientPage: React.FC = () => {
                 project={project}
                 onBack={() => navigate('/')}
                 onUpdateProject={(updated, oldId) => {
-                    // Optimistic cache update + save via mutation
-                    updateProjectCache(updated, oldId);
-                    saveProjectMutation.mutate(updated);
+                    saveProjectMutation.mutate({ project: updated, oldId }, {
+                        onError: () => addNotification('Erreur Sauvegarde', "Les modifications n'ont pas été enregistrées.", 'error'),
+                    });
                 }}
                 onNotify={addNotification}
                 onDelete={(projectId) => {

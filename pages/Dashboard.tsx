@@ -3,17 +3,18 @@
  * Extracted from App.tsx for route-based navigation
  */
 
-import React, { Suspense, useState, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Project, ProjectStatus, CalendarEvent, WorkflowPhase, Invoice, Activity } from '../types';
 import { formatCurrency, formatCurrencyWithSymbol } from '../utils';
 import { sanitizeHTML } from '../utils/sanitize';
 import { useProjectStore, useUIStore, useNotificationStore, useUndoStore } from '../stores';
-import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache } from '../services/queries';
+import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache, useCreateGoogleEvent } from '../services/queries';
 import { generateBriefing } from '../services/geminiService';
 import { ProjectCard } from '../components/ProjectCard';
 import { Card, Modal, EmptyState } from '../components/Shared';
 import { SplashScreen } from '../components/SplashScreen';
+import { NewClientScreen, NewClientData } from '../components/NewClientScreen';
 
 // Lazy loaded components
 const Agenda = React.lazy(() => import('../components/Agenda').then(m => ({ default: m.Agenda })));
@@ -34,6 +35,29 @@ import { exportCSV, exportSingleSheetXLSX, type CSVColumn } from '../utils/expor
 
 declare const confetti: any;
 
+function persistentSet(key: string): Set<string> {
+    const raw = sessionStorage.getItem(key);
+    const set = new Set<string>(raw ? JSON.parse(raw) : []);
+    return new Proxy(set, {
+        get(target, prop, receiver) {
+            if (prop === 'add') {
+                return (value: string) => {
+                    target.add(value);
+                    sessionStorage.setItem(key, JSON.stringify([...target]));
+                    return target;
+                };
+            }
+            const val = Reflect.get(target, prop, receiver);
+            return typeof val === 'function' ? val.bind(target) : val;
+        },
+    });
+}
+
+const _notifiedEvents = persistentSet('_notifiedEvents');
+const _notifiedInvoices = persistentSet('_notifiedInvoices');
+const _notifiedInactiveClients = persistentSet('_notifiedInactiveClients');
+const _notifiedMaintenance = persistentSet('_notifiedMaintenance');
+
 // ============================================================================
 // Dashboard Component
 // ============================================================================
@@ -47,6 +71,7 @@ export const Dashboard: React.FC = () => {
     const moveProjectMutation = useMoveProject();
     const createClientFolder = useCreateClientFolder();
     const initDatabase = useInitDatabase();
+    const createGoogleEventMutation = useCreateGoogleEvent();
     const updateProjectCache = useUpdateProjectCache();
     const pushUndo = useUndoStore((s) => s.pushUndo);
 
@@ -69,20 +94,12 @@ export const Dashboard: React.FC = () => {
     const { addNotification } = useNotificationStore();
 
     // --- Local State ---
-    const [newClientStatus, setNewClientStatus] = useState<ProjectStatus>(ProjectStatus.EN_COURS);
-    const [newClientEmail, setNewClientEmail] = useState('');
-    const [newClientPhone, setNewClientPhone] = useState('');
-    const [newClientWebsite, setNewClientWebsite] = useState('');
     const [isCreatingClient, setIsCreatingClient] = useState(false);
     const [briefingContent, setBriefingContent] = useState('');
     const [isBriefingLoading, setIsBriefingLoading] = useState(false);
     const [showAllActivities, setShowAllActivities] = useState(false);
 
-    // --- Notification Scheduling Refs ---
-    const notifiedEventsRef = useRef(new Set<string>());
-    const notifiedInvoicesRef = useRef(new Set<string>());
-    const notifiedInactiveClientsRef = useRef(new Set<string>());
-    const notifiedMaintenanceRef = useRef(new Set<string>());
+    // Module-level sets persist across mount/unmount cycles
 
     // ========================================================================
     // Notification Schedulers
@@ -101,23 +118,23 @@ export const Dashboard: React.FC = () => {
                 const isReminder = event.id.startsWith('reminder-');
 
                 if (isReminder) {
-                    if (diffMinutes === 30 && !notifiedEventsRef.current.has(event.id + '_30min')) {
+                    if (diffMinutes === 30 && !_notifiedEvents.has(event.id + '_30min')) {
                         addNotification('🔔 Rappel', `"${event.title}" dans 30 minutes.`, 'deadline');
-                        notifiedEventsRef.current.add(event.id + '_30min');
+                        _notifiedEvents.add(event.id + '_30min');
                     }
                     return;
                 }
 
-                if (diffMinutes === 15 && !notifiedEventsRef.current.has(event.id + '_15min')) {
+                if (diffMinutes === 15 && !_notifiedEvents.has(event.id + '_15min')) {
                     addNotification('⏳ Bientôt', `"${event.title}" commence dans 15 minutes.`, 'info');
-                    notifiedEventsRef.current.add(event.id + '_15min');
+                    _notifiedEvents.add(event.id + '_15min');
                 }
 
-                if (diffMinutes === 1 && !notifiedEventsRef.current.has(event.id + '_1min')) {
-                    const notifType = event.type === 'Deadline' ? 'deadline' : 'warning';
-                    const title = event.type === 'Deadline' ? '🔥 Deadline Imminente' : '🚀 Ça commence !';
+                if (diffMinutes === 1 && !_notifiedEvents.has(event.id + '_1min')) {
+                    const notifType = event.type === 'Deadlines' ? 'deadline' : 'warning';
+                    const title = event.type === 'Deadlines' ? '🔥 Deadline Imminente' : '🚀 Ça commence !';
                     addNotification(title, `"${event.title}" démarre dans 1 minute.`, notifType);
-                    notifiedEventsRef.current.add(event.id + '_1min');
+                    _notifiedEvents.add(event.id + '_1min');
                     const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
                     audio.volume = 0.3;
                     audio.play().catch(() => {});
@@ -128,101 +145,88 @@ export const Dashboard: React.FC = () => {
         return () => clearInterval(interval);
     }, [events, addNotification]);
 
-    // Invoice overdue notifications
+    // Invoice overdue & client inactivity notifications (batched)
     useEffect(() => {
-        const checkInvoices = () => {
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            projects.forEach(project => {
-                project.invoices.forEach(inv => {
-                    if (inv.status !== 'Paid' && inv.dueDate) {
-                        const dueDate = new Date(inv.dueDate);
-                        if (dueDate < today && !notifiedInvoicesRef.current.has(inv.id)) {
-                            addNotification(
-                                'Retard de Paiement 💸',
-                                `La facture ${inv.number} de ${project.clientName} est échue depuis le ${new Date(inv.dueDate).toLocaleDateString()}.`,
-                                'finance',
-                                `/client/${encodeURIComponent(project.id)}`,
-                            );
-                            notifiedInvoicesRef.current.add(inv.id);
-                        }
-                    }
-                });
-            });
-        };
-        checkInvoices();
-        const interval = setInterval(checkInvoices, 60000);
-        return () => clearInterval(interval);
-    }, [projects, addNotification]);
+        if (projects.length === 0) return;
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
 
-    // Client inactivity notifications (2 weeks)
-    useEffect(() => {
-        const checkInactiveClients = () => {
-            const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
-            const now = Date.now();
-            const activeProjects = projects.filter(p => p.status === ProjectStatus.EN_COURS);
-            activeProjects.forEach(project => {
-                const projectActivities = activities.filter(a => a.projectId === project.id);
-                const lastActivity = projectActivities.length > 0
-                    ? new Date(projectActivities[0].timestamp).getTime()
-                    : new Date(project.createdAt).getTime();
-                const inactiveDuration = now - lastActivity;
-                if (inactiveDuration > TWO_WEEKS_MS && !notifiedInactiveClientsRef.current.has(project.id)) {
-                    const daysInactive = Math.floor(inactiveDuration / (24 * 60 * 60 * 1000));
-                    addNotification(
-                        '💤 Client en sommeil',
-                        `Tu n'as pas bossé sur "${project.clientName}" depuis ${daysInactive} jours.`,
-                        'warning',
-                        `/client/${encodeURIComponent(project.id)}`,
-                    );
-                    notifiedInactiveClientsRef.current.add(project.id);
+        // Overdue invoices
+        const newOverdue: string[] = [];
+        projects.forEach(project => {
+            project.invoices.forEach(inv => {
+                if (inv.status !== 'Paid' && inv.dueDate) {
+                    const dueDate = new Date(inv.dueDate);
+                    if (dueDate < todayStart && !_notifiedInvoices.has(inv.id)) {
+                        newOverdue.push(`${inv.number} (${project.clientName})`);
+                        _notifiedInvoices.add(inv.id);
+                    }
                 }
             });
-        };
-        if (projects.length > 0) checkInactiveClients();
-        const interval = setInterval(checkInactiveClients, 3600000);
-        return () => clearInterval(interval);
+        });
+        if (newOverdue.length === 1) {
+            addNotification('Retard de Paiement 💸', `Facture ${newOverdue[0]} en retard.`, 'finance', '/finances');
+        } else if (newOverdue.length > 1) {
+            addNotification('Retard de Paiement 💸', `${newOverdue.length} factures en retard : ${newOverdue.slice(0, 3).join(', ')}${newOverdue.length > 3 ? '…' : ''}.`, 'finance', '/finances');
+        }
+
+        // Inactive clients
+        const newInactive: string[] = [];
+        const activeProjects = projects.filter(p => p.status === ProjectStatus.EN_COURS);
+        activeProjects.forEach(project => {
+            const projectActivities = activities.filter(a => a.projectId === project.id);
+            const lastActivity = projectActivities.length > 0
+                ? new Date(projectActivities[0].timestamp).getTime()
+                : new Date(project.createdAt).getTime();
+            if (now - lastActivity > TWO_WEEKS_MS && !_notifiedInactiveClients.has(project.id)) {
+                newInactive.push(project.clientName);
+                _notifiedInactiveClients.add(project.id);
+            }
+        });
+        if (newInactive.length === 1) {
+            addNotification('💤 Client en sommeil', `Aucune activité sur "${newInactive[0]}" depuis plus de 2 semaines.`, 'warning');
+        } else if (newInactive.length > 1) {
+            addNotification('💤 Clients en sommeil', `${newInactive.length} clients sans activité depuis 2+ semaines.`, 'warning');
+        }
     }, [projects, activities, addNotification]);
 
-    // Maintenance notifications
+    // Maintenance notifications (once per session per alert)
     useEffect(() => {
-        const checkMaintenanceAlerts = () => {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const maintenanceProjects = projects.filter(p => p.phase === 'Maintenance' && p.maintenance);
-            maintenanceProjects.forEach(project => {
-                const maintenance = project.maintenance!;
-                if (maintenance.freeMaintenanceEndDate) {
-                    const endDate = new Date(maintenance.freeMaintenanceEndDate);
-                    const oneMonthBefore = new Date(endDate);
-                    oneMonthBefore.setMonth(oneMonthBefore.getMonth() - 1);
-                    const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                    const notifKey = `maintenance_expiry_${project.id}_${maintenance.freeMaintenanceEndDate}`;
-                    if (today >= oneMonthBefore && today <= endDate && !notifiedMaintenanceRef.current.has(notifKey)) {
-                        addNotification('🔧 Maintenance Expirante', `La maintenance offerte de "${project.clientName}" expire dans ${daysUntilExpiry} jours.`, 'warning', `/client/${encodeURIComponent(project.id)}`);
-                        notifiedMaintenanceRef.current.add(notifKey);
+        if (projects.length === 0) return;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const maintenanceProjects = projects.filter(p => p.phase === 'Maintenance' && p.maintenance);
+        maintenanceProjects.forEach(project => {
+            const maintenance = project.maintenance!;
+            if (maintenance.freeMaintenanceEndDate) {
+                const endDate = new Date(maintenance.freeMaintenanceEndDate);
+                const oneMonthBefore = new Date(endDate);
+                oneMonthBefore.setMonth(oneMonthBefore.getMonth() - 1);
+                const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                const notifKey = `maintenance_expiry_${project.id}_${maintenance.freeMaintenanceEndDate}`;
+                if (today >= oneMonthBefore && today <= endDate && !_notifiedMaintenance.has(notifKey)) {
+                    addNotification('🔧 Maintenance Expirante', `La maintenance offerte de "${project.clientName}" expire dans ${daysUntilExpiry} jours.`, 'warning', `/client/${encodeURIComponent(project.id)}`);
+                    _notifiedMaintenance.add(notifKey);
+                }
+            }
+            if (maintenance.billingDates?.length) {
+                maintenance.billingDates.forEach(dateStr => {
+                    const billingDate = new Date(dateStr);
+                    const daysUntilBilling = Math.ceil((billingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const notifKey = `billing_${project.id}_${dateStr}`;
+                    if (daysUntilBilling === 1 && !_notifiedMaintenance.has(notifKey)) {
+                        addNotification('💰 Facturation Demain', `N'oublie pas de facturer la maintenance de "${project.clientName}" demain.`, 'finance', `/client/${encodeURIComponent(project.id)}`);
+                        _notifiedMaintenance.add(notifKey);
                     }
-                }
-                if (maintenance.billingDates?.length) {
-                    maintenance.billingDates.forEach(dateStr => {
-                        const billingDate = new Date(dateStr);
-                        const daysUntilBilling = Math.ceil((billingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                        const notifKey = `billing_${project.id}_${dateStr}`;
-                        if (daysUntilBilling === 1 && !notifiedMaintenanceRef.current.has(notifKey)) {
-                            addNotification('💰 Facturation Demain', `N'oublie pas de facturer la maintenance de "${project.clientName}" demain.`, 'finance', `/client/${encodeURIComponent(project.id)}`);
-                            notifiedMaintenanceRef.current.add(notifKey);
-                        }
-                        if (daysUntilBilling === 0 && !notifiedMaintenanceRef.current.has(notifKey + '_today')) {
-                            addNotification('🔔 Facturation Aujourd\'hui', `C'est le jour de facturation pour la maintenance de "${project.clientName}" !`, 'finance', `/client/${encodeURIComponent(project.id)}`);
-                            notifiedMaintenanceRef.current.add(notifKey + '_today');
-                        }
-                    });
-                }
-            });
-        };
-        if (projects.length > 0) checkMaintenanceAlerts();
-        const interval = setInterval(checkMaintenanceAlerts, 3600000);
-        return () => clearInterval(interval);
+                    if (daysUntilBilling === 0 && !_notifiedMaintenance.has(notifKey + '_today')) {
+                        addNotification('🔔 Facturation Aujourd\'hui', `C'est le jour de facturation pour la maintenance de "${project.clientName}" !`, 'finance', `/client/${encodeURIComponent(project.id)}`);
+                        _notifiedMaintenance.add(notifKey + '_today');
+                    }
+                });
+            }
+        });
     }, [projects, addNotification]);
 
     // ========================================================================
@@ -233,8 +237,8 @@ export const Dashboard: React.FC = () => {
         navigate(`/client/${encodeURIComponent(project.id)}`);
     };
 
-    const handleCreateClient = async (rawName: string) => {
-        const trimmed = rawName.trim();
+    const handleCreateClient = async (data: NewClientData) => {
+        const trimmed = data.name.trim();
         if (!trimmed) {
             addNotification('Nom requis', 'Merci de saisir un nom de client.', 'error');
             return;
@@ -262,36 +266,38 @@ export const Dashboard: React.FC = () => {
             [ProjectStatus.PROSPECT]: '4. Prospects',
             [ProjectStatus.ARCHIVED]: '5. Archivés',
         };
-        const targetFolder = statusFolderMap[newClientStatus] || '4. Prospects';
+        const targetFolder = statusFolderMap[data.status] || '4. Prospects';
         const predictedPath = `${targetFolder}/${safeName}`;
 
         createClientFolder.mutate(
-            { clientName: trimmed, status: newClientStatus },
+            { clientName: trimmed, status: data.status },
             {
                 onSuccess: () => {
+                    const cleanLinks = Object.fromEntries(
+                        Object.entries(data.links).filter(([, v]) => v.trim())
+                    );
+
                     const newProject: Project = {
                         id: predictedPath,
                         clientName: trimmed,
                         avatarInitials: trimmed.substring(0, 2).toUpperCase(),
-                        status: newClientStatus,
+                        avatarColor: data.avatarColor,
+                        avatarImage: data.avatarImage,
+                        status: data.status,
                         phase: WorkflowPhase.DISCOVERY,
                         progress: 0,
                         createdAt: new Date().toISOString(),
-                        profile: { email: newClientEmail, phone: newClientPhone, website: newClientWebsite, customFields: [] },
+                        profile: data.profile,
                         tasks: [],
                         invoices: [],
                         brandKit: { colors: [], fonts: [] },
-                        credentials: []
+                        credentials: [],
+                        links: Object.keys(cleanLinks).length > 0 ? cleanLinks : undefined,
                     };
 
-                    // Optimistically add to cache
                     updateProjectCache(newProject);
                     addNotification('Client Créé', `Dossier "${trimmed}" prêt dans ${targetFolder}.`, 'success', `/client/${encodeURIComponent(newProject.id)}`);
                     addActivity('project_created', `Nouveau client: ${trimmed}`, newProject.id, trimmed);
-                    setNewClientEmail('');
-                    setNewClientPhone('');
-                    setNewClientWebsite('');
-                    setNewClientStatus(ProjectStatus.EN_COURS);
                     setShowImporter(false);
                     navigate(`/client/${encodeURIComponent(newProject.id)}`);
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
@@ -311,15 +317,7 @@ export const Dashboard: React.FC = () => {
     };
 
     const handleUpdateProject = async (updated: Project, oldId?: string) => {
-        // Optimistically update cache
-        updateProjectCache(updated, oldId);
-
-        saveProjectMutation.mutate(updated, {
-            onSuccess: (data) => {
-                if (data.success && data.progress !== undefined) {
-                    updateProjectCache({ ...updated, progress: data.progress }, oldId);
-                }
-            },
+        saveProjectMutation.mutate({ project: updated, oldId }, {
             onError: () => {
                 addNotification("Erreur Sauvegarde", "Vos modifications n'ont pas été enregistrées.", "error");
             },
@@ -365,8 +363,7 @@ export const Dashboard: React.FC = () => {
             targetProject.invoices = [...targetProject.invoices, invoice];
         }
 
-        // Save via React Query mutation (includes optimistic update)
-        saveProjectMutation.mutate(targetProject);
+        saveProjectMutation.mutate({ project: targetProject });
         addNotification('Facture Enregistrée', `La facture ${invoice.number} a été sauvegardée.`, 'finance', '/finances');
         addActivity('invoice_created', `Facture ${invoice.number} créée`, targetProject.id, targetProject.clientName, `${formatCurrency(invoice.amount, 2)} ${invoice.currency || 'CHF'}`);
         setShowGlobalInvoiceModal(false);
@@ -374,8 +371,7 @@ export const Dashboard: React.FC = () => {
 
     const handleAddEvent = (event: CalendarEvent) => {
         addEvent(event);
-        addNotification('Agenda Mis à jour', `"${event.title}" ajouté pour le ${event.date}.`, 'success');
-        if (event.type === 'Meeting') {
+        if (event.type === 'Call ou rdv pro') {
             addActivity('meeting_scheduled', `Réunion: ${event.title}`, undefined, undefined, event.date);
         }
         confetti({ particleCount: 30, spread: 40, colors: ['#5BBFBA', '#F0B7A4'] });
@@ -383,7 +379,6 @@ export const Dashboard: React.FC = () => {
 
     const handleUpdateEvent = (updatedEvent: CalendarEvent) => {
         updateEvent(updatedEvent);
-        addNotification('Agenda Modifié', `"${updatedEvent.title}" a été mis à jour.`, 'info');
     };
 
     const handleDeleteEvent = (eventId: string) => {
@@ -411,7 +406,6 @@ export const Dashboard: React.FC = () => {
 
         // Optimistic update
         updateProjectCache({ ...project, status: nextStatus });
-        addNotification('Statut Changé', `${project.clientName} est passé en ${nextStatus}.`, 'info', `/client/${encodeURIComponent(project.id)}`);
         addActivity('project_status_changed', `${project.clientName} → ${nextStatus}`, project.id, project.clientName);
         confetti({ particleCount: 30, spread: 50, origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight }, colors: ['#FF7E5F', '#FEB47B'] });
 
@@ -528,6 +522,14 @@ export const Dashboard: React.FC = () => {
                             onClick={() => navigate('/finances')}
                             currentTheme={theme}
                             onCreateInvoice={() => handleOpenGlobalInvoiceModal()}
+                            onAddCalendarEvent={(evt) => {
+                                createGoogleEventMutation.mutate(evt, {
+                                    onSuccess: () => addNotification('📅 Événement créé', `"${evt.title}" ajouté à l'agenda le ${evt.date} à ${evt.startTime}${evt.addMeet ? ' avec Meet' : ''}`, 'success'),
+                                    onError: () => {
+                                        handleAddEvent({ id: `local-${Date.now()}`, title: evt.title, date: evt.date, startTime: evt.startTime, duration: evt.duration, type: 'Call ou rdv pro', source: 'local' });
+                                    },
+                                });
+                            }}
                             onAddReminder={(todoId, text, remindAt) => {
                                 addNotification('Rappel ajouté', `Je te rappellerai: ${text}`, 'deadline');
                                 const dateStr = `${remindAt.getFullYear()}-${String(remindAt.getMonth() + 1).padStart(2, '0')}-${String(remindAt.getDate()).padStart(2, '0')}`;
@@ -538,7 +540,7 @@ export const Dashboard: React.FC = () => {
                                     date: dateStr,
                                     startTime: timeStr,
                                     duration: 15,
-                                    type: 'Personal',
+                                    type: 'Perso',
                                     source: 'local',
                                     isAppEvent: true
                                 });
@@ -805,53 +807,13 @@ export const Dashboard: React.FC = () => {
             {/* MODALS managed by Dashboard (domain-specific)                  */}
             {/* ============================================================== */}
 
-            {/* New Client Modal */}
-            <Modal isOpen={showImporter} onClose={() => setShowImporter(false)} title="Nouveau Client">
-                <div className="p-6 space-y-8">
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Identité du Client</label>
-                        <div className="relative group">
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-orange to-pink-500 rounded-2xl opacity-20 group-focus-within:opacity-100 transition-opacity duration-500 blur"></div>
-                            <div className="relative bg-white dark:bg-slate-800/90 rounded-2xl p-1">
-                                <input
-                                    autoFocus
-                                    placeholder="Ex: Maison de la Fleur..."
-                                    className="w-full text-2xl font-serif p-4 rounded-xl bg-transparent border-none outline-none text-slate-800 dark:text-white placeholder:text-slate-300"
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleCreateClient((e.target as HTMLInputElement).value); }}
-                                    id="new-client-input"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Coordonnées (Optionnel)</label>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input placeholder="Email" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} className="bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange dark:text-white text-sm" />
-                            <input placeholder="Téléphone" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} className="bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange dark:text-white text-sm" />
-                            <input placeholder="Site Web" value={newClientWebsite} onChange={(e) => setNewClientWebsite(e.target.value)} className="bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange dark:text-white text-sm" />
-                        </div>
-                    </div>
-                    <div className="space-y-3">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Statut de démarrage</label>
-                        <select value={newClientStatus} onChange={(e) => setNewClientStatus(e.target.value as ProjectStatus)} className="w-full bg-slate-50 dark:bg-slate-800/80 dark:border dark:border-slate-700/50 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange dark:text-white">
-                            {Object.values(ProjectStatus).map((status) => (<option key={status} value={status}>{status}</option>))}
-                        </select>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
-                        <div className="flex items-center gap-2 text-xs text-slate-400 italic">
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500">F</div>
-                            Franck préparera les dossiers.
-                        </div>
-                        <button
-                            onClick={() => { const input = document.getElementById('new-client-input') as HTMLInputElement; if (input?.value) handleCreateClient(input.value); }}
-                            disabled={isCreatingClient}
-                            className={`px-8 py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-full font-bold text-sm uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-orange-200/50 dark:shadow-none transition-all duration-300 ${isCreatingClient ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105 hover:shadow-[0_0_20px_rgba(255,126,95,0.5)]'}`}
-                        >
-                            {isCreatingClient ? 'Création…' : 'Créer le dossier'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            {/* New Client Fullscreen */}
+            <NewClientScreen
+                isOpen={showImporter}
+                onClose={() => setShowImporter(false)}
+                onCreate={handleCreateClient}
+                isCreating={isCreatingClient}
+            />
 
             {/* Invoice Builder Modal */}
             <Modal isOpen={showGlobalInvoiceModal} onClose={() => setShowGlobalInvoiceModal(false)} title="" width="max-w-6xl">

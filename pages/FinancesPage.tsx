@@ -6,7 +6,7 @@
 import React, { Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore, useProjectStore, useNotificationStore } from '../stores';
-import { useProjects, useSaveProject, useUpdateProjectCache } from '../services/queries';
+import { useProjects, useSaveProject } from '../services/queries';
 import { SplashScreen } from '../components/SplashScreen';
 import { Invoice, Project } from '../types';
 import { formatCurrency } from '../utils';
@@ -20,7 +20,6 @@ export const FinancesPage: React.FC = () => {
     const navigate = useNavigate();
     const { data: projects = [] } = useProjects();
     const saveProjectMutation = useSaveProject();
-    const updateProjectCache = useUpdateProjectCache();
     const { theme, currency, showGlobalInvoiceModal, currentInvoiceToEdit, setShowGlobalInvoiceModal, setCurrentInvoiceToEdit } = useUIStore();
     const { addActivity } = useProjectStore();
     const { addNotification } = useNotificationStore();
@@ -57,15 +56,14 @@ export const FinancesPage: React.FC = () => {
             targetProject.invoices = [...targetProject.invoices, invoice];
         }
 
-        saveProjectMutation.mutate(targetProject);
+        saveProjectMutation.mutate({ project: targetProject });
         addNotification('Facture Enregistrée', `La facture ${invoice.number} a été sauvegardée.`, 'finance');
         addActivity('invoice_created', `Facture ${invoice.number} créée`, targetProject.id, targetProject.clientName, `${formatCurrency(invoice.amount, 2)} ${invoice.currency || 'CHF'}`);
         setShowGlobalInvoiceModal(false);
     };
 
     const handleUpdateProject = (updated: Project) => {
-        updateProjectCache(updated);
-        saveProjectMutation.mutate(updated);
+        saveProjectMutation.mutate({ project: updated });
     };
 
     return (

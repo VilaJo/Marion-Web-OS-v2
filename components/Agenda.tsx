@@ -6,7 +6,7 @@ import { Calendar as CalIcon, ChevronLeft, ChevronRight, Plus, Clock, Video, Cop
 import { toZonedTime, format, formatInTimeZone } from 'date-fns-tz';
 import { fr } from 'date-fns/locale';
 import { addMinutes, differenceInMinutes, parse, isBefore, startOfDay, parseISO } from 'date-fns';
-import { useCalendarSync, useGoogleCalendarEvents, useCreateGoogleEvent, useUpdateGoogleEvent, useConnectGoogle, queryKeys } from '../services/queries';
+import { useCalendarSync, useGoogleCalendarEvents, useCreateGoogleEvent, useUpdateGoogleEvent, useDeleteGoogleEvent, useConnectGoogle, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface AgendaProps {
@@ -22,19 +22,43 @@ interface EventTypeBadgeProps {
     onClick?: () => void;
 }
 
+const GCAL_CATEGORIES: Record<string, { label: string; color: string; bg: string; text: string; border: string; darkBg: string; darkText: string }> = {
+    'Deadlines':        { label: 'Deadlines',        color: '#D50000', bg: 'bg-[#D50000]/10', text: 'text-[#D50000]', border: 'border-[#D50000]/30', darkBg: 'dark:bg-[#D50000]/20', darkText: 'dark:text-[#ff6b6b]' },
+    'Call ou rdv pro':  { label: 'Call ou rdv pro',  color: '#039BE5', bg: 'bg-[#039BE5]/10', text: 'text-[#039BE5]', border: 'border-[#039BE5]/30', darkBg: 'dark:bg-[#039BE5]/20', darkText: 'dark:text-[#4FC3F7]' },
+    'To do pro':        { label: 'To do pro',        color: '#3F51B5', bg: 'bg-[#3F51B5]/10', text: 'text-[#3F51B5]', border: 'border-[#3F51B5]/30', darkBg: 'dark:bg-[#3F51B5]/20', darkText: 'dark:text-[#9FA8DA]' },
+    'Anniversaire':     { label: 'Anniversaire',     color: '#7986CB', bg: 'bg-[#7986CB]/10', text: 'text-[#7986CB]', border: 'border-[#7986CB]/30', darkBg: 'dark:bg-[#7986CB]/20', darkText: 'dark:text-[#C5CAE9]' },
+    'Facturation':      { label: 'Facturation',      color: '#E67C73', bg: 'bg-[#E67C73]/10', text: 'text-[#E67C73]', border: 'border-[#E67C73]/30', darkBg: 'dark:bg-[#E67C73]/20', darkText: 'dark:text-[#EF9A9A]' },
+    'Perso':            { label: 'Perso',            color: '#8E24AA', bg: 'bg-[#8E24AA]/10', text: 'text-[#8E24AA]', border: 'border-[#8E24AA]/30', darkBg: 'dark:bg-[#8E24AA]/20', darkText: 'dark:text-[#CE93D8]' },
+    'Maintenances':     { label: 'Maintenances',     color: '#F6BF26', bg: 'bg-[#F6BF26]/10', text: 'text-[#F6BF26]', border: 'border-[#F6BF26]/30', darkBg: 'dark:bg-[#F6BF26]/20', darkText: 'dark:text-[#FFF176]' },
+    'Sport':            { label: 'Sport',            color: '#33B679', bg: 'bg-[#33B679]/10', text: 'text-[#33B679]', border: 'border-[#33B679]/30', darkBg: 'dark:bg-[#33B679]/20', darkText: 'dark:text-[#81C784]' },
+};
+
+const GCAL_COLORID_MAP: Record<string, string> = {
+    '11': 'Deadlines',
+    '7':  'Call ou rdv pro',
+    '9':  'To do pro',
+    '1':  'Anniversaire',
+    '4':  'Facturation',
+    '3':  'Perso',
+    '5':  'Maintenances',
+    '2':  'Sport',
+};
+
+const TYPE_TO_COLORID: Record<string, string> = Object.fromEntries(
+    Object.entries(GCAL_COLORID_MAP).map(([k, v]) => [v, k])
+);
+
+const EVENT_TYPES = Object.keys(GCAL_CATEGORIES) as Array<keyof typeof GCAL_CATEGORIES>;
+
 const EventTypeBadge: React.FC<EventTypeBadgeProps> = React.memo(({ type, selected, onClick }) => {
-    const colors: Record<string, string> = {
-        'Meeting': 'bg-blue-100 text-blue-700 border-blue-200',
-        'Deadline': 'bg-red-100 text-red-700 border-red-200',
-        'Focus': 'bg-purple-100 text-purple-700 border-purple-200',
-        'Personal': 'bg-green-100 text-green-700 border-green-200',
-    };
+    const cat = GCAL_CATEGORIES[type];
+    if (!cat) return null;
     return (
         <div 
             onClick={onClick}
-            className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer transition-all ${colors[type]} ${selected ? 'ring-2 ring-offset-2 ring-slate-400' : 'opacity-60 hover:opacity-100'}`}
+            className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer transition-all ${cat.bg} ${cat.text} ${cat.border} ${cat.darkBg} ${cat.darkText} ${selected ? 'ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900' : 'opacity-60 hover:opacity-100'}`}
         >
-            {type}
+            {cat.label}
         </div>
     );
 });
@@ -92,6 +116,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     const { data: gcalEvents = [], isFetching: isSyncingGcal } = useGoogleCalendarEvents();
     const createGoogleEventMutation = useCreateGoogleEvent();
     const updateGoogleEventMutation = useUpdateGoogleEvent();
+    const deleteGoogleEventMutation = useDeleteGoogleEvent();
     const connectGoogleMutation = useConnectGoogle();
     const queryClient = useQueryClient();
 
@@ -122,20 +147,27 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     }, [connectGoogleMutation, queryClient]);
 
     // Helper to map Google events from API
-    const mapGoogleEvent = useCallback((e: any): CalendarEvent => ({
-        id: `gcal-${e.googleEventId}`,
-        title: e.title,
-        date: e.date,
-        startTime: e.startTime,
-        duration: e.duration || 60,
-        type: 'Meeting' as const,
-        description: e.description,
-        meetLink: e.meetLink,
-        source: 'google' as const,
-        googleEventId: e.googleEventId,
-        originalTimezone: e.originalTimezone,
-        originalDateTime: e.originalDateTime
-    }), []);
+    const mapGoogleEvent = useCallback((e: any): CalendarEvent => {
+        let type: CalendarEvent['type'] = 'To do pro';
+        if (e.colorId && GCAL_COLORID_MAP[e.colorId]) {
+            type = GCAL_COLORID_MAP[e.colorId] as CalendarEvent['type'];
+        }
+        return {
+            id: `gcal-${e.googleEventId}`,
+            title: e.title,
+            date: e.date,
+            startTime: e.startTime,
+            duration: e.duration || 60,
+            type,
+            colorId: e.colorId,
+            description: e.description,
+            meetLink: e.meetLink,
+            source: 'google' as const,
+            googleEventId: e.googleEventId,
+            originalTimezone: e.originalTimezone,
+            originalDateTime: e.originalDateTime,
+        };
+    }, []);
 
     // Compute external events from React Query data
     const externalEvents = useMemo(() => {
@@ -259,7 +291,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     const [isEditing, setIsEditing] = useState(false);
     const [formError, setFormError] = useState('');
     const [eventForm, setEventForm] = useState<Partial<CalendarEvent>>({
-        type: 'Meeting',
+        type: 'To do pro',
         startTime: '09:00',
         duration: 60,
         originalTimezone: localTimezone 
@@ -495,10 +527,10 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     }, []); // Only on mount
 
     useEffect(() => {
-        // Delay for expanded mode DOM to render before scrolling
-        const timer = setTimeout(() => scrollToCurrentTime(isExpanded ? false : true), isExpanded ? 150 : 0);
+        const timer = setTimeout(() => scrollToCurrentTime(false), 150);
         return () => clearTimeout(timer);
-    }, [currentDate, isExpanded, viewMode, scrollToCurrentTime]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isExpanded, viewMode]);
 
     // --- Helpers ---
     const toISODate = (date: Date) => {
@@ -526,35 +558,40 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         return <Sun size={18} className="text-yellow-500" />;
     };
 
-    // --- Event Styling ---
     const getEventStyle = (type: string) => {
-        switch (type) {
-            case 'Meeting': return 'bg-blue-100 border-l-4 border-blue-500 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200';
-            case 'Deadline': return 'bg-red-100 border-l-4 border-red-500 text-red-700 dark:bg-red-900/40 dark:text-red-200';
-            case 'Focus': return 'bg-purple-100 border-l-4 border-purple-500 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200';
-            case 'Personal': return 'bg-green-100 border-l-4 border-green-500 text-green-700 dark:bg-green-900/40 dark:text-green-200';
-            default: return 'bg-slate-100 text-slate-700';
-        }
+        const cat = GCAL_CATEGORIES[type];
+        if (cat) return `${cat.bg} border-l-4 ${cat.text} ${cat.darkBg} ${cat.darkText}` .replace('border-[', 'border-l-[').replace('/30', '');
+        return 'bg-slate-100 text-slate-700 border-l-4 border-slate-400';
+    };
+
+    const getEventStyleInline = (type: string): React.CSSProperties => {
+        const cat = GCAL_CATEGORIES[type];
+        if (!cat) return {};
+        return { borderLeftColor: cat.color, backgroundColor: `${cat.color}15` };
     };
 
     const getEventDotColor = (type: string) => {
-        switch (type) {
-            case 'Meeting': return 'bg-blue-500';
-            case 'Deadline': return 'bg-red-500';
-            case 'Focus': return 'bg-purple-500';
-            case 'Personal': return 'bg-green-500';
-            default: return 'bg-slate-400';
-        }
+        const cat = GCAL_CATEGORIES[type];
+        if (!cat) return 'bg-slate-400';
+        return '';
+    };
+
+    const getEventDotStyle = (type: string): React.CSSProperties => {
+        const cat = GCAL_CATEGORIES[type];
+        if (!cat) return { backgroundColor: '#94A3B8' };
+        return { backgroundColor: cat.color };
     };
 
     const getEventChipStyle = (type: string) => {
-        switch (type) {
-            case 'Meeting': return 'bg-blue-500 text-white dark:bg-blue-600';
-            case 'Deadline': return 'bg-red-500 text-white dark:bg-red-600';
-            case 'Focus': return 'bg-purple-500 text-white dark:bg-purple-600';
-            case 'Personal': return 'bg-green-500 text-white dark:bg-green-600';
-            default: return 'bg-slate-500 text-white';
-        }
+        const cat = GCAL_CATEGORIES[type];
+        if (!cat) return 'bg-slate-500 text-white';
+        return 'text-white';
+    };
+
+    const getEventChipInline = (type: string): React.CSSProperties => {
+        const cat = GCAL_CATEGORIES[type];
+        if (!cat) return { backgroundColor: '#64748B' };
+        return { backgroundColor: cat.color };
     };
 
     // --- Interaction Handlers ---
@@ -614,6 +651,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         date: finalEvent.date,
                         startTime: finalEvent.startTime,
                         duration: finalEvent.duration || 60,
+                        colorId: TYPE_TO_COLORID[finalEvent.type] || '',
                     },
                 });
             }
@@ -621,7 +659,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
             onAddEvent(finalEvent);
             
             // Sync to Google Calendar if connected (except Personal events)
-            if (googleCalendarConnected && finalEvent.type !== 'Personal') {
+            if (googleCalendarConnected && finalEvent.type !== 'Perso') {
                 if (finalEvent.googleEventId) {
                     // Event already created on Google (e.g. via Meet link generation) — update it
                     updateGoogleEventMutation.mutate({
@@ -632,6 +670,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             date: finalEvent.date,
                             startTime: finalEvent.startTime,
                             duration: finalEvent.duration || 60,
+                            colorId: TYPE_TO_COLORID[finalEvent.type] || '',
                         },
                     });
                 } else {
@@ -643,6 +682,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             date: finalEvent.date,
                             startTime: finalEvent.startTime,
                             duration: finalEvent.duration || 60,
+                            colorId: TYPE_TO_COLORID[finalEvent.type] || '',
                         },
                         {
                             onSuccess: (data) => {
@@ -681,7 +721,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         const startTime = eventForm.startTime || '09:00';
         const duration = eventForm.duration || 60;
         createGoogleEventMutation.mutate(
-            { title, date, startTime, duration, addMeet: true },
+            { title, date, startTime, duration, addMeet: true, colorId: TYPE_TO_COLORID[eventForm.type] || '' },
             {
                 onSuccess: (data) => {
                     if (data.success && data.event?.meetLink) {
@@ -716,7 +756,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         // Default to creating event in VIEW timezone to match what user sees
         setIsEditing(false);
         setEventForm({
-            type: 'Meeting',
+            type: 'To do pro',
             startTime: initialStartTime,
             date: initialStartDate,
             duration: initialDuration,
@@ -886,8 +926,10 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                 setEventForm({...ev}); 
                                 setShowEventModal(true); 
                             }}
-                            className={`absolute rounded-lg p-2 text-xs shadow-sm cursor-pointer z-10 hover:z-20 hover:shadow-md transition-all flex flex-col overflow-hidden border ${getEventStyle(ev.type)}`}
+                            className={`absolute rounded-lg p-2 text-xs shadow-sm cursor-pointer z-10 hover:z-20 hover:shadow-md transition-all flex flex-col overflow-hidden border-l-4`}
                             style={{ 
+                                ...getEventStyleInline(ev.type), 
+                                color: GCAL_CATEGORIES[ev.type]?.color,
                                 top: `${ev.top}px`, 
                                 height: `${ev.height}px`, 
                                 minHeight: '30px', 
@@ -934,8 +976,8 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         );
     };
 
-    // --- Modal Content ---
-    const ExpandedModal = () => (
+    // --- Expanded Mode Content (inline to preserve scroll position across re-renders) ---
+    const expandedModalContent = (
         <div className="fixed inset-0 z-[100] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl flex flex-col animate-in fade-in zoom-in-95 duration-300">
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 dark:border-slate-800">
@@ -1007,7 +1049,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
             <div className="flex-1 flex overflow-hidden">
                 {/* Sidebar (Mini Cal + Filters) */}
                 <div className="w-64 border-r border-slate-200 dark:border-slate-800 p-6 hidden lg:block overflow-y-auto">
-                    <button onClick={() => { setIsEditing(false); setEventForm({ type: 'Meeting', date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: viewTimezone }); setShowEventModal(true); }} className="w-full py-3 bg-brand-orange text-white rounded-xl shadow-lg shadow-orange-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                    <button onClick={() => { setIsEditing(false); setEventForm({ type: 'To do pro', date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: viewTimezone }); setShowEventModal(true); }} className="w-full py-3 bg-brand-orange text-white rounded-xl shadow-lg shadow-orange-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
                         <Plus size={20} /> Créer
                     </button>
                     {/* Mini Month View (Simplified) */}
@@ -1120,9 +1162,10 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                                                 ? `${getEventChipStyle(ev.type)} rounded-md font-medium`
                                                                 : 'text-slate-700 dark:text-slate-200'
                                                         }`}
+                                                        style={ev.duration && ev.duration >= 1440 ? getEventChipInline(ev.type) : undefined}
                                                     >
                                                         {(!ev.duration || ev.duration < 1440) && (
-                                                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getEventDotColor(ev.type)}`} />
+                                                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={getEventDotStyle(ev.type)} />
                                                         )}
                                                         <span className="truncate">
                                                             {ev.startTime && (!ev.duration || ev.duration < 1440) ? (
@@ -1314,7 +1357,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         </div>
                     </div>
                     <button 
-                        onClick={() => { setIsEditing(false); setEventForm({ date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: localTimezone, type: 'Meeting' }); setShowEventModal(true); }}
+                        onClick={() => { setIsEditing(false); setEventForm({ date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: localTimezone, type: 'To do pro' }); setShowEventModal(true); }}
                         className="absolute bottom-4 right-4 w-12 h-12 bg-brand-orange text-white rounded-full shadow-lg shadow-orange-200/50 dark:shadow-none flex items-center justify-center hover:scale-110 transition-transform z-20"
                     >
                         <Plus size={24} />
@@ -1323,7 +1366,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
             </div>
 
             {/* Immersion Mode Overlay */}
-            {isExpanded && createPortal(<ExpandedModal />, document.body)}
+            {isExpanded && createPortal(expandedModalContent, document.body)}
 
             {/* Event Modal (Shared) */}
             <Modal isOpen={showEventModal} onClose={() => setShowEventModal(false)} title={isEditing ? "Modifier" : "Nouvel Événement"}>
@@ -1464,14 +1507,21 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                                                  />
                                                             </div>                    <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Type</label>
-                        <div className="flex gap-2">
-                            {['Meeting', 'Deadline', 'Focus', 'Personal'].map(t => (
+                        <div className="flex flex-wrap gap-2">
+                            {EVENT_TYPES.map(t => (
                                 <EventTypeBadge key={t} type={t} selected={eventForm.type === t} onClick={() => setEventForm({...eventForm, type: t as any})} />
                             ))}
                         </div>
                     </div>
                     <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-                        {isEditing && <button onClick={() => { onDeleteEvent(eventForm.id!); setShowEventModal(false); }} className="text-red-500 font-bold text-sm">Supprimer</button>}
+                        {isEditing && <button onClick={() => {
+                            const gid = eventForm.googleEventId;
+                            if (gid) {
+                                deleteGoogleEventMutation.mutate(gid);
+                            }
+                            onDeleteEvent(eventForm.id!);
+                            setShowEventModal(false);
+                        }} className="text-red-500 font-bold text-sm">Supprimer</button>}
                         <button onClick={handleSaveEvent} className="bg-brand-orange text-white px-6 py-2 rounded-full font-bold ml-auto">{isEditing ? 'Sauvegarder' : 'Créer'}</button>
                     </div>
                 </div>

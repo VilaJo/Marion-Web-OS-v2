@@ -619,12 +619,13 @@ export function useProjects() {
 /**
  * Save (create or update) a project.
  * Performs an optimistic update on the local cache.
+ * Accepts { project, oldId? } — oldId is needed when the project id changes (e.g. move/rename).
  */
 export function useSaveProject() {
     const queryClient = useQueryClient();
     
     return useMutation({
-        mutationFn: async (project: Project) => {
+        mutationFn: async ({ project }: { project: Project; oldId?: string }) => {
             const res = await apiFetch('/api/v1/projects/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -633,16 +634,14 @@ export function useSaveProject() {
             if (!res.ok) throw new Error('Failed to save project');
             return res.json();
         },
-        onMutate: async (updatedProject) => {
-            // Cancel outgoing refetches
+        onMutate: async ({ project: updatedProject, oldId }) => {
             await queryClient.cancelQueries({ queryKey: queryKeys.projects });
             
-            // Snapshot previous value
             const previousProjects = queryClient.getQueryData<Project[]>(queryKeys.projects);
             
-            // Optimistically update the cache
             if (previousProjects) {
-                const idx = previousProjects.findIndex(p => p.id === updatedProject.id);
+                const lookupId = oldId || updatedProject.id;
+                const idx = previousProjects.findIndex(p => p.id === lookupId);
                 const newProjects = [...previousProjects];
                 if (idx >= 0) {
                     newProjects[idx] = updatedProject;
@@ -654,8 +653,7 @@ export function useSaveProject() {
             
             return { previousProjects };
         },
-        onError: (_err, _project, context) => {
-            // Rollback on error
+        onError: (_err, _vars, context) => {
             if (context?.previousProjects) {
                 queryClient.setQueryData(queryKeys.projects, context.previousProjects);
             }
@@ -826,6 +824,7 @@ export function useCreateGoogleEvent() {
             startTime: string;
             duration: number;
             addMeet?: boolean;
+            colorId?: string;
         }) => {
             const res = await apiFetch('/api/v1/gcal/events', {
                 method: 'POST',
@@ -856,6 +855,7 @@ export function useUpdateGoogleEvent() {
                 date: string;
                 startTime: string;
                 duration: number;
+                colorId?: string;
             };
         }) => {
             const res = await apiFetch(`/api/v1/gcal/events/${googleEventId}`, {
@@ -864,6 +864,26 @@ export function useUpdateGoogleEvent() {
                 body: JSON.stringify(event),
             });
             if (!res.ok) throw new Error('Failed to update Google Calendar event');
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.events });
+        },
+    });
+}
+
+/**
+ * Delete a Google Calendar event.
+ */
+export function useDeleteGoogleEvent() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (googleEventId: string) => {
+            const res = await apiFetch(`/api/v1/gcal/events/${googleEventId}`, {
+                method: 'DELETE',
+            });
+            if (!res.ok) throw new Error('Failed to delete Google Calendar event');
             return res.json();
         },
         onSuccess: () => {

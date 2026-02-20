@@ -9,7 +9,7 @@
 import React, { Suspense, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUIStore, useProjectStore, useNotificationStore } from '../stores';
-import { useProjects, useSaveProject, useUpdateProjectCache } from '../services/queries';
+import { useProjects, useSaveProject } from '../services/queries';
 import { SplashScreen } from '../components/SplashScreen';
 import { Invoice } from '../types';
 import { formatCurrency } from '../utils';
@@ -23,7 +23,6 @@ export const InvoicePage: React.FC = () => {
 
     const { data: projects = [], isLoading } = useProjects();
     const saveProjectMutation = useSaveProject();
-    const updateProjectCache = useUpdateProjectCache();
     const { theme, currency } = useUIStore();
     const { addActivity } = useProjectStore();
     const { addNotification } = useNotificationStore();
@@ -74,8 +73,7 @@ export const InvoicePage: React.FC = () => {
             updatedProject.invoices = [...updatedProject.invoices, savedInvoice];
         }
 
-        updateProjectCache(updatedProject);
-        saveProjectMutation.mutate(updatedProject);
+        saveProjectMutation.mutate({ project: updatedProject });
         addNotification('Facture Enregistrée', `La facture ${savedInvoice.number} a été sauvegardée.`, 'finance', '/finances');
         addActivity('invoice_created', `Facture ${savedInvoice.number} créée`, updatedProject.id, updatedProject.clientName, `${formatCurrency(savedInvoice.amount, 2)} ${savedInvoice.currency || 'CHF'}`);
         navigate(`/client/${encodeURIComponent(projectId)}`);

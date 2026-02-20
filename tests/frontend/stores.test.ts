@@ -242,7 +242,7 @@ describe('useProjectStore', () => {
     it('addEvent: adds event and persists to localStorage', () => {
         const event = {
             id: 'ev-1', title: 'Test Meeting', date: '2026-03-15',
-            startTime: '10:00', duration: 60, type: 'Meeting' as const,
+            startTime: '10:00', duration: 60, type: 'To do pro' as const,
         };
         useProjectStore.getState().addEvent(event);
         const state = useProjectStore.getState();
@@ -256,7 +256,7 @@ describe('useProjectStore', () => {
     it('updateEvent: updates existing event', () => {
         const event = {
             id: 'ev-1', title: 'Original', date: '2026-03-15',
-            startTime: '10:00', duration: 60, type: 'Meeting' as const,
+            startTime: '10:00', duration: 60, type: 'To do pro' as const,
         };
         useProjectStore.getState().addEvent(event);
         useProjectStore.getState().updateEvent({ ...event, title: 'Updated' });
@@ -267,7 +267,7 @@ describe('useProjectStore', () => {
     it('deleteEvent: removes event', () => {
         const event = {
             id: 'ev-1', title: 'To Delete', date: '2026-03-15',
-            startTime: '10:00', duration: 60, type: 'Meeting' as const,
+            startTime: '10:00', duration: 60, type: 'To do pro' as const,
         };
         useProjectStore.getState().addEvent(event);
         expect(useProjectStore.getState().events).toHaveLength(1);

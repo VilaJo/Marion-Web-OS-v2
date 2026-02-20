@@ -13,6 +13,7 @@ interface FinancialHealthWidgetProps {
     onCreateInvoice?: () => void;
     onCreateEstimate?: () => void;
     onAddReminder?: (todoId: string, text: string, remindAt: Date) => void;
+    onAddCalendarEvent?: (event: { title: string; date: string; startTime: string; duration: number; addMeet: boolean }) => void;
 }
 
 const YACHT_PRICE = 300000; // Target Price for the Yacht
@@ -24,7 +25,8 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     currentTheme,
     onCreateInvoice,
     onCreateEstimate,
-    onAddReminder
+    onAddReminder,
+    onAddCalendarEvent,
 }) => {
     const { data: expenses = [] } = useExpenses();
     const [rates, setRates] = useState<Record<string, number>>({});
@@ -116,31 +118,130 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
 
     const targetIsoCurrency = getIsoCurrency(currency);
 
-    // --- Simple reminder parsing & creation ---
-    const parseReminderText = (input: string): { text: string; remindAt: Date } => {
+    const parseReminderText = (input: string): { text: string; remindAt: Date; isEvent: boolean; wantsMeet: boolean; duration: number; cleanTitle: string } => {
         const now = new Date();
+        const lower = input.toLowerCase();
+        let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let hours = now.getHours() + 1;
         let minutes = 0;
+        let duration = 15;
+        let isEvent = false;
+        let wantsMeet = false;
 
-        const timeMatch = input.match(/(\d{1,2})\s*h(?:\s*(\d{2}))?/i);
-        if (timeMatch) {
-            hours = Math.min(23, Math.max(0, Number(timeMatch[1])));
-            if (timeMatch[2]) minutes = Math.min(59, Math.max(0, Number(timeMatch[2])));
+        // --- Date detection ---
+        if (/demain/i.test(lower)) {
+            targetDate.setDate(targetDate.getDate() + 1);
+        } else if (/apr[eè]s[- ]?demain/i.test(lower)) {
+            targetDate.setDate(targetDate.getDate() + 2);
+        } else {
+            const dayNames: Record<string, number> = { lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6, dimanche: 0 };
+            for (const [name, dayNum] of Object.entries(dayNames)) {
+                if (lower.includes(name)) {
+                    let diff = dayNum - now.getDay();
+                    if (diff <= 0) diff += 7;
+                    targetDate.setDate(targetDate.getDate() + diff);
+                    break;
+                }
+            }
         }
 
-        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
-        return { text: input, remindAt: target };
+        // --- Time range "de Xh à Yh" ---
+        const rangeMatch = lower.match(/(?:de\s+)?(\d{1,2})\s*[hH:]\s*(\d{2})?\s*(?:à|a|-)\s*(\d{1,2})\s*[hH:]\s*(\d{2})?/);
+        if (rangeMatch) {
+            hours = Math.min(23, Math.max(0, Number(rangeMatch[1])));
+            minutes = rangeMatch[2] ? Math.min(59, Number(rangeMatch[2])) : 0;
+            const endH = Math.min(23, Math.max(0, Number(rangeMatch[3])));
+            const endM = rangeMatch[4] ? Math.min(59, Number(rangeMatch[4])) : 0;
+            duration = Math.max(15, (endH * 60 + endM) - (hours * 60 + minutes));
+        } else {
+            const timeMatch = lower.match(/(\d{1,2})\s*[hH:]\s*(\d{2})?/);
+            if (timeMatch) {
+                hours = Math.min(23, Math.max(0, Number(timeMatch[1])));
+                if (timeMatch[2]) minutes = Math.min(59, Number(timeMatch[2]));
+            }
+        }
+
+        // --- Event type detection ---
+        if (/\b(rdv|réunion|reunion|meeting|call|visio|rendez[- ]?vous|t[ée]l[ée]phone|appel)\b/i.test(lower)) {
+            isEvent = true;
+            if (duration <= 15) duration = 60;
+        }
+
+        if (/\b(meet|google\s*meet|lien\s*meet)\b/i.test(lower)) {
+            wantsMeet = true;
+            isEvent = true;
+            if (duration <= 15) duration = 60;
+        }
+
+        // --- Title extraction ---
+        let cleanTitle = '';
+        const quotedMatch = input.match(/["'""'']([^"'""'']+)["'""'']/);
+
+        if (quotedMatch) {
+            cleanTitle = quotedMatch[1].trim();
+        } else {
+            cleanTitle = input
+                // Command prefixes: "rappelle moi que j'ai", "n'oublie pas de", "pense à", "faut que je"
+                .replace(/^.*?(rappelle[sz]?[- ]?(moi|nous)\s*(que\s*)?(j['']?\s*(ai|aurai[s]?)\s+)?)/i, '')
+                .replace(/^.*?(n['']?\s*oublie\s+pas\s+(de|que|d[''])\s*)/i, '')
+                .replace(/^.*?(pense\s+[àa]\s*)/i, '')
+                .replace(/^.*?((il\s+)?faut\s+(que\s+)?(je|j[''])\s*)/i, '')
+                .replace(/^.*?(je\s+(dois|veux|vais|devrai[s]?)\s+)/i, '')
+                .replace(/^.*?(mets?|ajoute|cr[ée]+e?r?|met|note|planifie|pr[ée]vois)\s+(moi\s+)?(un\s+|une\s+|le\s+|la\s+|du\s+|des\s+)?/i, '')
+                // Calendar / agenda references
+                .replace(/\b(dans|sur)\s+(l['']?\s*agenda|le\s+calendrier|mon\s+agenda)\b/gi, '')
+                // Day names & relative dates
+                .replace(/\b(demain|aujourd['']?\s*hui|apr[eè]s[- ]?demain|ce\s+(matin|soir|midi)|le\s+\d{1,2}(\s+(janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|d[ée]cembre))?)\b/gi, '')
+                .replace(/\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s*(prochain|dernier)?\b/gi, '')
+                // Time references: "à 11h30", "de 14h à 15h", "vers 10h"
+                .replace(/\b(vers|[àa]|pour|avant)\s+\d{1,2}\s*[hH:]\s*\d{0,2}\b/g, '')
+                .replace(/(?:de\s+)?\d{1,2}\s*[hH:]\s*\d{0,2}\s*(?:(?:à|a|-)\s*\d{1,2}\s*[hH:]\s*\d{0,2})?/g, '')
+                // Meet/visio
+                .replace(/\bavec\s+(un\s+)?lien\s+(google\s*)?meet\b/gi, '')
+                .replace(/\b(avec\s+meet|lien\s+(google\s*)?meet)\b/gi, '')
+                // Event type words (kept in title only if meaningful context like "rdv dentiste")
+                .replace(/\b(rdv|réunion|reunion|meeting|rendez[- ]?vous)\s+(avec|chez|pour)?\s*/gi, (_, _kw, prep) => prep ? (prep + ' ') : '')
+                // Reminder duration
+                .replace(/\b(rappel\s+\d+\s*min\s*(avant)?)\b/gi, '')
+                .replace(/\bavec\s+(un\s+|le\s+)?titre\b/gi, '')
+                // Quotes and cleanup
+                .replace(/["'""'']/g, '')
+                .replace(/^\s*[-–—,.:;!?\s]+/, '')
+                .replace(/[-–—,.:;!?\s]+$/, '')
+                .replace(/^\s*(de|du|et|un|une|le|la|les|l['']|des|mon|ma|mes|son|sa|que|qui)\s+/gi, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+        }
+
+        // Capitalize first letter
+        if (cleanTitle) {
+            cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+        } else {
+            cleanTitle = input.trim();
+        }
+
+        targetDate.setHours(hours, minutes, 0, 0);
+        return { text: input, remindAt: targetDate, isEvent, wantsMeet, duration, cleanTitle };
     };
 
     const addTodoFromText = (raw: string, category: TodoCategory = 'Perso') => {
         const trimmed = raw.trim();
         if (!trimmed) return;
-        const { text, remindAt } = parseReminderText(trimmed);
+        const { text, remindAt, isEvent, wantsMeet, duration, cleanTitle } = parseReminderText(trimmed);
+
         const id = `todo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const remindAtStr = `${String(remindAt.getHours()).padStart(2, '0')}:${String(remindAt.getMinutes()).padStart(2, '0')}`;
+        const todoLabel = isEvent ? `📅 ${cleanTitle}` : `🔔 ${cleanTitle}`;
+        setTodos(prev => [...prev, { id, text: todoLabel, done: false, remindAt: remindAtStr, category }]);
 
-        setTodos(prev => [...prev, { id, text, done: false, remindAt: remindAtStr, category }]);
-        if (onAddReminder) onAddReminder(id, text, remindAt);
+        if (isEvent && onAddCalendarEvent) {
+            const dateStr = `${remindAt.getFullYear()}-${String(remindAt.getMonth() + 1).padStart(2, '0')}-${String(remindAt.getDate()).padStart(2, '0')}`;
+            const timeStr = `${String(remindAt.getHours()).padStart(2, '0')}:${String(remindAt.getMinutes()).padStart(2, '0')}`;
+            onAddCalendarEvent({ title: cleanTitle, date: dateStr, startTime: timeStr, duration, addMeet: wantsMeet });
+        } else if (onAddReminder) {
+            onAddReminder(id, cleanTitle, remindAt);
+        }
+
         setNewTodo('');
     };
 

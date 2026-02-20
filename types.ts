@@ -174,7 +174,8 @@ export interface CalendarEvent {
     date: string;
     startTime: string;
     duration: number; // in minutes
-    type: 'Meeting' | 'Deadline' | 'Focus' | 'Personal';
+    type: 'Deadlines' | 'Call ou rdv pro' | 'To do pro' | 'Anniversaire' | 'Facturation' | 'Perso' | 'Maintenances' | 'Sport';
+    colorId?: string;
     meetLink?: string;
     description?: string;
     originalTimezone?: string;
