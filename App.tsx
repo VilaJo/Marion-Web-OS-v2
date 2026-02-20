@@ -375,7 +375,7 @@ const App: React.FC = () => {
             <footer className="max-w-7xl mx-auto mt-20 text-center text-xs text-slate-400 font-serif flex items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity pb-8 relative z-10">
                 <span>Designer avec</span>
                 <span className="text-red-400">♥</span>
-                <span>par JV Automation - Copyright 2026 - v2.4.4</span>
+                <span>par JV Automation - Copyright 2026 - v2.4.5</span>
             </footer>
 
             {/* Global Overlays */}
