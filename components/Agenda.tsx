@@ -28,8 +28,8 @@ const GCAL_CATEGORIES: Record<string, { label: string; color: string; bg: string
     'To do pro':        { label: 'To do pro',        color: '#3F51B5', bg: 'bg-[#3F51B5]/10', text: 'text-[#3F51B5]', border: 'border-[#3F51B5]/30', darkBg: 'dark:bg-[#3F51B5]/20', darkText: 'dark:text-[#9FA8DA]' },
     'Anniversaire':     { label: 'Anniversaire',     color: '#7986CB', bg: 'bg-[#7986CB]/10', text: 'text-[#7986CB]', border: 'border-[#7986CB]/30', darkBg: 'dark:bg-[#7986CB]/20', darkText: 'dark:text-[#C5CAE9]' },
     'Facturation':      { label: 'Facturation',      color: '#E67C73', bg: 'bg-[#E67C73]/10', text: 'text-[#E67C73]', border: 'border-[#E67C73]/30', darkBg: 'dark:bg-[#E67C73]/20', darkText: 'dark:text-[#EF9A9A]' },
-    'Perso':            { label: 'Perso',            color: '#8E24AA', bg: 'bg-[#8E24AA]/10', text: 'text-[#8E24AA]', border: 'border-[#8E24AA]/30', darkBg: 'dark:bg-[#8E24AA]/20', darkText: 'dark:text-[#CE93D8]' },
-    'Maintenances':     { label: 'Maintenances',     color: '#F6BF26', bg: 'bg-[#F6BF26]/10', text: 'text-[#F6BF26]', border: 'border-[#F6BF26]/30', darkBg: 'dark:bg-[#F6BF26]/20', darkText: 'dark:text-[#FFF176]' },
+    'Perso':            { label: 'Perso',            color: '#F6BF26', bg: 'bg-[#F6BF26]/10', text: 'text-[#b8860b]', border: 'border-[#F6BF26]/30', darkBg: 'dark:bg-[#F6BF26]/20', darkText: 'dark:text-[#FFF176]' },
+    'Maintenances':     { label: 'Maintenances',     color: '#8E24AA', bg: 'bg-[#8E24AA]/10', text: 'text-[#8E24AA]', border: 'border-[#8E24AA]/30', darkBg: 'dark:bg-[#8E24AA]/20', darkText: 'dark:text-[#CE93D8]' },
     'Sport':            { label: 'Sport',            color: '#33B679', bg: 'bg-[#33B679]/10', text: 'text-[#33B679]', border: 'border-[#33B679]/30', darkBg: 'dark:bg-[#33B679]/20', darkText: 'dark:text-[#81C784]' },
 };
 
@@ -39,8 +39,8 @@ const GCAL_COLORID_MAP: Record<string, string> = {
     '9':  'To do pro',
     '1':  'Anniversaire',
     '4':  'Facturation',
-    '3':  'Perso',
-    '5':  'Maintenances',
+    '5':  'Perso',
+    '3':  'Maintenances',
     '2':  'Sport',
 };
 
