@@ -10,7 +10,7 @@ import time
 import json
 import urllib.parse
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Any
 
 import requests as http_requests
 
@@ -60,7 +60,76 @@ def set_api_key(key: str):
 
 
 def is_configured() -> bool:
+    # Local-only mode can be configured without Gemini.
+    mode = get_default_ai_mode()
+    if mode == "local":
+        return is_local_available()
     return get_client() is not None
+
+
+def get_default_ai_mode() -> str:
+    mode = (getattr(cfg, "AI_PROVIDER", "cloud") or "cloud").lower()
+    return mode if mode in ("local", "cloud", "hybrid") else "cloud"
+
+
+def is_local_available() -> bool:
+    try:
+        base_url = getattr(cfg, "OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+        resp = http_requests.get(f"{base_url}/api/tags", timeout=2)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def resolve_ai_prefs(payload: Optional[dict]) -> dict:
+    payload = payload or {}
+    ai_mode = (payload.get("ai_mode") or get_default_ai_mode()).lower()
+    if ai_mode not in ("local", "cloud", "hybrid"):
+        ai_mode = get_default_ai_mode()
+    local_model = (payload.get("local_model") or getattr(cfg, "OLLAMA_MODEL_CHAT", "qwen2.5:7b-instruct")).strip()
+    fallback_enabled = payload.get("fallback_enabled")
+    if fallback_enabled is None:
+        fallback_enabled = True
+    return {
+        "ai_mode": ai_mode,
+        "local_model": local_model,
+        "fallback_enabled": bool(fallback_enabled),
+    }
+
+
+def ai_status_payload() -> dict[str, Any]:
+    local_latency_ms = None
+    local_error = None
+    try:
+        base_url = getattr(cfg, "OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+        t0 = time.time()
+        resp = http_requests.get(f"{base_url}/api/tags", timeout=2)
+        local_latency_ms = int((time.time() - t0) * 1000)
+        if resp.status_code != 200:
+            local_error = f"HTTP {resp.status_code}"
+    except Exception as e:
+        local_error = str(e)
+
+    prefs = {
+        "ai_mode": get_default_ai_mode(),
+        "local_model": getattr(cfg, "OLLAMA_MODEL_CHAT", "qwen2.5:7b-instruct"),
+        "fallback_enabled": True,
+    }
+    cloud_available = get_client() is not None
+    return {
+        "configured": is_configured(),
+        "assistant_name": "Franck",
+        "provider": prefs["ai_mode"],
+        "cloudAvailable": cloud_available,
+        "localAvailable": is_local_available(),
+        "localLatencyMs": local_latency_ms,
+        "fallbackEnabled": prefs["fallback_enabled"],
+        "model": "gemini-2.0-flash" if cloud_available else None,
+        "localModel": prefs["local_model"],
+        "ollamaBaseUrl": getattr(cfg, "OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+        "localTimeoutMs": getattr(cfg, "AI_LOCAL_TIMEOUT_MS", 12000),
+        "errors": {"local": local_error} if local_error else {},
+    }
 
 
 # ---------------------------------------------------------------------------

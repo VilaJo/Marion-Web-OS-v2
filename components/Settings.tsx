@@ -41,7 +41,7 @@ import {
     Upload,
     CloudUpload,
 } from 'lucide-react';
-import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, useCloudBackupConfig, useSetCloudBackupConfig, useCloudBackup, useBackupStatus, queryKeys } from '../services/queries';
+import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, useCloudBackupConfig, useSetCloudBackupConfig, useCloudBackup, useBackupStatus, useCheckStatus, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores';
 
@@ -66,6 +66,12 @@ interface SettingsModalProps {
     setAiTone: (tone: string) => void;
     briefingVocal: boolean;
     setBriefingVocal: (enabled: boolean) => void;
+    aiMode: 'local' | 'hybrid' | 'cloud';
+    setAiMode: (mode: 'local' | 'hybrid' | 'cloud') => void;
+    localModelName: string;
+    setLocalModelName: (name: string) => void;
+    aiFallbackEnabled: boolean;
+    setAiFallbackEnabled: (enabled: boolean) => void;
     signatureSettings: any;
     setSignatureSettings: (settings: any) => void;
     notificationSettings: any[];
@@ -82,6 +88,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     tjh, setTjh,
     aiTone, setAiTone,
     briefingVocal, setBriefingVocal,
+    aiMode, setAiMode,
+    localModelName, setLocalModelName,
+    aiFallbackEnabled, setAiFallbackEnabled,
     signatureSettings, setSignatureSettings,
     notificationSettings, setNotificationSettings
 }) => {
@@ -116,6 +125,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const { data: oauthData } = useOAuthStatus();
     const connectGoogleMutation = useConnectGoogle();
     const disconnectGoogleMutation = useDisconnectGoogle();
+    const isAiTabOpen = isOpen && activeTab === 'ai';
+    const {
+        data: aiHealth,
+        isLoading: isAiHealthLoading,
+        refetch: refetchAiHealth,
+    } = useCheckStatus(isAiTabOpen);
 
     // Cloud backup hooks
     const { data: cloudBackupConfig } = useCloudBackupConfig();
@@ -262,6 +277,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [localCurrency, setLocalCurrency] = useState(currency);
     const [localAiTone, setLocalAiTone] = useState(aiTone);
     const [localBriefingVocal, setLocalBriefingVocal] = useState(briefingVocal);
+    const [localAiMode, setLocalAiMode] = useState(aiMode);
+    const [localAiModelName, setLocalModelNameState] = useState(localModelName);
+    const [localAiFallbackEnabled, setLocalAiFallbackEnabledState] = useState(aiFallbackEnabled);
     const [localSignature, setLocalSignature] = useState(signatureSettings);
     const [localNotifications, setLocalNotifications] = useState(notificationSettings);
 
@@ -274,10 +292,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             setLocalCurrency(currency);
             setLocalAiTone(aiTone);
             setLocalBriefingVocal(briefingVocal);
+            setLocalAiMode(aiMode);
+            setLocalModelNameState(localModelName);
+            setLocalAiFallbackEnabledState(aiFallbackEnabled);
             setLocalSignature(signatureSettings);
             setLocalNotifications(notificationSettings);
         }
-    }, [isOpen, agencyName, agencyWebsite, tjh, currency, aiTone, briefingVocal, signatureSettings, notificationSettings]);
+    }, [isOpen, agencyName, agencyWebsite, tjh, currency, aiTone, briefingVocal, aiMode, localModelName, aiFallbackEnabled, signatureSettings, notificationSettings]);
     
     // Helper for signature updates
     const updateLocalSignature = (key: string, value: string) => {
@@ -293,6 +314,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         onCurrencyChange(localCurrency);
         setAiTone(localAiTone);
         setBriefingVocal(localBriefingVocal);
+        setAiMode(localAiMode);
+        setLocalModelName(localAiModelName);
+        setAiFallbackEnabled(localAiFallbackEnabled);
         setSignatureSettings(localSignature);
         setNotificationSettings(localNotifications);
 
@@ -705,6 +729,106 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     ))}
                                 </div>
                              </div>
+
+                             <div className="space-y-3">
+                                <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Mode IA</label>
+                                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                                    {([
+                                        { id: 'cloud', label: 'Cloud' },
+                                        { id: 'hybrid', label: 'Hybride' },
+                                        { id: 'local', label: 'Local' },
+                                    ] as const).map(mode => (
+                                        <button
+                                            key={mode.id}
+                                            onClick={() => setLocalAiMode(mode.id)}
+                                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                                                localAiMode === mode.id
+                                                    ? 'bg-white dark:bg-slate-700 text-brand-orange shadow-sm'
+                                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                            }`}
+                                        >
+                                            {mode.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-slate-400">
+                                    Local: Ollama uniquement · Hybride: local puis fallback cloud · Cloud: Gemini uniquement
+                                </p>
+                             </div>
+
+                             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Santé IA locale (Ollama)</div>
+                                        <div className="text-xs text-slate-500">Contrôle runtime local et fallback cloud</div>
+                                    </div>
+                                    <button
+                                        onClick={() => refetchAiHealth()}
+                                        className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    >
+                                        <RefreshCw size={13} className={isAiHealthLoading ? 'animate-spin' : ''} />
+                                        Refresh
+                                    </button>
+                                </div>
+                                {isAiHealthLoading ? (
+                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Vérification du statut IA...
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                        <div className="flex items-center gap-2">
+                                            {aiHealth?.localAvailable ? <CheckCircle size={14} className="text-emerald-500" /> : <AlertCircle size={14} className="text-amber-500" />}
+                                            <span className="text-slate-600 dark:text-slate-300">
+                                                Local: {aiHealth?.localAvailable ? 'Disponible' : 'Indisponible'}
+                                            </span>
+                                        </div>
+                                        <div className="text-slate-600 dark:text-slate-300">
+                                            Latence locale: {typeof aiHealth?.localLatencyMs === 'number' ? `${aiHealth.localLatencyMs} ms` : 'N/A'}
+                                        </div>
+                                        <div className="text-slate-600 dark:text-slate-300">
+                                            Modèle local: {aiHealth?.localModel || localAiModelName}
+                                        </div>
+                                        <div className="text-slate-600 dark:text-slate-300">
+                                            Cloud: {aiHealth?.cloudAvailable ? 'Disponible' : 'Non configuré'}
+                                        </div>
+                                        <div className="text-slate-600 dark:text-slate-300 md:col-span-2">
+                                            Provider défaut: {aiHealth?.provider || localAiMode} · Fallback: {aiHealth?.fallbackEnabled ? 'ON' : 'OFF'}
+                                        </div>
+                                        {!aiHealth?.localAvailable && aiHealth?.errors?.local && (
+                                            <div className="md:col-span-2 text-amber-600 dark:text-amber-400">
+                                                Erreur locale: {aiHealth.errors.local}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                             </div>
+
+                             {(localAiMode === 'local' || localAiMode === 'hybrid') && (
+                                <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Modèle local</label>
+                                        <input
+                                            value={localAiModelName}
+                                            onChange={(e) => setLocalModelNameState(e.target.value)}
+                                            placeholder="qwen2.5:7b-instruct"
+                                            className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-orange"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Fallback cloud</div>
+                                            <div className="text-xs text-slate-500">Si Ollama échoue, utiliser Gemini</div>
+                                        </div>
+                                        <button
+                                            onClick={() => setLocalAiFallbackEnabledState(!localAiFallbackEnabled)}
+                                            className={`w-12 h-6 rounded-full transition-colors relative ${localAiFallbackEnabled ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                        >
+                                            <div className={`w-5 h-5 bg-white rounded-full absolute transition-transform ${localAiFallbackEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                                        </button>
+                                    </div>
+                                </div>
+                             )}
 
                              <div className="space-y-2">
                                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">

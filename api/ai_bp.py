@@ -8,6 +8,8 @@ Handles: chat, zen, briefing, greeting, suggestions, media processing,
 import os
 import sys
 import json
+import re
+import inspect
 from services.logger import get_logger
 
 logger = get_logger('api.ai')
@@ -22,12 +24,19 @@ from config import get_current_config
 
 from services.gemini_service import (
     get_client, init_client, set_api_key, is_configured,
+    ai_status_payload, resolve_ai_prefs, is_local_available, get_default_ai_mode,
     FRANCK_SYSTEM_PROMPT, COACH_FRANCK_SYSTEM_PROMPT,
     load_franck_memory, save_franck_memory, get_time_greeting,
     set_context, get_context,
     franck_todos, franck_events, franck_invoices, franck_emails, franck_actions,
     clear_franck_data as svc_clear_franck_data,
-    get_proactive_suggestions, execute_tool, TOOLS_LIST,
+    get_proactive_suggestions, execute_tool, TOOLS_LIST, TOOLS_MAP,
+)
+from services.ai_provider_service import (
+    generate_text_with_fallback,
+    generate_json_with_fallback,
+    generate_multimodal_with_fallback,
+    stream_text_with_fallback,
 )
 from api.shared import DESKTOP_PATH, get_safe_path, error_response
 
@@ -40,6 +49,83 @@ cfg = get_current_config()
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/api/v1')
 
+CONFIRM_RE = re.compile(
+    r"\b("
+    r"oui|ok|d'accord|vas[- ]?y|go|confirm|confirme|"
+    r"tu peux|lance|execute|fais[- ]?le|fait[- ]?le|"
+    r"yes|proceed|do it"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_scalar_json(value):
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
+def _validate_json_shape(value, depth=0):
+    if depth > 4:
+        return False
+    if _is_scalar_json(value):
+        return True
+    if isinstance(value, list):
+        if len(value) > 50:
+            return False
+        return all(_validate_json_shape(v, depth + 1) for v in value)
+    if isinstance(value, dict):
+        if len(value) > 30:
+            return False
+        return all(
+            isinstance(k, str) and _validate_json_shape(v, depth + 1)
+            for k, v in value.items()
+        )
+    return False
+
+
+def _validate_local_tool_calls(tool_calls, user_text: str, max_rounds: int):
+    """Validate local tool calls before executing side-effect actions."""
+    valid_calls = []
+    rejected = []
+
+    if not isinstance(tool_calls, list):
+        return valid_calls, ["tool_calls_not_a_list"]
+
+    if tool_calls and not CONFIRM_RE.search(user_text or ""):
+        return valid_calls, ["confirmation_required"]
+
+    for idx, raw_call in enumerate(tool_calls[:max_rounds]):
+        if not isinstance(raw_call, dict):
+            rejected.append(f"call_{idx}:invalid_object")
+            continue
+
+        fname = raw_call.get("name")
+        if not isinstance(fname, str) or fname not in TOOLS_MAP:
+            rejected.append(f"call_{idx}:unknown_tool:{fname}")
+            continue
+
+        raw_args = raw_call.get("args", {})
+        if not isinstance(raw_args, dict) or not _validate_json_shape(raw_args):
+            rejected.append(f"call_{idx}:{fname}:invalid_args")
+            continue
+
+        signature = inspect.signature(TOOLS_MAP[fname])
+        allowed_params = set(signature.parameters.keys())
+        required_params = {
+            p.name
+            for p in signature.parameters.values()
+            if p.default is inspect._empty
+            and p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+        }
+        safe_args = {k: v for k, v in raw_args.items() if k in allowed_params}
+        missing = [k for k in required_params if k not in safe_args]
+        if missing:
+            rejected.append(f"call_{idx}:{fname}:missing:{','.join(sorted(missing))}")
+            continue
+
+        valid_calls.append({"name": fname, "args": safe_args})
+
+    return valid_calls, rejected
+
 
 # ============================================================================
 # Gemini Setup / Status
@@ -47,15 +133,18 @@ ai_bp = Blueprint('ai', __name__, url_prefix='/api/v1')
 
 @ai_bp.route('/ai/check-status', methods=['GET'])
 def check_status():
-    """Check if Gemini is configured."""
-    return jsonify({"configured": is_configured()})
+    """Check AI configuration/provider status."""
+    return jsonify(ai_status_payload())
 
 
 @ai_bp.route('/ai/setup', methods=['POST'])
 def setup():
-    """Configure Gemini API key."""
+    """Configure Gemini API key (optional if local mode)."""
     data = request.json
     api_key = data.get('api_key')
+    ai_mode = (data.get("ai_mode") or get_default_ai_mode()).lower()
+    if ai_mode == "local":
+        return jsonify({"success": True, "message": "Local mode does not require a Gemini key."})
     if not api_key:
         return jsonify({"error": "API Key required"}), 400
     try:
@@ -83,12 +172,10 @@ def setup():
 @ai_bp.route('/ai/status', methods=['GET'])
 def ai_status():
     """Check if the AI (Franck) is configured and available."""
-    has_key = bool(cfg.GEMINI_API_KEY)
-    return jsonify({
-        "configured": has_key,
-        "model": "gemini-2.0-flash" if has_key else None,
-        "assistant_name": "Franck",
-    })
+    payload = ai_status_payload()
+    payload["providerDefault"] = get_default_ai_mode()
+    payload["localAvailable"] = is_local_available()
+    return jsonify(payload)
 
 
 # ============================================================================
@@ -99,12 +186,13 @@ def ai_status():
 def chat():
     """Main Franck chat endpoint with function-calling."""
     client = get_client()
-    if not client:
+    data = request.json or {}
+    ai_prefs = resolve_ai_prefs(data)
+    if ai_prefs["ai_mode"] == "cloud" and not client:
         return jsonify({"error": "Server not configured"}), 503
 
     from google.genai import types
 
-    data = request.json
     app_context = data.get('context', {})
     projects = app_context.get('projects', [])
     events = app_context.get('events', [])
@@ -193,6 +281,74 @@ SUGGESTIONS POSSIBLES:
 
     def generate():
         try:
+            # Local/hybrid path with JSON tool calls, fallback to cloud when needed.
+            if ai_prefs["ai_mode"] in ("local", "hybrid"):
+                user_text = history_contents[-1].parts[0].text
+                local_prompt = (
+                    f"{full_system}\n\n"
+                    "You may answer naturally, OR return strict JSON with keys:\n"
+                    '{"reply":"...", "tool_calls":[{"name":"...", "args":{...}}]}\n'
+                    "Use tool_calls only when a user confirmed an action."
+                    f"\n\nUser message:\n{user_text}"
+                )
+                local_raw = ""
+                try:
+                    local_raw = generate_text_with_fallback(
+                        gemini_client=client,
+                        prompt=local_prompt,
+                        prefs=ai_prefs,
+                        cloud_model="gemini-2.0-flash",
+                        task="chat",
+                    )
+                except Exception as e:
+                    logger.warning("Local chat failed prior to fallback: %s", e)
+                    if ai_prefs["ai_mode"] == "local":
+                        raise
+
+                if local_raw:
+                    # Try JSON tool-calling contract first
+                    try:
+                        parsed = json.loads(local_raw.replace("```json", "").replace("```", "").strip())
+                        tool_calls = parsed.get("tool_calls") or []
+                        reply = parsed.get("reply", "")
+                        valid_calls, rejected_calls = _validate_local_tool_calls(
+                            tool_calls, user_text, MAX_TOOL_ROUNDS
+                        )
+                        if rejected_calls:
+                            logger.warning(
+                                "Rejected local tool calls (mode=%s): %s",
+                                ai_prefs["ai_mode"],
+                                rejected_calls,
+                            )
+                        for i, call in enumerate(valid_calls):
+                            fname = call["name"]
+                            fargs = call["args"]
+                            logger.info("Local tool call [round %d]: %s(%s)", i + 1, fname, fargs)
+                            tool_result = execute_tool(fname, fargs)
+                            if not reply:
+                                reply = f"{reply}\n{tool_result}".strip()
+                        if tool_calls and not valid_calls and not reply and ai_prefs["ai_mode"] == "local":
+                            yield "Mode local sécurisé: confirme l'action explicitement (ex: 'oui, tu peux le faire')."
+                            memory['last_seen'] = time.strftime('%Y-%m-%d %H:%M')
+                            save_franck_memory(memory)
+                            return
+                        if reply:
+                            yield reply
+                            memory['last_seen'] = time.strftime('%Y-%m-%d %H:%M')
+                            save_franck_memory(memory)
+                            return
+                    except Exception:
+                        # If local didn't emit JSON, we still stream natural text as valid fallback behavior.
+                        if local_raw.strip():
+                            yield local_raw
+                            memory['last_seen'] = time.strftime('%Y-%m-%d %H:%M')
+                            save_franck_memory(memory)
+                            return
+
+                # Local/hybrid fallback to cloud function-calling path
+                if ai_prefs["ai_mode"] == "local" and not local_raw:
+                    raise RuntimeError("Local mode did not return a response")
+
             chat_session = client.chats.create(
                 model="gemini-2.0-flash",
                 history=history_contents[:-1],
@@ -230,13 +386,12 @@ SUGGESTIONS POSSIBLES:
 def chat_zen():
     """Coach Franck endpoint for Focus Mode."""
     client = get_client()
-    if not client:
-        return jsonify({"error": "Server not configured"}), 503
-
-    from google.genai import types
 
     try:
         data = request.json
+        ai_prefs = resolve_ai_prefs(data)
+        if ai_prefs["ai_mode"] == "cloud" and not client:
+            return jsonify({"error": "Server not configured"}), 503
         message = data.get('message', '')
         history = data.get('history', [])
 
@@ -254,14 +409,16 @@ def chat_zen():
 
         def generate():
             try:
-                response = client.models.generate_content_stream(
-                    model="gemini-2.0-flash",
+                for chunk in stream_text_with_fallback(
+                    gemini_client=client,
                     contents=contents,
-                    config=types.GenerateContentConfig(temperature=0.8, max_output_tokens=500),
-                )
-                for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
+                    prefs=ai_prefs,
+                    cloud_model="gemini-2.0-flash",
+                    task="chat",
+                    system_prompt=COACH_FRANCK_SYSTEM_PROMPT,
+                    temperature=0.8,
+                ):
+                    yield chunk
             except Exception:
                 yield "Oups, petit bug technique. Respire et reessaie."
 
@@ -331,13 +488,12 @@ def franck_suggestions():
 def briefing():
     """Generate the weekly briefing."""
     client = get_client()
-    if not client:
+    data = request.json or {}
+    ai_prefs = resolve_ai_prefs(data)
+    if ai_prefs["ai_mode"] == "cloud" and not client:
         return jsonify({"error": "Server not configured"}), 503
-    data = request.json
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-pro",
-            contents=f"""
+        prompt = f"""
             Tu es le Redacteur en Chef de "Marion Web OS News", l'assistant personnel de Marion.
             Ton objectif : Rediger un briefing hebdomadaire structure, elegant et ultra-motivant.
 
@@ -356,8 +512,14 @@ def briefing():
             - Le Big Rock (priorite absolue)
             - Citation inspirante
             """
+        html = generate_text_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model="gemini-2.5-pro",
+            task="reasoning",
         )
-        return jsonify({"html": response.text})
+        return jsonify({"html": html})
     except Exception as e:
         return error_response(e)
 
@@ -366,13 +528,20 @@ def briefing():
 def analyze_project():
     """Analyze a project with AI."""
     client = get_client()
-    if not client:
+    data = request.json or {}
+    ai_prefs = resolve_ai_prefs(data)
+    if ai_prefs["ai_mode"] == "cloud" and not client:
         return jsonify({"error": "Server not configured"}), 503
-    data = request.json
     try:
         prompt = f"Analyze project {data.get('clientName')} and tasks {data.get('tasks')}. Return HTML."
-        response = client.models.generate_content(model="gemini-2.5-pro", contents=prompt)
-        return jsonify({"html": response.text})
+        html = generate_text_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model="gemini-2.5-pro",
+            task="reasoning",
+        )
+        return jsonify({"html": html})
     except Exception as e:
         return error_response(e)
 
@@ -381,11 +550,11 @@ def analyze_project():
 def ai_note_action():
     """AI-powered note actions (improve, summarize, tasks, continue)."""
     client = get_client()
-    if not client:
-        return jsonify({"error": "Server configuration error: Gemini Client is None"}), 503
-
     try:
-        data = request.json
+        data = request.json or {}
+        ai_prefs = resolve_ai_prefs(data)
+        if ai_prefs["ai_mode"] == "cloud" and not client:
+            return jsonify({"error": "Server configuration error: Gemini Client is None"}), 503
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
 
@@ -402,15 +571,14 @@ def ai_note_action():
         }
         prompt = prompts.get(action, f"Ameliore ce texte :\n\n{text}")
 
-        try:
-            response = client.models.generate_content(model="gemini-2.5-pro", contents=prompt)
-            return jsonify({"success": True, "result": response.text})
-        except Exception:
-            try:
-                response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-                return jsonify({"success": True, "result": response.text})
-            except Exception as e2:
-                return error_response(e2)
+        result = generate_text_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model="gemini-2.5-pro",
+            task="reasoning",
+        )
+        return jsonify({"success": True, "result": result})
     except Exception as e:
         return error_response(e)
 
@@ -419,17 +587,22 @@ def ai_note_action():
 def generate_invoice_reminder():
     """Generate an invoice reminder email with AI."""
     client = get_client()
-    if not client:
+    data = request.json or {}
+    ai_prefs = resolve_ai_prefs(data)
+    if ai_prefs["ai_mode"] == "cloud" and not client:
         return jsonify({"error": "Server not configured"}), 503
     try:
-        from google.genai import types
-        resp = client.models.generate_content(
-            model="gemini-2.5-pro",
-            contents=f"Write invoice reminder for {request.json.get('clientName')} "
-                     f"{request.json.get('amount')}. Return JSON {{subject, body}}.",
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        payload = generate_json_with_fallback(
+            gemini_client=client,
+            prompt=(
+                f"Write invoice reminder for {data.get('clientName')} {data.get('amount')}. "
+                "Return JSON with keys: subject, body."
+            ),
+            prefs=ai_prefs,
+            cloud_model="gemini-2.5-pro",
+            task="reasoning",
         )
-        return jsonify(json.loads(resp.text))
+        return jsonify(payload)
     except Exception as e:
         return error_response(e)
 
@@ -681,11 +854,15 @@ def dispatch_file():
             "reason": "AI not available",
         }
 
+        data = request.form.to_dict() if request.form else {}
+        ai_prefs = resolve_ai_prefs(data)
         client = get_client()
-        if client:
+        if client or ai_prefs.get("ai_mode") in ("local", "hybrid"):
             try:
-                from google.genai import types
                 mime_type = "application/pdf" if temp_path.suffix.lower() == '.pdf' else "image/jpeg"
+                suffix = temp_path.suffix.lower()
+                if suffix in (".png", ".webp"):
+                    mime_type = f"image/{suffix[1:]}"
                 prompt = f"""
                 You are Franck.
                 KNOWN CLIENTS: {json.dumps(clients)}.
@@ -702,17 +879,16 @@ def dispatch_file():
                 Task: Identify the most appropriate client and folder for this file, and suggest a clean professional filename.
                 Return JSON ONLY: {{ "client": "...", "folder": "...", "newName": "...", "reason": "..." }}
                 """
-                response = client.models.generate_content(
-                    model="gemini-2.5-pro",
-                    contents=[
-                        types.Content(role="user", parts=[
-                            types.Part.from_bytes(data=file_content, mime_type=mime_type),
-                            types.Part.from_text(text=prompt),
-                        ])
-                    ],
-                    config=types.GenerateContentConfig(response_mime_type="application/json"),
+                raw = generate_multimodal_with_fallback(
+                    gemini_client=client,
+                    file_bytes=file_content,
+                    prompt=prompt,
+                    prefs=ai_prefs,
+                    cloud_model="gemini-2.5-pro",
+                    mime_type=mime_type,
+                    response_mime_type="application/json",
                 )
-                ai_result = json.loads(response.text.replace("```json", "").replace("```", "").strip())
+                ai_result = json.loads(raw.replace("```json", "").replace("```", "").strip())
                 suggestion.update({k: v for k, v in ai_result.items() if k in suggestion})
             except Exception:
                 pass
@@ -734,10 +910,10 @@ def dispatch_file():
 def email_ai_reply():
     """Generate an AI-powered reply to an email."""
     client = get_client()
-    if not client:
-        return jsonify({"error": "Server not configured"}), 503
-
     data = request.json or {}
+    ai_prefs = resolve_ai_prefs(data)
+    if ai_prefs["ai_mode"] == "cloud" and not client:
+        return jsonify({"error": "Server not configured"}), 503
     original_body = data.get('originalBody', '')
     original_from = data.get('originalFrom', '')
     original_subject = data.get('originalSubject', '')
@@ -765,11 +941,14 @@ CONSIGNES:
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
+        reply = generate_text_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model="gemini-2.0-flash",
+            task="chat",
         )
-        return jsonify({"success": True, "reply": response.text})
+        return jsonify({"success": True, "reply": reply})
     except Exception as e:
         return error_response(e)
 
@@ -778,10 +957,10 @@ CONSIGNES:
 def email_ai_summarize():
     """Summarize an email or email thread."""
     client = get_client()
-    if not client:
-        return jsonify({"error": "Server not configured"}), 503
-
     data = request.json or {}
+    ai_prefs = resolve_ai_prefs(data)
+    if ai_prefs["ai_mode"] == "cloud" and not client:
+        return jsonify({"error": "Server not configured"}), 503
     body = data.get('body', '')
     subject = data.get('subject', '')
 
@@ -803,11 +982,14 @@ CONSIGNES :
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
+        summary = generate_text_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model="gemini-2.0-flash",
+            task="chat",
         )
-        return jsonify({"success": True, "summary": response.text})
+        return jsonify({"success": True, "summary": summary})
     except Exception as e:
         return error_response(e)
 
