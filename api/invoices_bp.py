@@ -93,11 +93,12 @@ def scan_expense():
         }
 
         # Try AI extraction
-        from services.gemini_service import get_client
+        from services.gemini_service import get_client, resolve_ai_prefs
+        from services.ai_provider_service import generate_json_with_fallback, generate_multimodal_with_fallback
         client = get_client()
-        if client:
+        ai_prefs = resolve_ai_prefs(request.form.to_dict() if request.form else {})
+        if client or ai_prefs.get("ai_mode") in ("local", "hybrid"):
             try:
-                from google.genai import types
                 mime_type = "application/pdf" if file_ext.lower() == '.pdf' else "image/jpeg"
                 if file_ext.lower() in ['.png', '.webp']:
                     mime_type = f"image/{file_ext[1:]}"
@@ -112,15 +113,26 @@ def scan_expense():
                     '- Description (Short summary). '
                     'Return ONLY JSON: { "supplier": "", "amount": 0.0, "date": "", "category": "", "description": "" }'
                 )
-                response = client.models.generate_content(
-                    model="gemini-2.5-pro",
-                    contents=[
-                        types.Part.from_bytes(data=file_content, mime_type=mime_type),
-                        types.Part.from_text(text=prompt),
-                    ],
-                    config=types.GenerateContentConfig(response_mime_type="application/json"),
+                # Use multimodal path first; if local model returns non-JSON, fallback to strict JSON generation.
+                raw = generate_multimodal_with_fallback(
+                    gemini_client=client,
+                    file_bytes=file_content,
+                    prompt=prompt,
+                    prefs=ai_prefs,
+                    cloud_model="gemini-2.5-pro",
+                    mime_type=mime_type,
+                    response_mime_type="application/json",
                 )
-                extracted = json.loads(response.text)
+                try:
+                    extracted = json.loads(raw.replace("```json", "").replace("```", "").strip())
+                except Exception:
+                    extracted = generate_json_with_fallback(
+                        gemini_client=client,
+                        prompt=f"{prompt}\n\nOCR text candidate:\n{raw[:4000]}",
+                        prefs=ai_prefs,
+                        cloud_model="gemini-2.5-pro",
+                        task="reasoning",
+                    )
                 expense_data.update(extracted)
             except Exception as ai_e:
                 logger.warning("AI Expense Scan Error: %s", ai_e)

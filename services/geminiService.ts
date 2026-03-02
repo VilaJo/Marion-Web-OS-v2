@@ -11,6 +11,17 @@ const getAuthHeaders = () => {
     };
 };
 
+const getAiRoutingPayload = () => {
+    const aiMode = (localStorage.getItem('marion_ai_mode') || 'cloud') as 'local' | 'hybrid' | 'cloud';
+    const localModel = localStorage.getItem('marion_ai_local_model') || 'qwen2.5:7b-instruct';
+    const fallbackEnabled = localStorage.getItem('marion_ai_fallback_enabled') !== 'false';
+    return {
+        ai_mode: aiMode,
+        local_model: localModel,
+        fallback_enabled: fallbackEnabled,
+    };
+};
+
 export const createChatSession = (getAppContext?: () => any) => {
   // Returns an object compatible with the UI's expectation of the Gemini SDK Chat object
   return {
@@ -22,7 +33,7 @@ export const createChatSession = (getAppContext?: () => any) => {
             const response = await fetch(`${BACKEND_URL}/api/v1/chat`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ history, context }) // Send full history + context
+                body: JSON.stringify({ history, context, ...getAiRoutingPayload() }) // Send full history + context
             });
 
             if (!response.ok || !response.body) {
@@ -104,7 +115,7 @@ export const generateBriefing = async (contextData: string): Promise<string> => 
         const response = await fetch(`${BACKEND_URL}/api/v1/briefing`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ context: contextData })
+            body: JSON.stringify({ context: contextData, ...getAiRoutingPayload() })
         });
         
         const data = await response.json();
@@ -120,7 +131,7 @@ export const sendZenMessageStream = async function* (history: any[], newMessage:
         const response = await fetch(`${BACKEND_URL}/api/v1/chat/zen`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ history, message: newMessage })
+            body: JSON.stringify({ history, message: newMessage, ...getAiRoutingPayload() })
         });
 
         if (!response.ok || !response.body) throw new Error('Zen connection failed');

@@ -13,6 +13,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, apiGet, apiPost, apiDelete } from './api';
 import { Project, CalendarEvent, Expense, WorkflowPhase } from '../types';
 
+const getAiRoutingPayload = () => {
+    const aiMode = (localStorage.getItem('marion_ai_mode') || 'cloud') as 'local' | 'hybrid' | 'cloud';
+    const localModel = localStorage.getItem('marion_ai_local_model') || 'qwen2.5:7b-instruct';
+    const fallbackEnabled = localStorage.getItem('marion_ai_fallback_enabled') !== 'false';
+    return { ai_mode: aiMode, local_model: localModel, fallback_enabled: fallbackEnabled };
+};
+
 // ============================================================================
 // QUERY KEYS - Centralized key management
 // ============================================================================
@@ -333,7 +340,7 @@ export function useEmailAIReply() {
             const res = await apiFetch('/api/v1/email/ai/reply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params),
+                body: JSON.stringify({ ...params, ...getAiRoutingPayload() }),
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'Erreur IA');
@@ -351,7 +358,7 @@ export function useEmailAISummarize() {
             const res = await apiFetch('/api/v1/email/ai/summarize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params),
+                body: JSON.stringify({ ...params, ...getAiRoutingPayload() }),
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'Erreur IA');

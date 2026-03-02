@@ -60,6 +60,15 @@ class Config:
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
 
+    # -- AI Provider Routing ------------------------------------------------
+    AI_PROVIDER = os.getenv('AI_PROVIDER', 'cloud').lower()  # cloud | local | hybrid
+    AI_FALLBACK_PROVIDER = os.getenv('AI_FALLBACK_PROVIDER', 'cloud').lower()
+    AI_LOCAL_TIMEOUT_MS = int(os.getenv('AI_LOCAL_TIMEOUT_MS', '12000'))
+    OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://127.0.0.1:11434')
+    OLLAMA_MODEL_CHAT = os.getenv('OLLAMA_MODEL_CHAT', 'qwen2.5:7b-instruct')
+    OLLAMA_MODEL_REASONING = os.getenv('OLLAMA_MODEL_REASONING', 'qwen2.5:7b-instruct')
+    OLLAMA_MODEL_VISION = os.getenv('OLLAMA_MODEL_VISION', 'llama3.2-vision')
+
     # -- Google OAuth -------------------------------------------------------
     GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
     GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')

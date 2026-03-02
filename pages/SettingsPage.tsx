@@ -25,6 +25,9 @@ export const SettingsPage: React.FC = () => {
         tjh, setTjh,
         aiTone, setAiTone,
         briefingVocal, setBriefingVocal,
+        aiMode, setAiMode,
+        localModelName, setLocalModelName,
+        aiFallbackEnabled, setAiFallbackEnabled,
         signatureSettings, setSignatureSettings,
         notificationPrefs, setNotificationPrefs,
     } = useUIStore();
@@ -50,6 +53,12 @@ export const SettingsPage: React.FC = () => {
                 setAiTone={setAiTone}
                 briefingVocal={briefingVocal}
                 setBriefingVocal={setBriefingVocal}
+                aiMode={aiMode}
+                setAiMode={setAiMode}
+                localModelName={localModelName}
+                setLocalModelName={setLocalModelName}
+                aiFallbackEnabled={aiFallbackEnabled}
+                setAiFallbackEnabled={setAiFallbackEnabled}
                 signatureSettings={signatureSettings}
                 setSignatureSettings={setSignatureSettings}
                 notificationSettings={notificationPrefs}

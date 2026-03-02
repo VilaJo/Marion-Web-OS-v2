@@ -17,6 +17,9 @@ interface UIState {
     tjh: string;
     aiTone: string;
     briefingVocal: boolean;
+    aiMode: 'local' | 'hybrid' | 'cloud';
+    localModelName: string;
+    aiFallbackEnabled: boolean;
 
     // Modals
     showChat: boolean;
@@ -75,6 +78,9 @@ interface UIState {
     setTjh: (tjh: string) => void;
     setAiTone: (tone: string) => void;
     setBriefingVocal: (v: boolean) => void;
+    setAiMode: (mode: 'local' | 'hybrid' | 'cloud') => void;
+    setLocalModelName: (name: string) => void;
+    setAiFallbackEnabled: (enabled: boolean) => void;
     
     // Modal toggles
     toggleModal: (modal: string, value?: boolean) => void;
@@ -121,6 +127,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     tjh: localStorage.getItem('marion_tjh') || '60',
     aiTone: localStorage.getItem('marion_ai_tone') || 'witty',
     briefingVocal: localStorage.getItem('marion_briefing_vocal') === 'true',
+    aiMode: ((localStorage.getItem('marion_ai_mode') as 'local' | 'hybrid' | 'cloud') || 'cloud'),
+    localModelName: localStorage.getItem('marion_ai_local_model') || 'qwen2.5:7b-instruct',
+    aiFallbackEnabled: localStorage.getItem('marion_ai_fallback_enabled') !== 'false',
     
     // Modals - all closed by default
     showChat: false,
@@ -222,6 +231,18 @@ export const useUIStore = create<UIState>((set, get) => ({
     setBriefingVocal: (v) => {
         localStorage.setItem('marion_briefing_vocal', String(v));
         set({ briefingVocal: v });
+    },
+    setAiMode: (mode) => {
+        localStorage.setItem('marion_ai_mode', mode);
+        set({ aiMode: mode });
+    },
+    setLocalModelName: (name) => {
+        localStorage.setItem('marion_ai_local_model', name);
+        set({ localModelName: name });
+    },
+    setAiFallbackEnabled: (enabled) => {
+        localStorage.setItem('marion_ai_fallback_enabled', String(enabled));
+        set({ aiFallbackEnabled: enabled });
     },
 
     // Generic modal toggle
