@@ -4,10 +4,12 @@
 
 import { create } from 'zustand';
 import { Notification, NotificationType } from '../types';
+import { useFocusStore } from './useFocusStore';
 
 interface NotificationState {
     notifications: Notification[];
     toasts: Notification[];
+    deferredToasts: Notification[];
     
     // Actions
     addNotification: (title: string, message: string, type?: NotificationType, link?: string) => void;
@@ -16,6 +18,7 @@ interface NotificationState {
     removeNotification: (id: string) => void;
     clearAll: () => void;
     removeToast: (id: string) => void;
+    flushDeferredToasts: () => void;
     
     // Computed
     unreadCount: () => number;
@@ -24,6 +27,7 @@ interface NotificationState {
 export const useNotificationStore = create<NotificationState>((set, get) => ({
     notifications: [],
     toasts: [],
+    deferredToasts: [],
 
     addNotification: (title, message, type = 'info', link?) => {
         const notification: Notification = {
@@ -36,17 +40,26 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             link,
         };
 
+        const focus = useFocusStore.getState();
+        const shouldDeferToast =
+            focus.settings.muteToastsDuringFocus &&
+            focus.state === 'running' &&
+            type !== 'error';
+
         set(state => ({
             notifications: [notification, ...state.notifications].slice(0, 50),
-            toasts: [...state.toasts, notification],
+            toasts: shouldDeferToast ? state.toasts : [...state.toasts, notification],
+            deferredToasts: shouldDeferToast ? [...state.deferredToasts, notification].slice(-20) : state.deferredToasts,
         }));
 
         // Auto-remove toast after 5 seconds
-        setTimeout(() => {
-            set(state => ({
-                toasts: state.toasts.filter(t => t.id !== notification.id)
-            }));
-        }, 5000);
+        if (!shouldDeferToast) {
+            setTimeout(() => {
+                set(state => ({
+                    toasts: state.toasts.filter(t => t.id !== notification.id)
+                }));
+            }, 5000);
+        }
     },
 
     markAsRead: (id) => {
@@ -75,6 +88,24 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         set(state => ({
             toasts: state.toasts.filter(t => t.id !== id)
         }));
+    },
+
+    flushDeferredToasts: () => {
+        const deferred = get().deferredToasts;
+        if (deferred.length === 0) return;
+
+        set(state => ({
+            toasts: [...state.toasts, ...deferred],
+            deferredToasts: [],
+        }));
+
+        deferred.forEach((notif) => {
+            setTimeout(() => {
+                set(state => ({
+                    toasts: state.toasts.filter(t => t.id !== notif.id)
+                }));
+            }, 5000);
+        });
     },
 
     unreadCount: () => get().notifications.filter(n => !n.read).length,

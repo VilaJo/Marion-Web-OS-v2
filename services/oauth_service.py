@@ -182,6 +182,11 @@ def get_valid_token(email: str) -> Optional[str]:
     if expires_at == 0 or time.time() > expires_at - 300:
         if refresh_google_token(email):
             return oauth_tokens[email].get('access_token')
+        # Refresh failed — keep existing access token as best effort.
+        # This avoids unnecessary "Reconnect" loops right after app restart
+        # when expires_at is unknown but token may still be valid.
+        if access_token and expires_at == 0:
+            return access_token
         # Refresh failed — maybe the current token is still valid, try it
         if access_token and expires_at > time.time():
             return access_token
@@ -222,9 +227,11 @@ def disconnect():
 def store_tokens(email: str, tokens: dict, user_info: dict = None):
     """Store tokens in memory and persist to DB."""
     expires_in = tokens.get("expires_in")
+    previous_refresh = (oauth_tokens.get(email) or {}).get("refresh_token")
+    refresh_token = tokens.get("refresh_token") or previous_refresh
     oauth_tokens[email] = {
         "access_token": tokens["access_token"],
-        "refresh_token": tokens.get("refresh_token"),
+        "refresh_token": refresh_token,
         "expires_in": expires_in,
         "expires_at": time.time() + int(expires_in) if expires_in else 0,
         "user_info": user_info or {"email": email},

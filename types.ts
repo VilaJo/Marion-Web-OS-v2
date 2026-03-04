@@ -217,6 +217,34 @@ export interface Notification {
     link?: string; // Route to navigate to on click (e.g. "/client/ProjectName", "/finances")
 }
 
+export type FocusSessionState = 'idle' | 'running' | 'paused' | 'break' | 'completed';
+
+export type FocusPhase = 'focus' | 'short_break' | 'long_break';
+
+export interface FocusSession {
+    id: string;
+    startedAt: string;
+    endedAt: string;
+    plannedMinutes: number;
+    actualMinutes: number;
+    objective: string;
+    resultSummary: string;
+    state: FocusSessionState;
+    linkedTaskId?: string;
+    linkedProjectId?: string;
+    interruptionCount: number;
+}
+
+export interface FocusSettings {
+    focusMinutes: number;
+    shortBreakMinutes: number;
+    longBreakMinutes: number;
+    longBreakEvery: number;
+    autoStartNextPhase: boolean;
+    muteToastsDuringFocus: boolean;
+    calmMode: boolean;
+}
+
 export interface Expense {
     id: string;
     date: string;

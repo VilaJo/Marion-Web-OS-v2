@@ -28,7 +28,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.4.5'
+    APP_VERSION = '2.4.6'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -63,7 +63,7 @@ class Config:
     # -- AI Provider Routing ------------------------------------------------
     AI_PROVIDER = os.getenv('AI_PROVIDER', 'cloud').lower()  # cloud | local | hybrid
     AI_FALLBACK_PROVIDER = os.getenv('AI_FALLBACK_PROVIDER', 'cloud').lower()
-    AI_LOCAL_TIMEOUT_MS = int(os.getenv('AI_LOCAL_TIMEOUT_MS', '12000'))
+    AI_LOCAL_TIMEOUT_MS = int(os.getenv('AI_LOCAL_TIMEOUT_MS', '45000'))
     OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://127.0.0.1:11434')
     OLLAMA_MODEL_CHAT = os.getenv('OLLAMA_MODEL_CHAT', 'qwen2.5:7b-instruct')
     OLLAMA_MODEL_REASONING = os.getenv('OLLAMA_MODEL_REASONING', 'qwen2.5:7b-instruct')

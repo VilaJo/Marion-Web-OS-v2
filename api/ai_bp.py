@@ -127,6 +127,46 @@ def _validate_local_tool_calls(tool_calls, user_text: str, max_rounds: int):
     return valid_calls, rejected
 
 
+def _extract_json_candidate(text: str):
+    """Best-effort extraction of a JSON object from mixed local model output."""
+    if not text:
+        return None
+
+    stripped = text.strip()
+    # 1) Direct JSON object
+    if stripped.startswith("{") and stripped.endswith("}"):
+        try:
+            return json.loads(stripped)
+        except Exception:
+            pass
+
+    # 2) ```json ... ``` fenced block
+    fence = re.search(r"```json\s*({[\s\S]*?})\s*```", text, re.IGNORECASE)
+    if fence:
+        try:
+            return json.loads(fence.group(1))
+        except Exception:
+            pass
+
+    # 3) Generic fenced block containing JSON
+    generic_fence = re.search(r"```\s*({[\s\S]*?})\s*```", text, re.IGNORECASE)
+    if generic_fence:
+        try:
+            return json.loads(generic_fence.group(1))
+        except Exception:
+            pass
+
+    # 4) Fallback: largest JSON-looking object in text
+    obj_match = re.search(r"({[\s\S]*})", text)
+    if obj_match:
+        try:
+            return json.loads(obj_match.group(1))
+        except Exception:
+            return None
+
+    return None
+
+
 # ============================================================================
 # Gemini Setup / Status
 # ============================================================================
@@ -134,7 +174,8 @@ def _validate_local_tool_calls(tool_calls, user_text: str, max_rounds: int):
 @ai_bp.route('/ai/check-status', methods=['GET'])
 def check_status():
     """Check AI configuration/provider status."""
-    return jsonify(ai_status_payload())
+    prefs = resolve_ai_prefs(request.args.to_dict() if request.args else {})
+    return jsonify(ai_status_payload(prefs))
 
 
 @ai_bp.route('/ai/setup', methods=['POST'])
@@ -172,7 +213,8 @@ def setup():
 @ai_bp.route('/ai/status', methods=['GET'])
 def ai_status():
     """Check if the AI (Franck) is configured and available."""
-    payload = ai_status_payload()
+    prefs = resolve_ai_prefs(request.args.to_dict() if request.args else {})
+    payload = ai_status_payload(prefs)
     payload["providerDefault"] = get_default_ai_mode()
     payload["localAvailable"] = is_local_available()
     return jsonify(payload)
@@ -192,6 +234,34 @@ def chat():
         return jsonify({"error": "Server not configured"}), 503
 
     from google.genai import types
+
+    def _is_project_active(project: dict) -> bool:
+        status = str(project.get('status', '') or '').strip().lower()
+        phase = str(project.get('phase', '') or '').strip().lower()
+
+        # Explicit active markers used across app variants / languages
+        active_markers = (
+            'active', 'en cours', 'in progress', 'ongoing', 'en_cours'
+        )
+        if any(marker in status for marker in active_markers):
+            return True
+
+        # Explicit inactive markers
+        inactive_markers = (
+            'archive', 'archiv', 'closed', 'done', 'termin', 'lost', 'won', 'cancel'
+        )
+        if any(marker in status for marker in inactive_markers):
+            return False
+        if any(marker in phase for marker in inactive_markers):
+            return False
+
+        # Fallback heuristic: a project with pending tasks is considered active.
+        tasks = project.get('tasks') or []
+        if any(not t.get('completed', False) for t in tasks if isinstance(t, dict)):
+            return True
+
+        # If uncertain, keep it as active for safer assistant answers.
+        return True
 
     app_context = data.get('context', {})
     projects = app_context.get('projects', [])
@@ -229,13 +299,14 @@ def chat():
     today_events = [e for e in events if e.get('date', '') == today]
     pending_todos = [t for t in todos if not t.get('completed', False)]
     high_priority_todos = [t for t in pending_todos if t.get('priority') == 'High']
+    active_projects = [p for p in projects if _is_project_active(p)]
 
     context_info = f"""
 CONTEXTE ACTUEL ({time.strftime('%A %d %B %Y, %H:%M')}):
 
 VUE D'ENSEMBLE:
 - {len(projects)} clients/projets au total
-- {len([p for p in projects if p.get('status') == 'Active'])} projets actifs
+- {len(active_projects)} projets actifs
 - Revenus encaisses: {total_paid:.0f} CHF
 - En attente de paiement: {total_pending:.0f} CHF
 
@@ -249,7 +320,7 @@ TACHES PRIORITAIRES ({len(high_priority_todos)} haute priorite):
 {chr(10).join(['- ' + t.get('title', '?') + ' (' + t.get('projectName', '?') + ')' for t in high_priority_todos[:5]]) if high_priority_todos else '- Aucune tache urgente'}
 
 CLIENTS ACTIFS:
-{chr(10).join(['- ' + p.get('clientName', '?') + ' (' + p.get('phase', '?') + ')' for p in projects if p.get('status') == 'Active'][:5]) or '- Aucun projet actif'}
+{chr(10).join(['- ' + p.get('clientName', '?') + ' (' + p.get('phase', '?') + ')' for p in active_projects][:8]) or '- Aucun projet actif'}
 
 SUGGESTIONS POSSIBLES:
 - Si Marion demande "quoi de neuf" ou semble chercher quoi faire, suggere-lui des actions utiles
@@ -286,9 +357,10 @@ SUGGESTIONS POSSIBLES:
                 user_text = history_contents[-1].parts[0].text
                 local_prompt = (
                     f"{full_system}\n\n"
-                    "You may answer naturally, OR return strict JSON with keys:\n"
+                    "If NO tool is required, answer with plain text only (no JSON, no code block).\n"
+                    "If a tool is required and user explicitly confirmed action, return strict JSON only with keys:\n"
                     '{"reply":"...", "tool_calls":[{"name":"...", "args":{...}}]}\n'
-                    "Use tool_calls only when a user confirmed an action."
+                    "Use tool_calls only when a user confirmed an action. Never return both plain text and JSON."
                     f"\n\nUser message:\n{user_text}"
                 )
                 local_raw = ""
@@ -308,7 +380,9 @@ SUGGESTIONS POSSIBLES:
                 if local_raw:
                     # Try JSON tool-calling contract first
                     try:
-                        parsed = json.loads(local_raw.replace("```json", "").replace("```", "").strip())
+                        parsed = _extract_json_candidate(local_raw)
+                        if not isinstance(parsed, dict):
+                            raise ValueError("No valid JSON contract in local response")
                         tool_calls = parsed.get("tool_calls") or []
                         reply = parsed.get("reply", "")
                         valid_calls, rejected_calls = _validate_local_tool_calls(
@@ -394,6 +468,38 @@ def chat_zen():
             return jsonify({"error": "Server not configured"}), 503
         message = data.get('message', '')
         history = data.get('history', [])
+        focus_ctx = data.get('focus_context', {}) or {}
+
+        # Lightweight command intents for execution-oriented coaching.
+        normalized = (message or '').strip().lower()
+        intents = []
+        if normalized.startswith('plan') or 'plan' in normalized:
+            intents.append('plan')
+        if 'bloque' in normalized or 'blocage' in normalized:
+            intents.append('bloque')
+        if normalized.startswith('pause') or 'pause' in normalized:
+            intents.append('pause')
+        if 'reprendre' in normalized or 'reprise' in normalized:
+            intents.append('reprendre')
+        if 'bilan' in normalized or 'retro' in normalized or 'rétro' in normalized:
+            intents.append('bilan')
+
+        focus_context_text = ""
+        if isinstance(focus_ctx, dict):
+            phase = str(focus_ctx.get('phase', 'focus'))
+            state = str(focus_ctx.get('state', 'idle'))
+            objective = str(focus_ctx.get('objective', '')).strip()
+            remaining = focus_ctx.get('remaining_seconds')
+            remaining_display = f"{int(remaining // 60)}m{int(remaining % 60):02d}s" if isinstance(remaining, (int, float)) else "n/a"
+            focus_context_text = (
+                "CONTEXTE FOCUS:\n"
+                f"- Etat session: {state}\n"
+                f"- Phase: {phase}\n"
+                f"- Objectif courant: {objective or 'non defini'}\n"
+                f"- Temps restant: {remaining_display}\n"
+            )
+            if intents:
+                focus_context_text += f"- Intentions detectees: {', '.join(intents)}\n"
 
         contents = [
             {"role": "user", "parts": [{"text": COACH_FRANCK_SYSTEM_PROMPT}]},
@@ -404,6 +510,9 @@ def chat_zen():
             role = msg.get('role', 'user')
             text = msg.get('parts', [msg.get('text', '')])[0] if isinstance(msg.get('parts'), list) else msg.get('text', '')
             contents.append({"role": role, "parts": [{"text": text}]})
+
+        if focus_context_text:
+            contents.append({"role": "user", "parts": [{"text": focus_context_text}]})
 
         contents.append({"role": "user", "parts": [{"text": message}]})
 

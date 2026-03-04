@@ -1,5 +1,5 @@
-// Marion Web OS - Service Worker
-const CACHE_NAME = 'marion-web-os-v4';
+// Orbit Office OS - Service Worker
+const CACHE_NAME = 'orbit-office-os-v5';
 const OFFLINE_URL = '/offline.html';
 
 // Only cache truly static resources (NOT hashed JS/CSS - Vite handles those)
@@ -155,7 +155,7 @@ self.addEventListener('push', (event) => {
   };
   
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Marion Web OS', options)
+    self.registration.showNotification(data.title || 'Orbit Office OS', options)
   );
 });
 

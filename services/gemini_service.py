@@ -88,18 +88,23 @@ def resolve_ai_prefs(payload: Optional[dict]) -> dict:
         ai_mode = get_default_ai_mode()
     local_model = (payload.get("local_model") or getattr(cfg, "OLLAMA_MODEL_CHAT", "qwen2.5:7b-instruct")).strip()
     fallback_enabled = payload.get("fallback_enabled")
-    if fallback_enabled is None:
+    if isinstance(fallback_enabled, str):
+        fallback_enabled = fallback_enabled.strip().lower() not in ("0", "false", "off", "no")
+    elif fallback_enabled is None:
         fallback_enabled = True
+    else:
+        fallback_enabled = bool(fallback_enabled)
     return {
         "ai_mode": ai_mode,
         "local_model": local_model,
-        "fallback_enabled": bool(fallback_enabled),
+        "fallback_enabled": fallback_enabled,
     }
 
 
-def ai_status_payload() -> dict[str, Any]:
+def ai_status_payload(prefs: Optional[dict] = None) -> dict[str, Any]:
     local_latency_ms = None
     local_error = None
+    local_models: list[str] = []
     try:
         base_url = getattr(cfg, "OLLAMA_BASE_URL", "http://127.0.0.1:11434")
         t0 = time.time()
@@ -107,25 +112,42 @@ def ai_status_payload() -> dict[str, Any]:
         local_latency_ms = int((time.time() - t0) * 1000)
         if resp.status_code != 200:
             local_error = f"HTTP {resp.status_code}"
+        else:
+            data = resp.json() if resp.content else {}
+            models = data.get("models") or []
+            local_models = [m.get("name") for m in models if isinstance(m, dict) and m.get("name")]
     except Exception as e:
         local_error = str(e)
 
-    prefs = {
-        "ai_mode": get_default_ai_mode(),
-        "local_model": getattr(cfg, "OLLAMA_MODEL_CHAT", "qwen2.5:7b-instruct"),
-        "fallback_enabled": True,
-    }
+    prefs = resolve_ai_prefs(prefs or {})
     cloud_available = get_client() is not None
+    local_available = is_local_available()
+    mode = prefs["ai_mode"]
+    if mode == "local":
+        configured = local_available
+    elif mode == "hybrid":
+        configured = local_available or cloud_available
+    else:
+        configured = cloud_available
+    requested_local_model = prefs["local_model"]
+    local_model_available = None
+    if local_models:
+        local_model_available = (
+            requested_local_model in local_models
+            or (":" not in requested_local_model and f"{requested_local_model}:latest" in local_models)
+        )
     return {
-        "configured": is_configured(),
+        "configured": configured,
         "assistant_name": "Franck",
-        "provider": prefs["ai_mode"],
+        "provider": mode,
         "cloudAvailable": cloud_available,
-        "localAvailable": is_local_available(),
+        "localAvailable": local_available,
         "localLatencyMs": local_latency_ms,
         "fallbackEnabled": prefs["fallback_enabled"],
         "model": "gemini-2.0-flash" if cloud_available else None,
-        "localModel": prefs["local_model"],
+        "localModel": requested_local_model,
+        "localModelAvailable": local_model_available,
+        "availableLocalModels": local_models[:20],
         "ollamaBaseUrl": getattr(cfg, "OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
         "localTimeoutMs": getattr(cfg, "AI_LOCAL_TIMEOUT_MS", 12000),
         "errors": {"local": local_error} if local_error else {},
@@ -1085,6 +1107,17 @@ FORMAT DE TES REPONSES:
 - Pose des questions de reflexion quand c'est pertinent
 - Propose des exercices ou techniques concretes
 - Termine souvent par une phrase motivante ou une question qui fait reflechir
+
+FORMAT OPERATIONNEL EN MODE EXECUTION (prioritaire si l'utilisateur donne une commande):
+- Reponds en 3 blocs tres courts:
+  1) DIAGNOSTIC (1 phrase max)
+  2) ACTION IMMEDIATE (1 action concrete, faisable en moins de 5 min)
+  3) CHECKPOINT (heure ou condition de verification)
+- Si l'utilisateur ecrit "plan", donne un plan court en 3 etapes maximum.
+- Si l'utilisateur ecrit "bloque", propose une technique anti-blocage immediate.
+- Si l'utilisateur ecrit "pause", propose une micro-pause guidee de 2-5 minutes.
+- Si l'utilisateur ecrit "reprendre", redonne une seule prochaine action prioritaire.
+- Si l'utilisateur ecrit "bilan", fais un recap en 3 puces: fait, reste, prochain pas.
 """
 
 

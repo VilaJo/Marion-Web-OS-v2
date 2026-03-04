@@ -18,7 +18,7 @@ import { apiFetch } from '../services/api';
 import {
     LayoutGrid, Bell, Settings, Sun, Moon,
     HelpCircle, Sparkles, MessageCircle, Wand2, Tent,
-    FileText, StickyNote, Target, Mail, Menu, Search,
+    StickyNote, Target, Mail, Menu, Search,
     Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
@@ -40,7 +40,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         showChat, setShowChat,
         showNotifCenter, setShowNotifCenter,
         setShowMediaWorkshop, setShowNotes, setShowFileDispatcher,
-        setShowGuide, setShowGoalsKPIs, setShowDocTemplates,
+        setShowGuide, setShowGoalsKPIs,
         setShowMessagingHub, setShowMondayBriefing, setShowGlobalSearch,
         setIsFocusMode,
         setDroppedFiles, setShowImporter,
@@ -65,7 +65,42 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
     const [franckSetupLoading, setFranckSetupLoading] = useState(false);
     const [franckSetupError, setFranckSetupError] = useState('');
     const [franckSetupSuccess, setFranckSetupSuccess] = useState(false);
+    const [franckProvider, setFranckProvider] = useState<'local' | 'cloud' | 'hybrid' | null>(null);
+    const [franckLocalAvailable, setFranckLocalAvailable] = useState<boolean | null>(null);
+    const [franckCloudAvailable, setFranckCloudAvailable] = useState<boolean | null>(null);
     const franckMenuRef = useRef<HTMLDivElement>(null);
+
+    const getProviderLabel = (provider?: string | null) => {
+        if (provider === 'local') return 'Local (Ollama)';
+        if (provider === 'hybrid') return 'Hybride (Local -> Cloud)';
+        return 'Cloud (Gemini)';
+    };
+
+    const applyAiStatus = (data: any) => {
+        const preferred = localStorage.getItem('marion_ai_mode');
+        if (preferred === 'local' || preferred === 'cloud' || preferred === 'hybrid') {
+            setFranckProvider(preferred);
+        } else {
+            const provider = data?.provider;
+            if (provider === 'local' || provider === 'cloud' || provider === 'hybrid') {
+                setFranckProvider(provider);
+            }
+        }
+        setFranckLocalAvailable(typeof data?.localAvailable === 'boolean' ? data.localAvailable : null);
+        setFranckCloudAvailable(typeof data?.cloudAvailable === 'boolean' ? data.cloudAvailable : null);
+    };
+
+    const getAiStatusUrl = () => {
+        const params = new URLSearchParams();
+        const mode = localStorage.getItem('marion_ai_mode');
+        const localModel = localStorage.getItem('marion_ai_local_model');
+        const fallback = localStorage.getItem('marion_ai_fallback_enabled');
+        if (mode) params.set('ai_mode', mode);
+        if (localModel) params.set('local_model', localModel);
+        if (fallback) params.set('fallback_enabled', fallback);
+        const qs = params.toString();
+        return `/api/v1/ai/check-status${qs ? `?${qs}` : ''}`;
+    };
 
     // Close Franck menu on outside click
     useEffect(() => {
@@ -77,6 +112,27 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         if (showFranckMenu) document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
     }, [showFranckMenu]);
+
+    useEffect(() => {
+        if (!showFranckMenu) return;
+        let cancelled = false;
+        const readAiStatus = async () => {
+            try {
+                const res = await apiFetch(getAiStatusUrl());
+                const data = await res.json();
+                if (!cancelled) {
+                    setIsConfigured(data.configured);
+                    applyAiStatus(data);
+                }
+            } catch {
+                // silent; reconnect button already handles explicit errors
+            }
+        };
+        readAiStatus();
+        return () => {
+            cancelled = true;
+        };
+    }, [showFranckMenu, setIsConfigured]);
 
     const handleFranckApiKeySubmit = async () => {
         if (!apiKeyInput.trim()) return;
@@ -114,9 +170,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         setFranckSetupSuccess(false);
         setFranckTestLoading(true);
         try {
-            const res = await apiFetch('/api/v1/ai/check-status');
+            const res = await apiFetch(getAiStatusUrl());
             const data = await res.json();
             setIsConfigured(data.configured);
+            applyAiStatus(data);
             if (data.configured) {
                 setFranckSetupSuccess(true);
                 setTimeout(() => {
@@ -238,11 +295,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Target size={18} className="text-violet-500" />
                     </button>
                 </Tooltip>
-                <Tooltip content="Templates">
-                    <button onClick={() => setShowDocTemplates(true)} className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <FileText size={18} className="text-orange-500" />
-                    </button>
-                </Tooltip>
                 <Tooltip content="Emails">
                     <button onClick={() => navigate('/emails')} className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors relative">
                         <Mail size={18} className="text-blue-500" />
@@ -335,11 +387,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                                 </button>
                             </div>
 
+                            <div className="mb-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                                <div className="text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 mb-1">Mode IA actif</div>
+                                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    {getProviderLabel(franckProvider)}
+                                </div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Local: {franckLocalAvailable === null ? 'N/A' : franckLocalAvailable ? 'Disponible' : 'Indisponible'} · Cloud: {franckCloudAvailable === null ? 'N/A' : franckCloudAvailable ? 'Disponible' : 'Non configuré'}
+                                </div>
+                            </div>
+
                             {franckIsDown && (
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                                     {isBackendDown 
                                         ? 'Le serveur est injoignable. Vérifie que le terminal tourne.' 
-                                        : 'La clé API Gemini n\'est pas configurée ou est invalide.'}
+                                        : (franckProvider === 'local'
+                                            ? 'Le mode local est actif mais Ollama semble indisponible.'
+                                            : 'La clé API Gemini n\'est pas configurée ou est invalide.')}
                                 </p>
                             )}
 

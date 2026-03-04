@@ -36,14 +36,41 @@ def _parse_ai_prefs(prefs: Optional[dict]) -> dict:
     }
 
 
+def _ollama_installed_models() -> list[str]:
+    try:
+        resp = http_requests.get(f"{cfg.OLLAMA_BASE_URL}/api/tags", timeout=2)
+        if resp.status_code != 200:
+            return []
+        data = resp.json() if resp.content else {}
+        models = data.get("models") or []
+        return [m.get("name") for m in models if isinstance(m, dict) and m.get("name")]
+    except Exception:
+        return []
+
+
 def _resolve_ollama_model(task: str, local_model: Optional[str]) -> str:
     if local_model:
-        return local_model
-    if task == "vision":
-        return cfg.OLLAMA_MODEL_VISION
-    if task == "reasoning":
-        return cfg.OLLAMA_MODEL_REASONING
-    return cfg.OLLAMA_MODEL_CHAT
+        requested = local_model
+    elif task == "vision":
+        requested = cfg.OLLAMA_MODEL_VISION
+    elif task == "reasoning":
+        requested = cfg.OLLAMA_MODEL_REASONING
+    else:
+        requested = cfg.OLLAMA_MODEL_CHAT
+
+    installed = _ollama_installed_models()
+    if not installed:
+        return requested
+
+    if requested in installed:
+        return requested
+    if ":" not in requested and f"{requested}:latest" in installed:
+        return f"{requested}:latest"
+
+    # Graceful fallback: use first available installed model instead of hard-failing.
+    fallback_model = installed[0]
+    logger.warning("Requested Ollama model '%s' not found, fallback to '%s'", requested, fallback_model)
+    return fallback_model
 
 
 def _log_ai_metric(event: str, **fields: Any) -> None:
@@ -77,11 +104,21 @@ def _ollama_generate(
     if system_prompt:
         payload["system"] = system_prompt
 
-    resp = http_requests.post(
-        f"{cfg.OLLAMA_BASE_URL}/api/generate",
-        json=payload,
-        timeout=timeout_s,
-    )
+    try:
+        resp = http_requests.post(
+            f"{cfg.OLLAMA_BASE_URL}/api/generate",
+            json=payload,
+            timeout=timeout_s,
+        )
+    except http_requests.Timeout:
+        # Retry once with a larger timeout for heavier local models/prompts.
+        retry_timeout_s = max(timeout_s, 90.0)
+        logger.warning("Ollama timeout after %.1fs, retrying with %.1fs", timeout_s, retry_timeout_s)
+        resp = http_requests.post(
+            f"{cfg.OLLAMA_BASE_URL}/api/generate",
+            json=payload,
+            timeout=retry_timeout_s,
+        )
     resp.raise_for_status()
     data = resp.json()
     return (data.get("response") or "").strip()

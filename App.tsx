@@ -22,6 +22,7 @@ import { useAuthStore, useProjectStore, useUIStore, useNotificationStore, useWor
 import { useProjects, queryKeys } from './services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from './services/api';
+import { useFocusStore } from './stores/useFocusStore';
 
 // Extracted components
 import { AppHeader } from './components/AppHeader';
@@ -86,7 +87,8 @@ const App: React.FC = () => {
         setIsTourCompleted,
     } = useUIStore();
 
-    const { toasts, removeToast, addNotification } = useNotificationStore();
+    const { toasts, removeToast, addNotification, flushDeferredToasts } = useNotificationStore();
+    const focusSessionState = useFocusStore(s => s.state);
     const appNavigate = useNavigate();
 
     // === Workspace / Branding ===
@@ -98,6 +100,18 @@ const App: React.FC = () => {
 
     // === Refs ===
     const hasInitialized = useRef(false);
+
+    const getAiStatusUrl = () => {
+        const params = new URLSearchParams();
+        const mode = localStorage.getItem('marion_ai_mode');
+        const localModel = localStorage.getItem('marion_ai_local_model');
+        const fallback = localStorage.getItem('marion_ai_fallback_enabled');
+        if (mode) params.set('ai_mode', mode);
+        if (localModel) params.set('local_model', localModel);
+        if (fallback) params.set('fallback_enabled', fallback);
+        const qs = params.toString();
+        return `/api/v1/ai/check-status${qs ? `?${qs}` : ''}`;
+    };
     const haloRef = useRef<HTMLDivElement>(null);
 
     // === Keyboard Shortcuts ===
@@ -129,7 +143,7 @@ const App: React.FC = () => {
 
         setTimeout(async () => {
             try {
-                const res = await apiFetch('/api/v1/ai/check-status');
+                const res = await apiFetch(getAiStatusUrl());
                 const data = await res.json();
                 setIsConfigured(data.configured);
                 setIsBackendDown(false);
@@ -159,13 +173,30 @@ const App: React.FC = () => {
         return () => clearInterval(interval);
     }, [isLoading, isTransitioning]);
 
+    useEffect(() => {
+        if (focusSessionState !== 'running') {
+            flushDeferredToasts();
+        }
+    }, [focusSessionState, flushDeferredToasts]);
+
     // ========================================================================
     // Initial Status Check
     // ========================================================================
     const checkStatus = useCallback(async () => {
         try {
-            const res = await apiFetch('/api/v1/ai/check-status');
+            const res = await apiFetch(getAiStatusUrl());
             const data = await res.json();
+            const preferredMode = localStorage.getItem('marion_ai_mode');
+            const provider =
+                preferredMode === 'local' || preferredMode === 'hybrid' || preferredMode === 'cloud'
+                    ? preferredMode
+                    : data?.provider;
+            const modeLabel =
+                provider === 'local'
+                    ? 'Local (Ollama)'
+                    : provider === 'hybrid'
+                        ? 'Hybride (Local -> Cloud)'
+                        : 'Cloud (Gemini)';
             setIsConfigured(data.configured);
             setIsBackendDown(false);
             if (data.configured) {
@@ -174,7 +205,7 @@ const App: React.FC = () => {
                     setTimeout(() => {
                         setIsLoading(false);
                         setTimeout(() => {
-                            addNotification('Franck est en ligne', 'Je suis prêt à organiser ton chaos, Marion.', 'ai');
+                            addNotification('Franck est en ligne', `Mode IA actif: ${modeLabel}.`, 'ai');
                         }, 800);
                     }, 2500);
                 }
@@ -329,6 +360,7 @@ const App: React.FC = () => {
             {isFocusMode && (
                 <FocusMode
                     onExit={() => setIsFocusMode(false)}
+                    projects={projects}
                     ambientUrl={ambientUrl}
                     isAmbientPlaying={isAmbientPlaying}
                     ambientVolume={ambientVolume}
@@ -375,7 +407,7 @@ const App: React.FC = () => {
             <footer className="max-w-7xl mx-auto mt-20 text-center text-xs text-slate-400 font-serif flex items-center justify-center gap-1 opacity-50 hover:opacity-100 transition-opacity pb-8 relative z-10">
                 <span>Designer avec</span>
                 <span className="text-red-400">♥</span>
-                <span>par JV Automation - Copyright 2026 - v2.4.5</span>
+                <span>par JV Automation - Copyright 2026 - v2.4.6</span>
             </footer>
 
             {/* Global Overlays */}

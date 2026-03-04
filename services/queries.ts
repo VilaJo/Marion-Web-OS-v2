@@ -1174,11 +1174,21 @@ export function useDisconnectGoogle() {
  * Check backend status / configuration.
  * Used during app initialization.
  */
-export function useCheckStatus(enabled: boolean = true) {
+export function useCheckStatus(
+    enabled: boolean = true,
+    aiRouting?: { ai_mode?: 'local' | 'hybrid' | 'cloud'; local_model?: string; fallback_enabled?: boolean }
+) {
     return useQuery({
-        queryKey: queryKeys.checkStatus,
+        queryKey: [...queryKeys.checkStatus, aiRouting?.ai_mode, aiRouting?.local_model, aiRouting?.fallback_enabled],
         queryFn: async () => {
-            const res = await apiFetch('/api/v1/ai/check-status');
+            const params = new URLSearchParams();
+            if (aiRouting?.ai_mode) params.set('ai_mode', aiRouting.ai_mode);
+            if (aiRouting?.local_model) params.set('local_model', aiRouting.local_model);
+            if (typeof aiRouting?.fallback_enabled === 'boolean') {
+                params.set('fallback_enabled', String(aiRouting.fallback_enabled));
+            }
+            const qs = params.toString();
+            const res = await apiFetch(`/api/v1/ai/check-status${qs ? `?${qs}` : ''}`);
             if (!res.ok) throw new Error('Backend unreachable');
             return res.json();
         },

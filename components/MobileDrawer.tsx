@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../stores';
 import {
     X, LayoutGrid, StickyNote, Wand2, Tent, Target,
-    FileText, Mail, MessageCircle, Sparkles, Settings,
+    Mail, MessageCircle, Sparkles, Settings,
     HelpCircle, Sun, Moon, Upload,
 } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export const MobileDrawer: React.FC = () => {
         isMobileMenuOpen, setIsMobileMenuOpen,
         theme, cycleTheme,
         setShowMondayBriefing, setShowNotes, setShowMediaWorkshop,
-        setIsFocusMode, setShowGoalsKPIs, setShowDocTemplates,
+        setIsFocusMode, setShowGoalsKPIs,
         setShowMessagingHub, setShowGuide,
         setDroppedFiles, setShowFileDispatcher,
     } = useUIStore();
@@ -51,7 +51,6 @@ export const MobileDrawer: React.FC = () => {
         { icon: Wand2, label: 'Atelier Média', color: 'text-purple-500', action: () => menuAction(() => setShowMediaWorkshop(true)) },
         { icon: Tent, label: 'Mode Focus', color: 'text-blue-500', action: () => menuAction(() => setIsFocusMode(true)) },
         { icon: Target, label: 'Objectifs & KPIs', color: 'text-violet-500', action: () => menuAction(() => setShowGoalsKPIs(true)) },
-        { icon: FileText, label: 'Templates', color: 'text-orange-500', action: () => menuAction(() => setShowDocTemplates(true)) },
         { icon: Mail, label: 'Emails', color: 'text-blue-500', action: () => { close(); navigate('/emails'); } },
         { icon: MessageCircle, label: 'Messagerie', color: 'text-green-500', action: () => menuAction(() => setShowMessagingHub(true)) },
         { icon: Sparkles, label: 'Donner à Franck', color: 'text-emerald-500', action: () => {

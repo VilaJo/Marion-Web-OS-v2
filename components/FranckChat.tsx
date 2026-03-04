@@ -99,6 +99,11 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         text: string; prompt: string; priority: string; category: string; icon: string;
     }>>([]);
 
+    const isMenuCommand = (value: string) => {
+        const v = value.trim().toLowerCase();
+        return v === 'menu' || v === '/menu';
+    };
+
     const suggestionIconMap: Record<string, any> = {
         'credit-card': CreditCard,
         'alert-triangle': AlertTriangle,
@@ -339,7 +344,20 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
         if (!input.trim() || !chatSession.current) return;
 
-        
+        // Local command: show Franck menu again without resetting history.
+        if (isMenuCommand(input)) {
+            const userMsg: ChatMessage = { role: 'user', text: input, timestamp: new Date() };
+            setMessages(prev => [...prev, userMsg]);
+            setInput('');
+            setShowQuickActions(true);
+            fetchFranckSuggestions().then(data => {
+                if (data.suggestions && data.suggestions.length > 0) {
+                    setDynamicSuggestions(data.suggestions);
+                }
+            }).catch(() => {});
+            return;
+        }
+
         setShowQuickActions(false);
 
         const userMsg: ChatMessage = { role: 'user', text: input, timestamp: new Date() };
@@ -422,7 +440,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                 ))}
                 
                 {/* Dynamic Suggestions or Static Quick Actions */}
-                {showQuickActions && messages.length <= 1 && !isThinking && (
+                {showQuickActions && !isThinking && (
                     <div className="mt-4">
                         {dynamicSuggestions.length > 0 ? (
                             <>

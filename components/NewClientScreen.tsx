@@ -156,44 +156,46 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
 
             <div ref={containerRef} className="relative z-10 h-full flex flex-col">
                 {/* Header */}
-                <header className="shrink-0 flex items-center justify-between px-4 md:px-8 py-4 md:py-5">
-                    <button
-                        onClick={handleClose}
-                        className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors group"
-                    >
-                        <div className="p-2 rounded-xl bg-white/70 dark:bg-slate-800/60 border border-white/80 dark:border-slate-700/50 shadow-sm group-hover:shadow-md transition-shadow">
-                            <ArrowLeft size={18} />
-                        </div>
-                        <span className="text-sm font-medium hidden md:inline">Retour</span>
-                    </button>
+                <header className="shrink-0 px-4 md:px-8 pt-4 md:pt-6 pb-2 md:pb-3">
+                    <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
+                        <button
+                            onClick={handleClose}
+                            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors group"
+                        >
+                            <div className="p-2 rounded-xl bg-white/70 dark:bg-slate-800/60 border border-white/80 dark:border-slate-700/50 shadow-sm group-hover:shadow-md transition-shadow">
+                                <ArrowLeft size={18} />
+                            </div>
+                            <span className="text-sm font-medium hidden md:inline">Retour</span>
+                        </button>
 
-                    <h1 className="text-lg md:text-xl font-serif font-bold text-slate-800 dark:text-white">
-                        Nouveau Client
-                    </h1>
+                        <h1 className="text-lg md:text-xl font-serif font-bold text-slate-800 dark:text-white">
+                            Nouveau Client
+                        </h1>
 
-                    <button
-                        onClick={handleCreate}
-                        disabled={!name.trim() || isCreating}
-                        className={`px-6 md:px-8 py-2.5 md:py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-full font-bold text-sm uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-orange-200/50 dark:shadow-orange-900/20 transition-all duration-300 ${
-                            !name.trim() || isCreating
-                                ? 'opacity-50 cursor-not-allowed'
-                                : 'hover:scale-105 hover:shadow-[0_0_25px_rgba(255,126,95,0.4)]'
-                        }`}
-                    >
-                        <FolderPlus size={16} />
-                        <span className="hidden sm:inline">{isCreating ? 'Création...' : 'Créer le dossier'}</span>
-                        <span className="sm:hidden">{isCreating ? '...' : 'Créer'}</span>
-                    </button>
+                        <button
+                            onClick={handleCreate}
+                            disabled={!name.trim() || isCreating}
+                            className={`px-6 md:px-8 py-2.5 md:py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-full font-bold text-sm uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-orange-200/50 dark:shadow-orange-900/20 transition-all duration-300 ${
+                                !name.trim() || isCreating
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:scale-105 hover:shadow-[0_0_25px_rgba(255,126,95,0.4)]'
+                            }`}
+                        >
+                            <FolderPlus size={16} />
+                            <span className="hidden sm:inline">{isCreating ? 'Création...' : 'Créer le dossier'}</span>
+                            <span className="sm:hidden">{isCreating ? '...' : 'Créer'}</span>
+                        </button>
+                    </div>
                 </header>
 
                 {/* Scrollable content */}
-                <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
-                    <div className="max-w-5xl mx-auto">
+                <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-10 md:pb-12 pt-1 md:pt-2">
+                    <div className="max-w-6xl mx-auto min-h-full lg:min-h-[calc(100vh-170px)] flex items-start lg:items-center">
+                        <div className="w-full rounded-[28px] border border-white/70 dark:border-slate-700/40 bg-white/35 dark:bg-slate-900/25 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.08)] p-3 md:p-5 lg:p-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 md:gap-8">
 
-                        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 md:gap-8">
-
-                            {/* LEFT COLUMN - Identity */}
-                            <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
+                                {/* LEFT COLUMN - Identity */}
+                                <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
 
                                 {/* Avatar + Name card */}
                                 <div className={`${sectionCardCls} text-center`}>
@@ -277,10 +279,10 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                         Franck préparera automatiquement les dossiers et la structure du projet.
                                     </p>
                                 </div>
-                            </div>
+                                </div>
 
-                            {/* RIGHT COLUMN - Details */}
-                            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 delay-100 fill-mode-both">
+                                {/* RIGHT COLUMN - Details */}
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 delay-100 fill-mode-both">
 
                                 {/* Contact info */}
                                 <div className={sectionCardCls}>
@@ -446,6 +448,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                     </div>
                                 </div>
 
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 {
-  "name": "Marion Web OS",
-  "short_name": "Marion",
+  "name": "Orbit Office OS",
+  "short_name": "Orbit",
   "description": "Votre espace de travail personnel - Gestion clients, facturation, agenda et plus",
   "start_url": "/",
   "display": "standalone",
@@ -66,14 +66,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Marion Web OS - Dashboard"
+      "label": "Orbit Office OS - Dashboard"
     },
     {
       "src": "/screenshots/mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Marion Web OS - Mobile"
+      "label": "Orbit Office OS - Mobile"
     }
   ],
   "shortcuts": [

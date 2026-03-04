@@ -130,7 +130,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         data: aiHealth,
         isLoading: isAiHealthLoading,
         refetch: refetchAiHealth,
-    } = useCheckStatus(isAiTabOpen);
+    } = useCheckStatus(isAiTabOpen, {
+        ai_mode: aiMode,
+        local_model: localModelName,
+        fallback_enabled: aiFallbackEnabled,
+    });
 
     // Cloud backup hooks
     const { data: cloudBackupConfig } = useCloudBackupConfig();
@@ -789,11 +793,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <div className="text-slate-600 dark:text-slate-300">
                                             Modèle local: {aiHealth?.localModel || localAiModelName}
                                         </div>
+                                        {aiHealth?.localModelAvailable === false && (
+                                            <div className="md:col-span-2 text-amber-600 dark:text-amber-400">
+                                                Modèle non installé dans Ollama. Disponible(s): {(aiHealth?.availableLocalModels || []).join(', ') || 'aucun'}
+                                            </div>
+                                        )}
                                         <div className="text-slate-600 dark:text-slate-300">
                                             Cloud: {aiHealth?.cloudAvailable ? 'Disponible' : 'Non configuré'}
                                         </div>
                                         <div className="text-slate-600 dark:text-slate-300 md:col-span-2">
-                                            Provider défaut: {aiHealth?.provider || localAiMode} · Fallback: {aiHealth?.fallbackEnabled ? 'ON' : 'OFF'}
+                                            Mode sélectionné: {localAiMode} · Mode backend: {aiHealth?.provider || 'N/A'} · Fallback: {localAiFallbackEnabled ? 'ON' : 'OFF'}
                                         </div>
                                         {!aiHealth?.localAvailable && aiHealth?.errors?.local && (
                                             <div className="md:col-span-2 text-amber-600 dark:text-amber-400">
@@ -824,7 +833,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             onClick={() => setLocalAiFallbackEnabledState(!localAiFallbackEnabled)}
                                             className={`w-12 h-6 rounded-full transition-colors relative ${localAiFallbackEnabled ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-700'}`}
                                         >
-                                            <div className={`w-5 h-5 bg-white rounded-full absolute transition-transform ${localAiFallbackEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                                            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm ${localAiFallbackEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
                                         </button>
                                     </div>
                                 </div>

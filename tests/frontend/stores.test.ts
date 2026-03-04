@@ -467,6 +467,131 @@ describe('useOfflineStore', () => {
     });
 });
 
+// ============================================================================
+// FOCUS STORE
+// ============================================================================
+
+describe('useFocusStore', () => {
+    let useFocusStore: typeof import('../../stores/useFocusStore').useFocusStore;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        localStorage.clear();
+        const mod = await import('../../stores/useFocusStore');
+        useFocusStore = mod.useFocusStore;
+        useFocusStore.getState().resetSession();
+    });
+
+    it('startSession: initializes a running focus session', () => {
+        useFocusStore.getState().startSession({ objective: 'Finalize landing page', plannedMinutes: 25 });
+        const state = useFocusStore.getState();
+        expect(state.state).toBe('running');
+        expect(state.phase).toBe('focus');
+        expect(state.objective).toBe('Finalize landing page');
+        expect(state.remainingSeconds).toBe(25 * 60);
+        useFocusStore.getState().resetSession();
+    });
+
+    it('tick: transitions from focus to break and stores session history', () => {
+        useFocusStore.getState().setSettings({ autoStartNextPhase: false, longBreakEvery: 2 });
+        useFocusStore.getState().startSession({ objective: 'Ship homepage', plannedMinutes: 1 });
+        useFocusStore.setState({
+            runStartedAtMs: Date.now() - 2000,
+            runStartedRemainingSeconds: 1,
+            phaseTotalSeconds: 1,
+            remainingSeconds: 1,
+        });
+
+        useFocusStore.getState().tick();
+        const state = useFocusStore.getState();
+        expect(state.phase).toBe('short_break');
+        expect(state.state).toBe('break');
+        expect(state.history.length).toBe(1);
+        expect(state.history[0].objective).toBe('Ship homepage');
+        useFocusStore.getState().resetSession();
+    });
+
+    it('getWeeklyMetrics: returns aggregated data for last 7 days', () => {
+        const now = new Date();
+        useFocusStore.setState({
+            history: [
+                {
+                    id: 's1',
+                    startedAt: now.toISOString(),
+                    endedAt: now.toISOString(),
+                    plannedMinutes: 25,
+                    actualMinutes: 24,
+                    objective: 'A',
+                    resultSummary: '',
+                    state: 'completed',
+                    interruptionCount: 1,
+                },
+                {
+                    id: 's2',
+                    startedAt: now.toISOString(),
+                    endedAt: now.toISOString(),
+                    plannedMinutes: 50,
+                    actualMinutes: 42,
+                    objective: 'B',
+                    resultSummary: '',
+                    state: 'completed',
+                    interruptionCount: 0,
+                },
+            ] as any,
+        });
+        const metrics = useFocusStore.getState().getWeeklyMetrics();
+        expect(metrics.sessions).toBe(2);
+        expect(metrics.totalMinutes).toBe(66);
+        expect(metrics.interruptions).toBe(1);
+    });
+});
+
+// ============================================================================
+// NOTIFICATION STORE (FOCUS DEFER)
+// ============================================================================
+
+describe('useNotificationStore focus defer', () => {
+    let useNotificationStore: typeof import('../../stores/useNotificationStore').useNotificationStore;
+    let useFocusStore: typeof import('../../stores/useFocusStore').useFocusStore;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        const notifMod = await import('../../stores/useNotificationStore');
+        const focusMod = await import('../../stores/useFocusStore');
+        useNotificationStore = notifMod.useNotificationStore;
+        useFocusStore = focusMod.useFocusStore;
+        useNotificationStore.setState({ notifications: [], toasts: [], deferredToasts: [] });
+        useFocusStore.getState().resetSession();
+    });
+
+    it('defers non-critical toasts while focus session is running', () => {
+        useFocusStore.setState({
+            state: 'running',
+            settings: { ...useFocusStore.getState().settings, muteToastsDuringFocus: true },
+        });
+        useNotificationStore.getState().addNotification('Info', 'Deferred toast', 'info');
+
+        const state = useNotificationStore.getState();
+        expect(state.notifications).toHaveLength(1);
+        expect(state.toasts).toHaveLength(0);
+        expect(state.deferredToasts).toHaveLength(1);
+    });
+
+    it('flushDeferredToasts: displays queued toasts after focus', () => {
+        useFocusStore.setState({
+            state: 'running',
+            settings: { ...useFocusStore.getState().settings, muteToastsDuringFocus: true },
+        });
+        useNotificationStore.getState().addNotification('Info', 'Deferred toast', 'info');
+
+        useFocusStore.setState({ state: 'idle' });
+        useNotificationStore.getState().flushDeferredToasts();
+        const state = useNotificationStore.getState();
+        expect(state.deferredToasts).toHaveLength(0);
+        expect(state.toasts).toHaveLength(1);
+    });
+});
+
 
 // ============================================================================
 // WORKSPACE STORE
