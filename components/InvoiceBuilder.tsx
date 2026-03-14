@@ -4,6 +4,7 @@ import { Plus, Trash2, Download, Save, RefreshCw, X, Clock, Wand2, Calendar, Cre
 import { formatCurrency } from '../utils';
 import { apiFetch } from '../services/api';
 import { Language, LANGUAGE_OPTIONS, invoiceT } from '../translations/i18n';
+import { printElementAsPdf } from '../utils/pdfExport';
 
 declare const confetti: any;
 
@@ -343,17 +344,9 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
         setTimeout(async () => {
             const element = document.getElementById('invoice-paper');
             if (!element) return;
-            const opt: any = {
-                margin: 0,
-                filename: `${currentInvoice.type === 'Invoice' ? t.invoice : t.estimate}_${currentInvoice.number}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+            const filename = `${currentInvoice.type === 'Invoice' ? t.invoice : t.estimate}_${currentInvoice.number}.pdf`;
             try {
-                // @ts-ignore
-                const html2pdf = (await import('html2pdf.js')).default;
-                await html2pdf().set(opt).from(element).save();
+                await printElementAsPdf(element, filename, { pageMarginMm: 0 });
             } catch (e) { alert(t.pdfError); }
             finally { setIsGenerating(false); }
         }, 500);

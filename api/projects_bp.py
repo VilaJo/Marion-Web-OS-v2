@@ -59,6 +59,7 @@ def scan_projects():
                     "createdAt": data.get('createdAt'),
                     "portalSettings": data.get('portalSettings'),
                     "portalComments": data.get('portalComments'),
+                    "meetingReports": data.get('meetingReports', []),
                     "archiveCategory": None,
                 }
 

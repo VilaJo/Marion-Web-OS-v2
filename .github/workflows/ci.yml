@@ -60,7 +60,6 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
-        continue-on-error: true
 
       - name: Run Vitest
         run: npx vitest run tests/frontend/

@@ -35,7 +35,7 @@ const snapOverlayToCursor: Modifier = ({ activatorEvent, draggingNodeRect, trans
     }
     return transform;
 };
-import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential } from '../types';
+import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential, MeetingReport } from '../types';
 import { formatCurrency } from '../utils';
 import { MaintenanceWidget } from './MaintenanceWidget';
 import { Badge, Card, Modal, Tooltip, EmptyState } from './Shared';
@@ -61,6 +61,7 @@ import { PROSPECT_PHASE_TEMPLATES, ACTIVE_PHASE_TEMPLATES, WORKFLOW_CONFIG, WORK
 import { apiFetch } from '../services/api';
 import { useOAuthStatus, useConnectGoogle, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
+import { exportMeetingReportPdf } from '../utils/meetingReportPdf';
 
 declare const confetti: any;
 
@@ -309,6 +310,43 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         ...(project.links || {}),
     }));
     const [hasVisitedFiles, setHasVisitedFiles] = useState(false);
+    const localMeetingReportsKey = useMemo(() => `marion_meeting_reports_${project.id}`, [project.id]);
+    const [localMeetingReports, setLocalMeetingReports] = useState<MeetingReport[]>([]);
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(localMeetingReportsKey);
+            if (!raw) {
+                setLocalMeetingReports([]);
+                return;
+            }
+            const parsed = JSON.parse(raw);
+            setLocalMeetingReports(Array.isArray(parsed) ? parsed : []);
+        } catch {
+            setLocalMeetingReports([]);
+        }
+    }, [localMeetingReportsKey]);
+
+    useEffect(() => {
+        const reports = project.meetingReports || [];
+        if (!reports.length) return;
+        setLocalMeetingReports(reports);
+        try {
+            localStorage.setItem(localMeetingReportsKey, JSON.stringify(reports));
+        } catch {}
+    }, [project.meetingReports, localMeetingReportsKey]);
+
+    const mergedMeetingReports = useMemo(() => {
+        const all = [...(project.meetingReports || []), ...localMeetingReports];
+        const map = new Map<string, MeetingReport>();
+        all.forEach((report, index) => {
+            const key = report.id || `${report.generatedAt || ''}-${report.summary || ''}-${index}`;
+            if (!map.has(key)) map.set(key, report);
+        });
+        return Array.from(map.values()).sort(
+            (a, b) => new Date(b.generatedAt || 0).getTime() - new Date(a.generatedAt || 0).getTime()
+        );
+    }, [project.meetingReports, localMeetingReports]);
 
     // Persist links to project when they change (debounced via blur/Enter)
     const saveLinks = (updated: Record<string, string>) => {
@@ -899,30 +937,76 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     };
 
     // --- MEETING NOTES LOGIC ---
-    const handleSaveMeetingNotes = (notes: { summary: string, keyPoints?: string[], tasks?: any[] }) => {
+    const handleSaveMeetingNotes = (notes: MeetingReport) => {
         let updatedTasks = [...project.tasks];
+        const existingReports = mergedMeetingReports;
+        const reportId = notes?.id || `meeting-${Date.now()}`;
+        const normalizedReport: MeetingReport = {
+            ...notes,
+            id: reportId,
+            clientName: project.clientName,
+            generatedAt: notes.generatedAt || new Date().toISOString(),
+            keyPoints: notes.keyPoints || [],
+            decisions: notes.decisions || [],
+            risks: notes.risks || [],
+            objections: notes.objections || [],
+            nextSteps: notes.nextSteps || [],
+            tasks: notes.tasks || [],
+        };
 
         // Add tasks identified by AI
-        if (notes.tasks && notes.tasks.length > 0) {
-            notes.tasks.forEach(aiTask => {
+        if (normalizedReport.tasks && normalizedReport.tasks.length > 0) {
+            normalizedReport.tasks.forEach(aiTask => {
                 const newTask: Task = {
                     id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     title: aiTask.title,
                     description: `Assigné à: ${aiTask.owner || 'Inconnu'}${aiTask.deadline ? `, Échéance: ${aiTask.deadline}` : ''}. Issue de la réunion.`,
                     completed: false,
                     column: 'todo',
-                    priority: 'Medium', // Default or try to infer from AI?
+                    priority: aiTask.priority || 'Medium',
                     phase: project.phase,
                     dueDate: aiTask.deadline || undefined
                 };
                 updatedTasks.push(newTask);
             });
-            onNotify('Tâches de réunion ajoutées !', `Franck a identifié ${notes.tasks.length} actions.`, 'success');
+            onNotify('Tâches de réunion ajoutées !', `Franck a identifié ${normalizedReport.tasks.length} actions.`, 'success');
         }
-        
-        updateProjectTasks(updatedTasks);
+
+        const nextReports = [normalizedReport, ...existingReports].slice(0, 25);
+        setLocalMeetingReports(nextReports);
+        try {
+            localStorage.setItem(localMeetingReportsKey, JSON.stringify(nextReports));
+        } catch {}
+
+        onUpdateProject({
+            ...project,
+            tasks: updatedTasks,
+            meetingReports: nextReports,
+        });
         setShowMeetingMode(false);
         onNotify('Compte-rendu enregistré', 'Le rapport de réunion a été ajouté au projet.', 'ai');
+    };
+
+    const handleExportMeetingReport = async (report: MeetingReport, variant: 'internal' | 'client' = 'internal') => {
+        try {
+            await exportMeetingReportPdf(report, variant);
+            onNotify('PDF généré', 'Le compte-rendu a été exporté en PDF.', 'success');
+        } catch (_e) {
+            onNotify('Export PDF impossible', "Le PDF du compte-rendu n'a pas pu être généré.", 'error');
+        }
+    };
+
+    const handleCopyFollowUp = async (report: MeetingReport) => {
+        if (!report.followUpDraft) {
+            onNotify('Aucun brouillon', "Ce compte-rendu n'a pas de follow-up prêt.", 'warning');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(report.followUpDraft);
+            onNotify('Follow-up copié', 'Le brouillon a été copié dans le presse-papiers.', 'success');
+        } catch (_e) {
+            onNotify('Copie impossible', 'Le navigateur a refusé la copie.', 'error');
+        }
     };
 
     // --- PROFILE & BRAND ---
@@ -1685,7 +1769,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 onClick={() => setShowMeetingMode(true)}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/40 transition-colors whitespace-nowrap"
                             >
-                                <Mic size={16} /> Réunion (IA)
+                                <Mic size={16} /> Meeting Copilot
                             </button>
                         </div>
 
@@ -1705,7 +1789,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                         <Plus size={14} /> Ajouter Tâche
                                     </button>
                                 </div>
-                                
+
                                 {/* KANBAN BOARD */}
                                 {project.tasks.length === 0 ? (
                                     <div className="flex-1 flex items-center justify-center">
@@ -2239,6 +2323,9 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 <React.Suspense fallback={<LazyFallback />}>
                     <MeetingMode 
                         clientName={project.clientName} 
+                        clientProfile={project.profile}
+                        clientAvatarImage={project.avatarImage}
+                        meetingHistory={mergedMeetingReports}
                         onClose={() => setShowMeetingMode(false)}
                         onSaveNotes={handleSaveMeetingNotes}
                     />

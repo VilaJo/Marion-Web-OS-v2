@@ -1,4 +1,4 @@
-// Orbit Office OS - Service Worker
+// Marion Web OS - Service Worker
 const CACHE_NAME = 'orbit-office-os-v5';
 const OFFLINE_URL = '/offline.html';
 
@@ -155,7 +155,7 @@ self.addEventListener('push', (event) => {
   };
   
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Orbit Office OS', options)
+    self.registration.showNotification(data.title || 'Marion Web OS', options)
   );
 });
 

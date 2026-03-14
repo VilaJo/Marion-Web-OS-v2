@@ -10,6 +10,7 @@ import sys
 import json
 import re
 import inspect
+import uuid
 from services.logger import get_logger
 
 logger = get_logger('api.ai')
@@ -38,6 +39,8 @@ from services.ai_provider_service import (
     generate_multimodal_with_fallback,
     stream_text_with_fallback,
 )
+from services.meeting_transcription_service import transcribe_audio_fallback
+from database.db import create_activity_event, get_workspace_settings, update_workspace_settings
 from api.shared import DESKTOP_PATH, get_safe_path, error_response
 
 try:
@@ -57,6 +60,91 @@ CONFIRM_RE = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+
+PII_REPLACERS = [
+    (re.compile(r"\b[\w\.-]+@[\w\.-]+\.\w+\b"), "[REDACTED_EMAIL]"),
+    (re.compile(r"\+?\d[\d\s\-\(\)]{7,}\d"), "[REDACTED_PHONE]"),
+]
+
+MEETING_METRICS = {
+    "analyze_total": 0,
+    "analyze_failed": 0,
+    "coach_total": 0,
+    "coach_failed": 0,
+    "fallback_transcription_used": 0,
+}
+
+
+def _request_id():
+    rid = request.headers.get("X-Request-ID")
+    if rid:
+        return rid.strip()[:80]
+    return f"req-{uuid.uuid4().hex[:12]}"
+
+
+def _redact_pii(text: str):
+    redacted = text or ""
+    hit = False
+    for pattern, token in PII_REPLACERS:
+        new_value = pattern.sub(token, redacted)
+        if new_value != redacted:
+            hit = True
+        redacted = new_value
+    return redacted, hit
+
+
+def _dedupe_lines(values, limit=20):
+    seen = set()
+    out = []
+    for raw in values or []:
+        val = str(raw or "").strip()
+        if not val:
+            continue
+        key = val.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(val)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _normalize_followup(payload):
+    subject = str(payload.get("subject") or "").strip()
+    body = str(payload.get("body") or payload.get("followUpDraft") or "").strip()
+    if not body:
+        return None
+    return (f"Sujet: {subject}\n\n{body}" if subject else body)[:2200]
+
+
+def _rank_cues(cues):
+    rank = {"high": 0, "medium": 1, "low": 2}
+    # Deduplicate by cue text first, then sort by priority rank.
+    seen = set()
+    deduped = []
+    for cue in cues:
+        key = str(cue.get("cue", "")).strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cue)
+    deduped.sort(key=lambda c: rank.get(c.get("priority", "medium"), 1))
+    return deduped[:3]
+
+
+def _audit_meeting(event_type: str, title: str, metadata: dict, project_name: str = None):
+    try:
+        create_activity_event(
+            workspace_id=1,
+            event_type=event_type,
+            title=title,
+            description=title,
+            project_name=project_name,
+            metadata=metadata,
+        )
+    except Exception as exc:
+        logger.warning("meeting.audit.write_failed: %s", exc)
 
 
 def _is_scalar_json(value):
@@ -165,6 +253,97 @@ def _extract_json_candidate(text: str):
             return None
 
     return None
+
+
+def _normalize_meeting_tasks(tasks):
+    normalized = []
+    if not isinstance(tasks, list):
+        return normalized
+    for idx, task in enumerate(tasks[:30]):
+        if isinstance(task, str):
+            title = task.strip()
+            if title:
+                normalized.append({
+                    "id": f"mt-{idx + 1}",
+                    "title": title,
+                    "owner": "Non assigne",
+                    "deadline": None,
+                    "priority": "Medium",
+                })
+            continue
+        if not isinstance(task, dict):
+            continue
+        title = str(task.get("title", "")).strip()
+        if not title:
+            continue
+        priority = str(task.get("priority", "Medium")).capitalize()
+        if priority not in ("Low", "Medium", "High"):
+            priority = "Medium"
+        normalized.append({
+            "id": str(task.get("id") or f"mt-{idx + 1}"),
+            "title": title,
+            "owner": str(task.get("owner") or "Non assigne"),
+            "deadline": str(task.get("deadline")) if task.get("deadline") else None,
+            "priority": priority,
+        })
+    return normalized
+
+
+def _validate_meeting_report(payload: dict, client_name: str, duration_seconds, consent_accepted=False, retention_days=30):
+    if not isinstance(payload, dict):
+        payload = {}
+    now_iso = time.strftime('%Y-%m-%dT%H:%M:%S')
+    summary = str(payload.get("summary", "")).strip() or "Compte-rendu indisponible."
+    key_points = payload.get("keyPoints") or payload.get("key_points") or []
+    decisions = payload.get("decisions") or []
+    risks = payload.get("risks") or []
+    objections = payload.get("objections") or []
+    next_steps = payload.get("nextSteps") or payload.get("next_steps") or []
+    transcript_excerpt = payload.get("transcriptExcerpt") or payload.get("transcript_excerpt")
+    evidence = payload.get("evidence") or []
+    follow_up_draft = _normalize_followup(payload)
+
+    def _norm_list(value):
+        if not isinstance(value, list):
+            return []
+        return [str(v).strip() for v in value if str(v).strip()][:20]
+
+    return {
+        "id": str(payload.get("id") or f"meeting-{int(time.time() * 1000)}"),
+        "clientName": client_name,
+        "generatedAt": str(payload.get("generatedAt") or now_iso),
+        "durationSeconds": duration_seconds,
+        "objective": str(payload.get("objective", "")).strip() or None,
+        "summary": summary,
+        "keyPoints": _dedupe_lines(_norm_list(key_points), 20),
+        "decisions": _dedupe_lines(_norm_list(decisions), 20),
+        "risks": _dedupe_lines(_norm_list(risks), 20),
+        "objections": _dedupe_lines(_norm_list(objections), 20),
+        "nextSteps": _dedupe_lines(_norm_list(next_steps), 20),
+        "tasks": _normalize_meeting_tasks(payload.get("tasks")),
+        "coachingMoments": [
+            {
+                "timestampSec": int(m.get("timestampSec", 0)) if isinstance(m, dict) and str(m.get("timestampSec", "")).strip() else None,
+                "cue": str(m.get("cue", "")).strip(),
+                "rationale": str(m.get("rationale", "")).strip() or None,
+            }
+            for m in (payload.get("coachingMoments") or payload.get("coaching_moments") or [])
+            if isinstance(m, dict) and str(m.get("cue", "")).strip()
+        ][:15],
+        "evidence": [
+            {
+                "speaker": str(item.get("speaker", "")).strip() or None,
+                "timestampSec": int(item.get("timestampSec", 0)) if str(item.get("timestampSec", "")).strip() else None,
+                "quote": str(item.get("quote", "")).strip()[:260],
+            }
+            for item in evidence
+            if isinstance(item, dict) and str(item.get("quote", "")).strip()
+        ][:8],
+        "followUpDraft": follow_up_draft,
+        "transcriptExcerpt": str(transcript_excerpt).strip()[:3000] if transcript_excerpt else None,
+        "consentAccepted": bool(consent_accepted),
+        "retentionDays": max(1, min(365, int(retention_days or 30))),
+    }
 
 
 # ============================================================================
@@ -732,16 +911,315 @@ def generate_logo():
         return error_response(e)
 
 
+@ai_bp.route('/meeting/policy', methods=['GET', 'POST'])
+def meeting_policy():
+    """Get or update workspace meeting policy (retention/consent flags)."""
+    key = "meetingPolicy"
+    workspace_id = 1
+    if request.method == "GET":
+        settings = get_workspace_settings(workspace_id)
+        policy = settings.get(key) or {"retentionDays": 30, "requireConsent": True}
+        return jsonify(policy)
+
+    data = request.json or {}
+    retention_days = max(1, min(365, int(data.get("retentionDays") or 30)))
+    require_consent = bool(data.get("requireConsent", True))
+    settings = get_workspace_settings(workspace_id)
+    settings[key] = {"retentionDays": retention_days, "requireConsent": require_consent}
+    update_workspace_settings(workspace_id, settings)
+    _audit_meeting(
+        event_type="meeting_policy_updated",
+        title="Meeting policy updated",
+        metadata={"retentionDays": retention_days, "requireConsent": require_consent},
+    )
+    return jsonify({"success": True, **settings[key]})
+
+
 @ai_bp.route('/meeting/analyze', methods=['POST'])
 def analyze_meeting():
-    """Analyze a meeting transcription."""
-    client = get_client()
-    if not client:
-        return jsonify({"error": "Server not configured"}), 503
+    """Analyze a meeting transcription and return a structured meeting report."""
+    MEETING_METRICS["analyze_total"] += 1
+    started = time.time()
+    rid = _request_id()
     try:
-        return jsonify({"summary": "Meeting analysis...", "tasks": []})
+        audio_bytes = b""
+        if request.is_json:
+            data = request.json or {}
+            raw_transcription = str(data.get("rawTranscription") or data.get("transcript") or "").strip()
+            client_name = str(data.get("clientName") or "Client").strip()
+            duration_seconds = data.get("durationSeconds")
+        else:
+            data = request.form.to_dict() if request.form else {}
+            raw_transcription = str(data.get("rawTranscription") or data.get("transcript") or "").strip()
+            client_name = str(data.get("clientName") or "Client").strip()
+            duration_raw = data.get("durationSeconds")
+            duration_seconds = int(duration_raw) if str(duration_raw or "").isdigit() else None
+            audio = request.files.get("audio")
+            if audio:
+                try:
+                    audio_bytes = audio.read()
+                except Exception:
+                    audio_bytes = b""
+
+        policy = (get_workspace_settings(1).get("meetingPolicy") or {"retentionDays": 30, "requireConsent": True})
+        consent_accepted = str(data.get("consentAccepted", "false")).lower() == "true"
+        retention_days = int(data.get("retentionDays") or policy.get("retentionDays") or 30)
+        if bool(policy.get("requireConsent", True)) and not consent_accepted:
+            return jsonify({"error": "Consentement requis pour analyser la reunion."}), 400
+
+        ai_prefs = resolve_ai_prefs({
+            **data,
+            "ai_mode": data.get("ai_mode") or "cloud",
+        })
+        client = get_client()
+        if ai_prefs["ai_mode"] == "cloud" and not client:
+            return jsonify({"error": "Server not configured"}), 503
+
+        # Server-side transcript fallback when browser transcript is weak.
+        if len(raw_transcription) < 50 and audio_bytes:
+            fallback_text = transcribe_audio_fallback(audio_bytes=audio_bytes, ai_prefs=ai_prefs, gemini_client=client)
+            if fallback_text:
+                raw_transcription = fallback_text
+                MEETING_METRICS["fallback_transcription_used"] += 1
+
+        if not raw_transcription:
+            return jsonify({"error": "Transcription manquante"}), 400
+
+        transcript_redacted, redaction_hit = _redact_pii(raw_transcription)
+
+        prompt = f"""
+Tu es un assistant de reunion expert.
+Analyse la transcription suivante et retourne UNIQUEMENT un JSON valide.
+
+CLIENT: {client_name}
+
+Schema JSON attendu:
+{{
+  "summary": "string",
+  "keyPoints": ["string"],
+  "decisions": ["string"],
+  "risks": ["string"],
+  "objections": ["string"],
+  "nextSteps": ["string"],
+  "tasks": [
+    {{
+      "title": "string",
+      "owner": "string",
+      "deadline": "YYYY-MM-DD ou null",
+      "priority": "Low|Medium|High"
+    }}
+  ],
+  "coachingMoments": [
+    {{
+      "timestampSec": 0,
+      "cue": "string",
+      "rationale": "string"
+    }}
+  ],
+  "transcriptExcerpt": "string",
+  "evidence": [
+    {{"speaker":"string|null","timestampSec":0,"quote":"string"}}
+  ],
+  "subject": "string",
+  "body": "string"
+}}
+
+Regles:
+- Sois factuel, utile, actionnable.
+- Taches concretes, pas de doublons.
+- Limite transcriptExcerpt a 5-8 phrases.
+- Inclus 2 a 6 evidence items si possible.
+- Si une information manque, laisse un tableau vide ou null.
+
+TRANSCRIPTION:
+{transcript_redacted[:16000]}
+        """.strip()
+
+        payload = generate_json_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model="gemini-2.0-flash",
+            task="reasoning",
+        )
+
+        if not isinstance(payload, dict):
+            if isinstance(payload, str):
+                parsed = _extract_json_candidate(payload)
+                payload = parsed if isinstance(parsed, dict) else {}
+            else:
+                payload = {}
+
+        report = _validate_meeting_report(payload, client_name, duration_seconds, consent_accepted, retention_days)
+        # Retention policy: don't keep transcriptExcerpt beyond short retention windows.
+        if report.get("retentionDays", 30) <= 7:
+            report["transcriptExcerpt"] = None
+
+        report["requestId"] = rid
+        latency_ms = int((time.time() - started) * 1000)
+        logger.info(
+            "meeting.analyze.ok rid=%s client=%s mode=%s latency_ms=%s tasks=%s redacted=%s",
+            rid,
+            client_name,
+            ai_prefs.get("ai_mode"),
+            latency_ms,
+            len(report.get("tasks", [])),
+            redaction_hit,
+        )
+        _audit_meeting(
+            event_type="meeting_analyze",
+            title=f"Meeting analyze {client_name}",
+            project_name=client_name,
+            metadata={
+                "requestId": rid,
+                "latencyMs": latency_ms,
+                "aiMode": ai_prefs.get("ai_mode"),
+                "retentionDays": report.get("retentionDays"),
+                "redacted": redaction_hit,
+                "taskCount": len(report.get("tasks", [])),
+            },
+        )
+        response = jsonify(report)
+        response.headers["X-Request-ID"] = rid
+        return response
     except Exception as e:
+        MEETING_METRICS["analyze_failed"] += 1
+        logger.error("meeting.analyze.failed rid=%s: %s", rid, e, exc_info=True)
         return error_response(e)
+
+
+@ai_bp.route('/meeting/coach', methods=['POST'])
+def coach_meeting():
+    """Provide short live coaching cues from rolling transcript context."""
+    MEETING_METRICS["coach_total"] += 1
+    started = time.time()
+    rid = _request_id()
+    try:
+        data = request.json or {}
+        transcript = str(data.get("transcript") or "").strip()
+        if not transcript:
+            return jsonify({"cues": []})
+
+        objective = str(data.get("objective") or "").strip()
+        ai_prefs = resolve_ai_prefs({
+            **data,
+            "ai_mode": data.get("ai_mode") or "cloud",
+        })
+        client = get_client()
+        if ai_prefs["ai_mode"] == "cloud" and not client:
+            return jsonify({"error": "Server not configured"}), 503
+        transcript_redacted, redaction_hit = _redact_pii(transcript)
+
+        prompt = f"""
+Tu es un coach d'appel en direct.
+A partir du contexte ci-dessous, retourne UNIQUEMENT un JSON:
+{{"cues":[{{"cue":"string","rationale":"string","priority":"low|medium|high"}}]}}
+
+Contraintes:
+- 1 a 3 cues max
+- cues tres courts, directement utilisables en live
+- couvre si possible: prochaine question, risque a clarifier, reformulation utile
+- pas de blabla
+
+OBJECTIF:
+{objective or "N/A"}
+
+TRANSCRIPT (fenetre recente):
+{transcript_redacted[-7000:]}
+        """.strip()
+
+        payload = generate_json_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model="gemini-2.0-flash",
+            task="chat",
+        )
+
+        if not isinstance(payload, dict):
+            payload = _extract_json_candidate(str(payload)) or {}
+        cues_raw = payload.get("cues") if isinstance(payload, dict) else []
+        cues = []
+        if isinstance(cues_raw, list):
+            for item in cues_raw[:8]:
+                if not isinstance(item, dict):
+                    continue
+                cue = str(item.get("cue", "")).strip()
+                if not cue:
+                    continue
+                priority = str(item.get("priority", "medium")).lower()
+                if priority not in ("low", "medium", "high"):
+                    priority = "medium"
+                cues.append({
+                    "cue": cue,
+                    "rationale": str(item.get("rationale", "")).strip()[:220] or None,
+                    "priority": priority,
+                })
+        cues = _rank_cues(cues)
+
+        latency_ms = int((time.time() - started) * 1000)
+        logger.info(
+            "meeting.coach.ok rid=%s mode=%s latency_ms=%s cues=%s redacted=%s",
+            rid,
+            ai_prefs.get("ai_mode"),
+            latency_ms,
+            len(cues),
+            redaction_hit,
+        )
+        response = jsonify({"cues": cues, "requestId": rid})
+        response.headers["X-Request-ID"] = rid
+        return response
+    except Exception as e:
+        MEETING_METRICS["coach_failed"] += 1
+        logger.error("meeting.coach.failed rid=%s: %s", rid, e, exc_info=True)
+        return error_response(e)
+
+
+@ai_bp.route('/meeting/metrics', methods=['GET'])
+def meeting_metrics():
+    """Operational metrics snapshot for meeting copilot."""
+    analyze_total = max(1, MEETING_METRICS["analyze_total"])
+    coach_total = max(1, MEETING_METRICS["coach_total"])
+    return jsonify({
+        "metrics": MEETING_METRICS,
+        "slo": {
+            "analyze_failure_rate": MEETING_METRICS["analyze_failed"] / analyze_total,
+            "coach_failure_rate": MEETING_METRICS["coach_failed"] / coach_total,
+            "fallback_rate": MEETING_METRICS["fallback_transcription_used"] / analyze_total,
+        },
+    })
+
+
+@ai_bp.route('/meeting/audit/export', methods=['POST'])
+def meeting_audit_export():
+    """Write an audit event when a meeting report is exported."""
+    data = request.json or {}
+    client_name = str(data.get("clientName") or "Client").strip()
+    variant = str(data.get("variant") or "internal").strip()
+    report_id = str(data.get("reportId") or "").strip()
+    _audit_meeting(
+        event_type="meeting_export",
+        title=f"Meeting report exported ({variant})",
+        project_name=client_name,
+        metadata={"variant": variant, "reportId": report_id},
+    )
+    return jsonify({"success": True})
+
+
+@ai_bp.route('/meeting/audit/lifecycle', methods=['POST'])
+def meeting_audit_lifecycle():
+    """Write lifecycle audit events (start/stop/share/save)."""
+    data = request.json or {}
+    event = str(data.get("event") or "meeting_event").strip()[:64]
+    client_name = str(data.get("clientName") or "Client").strip()
+    metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    _audit_meeting(
+        event_type=f"meeting_{event}",
+        title=f"Meeting {event}",
+        project_name=client_name,
+        metadata=metadata,
+    )
+    return jsonify({"success": True})
 
 
 # ============================================================================

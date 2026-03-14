@@ -428,7 +428,21 @@ export const Dashboard: React.FC = () => {
 
     const handleCreateDatabase = async () => {
         try { await initDatabase.mutateAsync(); } catch { /* ignore */ }
-        await handleCreateClient("Dossier_Exemple");
+        await handleCreateClient({
+            name: "Dossier_Exemple",
+            status: ProjectStatus.PROSPECT,
+            avatarColor: "from-[#FF7E5F] to-[#d946ef]",
+            profile: {
+                email: "",
+                phone: "",
+                website: "",
+                address: "",
+                driveLink: "",
+                serverAccess: "",
+                customFields: [],
+            },
+            links: {},
+        });
         addNotification("Base de données Initialisée", "Le dossier est prêt sur votre Bureau.", "success");
         confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
     };
@@ -661,7 +675,7 @@ export const Dashboard: React.FC = () => {
 
                     {/* Full Activity History Modal */}
                     {showAllActivities && (
-                        <Modal onClose={() => setShowAllActivities(false)}>
+                        <Modal isOpen={showAllActivities} onClose={() => setShowAllActivities(false)} title="Historique d'activité" width="max-w-3xl">
                             <div className="w-full max-w-2xl mx-auto max-h-[80vh] flex flex-col">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="font-serif text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">

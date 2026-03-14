@@ -12,6 +12,19 @@ export default defineConfig(({ mode }) => {
       plugins: [react()],
       build: {
         outDir: '.dist',
+        chunkSizeWarningLimit: 1200,
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (!id.includes('node_modules')) return;
+              if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+              if (id.includes('@tanstack/react-query')) return 'vendor-query';
+              if (id.includes('@dnd-kit')) return 'vendor-dnd';
+              if (id.includes('lucide-react')) return 'vendor-icons';
+              if (id.includes('dompurify')) return 'vendor-sanitize';
+            },
+          },
+        },
       },
       define: {
         // 'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY), // REMOVED FOR SECURITY

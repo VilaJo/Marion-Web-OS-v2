@@ -571,6 +571,7 @@ function mapFolderToProject(folder: any): Project {
         logoLabData: folder.logoLabData,
         portalSettings: folder.portalSettings,
         portalComments: folder.portalComments,
+        meetingReports: folder.meetingReports || [],
     } as Project;
 }
 

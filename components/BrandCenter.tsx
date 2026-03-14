@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Project, BrandColor, BrandFont } from '../types';
 import { X, Plus, Trash2, Wand2, Palette, Type, Download, Eye, Check, AlertTriangle, Copy, RefreshCw, LayoutTemplate, FileText, Image as ImageIcon } from 'lucide-react';
 import { Modal, Card } from './Shared';
+import { printElementAsPdf } from '../utils/pdfExport';
 
 declare const confetti: any;
 
@@ -202,17 +203,8 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                 return;
             }
             const slug = getSlug();
-            const opt: any = {
-                margin: 0,
-                filename: `${slug}-brand-kit.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
             try {
-                // @ts-ignore
-                const html2pdf = (await import('html2pdf.js')).default;
-                await html2pdf().set(opt).from(element).save();
+                await printElementAsPdf(element, `${slug}-brand-kit.pdf`, { pageMarginMm: 0 });
             } catch (e) {
                 console.error(e);
                 alert("Erreur lors de la génération du PDF Brand Center.");

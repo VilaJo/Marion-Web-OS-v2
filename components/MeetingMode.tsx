@@ -1,6 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, CheckCircle, Clock, List, Target, Calendar, User, Save, X, Sparkles, BrainCircuit, AlertCircle } from 'lucide-react';
-import { Badge } from './Shared';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Square, Loader2, CheckCircle, List, Target, Save, X, BrainCircuit, AlertCircle, Download, Mail, Globe, History } from 'lucide-react';
+import { ClientProfile, MeetingReport, MeetingReportTask } from '../types';
+import { exportMeetingReportPdf } from '../utils/meetingReportPdf';
+import { apiFetch } from '../services/api';
+import { StatusRail } from './meeting/StatusRail';
+import { CoachingCard } from './meeting/CoachingCard';
+import { TranscriptTimeline } from './meeting/TranscriptTimeline';
+import { ActionTable } from './meeting/ActionTable';
 
 // Declare SpeechRecognition for TypeScript
 declare global {
@@ -12,32 +18,73 @@ declare global {
 
 interface MeetingModeProps {
     clientName: string;
+    clientProfile?: ClientProfile;
+    clientAvatarImage?: string;
+    meetingHistory?: MeetingReport[];
     onClose: () => void;
-    onSaveNotes: (notes: any) => void;
+    onSaveNotes: (notes: MeetingReport) => void;
 }
 
-export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, onSaveNotes }) => {
-    const [status, setStatus] = useState<'idle' | 'recording' | 'transcribing' | 'processing' | 'done'>('idle');
+export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProfile, clientAvatarImage, meetingHistory = [], onClose, onSaveNotes }) => {
+    const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'done' | 'error'>('idle');
     const [duration, setDuration] = useState(0);
     const [audioData, setAudioData] = useState<number[]>(new Array(20).fill(10));
-    const [liveTranscription, setLiveTranscription] = useState<string>(''); // NEW: Live transcription state
-    const [finalTranscription, setFinalTranscription] = useState<string>(''); // NEW: Final raw transcription
-    const [result, setResult] = useState<any>(null);
+    const [liveTranscription, setLiveTranscription] = useState<string>('');
+    const [finalTranscription, setFinalTranscription] = useState<string>('');
+    const [transcriptSegments, setTranscriptSegments] = useState<string[]>([]);
+    const [result, setResult] = useState<MeetingReport | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string>('');
+    const [meetingObjective, setMeetingObjective] = useState<string>('');
     const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(true);
-    const [showFullTranscription, setShowFullTranscription] = useState(false); // NEW: Track SR support
+    const [showFullTranscription, setShowFullTranscription] = useState(false);
+    const [showTimeline, setShowTimeline] = useState(false);
+    const [selectedHistoryReportId, setSelectedHistoryReportId] = useState<string | null>(null);
+    const [showHistoryDetail, setShowHistoryDetail] = useState(false);
+    const [reviewTasks, setReviewTasks] = useState<MeetingReportTask[]>([]);
+    const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+    const [liveCues, setLiveCues] = useState<Array<{ cue: string; rationale?: string; priority: 'low' | 'medium' | 'high' }>>([]);
+    const [isCoaching, setIsCoaching] = useState(false);
+    const [consentAccepted, setConsentAccepted] = useState(false);
+    const [retentionDays, setRetentionDays] = useState<number>(() => Number(localStorage.getItem('marion_meeting_retention_days') || 30));
+    const [requireConsent, setRequireConsent] = useState(true);
     
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationRef = useRef<number | null>(null);
-    const speechRecognitionRef = useRef<any | null>(null); // NEW: SpeechRecognition ref
+    const speechRecognitionRef = useRef<any | null>(null);
+    const coachingTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const statusRef = useRef(status);
 
-    // Check Speech Recognition support on mount
     useEffect(() => {
         if (! (window.SpeechRecognition || window.webkitSpeechRecognition) ) {
             setIsSpeechRecognitionSupported(false);
         }
+    }, []);
+
+    useEffect(() => {
+        statusRef.current = status;
+    }, [status]);
+
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (coachingTimerRef.current) clearTimeout(coachingTimerRef.current);
+            stopSpeechRecognition();
+            stopVisualizer();
+        };
+    }, []);
+
+    useEffect(() => {
+        apiFetch('/api/v1/meeting/policy')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((p) => {
+                if (!p) return;
+                if (typeof p.retentionDays === 'number') setRetentionDays(p.retentionDays);
+                if (typeof p.requireConsent === 'boolean') setRequireConsent(p.requireConsent);
+            })
+            .catch(() => null);
     }, []);
 
     // --- Audio Visualization Logic ---
@@ -53,7 +100,6 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
         
         const tick = () => {
             analyser.getByteFrequencyData(dataArray);
-            // Normalize to 0-100 range for CSS height
             const visualData = Array.from(dataArray).slice(0, 20).map(v => Math.max(10, v / 2.5));
             setAudioData(visualData);
             animationRef.current = requestAnimationFrame(tick);
@@ -65,7 +111,6 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
 
-    // --- Speech Recognition Logic (NEW) ---
     const startSpeechRecognition = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
@@ -75,31 +120,34 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
 
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
-        recognition.interimResults = true; // Get results while speaking
-        recognition.lang = 'fr-FR'; // Set language to French
+        recognition.interimResults = true;
+        recognition.lang = 'fr-FR';
 
-                                recognition.onresult = (event: any) => {
-                                    let interimTranscript = '';
-                                    let finalTranscript = '';
-                    
-                                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                                        const transcript = event.results[i][0].transcript;
-                                        if (event.results[i].isFinal) {
-                                            finalTranscript += transcript;
-                                        } else {
-                                            interimTranscript += transcript;
-                                        }
-                                    }
-                                    setLiveTranscription(interimTranscript); 
-                                    setFinalTranscription(prev => prev + finalTranscript); // Accumulate final transcription
-                                };        recognition.onerror = (event: any) => {
+        recognition.onresult = (event: any) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            setLiveTranscription(interimTranscript);
+            if (finalTranscript.trim()) {
+                setFinalTranscription(prev => `${prev} ${finalTranscript}`.trim());
+                setTranscriptSegments(prev => [...prev, finalTranscript.trim()]);
+            }
+        };
+
+        recognition.onerror = (event: any) => {
             console.error("Speech recognition error", event.error);
+            setErrorMessage("La transcription live a rencontré une erreur, l'enregistrement continue.");
         };
 
         recognition.onend = () => {
-            // Speech recognition ended
-            // Restart if recording is still active (continuous recognition)
-            if (status === 'recording') {
+            if (statusRef.current === 'recording') {
                 recognition.start();
             }
         };
@@ -114,14 +162,75 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
         }
     };
 
-    // --- Recording Logic ---
+    const getAiRoutingPayload = () => {
+        const aiMode = (localStorage.getItem('marion_ai_mode') || 'cloud') as 'local' | 'cloud' | 'hybrid';
+        const localModel = localStorage.getItem('marion_ai_local_model') || 'qwen2.5:7b-instruct';
+        const fallbackEnabled = localStorage.getItem('marion_ai_fallback_enabled') !== 'false';
+        return { ai_mode: aiMode, local_model: localModel, fallback_enabled: fallbackEnabled };
+    };
+
+    const rollingTranscript = useMemo(() => {
+        const recent = transcriptSegments.slice(-8).join(' ');
+        return `${recent} ${liveTranscription}`.trim();
+    }, [transcriptSegments, liveTranscription]);
+
+    useEffect(() => {
+        if (status !== 'recording') return;
+        if (coachingTimerRef.current) clearTimeout(coachingTimerRef.current);
+        if (rollingTranscript.length < 80) return;
+
+        coachingTimerRef.current = setTimeout(async () => {
+            try {
+                setIsCoaching(true);
+                const res = await apiFetch('/api/v1/meeting/coach', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        transcript: rollingTranscript,
+                        objective: meetingObjective,
+                        consentAccepted,
+                        retentionDays,
+                        ...getAiRoutingPayload(),
+                    }),
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                setLiveCues(Array.isArray(data?.cues) ? data.cues : []);
+            } catch (_e) {
+                // Keep recording flow smooth; no blocking error for coach.
+            } finally {
+                setIsCoaching(false);
+            }
+        }, 3500);
+
+        return () => {
+            if (coachingTimerRef.current) clearTimeout(coachingTimerRef.current);
+        };
+    }, [rollingTranscript, meetingObjective, status, consentAccepted, retentionDays]);
+
     const startRecording = async () => {
+        if (requireConsent && !consentAccepted) {
+            setErrorMessage("Confirmez le consentement avant de demarrer l'enregistrement.");
+            setStatus('error');
+            return;
+        }
+        localStorage.setItem('marion_meeting_retention_days', String(retentionDays));
+        apiFetch('/api/v1/meeting/policy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ retentionDays, requireConsent }),
+        }).catch(() => null);
         setLiveTranscription('');
         setFinalTranscription('');
+        setTranscriptSegments([]);
+        setLiveCues([]);
+        setDuration(0);
+        setErrorMessage('');
+        setResult(null);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             startVisualizer(stream);
-            startSpeechRecognition(); // NEW: Start speech recognition
+            startSpeechRecognition();
             
             const recorder = new MediaRecorder(stream);
             mediaRecorderRef.current = recorder;
@@ -133,13 +242,18 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
 
             recorder.onstop = () => {
                 stopVisualizer();
-                stopSpeechRecognition(); // NEW: Stop speech recognition
+                stopSpeechRecognition();
                 stream.getTracks().forEach(track => track.stop());
                 processAudio();
             };
 
             recorder.start();
             setStatus('recording');
+            apiFetch('/api/v1/meeting/audit/lifecycle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event: 'start', clientName }),
+            }).catch(() => null);
             
             timerRef.current = setInterval(() => {
                 setDuration(prev => prev + 1);
@@ -147,8 +261,8 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
 
         } catch (err) {
             console.error("Error accessing mic:", err);
-            alert("Impossible d'accéder au micro. Vérifiez les permissions.");
-            setStatus('idle');
+            setErrorMessage("Impossible d'accéder au micro. Vérifiez les permissions navigateur.");
+            setStatus('error');
         }
     };
 
@@ -156,23 +270,42 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
         if (mediaRecorderRef.current && status === 'recording') {
             mediaRecorderRef.current.stop();
             if (timerRef.current) clearInterval(timerRef.current);
-            setStatus('transcribing'); // Change status to indicate immediate transcription phase
+            setStatus('processing');
+            apiFetch('/api/v1/meeting/audit/lifecycle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event: 'stop', clientName, metadata: { duration } }),
+            }).catch(() => null);
         }
     };
 
-    const processAudio = async () => {
-        // Here, finalTranscription holds the raw text from the browser's STT
-        // We still send the audio blob to Franck for structured analysis
+    const goBackToPreCall = () => {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setStatus('idle');
+        setErrorMessage('');
+        setLiveTranscription('');
+        setLiveCues([]);
+    };
 
+    const processAudio = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const formData = new FormData();
         formData.append('audio', audioBlob, 'meeting.webm');
         formData.append('clientName', clientName);
-        formData.append('rawTranscription', finalTranscription); // NEW: Send raw transcription to backend
+        formData.append('rawTranscription', (finalTranscription || rollingTranscript).trim());
+        formData.append('durationSeconds', String(duration));
+        if (meetingObjective.trim()) {
+            formData.append('objective', meetingObjective.trim());
+        }
+        formData.append('consentAccepted', String(consentAccepted));
+        formData.append('retentionDays', String(retentionDays));
+        const routing = getAiRoutingPayload();
+        formData.append('ai_mode', routing.ai_mode);
+        formData.append('local_model', routing.local_model);
+        formData.append('fallback_enabled', String(routing.fallback_enabled));
 
         try {
-            setStatus('processing'); // Indicate AI analysis
-            const res = await fetch('/api/v1/meeting/analyze', {
+            const res = await apiFetch('/api/v1/meeting/analyze', {
                 method: 'POST',
                 body: formData
             });
@@ -184,8 +317,8 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
             setStatus('done');
         } catch (e) {
             console.error(e);
-            alert("Erreur lors de l'analyse de la réunion par Franck.");
-            setStatus('idle');
+            setErrorMessage("Erreur lors de l'analyse de la réunion. Vérifiez la connexion IA.");
+            setStatus('error');
         }
     };
 
@@ -196,206 +329,491 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, onClose, o
     };
 
     const handleSave = () => {
-        onSaveNotes(result); // result now contains structured notes
+        if (!result) return;
+        const selectedTasks = reviewTasks
+            .filter((task) => selectedTaskIds.includes(task.id || ''))
+            .map((task) => ({ ...task, title: (task.title || '').trim() }))
+            .filter((task) => task.title.length > 0);
+        const payload: MeetingReport = {
+            ...result,
+            tasks: selectedTasks,
+        };
+        apiFetch('/api/v1/meeting/audit/lifecycle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: 'save', clientName, metadata: { reportId: result.id } }),
+        }).catch(() => null);
+        onSaveNotes(payload);
         onClose();
     };
 
+    const handleExportPdf = async (variant: 'internal' | 'client') => {
+        if (!result) return;
+        await exportMeetingReportPdf(result, variant);
+        await apiFetch('/api/v1/meeting/audit/export', {
+            method: 'POST',
+            body: JSON.stringify({ clientName, reportId: result.id, variant }),
+            headers: { 'Content-Type': 'application/json' },
+        }).catch(() => null);
+    };
+    const uiStage = status === 'done' ? 'post' : status === 'recording' || status === 'processing' ? 'in' : 'pre';
+    const recentCalls = [...meetingHistory]
+        .sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime())
+        .slice(0, 4);
+    const selectedHistoryReport = useMemo(
+        () => recentCalls.find((call) => call.id === selectedHistoryReportId) || null,
+        [recentCalls, selectedHistoryReportId]
+    );
+
+    useEffect(() => {
+        if (!recentCalls.length) {
+            setSelectedHistoryReportId(null);
+            return;
+        }
+        if (!selectedHistoryReportId || !recentCalls.some((call) => call.id === selectedHistoryReportId)) {
+            setSelectedHistoryReportId(recentCalls[0].id);
+        }
+    }, [recentCalls, selectedHistoryReportId]);
+
+    useEffect(() => {
+        if (!result?.tasks) {
+            setReviewTasks([]);
+            setSelectedTaskIds([]);
+            return;
+        }
+        const hydratedTasks = result.tasks.map((task, index) => ({
+            ...task,
+            id: task.id || `rt-${index}-${Date.now().toString(36)}`,
+        }));
+        setReviewTasks(hydratedTasks);
+        setSelectedTaskIds(hydratedTasks.map((task) => task.id || '').filter(Boolean));
+    }, [result?.id]);
+
+    const handleToggleTask = (taskId: string, checked: boolean) => {
+        setSelectedTaskIds((prev) => {
+            if (checked) return prev.includes(taskId) ? prev : [...prev, taskId];
+            return prev.filter((id) => id !== taskId);
+        });
+    };
+
+    const handleTaskChange = (taskId: string, patch: Partial<MeetingReportTask>) => {
+        setReviewTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...patch } : task)));
+    };
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/95 backdrop-blur-xl animate-in fade-in duration-300">
-            <button onClick={onClose} className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors">
-                <X size={32} />
-            </button>
+        <div className="fixed inset-0 z-[100] bg-[#f6f8fc] dark:bg-slate-950 animate-in fade-in duration-200">
+            <div className="h-full flex flex-col">
+                <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Meeting Copilot</h2>
+                        <StatusRail stage={uiStage} />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Client: {clientName}</p>
+                        <button onClick={onClose} className="w-9 h-9 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">
+                            <X size={16} className="mx-auto" />
+                        </button>
+                    </div>
+                </header>
 
-            <div className="max-w-4xl w-full mx-4">
-                
-                {/* IDLE & RECORDING STATE */}
                 {status !== 'done' && (
-                    <div className="flex flex-col items-center justify-center text-center">
-                        <div className="mb-8">
-                            <h2 className="text-white text-3xl font-serif mb-2 tracking-wide">
-                                {status === 'recording' ? 'Écoute Active...' : 'Assistant de Réunion'}
-                            </h2>
-                            <p className="text-slate-400">
-                                {status === 'recording' 
-                                    ? `Enregistrement en cours pour ${clientName}` 
-                                    : `Prêt à capturer la réunion avec ${clientName}`}
-                            </p>
-                            {!isSpeechRecognitionSupported && (
-                                <p className="text-red-400 text-sm mt-2 flex items-center justify-center gap-2">
-                                    <AlertCircle size={16} /> La reconnaissance vocale n'est pas entièrement supportée par votre navigateur. La transcription en direct peut être limitée.
+                    <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-12 gap-0">
+                        <section className="xl:col-span-8 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col min-h-0">
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                                <h3 className="text-2xl font-semibold text-slate-900 dark:text-white">
+                                    {status === 'recording' ? 'In-call assistant actif' : 'Assistant de Réunion'}
+                                </h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                    {status === 'recording' ? `Enregistrement en cours pour ${clientName}` : `Prépare l'appel avec ${clientName}`}
                                 </p>
-                            )}
-                        </div>
-
-                        {/* Visualizer Orb */}
-                        <div className="relative mb-12">
-                            <div className={`w-48 h-48 rounded-full flex items-center justify-center transition-all duration-500 ${
-                                status === 'recording' 
-                                ? 'bg-red-500/20 shadow-[0_0_100px_rgba(239,68,68,0.4)]' 
-                                : 'bg-slate-800 border border-slate-700'
-                            }`}>
-                                {status === 'processing' || status === 'transcribing' ? (
-                                    <Loader2 size={64} className="text-brand-orange animate-spin" />
-                                ) : (
-                                    <Mic size={64} className={status === 'recording' ? 'text-red-500' : 'text-slate-500'} />
+                                {!isSpeechRecognitionSupported && (
+                                    <p className="text-red-500 text-xs mt-2 flex items-center gap-2">
+                                        <AlertCircle size={14} /> La reconnaissance vocale live peut être limitée sur ce navigateur.
+                                    </p>
                                 )}
                             </div>
-                            
-                            {/* Waveform Bars */}
-                            {status === 'recording' && (
-                                <div className="absolute inset-0 flex items-center justify-center gap-1.5 pointer-events-none">
-                                    {audioData.map((height, i) => (
-                                        <div 
-                                            key={i} 
-                                            className="w-1.5 bg-red-500 rounded-full transition-all duration-75 ease-linear opacity-80"
-                                            style={{ height: `${height}%`, maxHeight: '120%' }}
+
+                            <div className="flex-1 min-h-0 p-6 overflow-y-auto space-y-6">
+                                {(status === 'idle' || status === 'error') && (
+                                    <div className="space-y-3 max-w-3xl">
+                                        <input
+                                            value={meetingObjective}
+                                            onChange={(e) => setMeetingObjective(e.target.value)}
+                                            placeholder="Objectif de l'appel (optionnel) : ex. valider planning et budget"
+                                            className="w-full rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-brand-orange"
                                         />
-                                    ))}
+                                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+                                            <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">Checklist pre-call</p>
+                                            <ul className="text-sm text-slate-700 dark:text-slate-200 space-y-1">
+                                                <li>- Objectif principal formulé en 1 phrase</li>
+                                                <li>- Décisionnaire identifié</li>
+                                                <li>- Risque principal à clarifier</li>
+                                            </ul>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+                                            <label className="text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                                <input type="checkbox" checked={consentAccepted} onChange={(e) => setConsentAccepted(e.target.checked)} />
+                                                Consentement de l'appel confirmé
+                                            </label>
+                                            <select
+                                                value={retentionDays}
+                                                onChange={(e) => setRetentionDays(Number(e.target.value))}
+                                                className="rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1 text-sm"
+                                            >
+                                                <option value={7}>Rétention 7j</option>
+                                                <option value={30}>Rétention 30j</option>
+                                                <option value={90}>Rétention 90j</option>
+                                                <option value={365}>Rétention 365j</option>
+                                            </select>
+                                            <label className="text-xs text-slate-500 dark:text-slate-300 flex items-center gap-2">
+                                                <input type="checkbox" checked={requireConsent} onChange={(e) => setRequireConsent(e.target.checked)} />
+                                                Exiger consentement (workspace)
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4 max-w-3xl">
+                                    <div className="flex items-start gap-4">
+                                        {clientAvatarImage ? (
+                                            <img src={clientAvatarImage} alt={clientName} className="w-14 h-14 rounded-full object-cover border border-slate-200 dark:border-slate-600" />
+                                        ) : (
+                                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-orange to-pink-500 text-white font-bold flex items-center justify-center">
+                                                {(clientName || 'CL').slice(0, 2).toUpperCase()}
+                                            </div>
+                                        )}
+                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                            <div className="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2">
+                                                <p className="text-[10px] uppercase tracking-wider text-slate-400">Client</p>
+                                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">{clientName}</p>
+                                            </div>
+                                            <div className="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2">
+                                                <p className="text-[10px] uppercase tracking-wider text-slate-400 inline-flex items-center gap-1"><Mail size={11} /> Email</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-100 truncate">{clientProfile?.email || 'Non renseigné'}</p>
+                                            </div>
+                                            <div className="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2">
+                                                <p className="text-[10px] uppercase tracking-wider text-slate-400 inline-flex items-center gap-1"><Globe size={11} /> Site</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-100 truncate">{clientProfile?.website || 'Non renseigné'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between">
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 inline-flex items-center gap-1"><History size={12} /> {recentCalls.length} appel(s) précédent(s)</p>
+                                        {status === 'recording' ? (
+                                            <div className="text-2xl tabular-nums font-semibold text-slate-900 dark:text-white">{formatTime(duration)}</div>
+                                        ) : status === 'processing' ? (
+                                            <div className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400"><Loader2 size={16} className="animate-spin" /> Analyse en cours</div>
+                                        ) : null}
+                                    </div>
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Live Transcription Display (NEW) */}
-                        {status === 'recording' && liveTranscription && (
-                            <div className="text-slate-300 text-lg italic max-w-lg mx-auto mb-8 p-4 bg-white/10 rounded-xl">
-                                {liveTranscription}
+                                {status === 'recording' && liveTranscription && (
+                                    <div className="max-w-3xl rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4 text-slate-700 dark:text-slate-200">
+                                        <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">Live transcript</p>
+                                        <p className="text-lg">{liveTranscription}</p>
+                                    </div>
+                                )}
+
+                                {status === 'processing' && (
+                                    <div className="text-slate-500 dark:text-slate-400 animate-pulse flex items-center gap-2">
+                                        <BrainCircuit size={18} />
+                                        Franck génère le compte-rendu structuré...
+                                    </div>
+                                )}
+
+                                {status === 'error' && (
+                                    <div className="text-red-600 dark:text-red-300 flex items-center justify-between gap-4 max-w-3xl">
+                                        <div className="flex items-center gap-2">
+                                        <AlertCircle size={18} />
+                                        {errorMessage || 'Erreur inconnue.'}
+                                        </div>
+                                        <button
+                                            onClick={goBackToPreCall}
+                                            className="text-xs px-3 py-1.5 rounded-md border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            Retour pre-call
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )}
 
-                        {/* Timer */}
-                        {status === 'recording' && (
-                            <div className="tabular-nums text-4xl text-white mb-12 tabular-nums">
-                                {formatTime(duration)}
+                            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                                {(status === 'idle' || status === 'error') && (
+                                    <>
+                                        {status === 'error' && (
+                                            <button
+                                                onClick={goBackToPreCall}
+                                                className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                                            >
+                                                Retour pre-call
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={startRecording}
+                                            className="px-6 py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-lg font-semibold hover:brightness-105 transition-all shadow-sm"
+                                        >
+                                            {status === 'error' ? "Relancer l'enregistrement" : "Lancer l'enregistrement"}
+                                        </button>
+                                    </>
+                                )}
+                                {status === 'recording' && (
+                                    <button
+                                        onClick={stopRecording}
+                                        className="px-6 py-3 bg-gradient-to-r from-rose-500 to-red-500 text-white rounded-lg font-semibold hover:brightness-105 transition-all shadow-sm flex items-center gap-2"
+                                    >
+                                        <Square fill="currentColor" size={16} />
+                                        Terminer la réunion
+                                    </button>
+                                )}
                             </div>
-                        )}
+                        </section>
 
-                        {/* Current Status/Action */}
-                        {status === 'transcribing' && (
-                             <div className="text-slate-400 animate-pulse flex items-center gap-2 mb-12">
-                                <Sparkles size={20} />
-                                Transcription en cours...
+                        <aside className="xl:col-span-4 bg-[#f8fafc] dark:bg-slate-950 p-5 overflow-y-auto space-y-4">
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+                                <p className="text-xs uppercase tracking-wider text-slate-500 mb-3">Historique des appels</p>
+                                {recentCalls.length ? (
+                                    <div className="space-y-2">
+                                        {recentCalls.map((call) => (
+                                            <button
+                                                key={call.id}
+                                                onClick={() => {
+                                                    setSelectedHistoryReportId(call.id);
+                                                    setShowHistoryDetail(true);
+                                                }}
+                                                className={`w-full text-left rounded-lg border px-3 py-2 transition-colors ${
+                                                    selectedHistoryReportId === call.id
+                                                        ? 'border-brand-orange/50 bg-orange-50 dark:bg-slate-800'
+                                                        : 'border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
+                                                }`}
+                                            >
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                    {new Date(call.generatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-100 line-clamp-2">{call.summary || 'Compte-rendu disponible'}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Aucun appel précédent enregistré pour ce client.</p>
+                                )}
                             </div>
-                        )}
-                        {status === 'processing' && (
-                            <div className="text-slate-400 animate-pulse flex items-center gap-2 mb-12">
-                                <BrainCircuit size={20} />
-                                Franck analyse les discussions...
+                            {selectedHistoryReport ? (
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+                                    <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">Aperçu appel sélectionné</p>
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                        {new Date(selectedHistoryReport.generatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                    </p>
+                                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 line-clamp-4">
+                                        {selectedHistoryReport.summary || 'Compte-rendu sans résumé.'}
+                                    </p>
+                                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2">
+                                            <p className="text-[10px] uppercase tracking-wider text-slate-400">Points</p>
+                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">{selectedHistoryReport.keyPoints?.length || 0}</p>
+                                        </div>
+                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2">
+                                            <p className="text-[10px] uppercase tracking-wider text-slate-400">Décisions</p>
+                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">{selectedHistoryReport.decisions?.length || 0}</p>
+                                        </div>
+                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2">
+                                            <p className="text-[10px] uppercase tracking-wider text-slate-400">Actions</p>
+                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">{selectedHistoryReport.tasks?.length || 0}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowHistoryDetail(true)}
+                                        className="mt-3 w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        Consulter le contenu de l'appel
+                                    </button>
+                                </div>
+                            ) : null}
+                            <CoachingCard cues={liveCues} loading={isCoaching} />
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
+                                <button
+                                    onClick={() => setShowTimeline((v) => !v)}
+                                    className="text-xs uppercase tracking-wider text-slate-500 hover:text-brand-orange transition-colors"
+                                >
+                                    {showTimeline ? 'Masquer timeline' : 'Afficher timeline'}
+                                </button>
+                                {showTimeline ? <div className="mt-3"><TranscriptTimeline segments={transcriptSegments} /></div> : null}
                             </div>
-                        )}
-
-                        {/* Controls */}
-                        {status === 'idle' && (
-                            <button 
-                                onClick={startRecording}
-                                className="group relative px-8 py-4 bg-white text-slate-900 rounded-full font-bold text-lg hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] flex items-center gap-3"
-                            >
-                                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                                Lancer l'enregistrement
-                            </button>
-                        )}
-
-                        {status === 'recording' && (
-                            <button 
-                                onClick={stopRecording}
-                                className="px-8 py-4 bg-red-500 hover:bg-red-600 text-white rounded-full font-bold text-lg hover:scale-105 transition-all shadow-lg flex items-center gap-3"
-                            >
-                                <Square fill="currentColor" size={18} />
-                                Terminer la réunion
-                            </button>
-                        )}
+                        </aside>
                     </div>
                 )}
 
-                {/* RESULTS STATE */}
                 {status === 'done' && result && (
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-700/50">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-brand-orange to-purple-600 p-8 text-white">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="flex items-center gap-2 text-white/80 text-sm font-bold uppercase tracking-wider mb-2">
-                                        <CheckCircle size={16} /> Rapport Généré avec Succès
-                                    </div>
-                                    <h2 className="text-3xl font-serif font-bold">Compte-rendu {clientName}</h2>
-                                    {finalTranscription && (
-                                        <div className="mt-2 text-white/70 text-sm italic">
-                                            <p className={`${!showFullTranscription ? 'line-clamp-2' : ''}`}>
-                                                {finalTranscription}
-                                            </p>
-                                            {finalTranscription.length > 100 && ( // Arbitrary length to show "more" button
-                                                <button 
-                                                    onClick={() => setShowFullTranscription(!showFullTranscription)} 
-                                                    className="text-white/80 hover:text-white underline mt-1 text-xs"
-                                                >
-                                                    {showFullTranscription ? 'Voir moins' : 'Voir plus'}
-                                                </button>
-                                            )}
+                    <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-12 gap-0">
+                        <section className="xl:col-span-8 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
+                            <div className="bg-gradient-to-r from-brand-orange to-purple-600 p-6 text-white">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="flex items-center gap-2 text-white/80 text-xs font-bold uppercase tracking-wider mb-2">
+                                            <CheckCircle size={14} /> Rapport généré
                                         </div>
-                                    )}
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-4xl tabular-nums font-bold opacity-20">{formatTime(duration)}</div>
+                                        <h2 className="text-2xl font-serif font-bold">Compte-rendu {clientName}</h2>
+                                        {finalTranscription && (
+                                            <div className="mt-2 text-white/80 text-sm italic">
+                                                <p className={`${!showFullTranscription ? 'line-clamp-2' : ''}`}>{finalTranscription}</p>
+                                                {finalTranscription.length > 100 && (
+                                                    <button onClick={() => setShowFullTranscription(!showFullTranscription)} className="underline mt-1 text-xs">
+                                                        {showFullTranscription ? 'Voir moins' : 'Voir plus'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-3xl tabular-nums font-bold opacity-20">{formatTime(duration)}</div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Main Content */}
-                            <div className="lg:col-span-2 space-y-8">
+                            <div className="p-6 space-y-8">
                                 <section>
-                                    <h3 className="flex items-center gap-2 text-brand-orange font-bold uppercase tracking-widest text-sm mb-4">
-                                        <Target size={18} /> Résumé Exécutif
+                                    <h3 className="flex items-center gap-2 text-brand-orange font-bold uppercase tracking-widest text-xs mb-3">
+                                        <Target size={16} /> Résumé Exécutif
                                     </h3>
-                                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-lg">
-                                        {result.summary}
-                                    </p>
+                                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{result.summary}</p>
                                 </section>
 
                                 <section>
-                                    <h3 className="flex items-center gap-2 text-purple-500 font-bold uppercase tracking-widest text-sm mb-4">
-                                        <List size={18} /> Points Clés & Décisions
+                                    <h3 className="flex items-center gap-2 text-purple-500 font-bold uppercase tracking-widest text-xs mb-3">
+                                        <List size={16} /> Points Clés & Décisions
                                     </h3>
-                                    <ul className="space-y-3">
+                                    <ul className="space-y-2">
                                         {result.keyPoints?.map((point: string, i: number) => (
-                                            <li key={i} className="flex items-start gap-3 text-slate-700 dark:text-slate-200">
+                                            <li key={i} className="flex items-start gap-2 text-slate-700 dark:text-slate-200">
                                                 <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0"></span>
+                                                {point}
+                                            </li>
+                                        ))}
+                                        {result.decisions?.map((point: string, i: number) => (
+                                            <li key={`decision-${i}`} className="flex items-start gap-2 text-slate-700 dark:text-slate-200">
+                                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
                                                 {point}
                                             </li>
                                         ))}
                                     </ul>
                                 </section>
+
+                                <section>
+                                    <h3 className="flex items-center gap-2 text-slate-500 font-bold uppercase tracking-widest text-xs mb-3">
+                                        <CheckCircle size={16} /> Plan d'actions
+                                    </h3>
+                                    <p className="text-xs text-slate-500 mb-3">
+                                        Sélectionne et édite les tâches avant création dans le Kanban.
+                                    </p>
+                                    <ActionTable
+                                        tasks={reviewTasks}
+                                        editable
+                                        selectedTaskIds={selectedTaskIds}
+                                        onToggleTask={handleToggleTask}
+                                        onTaskChange={handleTaskChange}
+                                    />
+                                </section>
+
+                                {(result.risks?.length || result.objections?.length) ? (
+                                    <section>
+                                        <h3 className="flex items-center gap-2 text-rose-500 font-bold uppercase tracking-widest text-xs mb-3">
+                                            <AlertCircle size={16} /> Risques & Objections
+                                        </h3>
+                                        <ul className="space-y-1">
+                                            {(result.risks || []).map((risk: string, i: number) => <li key={`risk-${i}`} className="text-slate-700 dark:text-slate-200">- {risk}</li>)}
+                                            {(result.objections || []).map((obj: string, i: number) => <li key={`obj-${i}`} className="text-slate-700 dark:text-slate-200">- {obj}</li>)}
+                                        </ul>
+                                    </section>
+                                ) : null}
+                            </div>
+                        </section>
+
+                        <aside className="xl:col-span-4 bg-[#f8fafc] dark:bg-slate-950 p-5 overflow-y-auto space-y-4">
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+                                <h3 className="flex items-center gap-2 text-slate-500 font-bold uppercase tracking-widest text-xs mb-3">
+                                    <CheckCircle size={14} /> Actions détectées
+                                </h3>
+                                <p className="text-sm text-slate-500">{reviewTasks.length || 0} action(s) proposées</p>
+                                <p className="text-xs text-slate-400 mt-1">{selectedTaskIds.length} sélectionnée(s) pour création</p>
+                                {result.followUpDraft ? (
+                                    <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Brouillon follow-up</p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{result.followUpDraft}</p>
+                                    </div>
+                                ) : null}
                             </div>
 
-                            {/* Sidebar Actions */}
-                            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 space-y-6">
-                                <div>
-                                    <h3 className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-widest text-xs mb-4">
-                                        <CheckCircle size={14} /> Action Items détectés
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {result.tasks?.map((task: any, i: number) => (
-                                            <div key={i} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm shadow-sm">
-                                                <div className="font-bold text-slate-800 dark:text-white mb-1">{task.title}</div>
-                                                <div className="flex justify-between items-center text-xs text-slate-500">
-                                                    <span className="flex items-center gap-1"><User size={10} /> {task.owner}</span>
-                                                    {task.deadline && <span className="flex items-center gap-1 text-orange-500"><Calendar size={10} /> {task.deadline}</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <button 
-                                    onClick={handleSave}
-                                    className="w-full py-3 bg-brand-orange text-white rounded-xl font-bold shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <Save size={18} /> Enregistrer & Créer Tâches
+                            <div className="space-y-2">
+                                <button onClick={handleSave} className="w-full py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-lg font-semibold shadow-sm">
+                                    <span className="inline-flex items-center gap-2"><Save size={16} /> Enregistrer & Créer {selectedTaskIds.length} tâche(s)</span>
+                                </button>
+                                <button onClick={() => handleExportPdf('internal')} className="w-full py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-lg font-semibold">
+                                    <span className="inline-flex items-center gap-2"><Download size={16} /> PDF interne</span>
+                                </button>
+                                <button onClick={() => handleExportPdf('client')} className="w-full py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-lg font-semibold">
+                                    <span className="inline-flex items-center gap-2"><Download size={16} /> PDF client</span>
                                 </button>
                             </div>
-                        </div>
+                        </aside>
                     </div>
                 )}
             </div>
+            {showHistoryDetail && selectedHistoryReport ? (
+                <div className="fixed inset-0 z-[120] bg-black/45 flex items-center justify-center p-4">
+                    <div className="w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
+                        <div className="sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs uppercase tracking-wider text-slate-500">Historique d'appel</p>
+                                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                                    {new Date(selectedHistoryReport.generatedAt).toLocaleString('fr-FR')}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setShowHistoryDetail(false)}
+                                className="w-9 h-9 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white"
+                            >
+                                <X size={16} className="mx-auto" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-5">
+                            <section>
+                                <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Résumé</p>
+                                <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{selectedHistoryReport.summary || 'Aucun résumé.'}</p>
+                            </section>
+
+                            {!!selectedHistoryReport.keyPoints?.length && (
+                                <section>
+                                    <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Points clés</p>
+                                    <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-200">
+                                        {selectedHistoryReport.keyPoints.map((point, idx) => <li key={`hk-${idx}`}>- {point}</li>)}
+                                    </ul>
+                                </section>
+                            )}
+
+                            {!!selectedHistoryReport.decisions?.length && (
+                                <section>
+                                    <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Décisions</p>
+                                    <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-200">
+                                        {selectedHistoryReport.decisions.map((item, idx) => <li key={`hd-${idx}`}>- {item}</li>)}
+                                    </ul>
+                                </section>
+                            )}
+
+                            {!!selectedHistoryReport.nextSteps?.length && (
+                                <section>
+                                    <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Prochaines étapes</p>
+                                    <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-200">
+                                        {selectedHistoryReport.nextSteps.map((step, idx) => <li key={`hs-${idx}`}>- {step}</li>)}
+                                    </ul>
+                                </section>
+                            )}
+
+                            <section>
+                                <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Tâches</p>
+                                <ActionTable tasks={selectedHistoryReport.tasks || []} />
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 };

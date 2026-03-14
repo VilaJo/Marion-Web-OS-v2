@@ -3,7 +3,7 @@ import { Sparkles, Bot, Smartphone, Layout, ArrowRight, Gift, CheckCircle } from
 import { Modal } from './Shared';
 
 // UPDATE THIS VERSION TO TRIGGER THE MODAL FOR USERS
-const CURRENT_VERSION = "2.4.0";
+const CURRENT_VERSION = "2.4.7";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);

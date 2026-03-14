@@ -1,0 +1,1 @@
+import s from"./vendor-sanitize-B9ZVCkUG.js";const r=t=>s.sanitize(t,{USE_PROFILES:{html:!0},ALLOW_UNKNOWN_PROTOCOLS:!1}),i=t=>s.sanitize(t,{USE_PROFILES:{svg:!0,svgFilters:!0}});export{i as a,r as s};

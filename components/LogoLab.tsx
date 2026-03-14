@@ -1,10 +1,97 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Wand2, RefreshCw, Check, Type, Square, Circle, Triangle, MousePointer2, Move, Trash2, Layers, Download, Save, Grid, ZoomIn, ZoomOut, Undo, Redo, Image as ImageIcon, Minus, X, Search, Code, Upload, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import {
+    Wand2,
+    RefreshCw,
+    Check,
+    Type,
+    Square,
+    Circle,
+    Triangle,
+    MousePointer2,
+    Move,
+    Trash2,
+    Layers,
+    Download,
+    Save,
+    Grid,
+    ZoomIn,
+    ZoomOut,
+    Undo,
+    Redo,
+    Image as ImageIcon,
+    Minus,
+    X,
+    Search,
+    Code,
+    Upload,
+    ChevronUp,
+    ChevronDown,
+    ChevronsUp,
+    ChevronsDown,
+    Star,
+    Heart,
+    Zap,
+    Hexagon,
+    Anchor,
+    Award,
+    Feather,
+    Sun,
+    Moon,
+    Cloud,
+    Music,
+    Camera,
+    Video,
+    Smile,
+    Sparkles,
+    Globe,
+    Briefcase,
+    Mail,
+    MessageCircle,
+    Shield,
+    Rocket,
+    Target,
+    Lightbulb,
+    Compass,
+    Palette,
+    Headphones,
+    BookOpen,
+    Crown,
+    Gem,
+} from 'lucide-react';
 import { sanitizeSVG } from '../utils/sanitize';
 
-// Filter out non-icon exports from Lucide
-const ICON_LIST = Object.keys(LucideIcons).filter(key => key !== 'createLucideIcon' && key !== 'default');
+const ICON_LIBRARY: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number; color?: string; opacity?: number }>> = {
+    Star,
+    Heart,
+    Zap,
+    Hexagon,
+    Anchor,
+    Award,
+    Feather,
+    Sun,
+    Moon,
+    Cloud,
+    Music,
+    Camera,
+    Video,
+    Smile,
+    Sparkles,
+    Globe,
+    Briefcase,
+    Mail,
+    MessageCircle,
+    Shield,
+    Rocket,
+    Target,
+    Lightbulb,
+    Compass,
+    Palette,
+    Headphones,
+    BookOpen,
+    Crown,
+    Gem,
+};
+const ICON_LIST = Object.keys(ICON_LIBRARY);
 
 interface DesignElement {
     id: string;
@@ -323,8 +410,7 @@ export const LogoLab: React.FC<LogoLabProps> = ({ clientName, initialData, onSav
                                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Bibliothèque</h4>
                         <div className="grid grid-cols-4 gap-3">
                             {(iconSearch ? filteredIcons : POPULAR_ICONS).map(key => {
-                                // @ts-ignore
-                                const Icon = LucideIcons[key];
+                                const Icon = ICON_LIBRARY[key];
                                 if (!Icon) return null;
                                 return (
                                     <button 
@@ -367,8 +453,7 @@ export const LogoLab: React.FC<LogoLabProps> = ({ clientName, initialData, onSav
                                     if (el.type === 'text') {
                                         content = <text fontSize={el.width} fill={el.fill} fontFamily={el.fontFamily} fontWeight={el.fontWeight} textAnchor="middle" dominantBaseline="middle">{el.text}</text>;
                                     } else if (el.type === 'icon' && el.iconName) {
-                                        // @ts-ignore
-                                        const Icon = LucideIcons[el.iconName];
+                                        const Icon = ICON_LIBRARY[el.iconName];
                                         if (Icon) {
                                             content = <g transform={`translate(-${el.width/2}, -${el.width/2})`}><Icon size={el.width} color={el.fill} strokeWidth={2} opacity={el.opacity} /></g>;
                                         } else {

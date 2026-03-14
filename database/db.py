@@ -22,6 +22,16 @@ logger = get_logger('database')
 _local = threading.local()
 
 
+def _register_sqlite_datetime_handlers() -> None:
+    """Register explicit datetime handlers to avoid deprecated sqlite defaults."""
+    sqlite3.register_adapter(datetime, lambda value: value.isoformat(sep=' ', timespec='seconds'))
+    sqlite3.register_converter('timestamp', lambda raw: datetime.fromisoformat(raw.decode('utf-8')))
+    sqlite3.register_converter('datetime', lambda raw: datetime.fromisoformat(raw.decode('utf-8')))
+
+
+_register_sqlite_datetime_handlers()
+
+
 def get_db_path() -> Path:
     """Get the database file path from the centralised Config."""
     cfg = get_current_config()
@@ -298,6 +308,18 @@ def get_workspace_by_id(workspace_id: int) -> Optional[Dict]:
             "SELECT * FROM workspaces WHERE id = ?", (workspace_id,)
         ).fetchone()
         return row_to_dict(row)
+
+
+def get_workspace_settings(workspace_id: int) -> Dict[str, Any]:
+    """Return parsed workspace settings JSON."""
+    ws = get_workspace_by_id(workspace_id)
+    if not ws:
+        return {}
+    raw = ws.get('settings_json') or '{}'
+    try:
+        return json.loads(raw) if isinstance(raw, str) else (raw or {})
+    except Exception:
+        return {}
 
 
 def get_user_workspace(user_id: int) -> Optional[Dict]:
@@ -587,6 +609,33 @@ def delete_project(project_id: int):
     """Delete a project and all related data"""
     with get_db() as conn:
         conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+
+
+def create_activity_event(
+    workspace_id: int,
+    event_type: str,
+    title: str,
+    description: str = None,
+    project_id: int = None,
+    project_name: str = None,
+    metadata: Dict[str, Any] = None,
+) -> int:
+    """Create an audit/activity event row."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """INSERT INTO activities (workspace_id, type, title, description, project_id, project_name, metadata_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                workspace_id,
+                event_type,
+                title,
+                description,
+                project_id,
+                project_name,
+                json.dumps(metadata or {}),
+            ),
+        )
+        return cursor.lastrowid
 
 
 # =============================================================================

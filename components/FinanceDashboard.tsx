@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useExpenses, useDeleteExpense, useScanExpense, useAnalytics } from '../services/queries';
 import { exportSimpleCSV } from '../utils/exportUtils';
+import { printElementAsPdf } from '../utils/pdfExport';
 
 declare const confetti: any;
 
@@ -123,19 +124,8 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
             if (accountingView === 'sales') filename = `Journal_Ventes_${accountingYear}_MarionWeb.pdf`;
             if (accountingView === 'purchases') filename = `Journal_Achats_${accountingYear}_MarionWeb.pdf`;
 
-            const opt = {
-                margin: [10, 10, 15, 10] as [number, number, number, number],
-                filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['tr', '.avoid-break'] }
-            };
-
             try {
-                // @ts-ignore - html2pdf.js lacks proper types
-                const html2pdf = (await import('html2pdf.js')).default;
-                await html2pdf().set(opt as any).from(element).save();
+                await printElementAsPdf(element, filename, { pageMarginMm: 10 });
                 confetti({ particleCount: 50, spread: 60, colors: ['#10B981', '#3B82F6'] });
             } catch (err) {
                 console.error("PDF Failed", err);

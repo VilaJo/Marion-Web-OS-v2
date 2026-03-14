@@ -139,6 +139,48 @@ export enum ProjectStatus {
     monthlyPrice?: number; // Tarif mensuel de la maintenance (peut varier par client)
   }
 
+export interface MeetingReportTask {
+    id?: string;
+    title: string;
+    owner?: string;
+    deadline?: string;
+    priority?: 'Low' | 'Medium' | 'High';
+}
+
+export interface MeetingCoachingMoment {
+    timestampSec?: number;
+    cue: string;
+    rationale?: string;
+}
+
+export interface MeetingEvidenceItem {
+    speaker?: string;
+    timestampSec?: number;
+    quote: string;
+}
+
+export interface MeetingReport {
+    id: string;
+    clientName: string;
+    generatedAt: string;
+    durationSeconds?: number;
+    objective?: string;
+    summary: string;
+    keyPoints: string[];
+    decisions: string[];
+    risks: string[];
+    objections: string[];
+    nextSteps: string[];
+    tasks: MeetingReportTask[];
+    coachingMoments?: MeetingCoachingMoment[];
+    evidence?: MeetingEvidenceItem[];
+    followUpDraft?: string;
+    transcriptExcerpt?: string;
+    consentAccepted?: boolean;
+    retentionDays?: number;
+    requestId?: string;
+}
+
   export interface Project {
     id: string;
     clientName: string;
@@ -166,6 +208,7 @@ export enum ProjectStatus {
     portalComments?: ClientPortalComment[];
     maintenance?: MaintenanceInfo; // Informations de maintenance
     links?: Record<string, string>; // External links (figma, github, wordpress, etc.)
+    meetingReports?: MeetingReport[];
   }
   
 export interface CalendarEvent {
