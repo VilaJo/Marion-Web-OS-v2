@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Square, Loader2, CheckCircle, List, Target, Save, X, BrainCircuit, AlertCircle, Download, Mail, Globe, History } from 'lucide-react';
-import { ClientProfile, MeetingReport, MeetingReportTask } from '../types';
+import { Square, Loader2, CheckCircle, List, Target, Save, X, BrainCircuit, AlertCircle, Download, Mail, Globe, History, Pause, Play } from 'lucide-react';
+import { ClientProfile, MeetingReport, MeetingReportTask, Task } from '../types';
 import { exportMeetingReportPdf } from '../utils/meetingReportPdf';
 import { apiFetch } from '../services/api';
 import { StatusRail } from './meeting/StatusRail';
@@ -21,12 +21,14 @@ interface MeetingModeProps {
     clientProfile?: ClientProfile;
     clientAvatarImage?: string;
     meetingHistory?: MeetingReport[];
+    openTasks?: Task[];
     onClose: () => void;
     onSaveNotes: (notes: MeetingReport) => void;
+    onOpenEmail?: (draft: { to: string; subject: string; body: string }) => void;
 }
 
-export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProfile, clientAvatarImage, meetingHistory = [], onClose, onSaveNotes }) => {
-    const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'done' | 'error'>('idle');
+export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProfile, clientAvatarImage, meetingHistory = [], openTasks = [], onClose, onSaveNotes, onOpenEmail }) => {
+    const [status, setStatus] = useState<'idle' | 'recording' | 'paused' | 'processing' | 'done' | 'error'>('idle');
     const [duration, setDuration] = useState(0);
     const [audioData, setAudioData] = useState<number[]>(new Array(20).fill(10));
     const [liveTranscription, setLiveTranscription] = useState<string>('');
@@ -44,9 +46,13 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
     const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
     const [liveCues, setLiveCues] = useState<Array<{ cue: string; rationale?: string; priority: 'low' | 'medium' | 'high' }>>([]);
     const [isCoaching, setIsCoaching] = useState(false);
+    const [silenceDetected, setSilenceDetected] = useState(false);
     const [consentAccepted, setConsentAccepted] = useState(false);
     const [retentionDays, setRetentionDays] = useState<number>(() => Number(localStorage.getItem('marion_meeting_retention_days') || 30));
     const [requireConsent, setRequireConsent] = useState(true);
+    const [savedTaskCount, setSavedTaskCount] = useState<number | null>(null);
+    const [transcriptEdited, setTranscriptEdited] = useState(false);
+    const [isReanalyzing, setIsReanalyzing] = useState(false);
     
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -56,6 +62,8 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
     const speechRecognitionRef = useRef<any | null>(null);
     const coachingTimerRef = useRef<NodeJS.Timeout | null>(null);
     const statusRef = useRef(status);
+    const lastSegmentTimestampRef = useRef<number>(Date.now());
+    const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (! (window.SpeechRecognition || window.webkitSpeechRecognition) ) {
@@ -67,10 +75,29 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
         statusRef.current = status;
     }, [status]);
 
+    // Silence detection: flag if no new transcript segment in 30s during recording
+    useEffect(() => {
+        if (status !== 'recording') {
+            setSilenceDetected(false);
+            if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
+            return;
+        }
+        lastSegmentTimestampRef.current = Date.now();
+        silenceTimerRef.current = setInterval(() => {
+            if (Date.now() - lastSegmentTimestampRef.current > 30_000) {
+                setSilenceDetected(true);
+            }
+        }, 5_000);
+        return () => {
+            if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
+        };
+    }, [status]);
+
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
             if (coachingTimerRef.current) clearTimeout(coachingTimerRef.current);
+            if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
             stopSpeechRecognition();
             stopVisualizer();
         };
@@ -136,9 +163,11 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
             }
             setLiveTranscription(interimTranscript);
             if (finalTranscript.trim()) {
-                setFinalTranscription(prev => `${prev} ${finalTranscript}`.trim());
-                setTranscriptSegments(prev => [...prev, finalTranscript.trim()]);
-            }
+                    setFinalTranscription(prev => `${prev} ${finalTranscript}`.trim());
+                    setTranscriptSegments(prev => [...prev, finalTranscript.trim()]);
+                    lastSegmentTimestampRef.current = Date.now();
+                    setSilenceDetected(false);
+                }
         };
 
         recognition.onerror = (event: any) => {
@@ -266,8 +295,31 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
         }
     };
 
-    const stopRecording = () => {
+    const pauseRecording = () => {
         if (mediaRecorderRef.current && status === 'recording') {
+            try { mediaRecorderRef.current.pause(); } catch (_) {}
+            stopSpeechRecognition();
+            if (timerRef.current) clearInterval(timerRef.current);
+            setSilenceDetected(false);
+            setStatus('paused');
+        }
+    };
+
+    const resumeRecording = () => {
+        if (mediaRecorderRef.current && status === 'paused') {
+            try { mediaRecorderRef.current.resume(); } catch (_) {}
+            startSpeechRecognition();
+            timerRef.current = setInterval(() => setDuration(prev => prev + 1), 1000);
+            lastSegmentTimestampRef.current = Date.now();
+            setStatus('recording');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && (status === 'recording' || status === 'paused')) {
+            if (status === 'paused') {
+                try { mediaRecorderRef.current.resume(); } catch (_) {}
+            }
             mediaRecorderRef.current.stop();
             if (timerRef.current) clearInterval(timerRef.current);
             setStatus('processing');
@@ -304,6 +356,17 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
         formData.append('local_model', routing.local_model);
         formData.append('fallback_enabled', String(routing.fallback_enabled));
 
+        // Inject the last 3 meeting summaries so the AI has continuity context
+        if (meetingHistory && meetingHistory.length > 0) {
+            const last3 = meetingHistory.slice(0, 3).map((r) => ({
+                date: r.generatedAt,
+                summary: r.summary,
+                nextSteps: r.nextSteps || [],
+                decisions: r.decisions || [],
+            }));
+            formData.append('meetingContext', JSON.stringify(last3));
+        }
+
         try {
             const res = await apiFetch('/api/v1/meeting/analyze', {
                 method: 'POST',
@@ -328,6 +391,22 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const handleOpenFollowUpEmail = () => {
+        if (!result?.followUpDraft || !onOpenEmail) return;
+        const draft = result.followUpDraft;
+        // Format from backend: "Sujet: ...\n\nBody..." or plain body
+        const subjectMatch = draft.match(/^Sujet:\s*(.+)/i);
+        const subject = subjectMatch ? subjectMatch[1].trim() : `Suivi réunion – ${clientName}`;
+        const body = subjectMatch
+            ? draft.replace(/^Sujet:\s*.+\n*/i, '').trim()
+            : draft.trim();
+        onOpenEmail({
+            to: clientProfile?.email || '',
+            subject,
+            body,
+        });
+    };
+
     const handleSave = () => {
         if (!result) return;
         const selectedTasks = reviewTasks
@@ -338,10 +417,11 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
             ...result,
             tasks: selectedTasks,
         };
+        setSavedTaskCount(selectedTasks.length);
         apiFetch('/api/v1/meeting/audit/lifecycle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ event: 'save', clientName, metadata: { reportId: result.id } }),
+            body: JSON.stringify({ event: 'save', clientName, metadata: { reportId: result.id, taskCount: selectedTasks.length } }),
         }).catch(() => null);
         onSaveNotes(payload);
         onClose();
@@ -356,7 +436,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
             headers: { 'Content-Type': 'application/json' },
         }).catch(() => null);
     };
-    const uiStage = status === 'done' ? 'post' : status === 'recording' || status === 'processing' ? 'in' : 'pre';
+    const uiStage = status === 'done' ? 'post' : (status === 'recording' || status === 'paused' || status === 'processing') ? 'in' : 'pre';
     const recentCalls = [...meetingHistory]
         .sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime())
         .slice(0, 4);
@@ -400,6 +480,22 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
         setReviewTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...patch } : task)));
     };
 
+    const handleSegmentsChange = (updated: string[]) => {
+        setTranscriptSegments(updated);
+        setFinalTranscription(updated.join(' '));
+        setTranscriptEdited(true);
+    };
+
+    const handleReanalyze = async () => {
+        if (!finalTranscription) return;
+        setIsReanalyzing(true);
+        setResult(null);
+        setStatus('processing');
+        setTranscriptEdited(false);
+        await processAudio();
+        setIsReanalyzing(false);
+    };
+
     return (
         <div className="fixed inset-0 z-[100] bg-[#f6f8fc] dark:bg-slate-950 animate-in fade-in duration-200">
             <div className="h-full flex flex-col">
@@ -421,10 +517,10 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                         <section className="xl:col-span-8 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col min-h-0">
                             <div className="p-6 border-b border-slate-100 dark:border-slate-800">
                                 <h3 className="text-2xl font-semibold text-slate-900 dark:text-white">
-                                    {status === 'recording' ? 'In-call assistant actif' : 'Assistant de Réunion'}
+                                    {status === 'recording' ? 'In-call assistant actif' : status === 'paused' ? 'Enregistrement en pause' : 'Assistant de Réunion'}
                                 </h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                    {status === 'recording' ? `Enregistrement en cours pour ${clientName}` : `Prépare l'appel avec ${clientName}`}
+                                    {status === 'recording' ? `Enregistrement en cours pour ${clientName}` : status === 'paused' ? 'Reprends quand tu es prêt(e)' : `Prépare l'appel avec ${clientName}`}
                                 </p>
                                 {!isSpeechRecognitionSupported && (
                                     <p className="text-red-500 text-xs mt-2 flex items-center gap-2">
@@ -442,14 +538,52 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                             placeholder="Objectif de l'appel (optionnel) : ex. valider planning et budget"
                                             className="w-full rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-brand-orange"
                                         />
-                                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
-                                            <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">Checklist pre-call</p>
-                                            <ul className="text-sm text-slate-700 dark:text-slate-200 space-y-1">
-                                                <li>- Objectif principal formulé en 1 phrase</li>
-                                                <li>- Décisionnaire identifié</li>
-                                                <li>- Risque principal à clarifier</li>
-                                            </ul>
-                                        </div>
+                                        {/* Dynamic pre-call briefing */}
+                                        {meetingHistory.length > 0 && meetingHistory[0] && (
+                                            <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-4 space-y-2">
+                                                <p className="text-xs uppercase tracking-wider text-purple-500 dark:text-purple-400 mb-1">Dernier appel — {new Date(meetingHistory[0].generatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                <p className="text-sm text-slate-700 dark:text-slate-200 line-clamp-3">{meetingHistory[0].summary}</p>
+                                                {meetingHistory[0].nextSteps && meetingHistory[0].nextSteps.length > 0 && (
+                                                    <div>
+                                                        <p className="text-[10px] uppercase tracking-wider text-purple-400 mt-2 mb-1">Points à re-vérifier</p>
+                                                        <ul className="space-y-1">
+                                                            {meetingHistory[0].nextSteps.slice(0, 3).map((step, i) => (
+                                                                <li key={i} className="text-xs text-slate-600 dark:text-slate-300 flex items-start gap-1.5">
+                                                                    <span className="mt-1 w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
+                                                                    {step}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {openTasks.length > 0 && (
+                                            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+                                                <p className="text-xs uppercase tracking-wider text-amber-500 dark:text-amber-400 mb-2">Tâches ouvertes ({openTasks.length})</p>
+                                                <ul className="space-y-1">
+                                                    {openTasks.slice(0, 4).map((task) => (
+                                                        <li key={task.id} className="text-xs text-slate-700 dark:text-slate-200 flex items-start gap-1.5">
+                                                            <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${task.priority === 'High' ? 'bg-rose-400' : task.priority === 'Medium' ? 'bg-amber-400' : 'bg-slate-400'}`} />
+                                                            {task.title}
+                                                        </li>
+                                                    ))}
+                                                    {openTasks.length > 4 && (
+                                                        <li className="text-xs text-slate-400 dark:text-slate-500">+ {openTasks.length - 4} autre(s)…</li>
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {meetingHistory.length === 0 && openTasks.length === 0 && (
+                                            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+                                                <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">Checklist pre-call</p>
+                                                <ul className="text-sm text-slate-700 dark:text-slate-200 space-y-1">
+                                                    <li>- Objectif principal formulé en 1 phrase</li>
+                                                    <li>- Décisionnaire identifié</li>
+                                                    <li>- Risque principal à clarifier</li>
+                                                </ul>
+                                            </div>
+                                        )}
                                         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
                                             <label className="text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2">
                                                 <input type="checkbox" checked={consentAccepted} onChange={(e) => setConsentAccepted(e.target.checked)} />
@@ -499,8 +633,10 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                     </div>
                                     <div className="mt-3 flex items-center justify-between">
                                         <p className="text-xs text-slate-500 dark:text-slate-400 inline-flex items-center gap-1"><History size={12} /> {recentCalls.length} appel(s) précédent(s)</p>
-                                        {status === 'recording' ? (
-                                            <div className="text-2xl tabular-nums font-semibold text-slate-900 dark:text-white">{formatTime(duration)}</div>
+                                        {(status === 'recording' || status === 'paused') ? (
+                                            <div className={`text-2xl tabular-nums font-semibold ${status === 'paused' ? 'text-amber-500 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
+                                                {formatTime(duration)}{status === 'paused' ? ' ⏸' : ''}
+                                            </div>
                                         ) : status === 'processing' ? (
                                             <div className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400"><Loader2 size={16} className="animate-spin" /> Analyse en cours</div>
                                         ) : null}
@@ -556,14 +692,31 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                         </button>
                                     </>
                                 )}
-                                {status === 'recording' && (
-                                    <button
-                                        onClick={stopRecording}
-                                        className="px-6 py-3 bg-gradient-to-r from-rose-500 to-red-500 text-white rounded-lg font-semibold hover:brightness-105 transition-all shadow-sm flex items-center gap-2"
-                                    >
-                                        <Square fill="currentColor" size={16} />
-                                        Terminer la réunion
-                                    </button>
+                                {(status === 'recording' || status === 'paused') && (
+                                    <div className="flex items-center gap-2">
+                                        {status === 'recording' ? (
+                                            <button
+                                                onClick={pauseRecording}
+                                                className="px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center gap-2"
+                                            >
+                                                <Pause size={16} /> Pause
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={resumeRecording}
+                                                className="px-4 py-3 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-600 text-amber-600 dark:text-amber-400 rounded-lg font-semibold hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all flex items-center gap-2"
+                                            >
+                                                <Play size={16} /> Reprendre
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={stopRecording}
+                                            className="px-6 py-3 bg-gradient-to-r from-rose-500 to-red-500 text-white rounded-lg font-semibold hover:brightness-105 transition-all shadow-sm flex items-center gap-2"
+                                        >
+                                            <Square fill="currentColor" size={16} />
+                                            Terminer
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </section>
@@ -628,7 +781,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                     </button>
                                 </div>
                             ) : null}
-                            <CoachingCard cues={liveCues} loading={isCoaching} />
+                            <CoachingCard cues={liveCues} loading={isCoaching} silenceDetected={silenceDetected} />
                             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
                                 <button
                                     onClick={() => setShowTimeline((v) => !v)}
@@ -636,7 +789,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                 >
                                     {showTimeline ? 'Masquer timeline' : 'Afficher timeline'}
                                 </button>
-                                {showTimeline ? <div className="mt-3"><TranscriptTimeline segments={transcriptSegments} /></div> : null}
+                                {showTimeline ? <div className="mt-3"><TranscriptTimeline segments={transcriptSegments} editable={status === 'done'} onSegmentsChange={handleSegmentsChange} /></div> : null}
                             </div>
                         </aside>
                     </div>
@@ -652,6 +805,14 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                             <CheckCircle size={14} /> Rapport généré
                                         </div>
                                         <h2 className="text-2xl font-serif font-bold">Compte-rendu {clientName}</h2>
+                                        {result.meetingScore && (
+                                            <div className="mt-2 inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1">
+                                                <span className={`text-sm font-bold ${result.meetingScore.score >= 7 ? 'text-emerald-200' : result.meetingScore.score >= 4 ? 'text-amber-200' : 'text-rose-200'}`}>
+                                                    {result.meetingScore.score}/10
+                                                </span>
+                                                <span className="text-xs text-white/80">{result.meetingScore.rationale}</span>
+                                            </div>
+                                        )}
                                         {finalTranscription && (
                                             <div className="mt-2 text-white/80 text-sm italic">
                                                 <p className={`${!showFullTranscription ? 'line-clamp-2' : ''}`}>{finalTranscription}</p>
@@ -733,17 +894,55 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                 <p className="text-sm text-slate-500">{reviewTasks.length || 0} action(s) proposées</p>
                                 <p className="text-xs text-slate-400 mt-1">{selectedTaskIds.length} sélectionnée(s) pour création</p>
                                 {result.followUpDraft ? (
-                                    <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
-                                        <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Brouillon follow-up</p>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{result.followUpDraft}</p>
+                                    <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 space-y-2">
+                                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Brouillon follow-up</p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap line-clamp-4">{result.followUpDraft}</p>
+                                        {onOpenEmail && (
+                                            <button
+                                                onClick={handleOpenFollowUpEmail}
+                                                className="w-full mt-1 py-2 bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange rounded-lg text-xs font-semibold transition-colors inline-flex items-center justify-center gap-2"
+                                            >
+                                                <Mail size={13} /> Envoyer le suivi
+                                            </button>
+                                        )}
                                     </div>
                                 ) : null}
                             </div>
+
+                            {transcriptSegments.length > 0 && (
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Transcript</p>
+                                        {transcriptEdited && (
+                                            <button
+                                                onClick={handleReanalyze}
+                                                disabled={isReanalyzing}
+                                                className="text-xs px-3 py-1 rounded-full bg-brand-orange text-white font-semibold hover:brightness-105 disabled:opacity-50 inline-flex items-center gap-1"
+                                            >
+                                                {isReanalyzing ? <><Loader2 size={11} className="animate-spin" /> Analyse…</> : <><BrainCircuit size={11} /> Ré-analyser</>}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <TranscriptTimeline
+                                        segments={transcriptSegments}
+                                        editable
+                                        onSegmentsChange={handleSegmentsChange}
+                                    />
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <button onClick={handleSave} className="w-full py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-lg font-semibold shadow-sm">
                                     <span className="inline-flex items-center gap-2"><Save size={16} /> Enregistrer & Créer {selectedTaskIds.length} tâche(s)</span>
                                 </button>
+                                {savedTaskCount !== null && (
+                                    <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-2">
+                                        <CheckCircle size={13} />
+                                        {savedTaskCount > 0
+                                            ? `${savedTaskCount} tâche(s) créée(s) dans le Kanban`
+                                            : 'Rapport enregistré — aucune tâche sélectionnée'}
+                                    </div>
+                                )}
                                 <button onClick={() => handleExportPdf('internal')} className="w-full py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-lg font-semibold">
                                     <span className="inline-flex items-center gap-2"><Download size={16} /> PDF interne</span>
                                 </button>

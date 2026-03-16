@@ -289,6 +289,21 @@ def _normalize_meeting_tasks(tasks):
     return normalized
 
 
+def _normalize_meeting_score(raw):
+    """Validate and normalize meetingScore from AI response."""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        score = int(raw.get("score", 0))
+        score = max(1, min(10, score))
+    except (TypeError, ValueError):
+        return None
+    rationale = str(raw.get("rationale", "")).strip()[:300]
+    if not rationale:
+        return None
+    return {"score": score, "rationale": rationale}
+
+
 def _validate_meeting_report(payload: dict, client_name: str, duration_seconds, consent_accepted=False, retention_days=30):
     if not isinstance(payload, dict):
         payload = {}
@@ -343,6 +358,7 @@ def _validate_meeting_report(payload: dict, client_name: str, duration_seconds, 
         "transcriptExcerpt": str(transcript_excerpt).strip()[:3000] if transcript_excerpt else None,
         "consentAccepted": bool(consent_accepted),
         "retentionDays": max(1, min(365, int(retention_days or 30))),
+        "meetingScore": _normalize_meeting_score(payload.get("meetingScore")),
     }
 
 
@@ -967,6 +983,18 @@ def analyze_meeting():
         if bool(policy.get("requireConsent", True)) and not consent_accepted:
             return jsonify({"error": "Consentement requis pour analyser la reunion."}), 400
 
+        # Parse historical meeting context (last N summaries from client)
+        meeting_context_raw = data.get("meetingContext") or ""
+        meeting_context_items = []
+        if meeting_context_raw:
+            try:
+                import json as _json
+                parsed_ctx = _json.loads(meeting_context_raw)
+                if isinstance(parsed_ctx, list):
+                    meeting_context_items = parsed_ctx[:3]
+            except Exception:
+                pass
+
         ai_prefs = resolve_ai_prefs({
             **data,
             "ai_mode": data.get("ai_mode") or "cloud",
@@ -987,12 +1015,26 @@ def analyze_meeting():
 
         transcript_redacted, redaction_hit = _redact_pii(raw_transcription)
 
+        # Build historical context block
+        history_block = ""
+        if meeting_context_items:
+            lines = []
+            for i, item in enumerate(meeting_context_items, 1):
+                date_str = str(item.get("date", ""))[:10]
+                summary_str = str(item.get("summary", ""))[:300]
+                next_steps = item.get("nextSteps") or []
+                lines.append(f"  Appel {i} ({date_str}): {summary_str}")
+                if next_steps:
+                    unresolved = " | ".join(str(s)[:80] for s in next_steps[:5])
+                    lines.append(f"    Prochaines etapes non verifiees: {unresolved}")
+            history_block = "HISTORIQUE DES APPELS PRECEDENTS AVEC CE CLIENT:\n" + "\n".join(lines) + "\n"
+
         prompt = f"""
 Tu es un assistant de reunion expert.
 Analyse la transcription suivante et retourne UNIQUEMENT un JSON valide.
 
 CLIENT: {client_name}
-
+{history_block}
 Schema JSON attendu:
 {{
   "summary": "string",
@@ -1021,7 +1063,8 @@ Schema JSON attendu:
     {{"speaker":"string|null","timestampSec":0,"quote":"string"}}
   ],
   "subject": "string",
-  "body": "string"
+  "body": "string",
+  "meetingScore": {{"score": 0, "rationale": "string"}}
 }}
 
 Regles:
@@ -1030,16 +1073,22 @@ Regles:
 - Limite transcriptExcerpt a 5-8 phrases.
 - Inclus 2 a 6 evidence items si possible.
 - Si une information manque, laisse un tableau vide ou null.
+- Si l'historique montre des nextSteps non resolus, verifie s'ils ont ete abordes et mentionne-les dans nextSteps ou decisions.
+- meetingScore.score: note de 1 a 10 (objectif atteint, decisions prises, actions claires). meetingScore.rationale: 1 phrase explicative.
 
 TRANSCRIPTION:
 {transcript_redacted[:16000]}
         """.strip()
 
+        # Use a more capable model for longer meetings (>=15 min)
+        duration_for_model = duration_seconds if isinstance(duration_seconds, (int, float)) else 0
+        analyze_model = "gemini-2.5-pro" if duration_for_model >= 900 else "gemini-2.0-flash"
+
         payload = generate_json_with_fallback(
             gemini_client=client,
             prompt=prompt,
             prefs=ai_prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model=analyze_model,
             task="reasoning",
         )
 
@@ -1058,10 +1107,11 @@ TRANSCRIPTION:
         report["requestId"] = rid
         latency_ms = int((time.time() - started) * 1000)
         logger.info(
-            "meeting.analyze.ok rid=%s client=%s mode=%s latency_ms=%s tasks=%s redacted=%s",
+            "meeting.analyze.ok rid=%s client=%s mode=%s model=%s latency_ms=%s tasks=%s redacted=%s",
             rid,
             client_name,
             ai_prefs.get("ai_mode"),
+            analyze_model,
             latency_ms,
             len(report.get("tasks", [])),
             redaction_hit,

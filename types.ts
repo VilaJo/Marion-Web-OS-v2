@@ -179,6 +179,7 @@ export interface MeetingReport {
     consentAccepted?: boolean;
     retentionDays?: number;
     requestId?: string;
+    meetingScore?: { score: number; rationale: string };
 }
 
   export interface Project {

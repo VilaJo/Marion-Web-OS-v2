@@ -256,6 +256,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showBrandCenter, setShowBrandCenter] = useState(false);
     const [showMeetingMode, setShowMeetingMode] = useState(false);
+    const [meetingFollowUpDraft, setMeetingFollowUpDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
     const [showLogoLab, setShowLogoLab] = useState(false);
     const [showLogoEditor, setShowLogoEditor] = useState(false);
     const [logoEditorTransform, setLogoEditorTransform] = useState(project.logoTransform || { x: 0, y: 0, scale: 1 });
@@ -954,22 +955,31 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
             tasks: notes.tasks || [],
         };
 
-        // Add tasks identified by AI
+        // Add tasks identified by AI — deduplicate by normalized title
+        let newTaskCount = 0;
         if (normalizedReport.tasks && normalizedReport.tasks.length > 0) {
+            const existingTitles = new Set(updatedTasks.map(t => t.title.trim().toLowerCase()));
             normalizedReport.tasks.forEach(aiTask => {
+                const normalizedTitle = (aiTask.title || '').trim();
+                if (!normalizedTitle || existingTitles.has(normalizedTitle.toLowerCase())) return;
+                existingTitles.add(normalizedTitle.toLowerCase());
                 const newTask: Task = {
                     id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    title: aiTask.title,
-                    description: `Assigné à: ${aiTask.owner || 'Inconnu'}${aiTask.deadline ? `, Échéance: ${aiTask.deadline}` : ''}. Issue de la réunion.`,
+                    title: normalizedTitle,
+                    description: [
+                        aiTask.owner ? `Assigné à: ${aiTask.owner}` : '',
+                        aiTask.deadline ? `Échéance: ${aiTask.deadline}` : '',
+                        'Issue de la réunion.',
+                    ].filter(Boolean).join(' — '),
                     completed: false,
                     column: 'todo',
                     priority: aiTask.priority || 'Medium',
                     phase: project.phase,
-                    dueDate: aiTask.deadline || undefined
+                    dueDate: aiTask.deadline || undefined,
                 };
                 updatedTasks.push(newTask);
+                newTaskCount++;
             });
-            onNotify('Tâches de réunion ajoutées !', `Franck a identifié ${normalizedReport.tasks.length} actions.`, 'success');
         }
 
         const nextReports = [normalizedReport, ...existingReports].slice(0, 25);
@@ -984,7 +994,16 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
             meetingReports: nextReports,
         });
         setShowMeetingMode(false);
-        onNotify('Compte-rendu enregistré', 'Le rapport de réunion a été ajouté au projet.', 'ai');
+        const taskMsg = newTaskCount > 0
+            ? `${newTaskCount} tâche(s) créée(s) dans le Kanban.`
+            : 'Aucune nouvelle tâche.';
+        onNotify('Compte-rendu enregistré', `Le rapport a été ajouté au projet. ${taskMsg}`, 'ai');
+    };
+
+    const handleOpenMeetingEmail = (draft: { to: string; subject: string; body: string }) => {
+        setMeetingFollowUpDraft(draft);
+        setShowMeetingMode(false);
+        setActiveTab('emails');
     };
 
     const handleExportMeetingReport = async (report: MeetingReport, variant: 'internal' | 'client' = 'internal') => {
@@ -1758,7 +1777,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                             ].map(tab => (
                                 <button 
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
+                                    onClick={() => { setActiveTab(tab.id as any); if (tab.id !== 'emails') setMeetingFollowUpDraft(null); }}
                                     className={`text-sm md:text-lg font-serif transition-colors relative whitespace-nowrap px-2 py-1 ${activeTab === tab.id ? 'text-brand-orange' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                                 >
                                     {tab.label}
@@ -2217,7 +2236,11 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                         {activeTab === 'emails' && (
                             <div className="h-full min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
                                 <React.Suspense fallback={<LazyFallback />}>
-                                    <EmailClient clientEmail={project.profile.email} />
+                                    <EmailClient
+                                        clientEmail={project.profile.email}
+                                        initialCompose={meetingFollowUpDraft ?? undefined}
+                                        key={meetingFollowUpDraft ? `compose-${meetingFollowUpDraft.subject}` : 'email'}
+                                    />
                                 </React.Suspense>
                             </div>
                         )}
@@ -2326,8 +2349,10 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                         clientProfile={project.profile}
                         clientAvatarImage={project.avatarImage}
                         meetingHistory={mergedMeetingReports}
+                        openTasks={project.tasks.filter((t) => !t.completed)}
                         onClose={() => setShowMeetingMode(false)}
                         onSaveNotes={handleSaveMeetingNotes}
+                        onOpenEmail={handleOpenMeetingEmail}
                     />
                 </React.Suspense>
             </Modal>
