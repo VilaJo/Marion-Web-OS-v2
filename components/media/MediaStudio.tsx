@@ -14,6 +14,7 @@ import { PanelAdjust } from './PanelAdjust';
 import { PanelResize } from './PanelResize';
 import { PanelAI } from './PanelAI';
 import { PanelExport } from './PanelExport';
+import { PanelGenerate } from './PanelGenerate';
 
 interface MediaStudioProps {
     onClose: () => void;
@@ -34,11 +35,15 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ onClose }) => {
             case 'resize': return <PanelResize state={state} actions={actions} />;
             case 'ai': return <PanelAI state={state} actions={actions} />;
             case 'export': return <PanelExport state={state} actions={actions} />;
+            case 'generate': return <PanelGenerate state={state} actions={actions} />;
             default: return null;
         }
     };
 
-    const panel = state.hasImage ? renderPanel() : null;
+    // Generate panel is the only one available without an image (to create one)
+    const panel = state.hasImage || state.activeTool === 'generate'
+        ? renderPanel()
+        : null;
 
     return (
         <div className="fixed inset-0 z-[500] bg-white dark:bg-slate-900 flex flex-col overflow-hidden">

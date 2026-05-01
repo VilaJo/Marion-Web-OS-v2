@@ -2,7 +2,7 @@
  * UploadView – Drag & drop upload screen for the Media Studio
  */
 import React, { useState, useCallback } from 'react';
-import { UploadCloud, Image as ImageIcon, FileImage } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, FileImage, WandSparkles } from 'lucide-react';
 import type { MediaEditorActions } from './useMediaEditor';
 
 interface UploadViewProps {
@@ -96,6 +96,24 @@ export const UploadView: React.FC<UploadViewProps> = ({ actions }) => {
                             <span>WebP, SVG</span>
                         </div>
                     </div>
+
+                    {/* OR — Generate with AI */}
+                    <div className="flex items-center gap-3 w-full mt-2">
+                        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400">ou</span>
+                        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                    </div>
+
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            actions.setActiveTool('generate');
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--brand-orange)] to-pink-500 text-white text-sm font-bold shadow-md hover:brightness-105 transition-all"
+                    >
+                        <WandSparkles size={16} />
+                        Générer une image avec l'IA
+                    </button>
                 </div>
             </div>
         </div>

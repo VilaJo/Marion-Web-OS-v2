@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Bot, Smartphone, Layout, ArrowRight, Gift, CheckCircle } from 'lucide-react';
+import { Bot, ArrowRight, Gift, Code2, Newspaper, Telescope, Image as ImageIcon, Search, FileText } from 'lucide-react';
 import { Modal } from './Shared';
 
-// UPDATE THIS VERSION TO TRIGGER THE MODAL FOR USERS
-const CURRENT_VERSION = "2.4.7";
+const CURRENT_VERSION = "2.5.0";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -38,59 +37,98 @@ export const WhatsNew: React.FC = () => {
                             Quoi de neuf, Marion ?
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Mise à jour v{CURRENT_VERSION} • Février 2026
+                            Mise à jour v{CURRENT_VERSION} • Marion 2030 Edition
                         </p>
                     </div>
 
                     <div className="space-y-6">
-                        {/* Feature 1 - Franck amélioré */}
+                        {/* Marion 2030 — Cursor / Claude */}
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0">
+                                <Code2 size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Bibliothèque de Prompts Cursor</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Stocke, organise et améliore tes meilleurs prompts <strong>Cursor / Claude</strong>. Catégories par mission (SaaS, e-commerce, portfolio…). Franck peut même les améliorer pour toi.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Veille marché */}
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                                <Newspaper size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Veille marché hebdomadaire</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Chaque semaine, Gemini te génère un brief des <strong>tendances UI/UX, technos et IA</strong> — pour rester toujours en avance sur ta concurrence.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Concurrents + Pricing */}
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                                <Search size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Analyse concurrentielle + Pricing IA</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Compare les sites de tes concurrents pour identifier comment les battre, et obtiens une <strong>fourchette de prix IA</strong> alignée sur le marché — directement dans la fiche client.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Rapport + Case Study */}
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                                <FileText size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Rapports IA + Case Study auto</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Génère un <strong>rapport hebdomadaire</strong> pour suivre l'avancement projet, et en fin de mission un <strong>case study + post LinkedIn</strong> pour ton portfolio en un clic.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Image generation */}
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center flex-shrink-0">
+                                <ImageIcon size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Génération d'images dans MediaStudio</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Crée des <strong>visuels, mockups et moodboards</strong> directement dans Marion Web OS via Imagen — fini Midjourney en parallèle !
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Prospection */}
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center flex-shrink-0">
+                                <Telescope size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Prospection Apollo + Gemini</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Trouve des clients à l'international avec <strong>Apollo.io</strong> (puis bascule sur Gemini si crédits épuisés). Templates d'outreach, import vers Kanban, et bien plus.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Franck Code Mode */}
                         <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
                                 <Bot size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Franck voit tout 👀</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Franck → Lead dev virtuel + Claude</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Franck a maintenant accès à <strong>toutes vos tâches et événements</strong>. Demandez-lui "Quelles sont mes tâches prioritaires ?" ou "Comment se présente ma journée ?" - il sait tout !
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 2 - Statut Franck cliquable */}
-                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center flex-shrink-0">
-                                <CheckCircle size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Statut Franck interactif</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le badge "Franck en ligne" dans l'en-tête est maintenant <strong>cliquable</strong>. Cliquez dessus pour parler à Franck ou le reconnecter s'il est hors ligne.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 3 - Interface améliorée */}
-                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center flex-shrink-0">
-                                <Layout size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Interface plus compacte</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    La barre de recherche et les filtres sont maintenant <strong>sur une seule ligne</strong> pour une meilleure utilisation de l'espace.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 4 - PWA amélioré */}
-                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-500 flex items-center justify-center flex-shrink-0">
-                                <Smartphone size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">App mobile améliorée</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le popup d'installation peut maintenant être <strong>masqué définitivement</strong> si vous ne souhaitez pas installer l'application sur votre téléphone.
+                                    Active le <strong>Code Mode</strong> dans Franck pour faire des reviews, générer du Tailwind/React et déboguer. Plus l'arrivée de <strong>Claude</strong> comme 3ème provider IA dans Settings.
                                 </p>
                             </div>
                         </div>

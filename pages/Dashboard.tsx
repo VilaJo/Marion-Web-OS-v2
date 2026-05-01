@@ -288,7 +288,15 @@ export const Dashboard: React.FC = () => {
                         progress: 0,
                         createdAt: new Date().toISOString(),
                         profile: data.profile,
-                        tasks: [],
+                        tasks: (data.templateTasks || []).map((t, idx) => ({
+                            id: `task-${Date.now()}-${idx}`,
+                            title: t.title,
+                            completed: false,
+                            priority: t.priority,
+                            column: 'todo' as const,
+                            phase: t.phase,
+                            createdAt: new Date().toISOString(),
+                        })),
                         invoices: [],
                         brandKit: { colors: [], fonts: [] },
                         credentials: [],
@@ -298,6 +306,42 @@ export const Dashboard: React.FC = () => {
                     updateProjectCache(newProject);
                     addNotification('Client Créé', `Dossier "${trimmed}" prêt dans ${targetFolder}.`, 'success', `/client/${encodeURIComponent(newProject.id)}`);
                     addActivity('project_created', `Nouveau client: ${trimmed}`, newProject.id, trimmed);
+
+                    // If a template was chosen with cursor prompts, suggest them in the
+                    // Prompt Library (notification with quick-link). Marion can ignore.
+                    if (data.cursorPrompts && data.cursorPrompts.length > 0) {
+                        try {
+                            const STORAGE_KEY = 'cursor_prompt_library_v1';
+                            const INIT_MARKER_KEY = 'cursor_prompt_library_initialized';
+                            const raw = localStorage.getItem(STORAGE_KEY);
+                            const existing = raw ? JSON.parse(raw) : [];
+                            const existingTitles = new Set(existing.map((p: any) => (p.title || '').toLowerCase()));
+                            const toAdd = data.cursorPrompts
+                                .filter(title => !existingTitles.has(title.toLowerCase()))
+                                .map((title, i) => ({
+                                    id: `tpl-${data.templateId}-${Date.now()}-${i}`,
+                                    title,
+                                    content: title, // Marion peut éditer
+                                    category: 'cursor',
+                                    tags: [data.templateId || 'template', trimmed],
+                                    rating: 0,
+                                    createdAt: new Date().toISOString(),
+                                    fromTemplate: data.templateId,
+                                }));
+                            if (toAdd.length > 0) {
+                                const merged = [...toAdd, ...existing];
+                                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                                localStorage.setItem(INIT_MARKER_KEY, 'true');
+                                addNotification(
+                                    'Prompts suggérés',
+                                    `${toAdd.length} prompt(s) Cursor ajouté(s) à ta bibliothèque pour ce projet.`,
+                                    'info',
+                                    '/prompts',
+                                );
+                            }
+                        } catch { /* ignore localStorage errors */ }
+                    }
+
                     setShowImporter(false);
                     navigate(`/client/${encodeURIComponent(newProject.id)}`);
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });

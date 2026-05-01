@@ -36,6 +36,8 @@ import {
 import { useExpenses, useDeleteExpense, useScanExpense, useAnalytics } from '../services/queries';
 import { exportSimpleCSV } from '../utils/exportUtils';
 import { printElementAsPdf } from '../utils/pdfExport';
+import { useUIStore } from '../stores';
+import { applyRelanceTemplate } from '../utils/relanceTemplates';
 
 declare const confetti: any;
 
@@ -51,6 +53,8 @@ interface FinanceDashboardProps {
 }
 
 const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOpenInvoice, onUpdateProject, currency = 'CHF', currentTheme, onClose, onCreateInvoice, onCreateEstimate }) => {
+    const relanceTemplatePolite = useUIStore((s) => s.relanceTemplatePolite);
+    const relanceTemplateFirm = useUIStore((s) => s.relanceTemplateFirm);
     const [activeTab, setActiveTab] = useState<'revenus' | 'depenses' | 'analytics' | 'temps' | 'tresorerie' | 'export'>('revenus');
     const [period, setPeriod] = useState<'all' | 'year' | 'month'>('year');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
@@ -174,9 +178,15 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
     const handleRemind = async (e: React.MouseEvent, invoice: Invoice, project: Project) => {
         e.stopPropagation();
         setIsReminding(invoice.id);
-        
+
+        const vars: Record<string, string> = {
+            client: project.clientName,
+            numero: invoice.number,
+            montant: formatCurrency(invoice.amount, 2),
+            echeance: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fr-CH') : '—',
+        };
         let subject = `Relance facture ${invoice.number}`;
-        let body = `Bonjour,\n\nSauf erreur de notre part, la facture ${invoice.number} du ${new Date(invoice.date).toLocaleDateString()} est toujours en attente de paiement.\n\nMerci de faire le nécessaire.\n\nCordialement,\nMarion`;
+        let body = applyRelanceTemplate(relanceTemplatePolite, vars);
 
         try {
             const res = await fetch('/api/v1/invoices/remind', {
@@ -197,12 +207,13 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                 confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 }, colors: ['#a855f7', '#ec4899'] });
             }
         } catch (err) {
-            console.warn("AI generation failed, using template.");
+            console.warn("AI generation failed, using firm template.");
+            body = applyRelanceTemplate(relanceTemplateFirm, vars);
         } finally {
             setReminderData({
                 to: project.profile.email || '',
                 subject: subject,
-                body: body
+                body: body,
             });
             setShowEmailComposer(true);
             setIsReminding(null);
@@ -264,17 +275,43 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
     const expensesInPizzas = Math.floor(totalExpenses / PIZZA_PRICE);
     const revenueInPizzas = Math.floor(totalRevenue / PIZZA_PRICE);
 
+    // Global treasury snapshot (all invoices, all periods) — 3-line summary
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    let snapEncaisse = 0;
+    let snapAttente = 0;
+    let snapRetard = 0;
+    for (const p of projects) {
+        for (const inv of p.invoices) {
+            if (inv.type !== 'Invoice') continue;
+            if (inv.status === 'Paid') {
+                snapEncaisse += inv.amount;
+                continue;
+            }
+            const paid =
+                inv.status === 'Partial' && inv.payments
+                    ? inv.payments.reduce((s, x) => s + x.amount, 0)
+                    : 0;
+            const remaining = Math.max(0, inv.amount - paid);
+            if (remaining <= 0) continue;
+            const due = inv.dueDate ? new Date(inv.dueDate) : null;
+            if (due && due < todayStart) snapRetard += remaining;
+            else snapAttente += remaining;
+        }
+    }
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[500px]" onClick={() => { setShowPeriodMenu(false); setShowStatusMenu(false); }}>
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4 p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 rounded-t-3xl">
+            <div className="flex flex-col gap-4 p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 rounded-t-3xl">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div className="flex-1">
                     <h2 className="text-3xl font-serif text-slate-800 dark:text-white flex items-center gap-2">
                         {currentTheme === 'unicorn' && <span className="animate-bounce">🍕</span>} Santé Financière
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400">Vue d'ensemble de la trésorerie et du bénéfice.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     {/* NEW: Creation Buttons */}
                     <button 
                         onClick={() => onCreateInvoice && onCreateInvoice()}
@@ -329,6 +366,21 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors group">
                         <X className="w-6 h-6 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white transition-colors" />
                     </button>
+                </div>
+                </div>
+                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 px-4 py-3">
+                        <p className="text-[10px] font-bold uppercase text-emerald-700/80 dark:text-emerald-400/90">Encaissé (factures payées)</p>
+                        <p className="text-xl font-bold text-emerald-800 dark:text-emerald-200 tabular-nums">{formatCurrency(snapEncaisse)} {currency}</p>
+                    </div>
+                    <div className="rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 px-4 py-3">
+                        <p className="text-[10px] font-bold uppercase text-amber-800/80 dark:text-amber-300/90">En attente</p>
+                        <p className="text-xl font-bold text-amber-900 dark:text-amber-200 tabular-nums">{formatCurrency(snapAttente)} {currency}</p>
+                    </div>
+                    <div className="rounded-2xl bg-rose-50/90 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 px-4 py-3">
+                        <p className="text-[10px] font-bold uppercase text-rose-800/80 dark:text-rose-300/90">En retard (échu)</p>
+                        <p className="text-xl font-bold text-rose-900 dark:text-rose-200 tabular-nums">{formatCurrency(snapRetard)} {currency}</p>
+                    </div>
                 </div>
             </div>
 

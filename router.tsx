@@ -27,6 +27,10 @@ const FinancesPage = React.lazy(() => import('./pages/FinancesPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const EmailPage = React.lazy(() => import('./pages/EmailPage'));
 const PortalPublicPage = React.lazy(() => import('./pages/PortalPublicPage'));
+const ProspectingPage = React.lazy(() => import('./pages/ProspectingPage'));
+const PromptLibraryPage = React.lazy(() => import('./pages/PromptLibraryPage'));
+const MarketWatchPage = React.lazy(() => import('./pages/MarketWatchPage'));
+const TodayPage = React.lazy(() => import('./pages/TodayPage'));
 
 const router = createBrowserRouter([
     // Public portal route (standalone, outside App layout)
@@ -56,6 +60,15 @@ const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement du tableau de bord..." />}>
                         <Dashboard />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'today',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de ta journée..." />}>
+                        <TodayPage />
                     </Suspense>
                 ),
             },
@@ -101,6 +114,33 @@ const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement des paramètres..." />}>
                         <SettingsPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'prospection',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de la prospection..." />}>
+                        <ProspectingPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'prompts',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de la bibliothèque..." />}>
+                        <PromptLibraryPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'market-watch',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de la veille marché..." />}>
+                        <MarketWatchPage />
                     </Suspense>
                 ),
             },

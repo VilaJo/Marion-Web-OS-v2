@@ -18,11 +18,13 @@ import time
 import base64
 import io
 from pathlib import Path
+from typing import Optional
 
 from flask import Blueprint, request, jsonify, Response
 from PIL import Image, ImageOps, ImageDraw
 from config import get_current_config
 
+import services.claude_service as claude_svc
 from services.gemini_service import (
     get_client, init_client, set_api_key, is_configured,
     ai_status_payload, resolve_ai_prefs, is_local_available, get_default_ai_mode,
@@ -522,6 +524,19 @@ SUGGESTIONS POSSIBLES:
 - Celebre si des factures ont ete payees recemment
 - Alerte gentiment si des factures sont en retard
 """
+    active_client = app_context.get('activeClient')
+    route_path = app_context.get('routePath') or ''
+    if route_path or active_client:
+        context_info += "\nNAVIGATION / FOCUS:\n"
+        if route_path:
+            context_info += f"- Ecran actif (chemin): {route_path}\n"
+        if isinstance(active_client, dict) and active_client:
+            context_info += (
+                f"- Client au premier plan: {active_client.get('clientName', '?')}\n"
+                f"  Factures ouvertes: {active_client.get('openInvoices', 0)}, "
+                f"en retard: {active_client.get('overdueInvoices', 0)}, "
+                f"taches urgentes: {active_client.get('urgentTasks', 0)}\n"
+            )
 
     if memory.get('facts_about_marion'):
         context_info += "\nCE QUE TU SAIS SUR MARION:\n"
@@ -1695,3 +1710,428 @@ def generate_qr():
         return jsonify({"success": True, "image": f"data:image/png;base64,{img_str}"})
     except Exception as e:
         return error_response(e, 400, "Requête invalide.")
+
+
+# ===========================================================================
+# Claude (Anthropic) API key management
+# ===========================================================================
+@ai_bp.route('/ai/claude/setup', methods=['POST', 'DELETE'])
+def claude_setup():
+    if request.method == 'DELETE':
+        try:
+            claude_svc.remove_api_key()
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        return jsonify({"success": True})
+
+    body = request.get_json(silent=True) or {}
+    api_key = (body.get('api_key') or '').strip()
+    if len(api_key) < 10:
+        return jsonify({"error": "Clé trop courte"}), 400
+    try:
+        claude_svc.save_api_key(api_key)
+        client_c = claude_svc.get_client()
+        if not client_c:
+            return jsonify({"error": "Impossible d'initialiser le client Claude"}), 500
+        client_c.messages.create(
+            model=claude_svc.FAST_MODEL,
+            max_tokens=5,
+            messages=[{"role": "user", "content": "Hi"}],
+        )
+    except Exception as e:
+        return jsonify({"error": f"Clé invalide : {e}"}), 400
+    return jsonify({"success": True, "message": "Clé Claude enregistrée"})
+
+
+@ai_bp.route('/ai/claude/status', methods=['GET'])
+def claude_status():
+    return jsonify({"configured": claude_svc.is_configured()})
+
+
+# ===========================================================================
+# Competitor analysis
+# ===========================================================================
+@ai_bp.route('/ai/competitor-analysis', methods=['POST'])
+def competitor_analysis():
+    body = request.get_json(silent=True) or {}
+    urls = [u.strip() for u in (body.get('urls') or []) if u.strip()]
+    client_description = body.get('client_description', '')
+    if not urls:
+        return jsonify({"error": "Au moins une URL est requise"}), 400
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré. Va dans Settings → IA & Assistants pour ajouter ta clé."}), 503
+
+    url_list = "\n".join(f"- {u}" for u in urls)
+    prompt = f"""Tu es un expert en web design et marketing digital. Analyse les sites web concurrents suivants pour un client dont l'activité est : {client_description or 'non précisée'}.
+
+Sites à analyser :
+{url_list}
+
+Pour chaque site, visite-le avec Google Search et évalue :
+1. Forces design et UX (navigation, visuels, modernité)
+2. Faiblesses exploitables (CRO, mobile, vitesse, contenu)
+3. Score global de qualité web /100
+
+Puis donne 3 opportunités concrètes pour se démarquer et une recommandation stratégique.
+
+Retourne en JSON strict :
+{{
+  "competitors": [
+    {{"url": "...", "name": "...", "strengths": ["...", "..."], "weaknesses": ["...", "..."], "score": 65, "summary": "..."}}
+  ],
+  "opportunities": ["...", "...", "..."],
+  "recommendation": "..."
+}}"""
+
+    gemini_client = get_client()
+    try:
+        from google.genai import types as genai_types
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
+                temperature=0.3,
+            ),
+        )
+        raw = (response.text or "").strip().replace("```json", "").replace("```", "").strip()
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        result = json.loads(raw[start:end])
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Competitor analysis failed: %s", e)
+        return jsonify({"error": "Analyse impossible pour le moment"}), 500
+
+
+# ===========================================================================
+# Pricing intelligence
+# ===========================================================================
+@ai_bp.route('/ai/pricing-intelligence', methods=['POST'])
+def pricing_intelligence():
+    body = request.get_json(silent=True) or {}
+    project_type = body.get('project_type', 'Site web')
+    pages = body.get('pages', 5)
+    industry = body.get('industry', '')
+    country = body.get('country', 'France')
+    complexity = body.get('complexity', 'medium')
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré. Va dans Settings → IA & Assistants pour ajouter ta clé."}), 503
+
+    prompt = f"""Tu es un expert en tarification pour freelances web designer en {country}.
+
+Recherche les tarifs actuels du marché pour le projet suivant :
+- Type : {project_type}
+- Nombre de pages : {pages}
+- Secteur client : {industry or 'non précisé'}
+- Complexité : {complexity}
+- Pays : {country}
+
+Analyse les tarifs pratiqués par les freelances web designers dans ce pays en 2025-2026.
+Propose une fourchette réaliste et un tarif recommandé avec justification.
+
+Retourne en JSON strict :
+{{
+  "range_low": 1500,
+  "range_high": 4000,
+  "recommended": 2500,
+  "currency": "EUR",
+  "justification": "...",
+  "comparable_projects": ["Exemple 1 : ...", "Exemple 2 : ..."],
+  "tips": ["Conseil pour maximiser la valeur perçue..."]
+}}"""
+
+    gemini_client = get_client()
+    try:
+        from google.genai import types as genai_types
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
+                temperature=0.3,
+            ),
+        )
+        raw = (response.text or "").strip().replace("```json", "").replace("```", "").strip()
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        result = json.loads(raw[start:end])
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Pricing intelligence failed: %s", e)
+        return jsonify({"error": "Estimation impossible"}), 500
+
+
+# ===========================================================================
+# Project progress report
+# ===========================================================================
+@ai_bp.route('/ai/project-progress-report', methods=['POST'])
+def project_progress_report():
+    body = request.get_json(silent=True) or {}
+    project = body.get('project', {})
+    if not project:
+        return jsonify({"error": "Données projet manquantes"}), 400
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré. Va dans Settings → IA & Assistants pour ajouter ta clé."}), 503
+
+    tasks = project.get('tasks', [])
+    completed = [t for t in tasks if t.get('completed')]
+    in_progress_tasks = [t for t in tasks if not t.get('completed') and t.get('column') == 'doing']
+    todo_tasks = [t for t in tasks if not t.get('completed') and t.get('column') != 'doing']
+    invoices = project.get('invoices', [])
+    phase = project.get('phase', 'Inconnu')
+    created_at = project.get('createdAt', '')
+    client_name = project.get('clientName', 'ce client')
+
+    prompt = f"""Tu es l'assistante IA de Marion, une web designer freelance. Analyse l'avancement du projet pour {client_name}.
+
+DONNÉES DU PROJET :
+- Phase actuelle : {phase}
+- Créé le : {created_at[:10] if created_at else 'inconnu'}
+- Tâches complétées ({len(completed)}) : {', '.join(t.get('title','') for t in completed[:10]) or 'aucune'}
+- Tâches en cours ({len(in_progress_tasks)}) : {', '.join(t.get('title','') for t in in_progress_tasks[:5]) or 'aucune'}
+- Tâches à faire ({len(todo_tasks)}) : {', '.join(t.get('title','') for t in todo_tasks[:10]) or 'aucune'}
+- Factures : {len(invoices)} ({sum(1 for i in invoices if i.get('status') == 'paid')} payées)
+
+Génère un rapport d'avancement structuré et actionnable pour Marion (usage interne).
+
+Retourne en JSON strict :
+{{
+  "summary": "Résumé exécutif en 2-3 phrases",
+  "health": "on_track",
+  "percentage": 67,
+  "completed_highlights": ["Point fort 1", "Point fort 2"],
+  "next_steps": ["Prochaine action prioritaire", "Action 2", "Action 3"],
+  "blockers": ["Risque ou bloqueur potentiel"],
+  "phase_assessment": "Évaluation de la phase actuelle",
+  "financial_status": "Statut des paiements"
+}}
+
+Valeurs possibles pour health : "on_track", "at_risk", "delayed", "completed"."""
+
+    gemini_client = get_client()
+    prefs = resolve_ai_prefs(get_workspace_settings(1).get('aiPreferences'))
+    try:
+        result = generate_json_with_fallback(
+            gemini_client=gemini_client,
+            prompt=prompt,
+            prefs=prefs,
+            cloud_model="gemini-2.0-flash",
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Progress report failed: %s", e)
+        return jsonify({"error": "Rapport impossible"}), 500
+
+
+# ===========================================================================
+# Case study generator
+# ===========================================================================
+@ai_bp.route('/ai/case-study', methods=['POST'])
+def generate_case_study():
+    body = request.get_json(silent=True) or {}
+    project = body.get('project', {})
+    if not project:
+        return jsonify({"error": "Données projet manquantes"}), 400
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré. Va dans Settings → IA & Assistants pour ajouter ta clé."}), 503
+
+    client_name = project.get('clientName', 'le client')
+    tasks = project.get('tasks', [])
+    completed_tasks = [t.get('title', '') for t in tasks if t.get('completed')]
+    phase = project.get('phase', '')
+    profile = project.get('profile', {})
+    industry = next((f['value'] for f in profile.get('customFields', []) if f.get('key') == 'Secteur'), '')
+    website = profile.get('website', '')
+    created_at = project.get('createdAt', '')[:10]
+
+    prompt = f"""Tu es Marion, une web designer freelance experte. Rédige une étude de cas professionnelle pour ton portfolio.
+
+INFORMATIONS DU PROJET :
+- Client : {client_name}
+- Secteur : {industry or 'non précisé'}
+- Site web livré : {website or 'non précisé'}
+- Date de début : {created_at}
+- Phase finale : {phase}
+- Livrables réalisés : {', '.join(completed_tasks[:15]) or 'site web complet'}
+
+Rédige une étude de cas percutante, réelle et vendable pour ton portfolio et LinkedIn.
+
+Retourne en JSON strict :
+{{
+  "title": "Titre accrocheur (max 10 mots)",
+  "tagline": "Sous-titre percutant",
+  "context": "Contexte et problématique client (2-3 phrases)",
+  "problem": "Problème principal que tu as résolu",
+  "solution": "Ta solution et approche créative (3-4 phrases)",
+  "results": "Résultats mesurables ou qualitatifs obtenus",
+  "tech_stack": ["React", "Tailwind", "Figma"],
+  "duration": "Durée estimée du projet",
+  "linkedin_post": "Post LinkedIn prêt à publier (300 mots max, avec emojis, hashtags)",
+  "portfolio_blurb": "Description courte pour le portfolio (80 mots max)"
+}}"""
+
+    gemini_client = get_client()
+    prefs = resolve_ai_prefs(get_workspace_settings(1).get('aiPreferences'))
+    try:
+        result = generate_json_with_fallback(
+            gemini_client=gemini_client,
+            prompt=prompt,
+            prefs=prefs,
+            cloud_model="gemini-2.0-flash",
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Case study failed: %s", e)
+        return jsonify({"error": "Génération impossible"}), 500
+
+
+# ===========================================================================
+# Market watch (weekly trend digest)
+# ===========================================================================
+@ai_bp.route('/ai/market-watch', methods=['POST'])
+def market_watch():
+    body = request.get_json(silent=True) or {}
+    focus = body.get('focus', 'web design et développement front-end')
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré. Va dans Settings → IA & Assistants pour ajouter ta clé."}), 503
+
+    prompt = f"""Tu es un expert en veille technologique pour les professionnels du web design et du développement front-end.
+
+Recherche et identifie les 6 tendances majeures de la semaine en {focus} ({time.strftime('%B %Y')}).
+
+Pour chaque tendance, fournis des informations concrètes et sourcées issues du web.
+
+Catégories possibles : "ui-ux", "technologie", "ia", "outils", "business", "inspiration"
+
+Retourne en JSON strict :
+{{
+  "generated_at": "{time.strftime('%Y-%m-%d')}",
+  "trends": [
+    {{
+      "title": "Titre court et accrocheur",
+      "summary": "Résumé de 2-3 phrases expliquant pourquoi c'est important pour une web designer freelance",
+      "source_url": "https://...",
+      "category": "ui-ux",
+      "impact": "high",
+      "action": "Ce que Marion devrait faire concrètement avec cette tendance"
+    }}
+  ]
+}}
+
+Valeurs impact : "high", "medium", "low"."""
+
+    gemini_client = get_client()
+    try:
+        from google.genai import types as genai_types
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
+                temperature=0.4,
+            ),
+        )
+        raw = (response.text or "").strip().replace("```json", "").replace("```", "").strip()
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        result = json.loads(raw[start:end])
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Market watch failed: %s", e)
+        return jsonify({"error": "Veille impossible pour le moment"}), 500
+
+
+# ===========================================================================
+# Image generation via Imagen
+# ===========================================================================
+@ai_bp.route('/ai/generate-image', methods=['POST'])
+def ai_generate_image():
+    body = request.get_json(silent=True) or {}
+    prompt_text = (body.get('prompt') or '').strip()
+    style = body.get('style', 'photorealistic')
+    ratio = body.get('ratio', '16:9')
+
+    if not prompt_text:
+        return jsonify({"error": "Prompt requis"}), 400
+
+    style_map = {
+        'photorealistic': 'professional photo, high quality, sharp',
+        'illustration': 'digital illustration, flat vector art style',
+        'flat': 'flat design, minimalist, clean vector graphics',
+        'mockup': 'UI mockup, web design screenshot, clean interface',
+        'watercolor': 'watercolor painting, artistic, soft colors',
+    }
+    style_suffix = style_map.get(style, style)
+    full_prompt = f"{prompt_text}, {style_suffix}"
+
+    aspect_map = {'16:9': '16:9', '1:1': '1:1', '9:16': '9:16', '4:3': '4:3'}
+    aspect_ratio = aspect_map.get(ratio, '16:9')
+
+    gemini_client = get_client()
+    if not gemini_client:
+        return jsonify({"error": "Gemini non configuré"}), 503
+
+    # Try the most recent Imagen model first, fall back to older versions if unavailable
+    candidate_models = [
+        "imagen-3.0-generate-002",
+        "imagen-3.0-generate-001",
+    ]
+    last_err: Optional[Exception] = None
+    for model_name in candidate_models:
+        try:
+            response = gemini_client.models.generate_images(
+                model=model_name,
+                prompt=full_prompt,
+                config={"number_of_images": 1, "aspect_ratio": aspect_ratio},
+            )
+            if response.generated_images:
+                image_bytes = response.generated_images[0].image.image_bytes
+                img_b64 = base64.b64encode(image_bytes).decode('utf-8')
+                return jsonify({"success": True, "image": f"data:image/png;base64,{img_b64}"})
+        except Exception as e:
+            last_err = e
+            logger.warning("Imagen model %s failed: %s", model_name, e)
+            continue
+
+    err_msg = str(last_err) if last_err else "Aucune image générée"
+    logger.error("Image generation failed (all models): %s", err_msg)
+    return jsonify({"error": f"Génération échouée : {err_msg}"}), 500
+
+
+# ===========================================================================
+# Prompt improvement (for Prompt Library)
+# ===========================================================================
+@ai_bp.route('/ai/improve-prompt', methods=['POST'])
+def improve_prompt():
+    body = request.get_json(silent=True) or {}
+    original = (body.get('prompt') or '').strip()
+    category = body.get('category', 'cursor')
+    if not original:
+        return jsonify({"error": "Prompt requis"}), 400
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré. Va dans Settings → IA & Assistants pour ajouter ta clé."}), 503
+
+    meta_prompt = f"""Tu es un expert en prompt engineering pour Cursor/Claude et le développement web.
+Améliore ce prompt pour le rendre plus précis, plus actionnable et plus efficace pour générer du code React/Tailwind.
+Catégorie : {category}
+
+Prompt original :
+{original}
+
+Retourne en JSON :
+{{"improved_prompt": "...", "changes_made": ["Changement 1", "Changement 2"]}}"""
+
+    gemini_client = get_client()
+    prefs = resolve_ai_prefs(get_workspace_settings(1).get('aiPreferences'))
+    try:
+        result = generate_json_with_fallback(
+            gemini_client=gemini_client,
+            prompt=meta_prompt,
+            prefs=prefs,
+            cloud_model="gemini-2.0-flash",
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Prompt improvement failed: %s", e)
+        return jsonify({"error": "Amélioration impossible"}), 500

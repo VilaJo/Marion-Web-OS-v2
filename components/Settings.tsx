@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { sanitizeHTML } from '../utils/sanitize';
 import { Modal } from './Shared';
 import { Theme } from '../types';
-import { 
+import {
     User, 
     Moon, 
     Sun, 
@@ -40,10 +40,44 @@ import {
     Key,
     Upload,
     CloudUpload,
+    Telescope,
+    EyeOff,
+    Trash2,
+    Mail,
 } from 'lucide-react';
-import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, useCloudBackupConfig, useSetCloudBackupConfig, useCloudBackup, useBackupStatus, useCheckStatus, queryKeys } from '../services/queries';
+import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, useCloudBackupConfig, useSetCloudBackupConfig, useCloudBackup, useBackupStatus, useManualLocalBackup, useDownloadBackupBundle, useCheckStatus, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores';
+import { apiFetch } from '../services/api';
+
+const RelanceTemplateFields: React.FC = () => {
+    const polite = useUIStore((s) => s.relanceTemplatePolite);
+    const firm = useUIStore((s) => s.relanceTemplateFirm);
+    const setPolite = useUIStore((s) => s.setRelanceTemplatePolite);
+    const setFirm = useUIStore((s) => s.setRelanceTemplateFirm);
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase">Relance polie</label>
+                <textarea
+                    value={polite}
+                    onChange={(e) => setPolite(e.target.value)}
+                    rows={7}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-orange dark:text-white font-mono text-xs leading-relaxed"
+                />
+            </div>
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase">Relance ferme</label>
+                <textarea
+                    value={firm}
+                    onChange={(e) => setFirm(e.target.value)}
+                    rows={7}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-orange dark:text-white font-mono text-xs leading-relaxed"
+                />
+            </div>
+        </div>
+    );
+};
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -136,11 +170,176 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         fallback_enabled: aiFallbackEnabled,
     });
 
-    // Cloud backup hooks
+    // Apollo.io key management
+    const [apolloKey, setApolloKey] = useState('');
+    const [apolloKeyVisible, setApolloKeyVisible] = useState(false);
+    const [apolloStatus, setApolloStatus] = useState<{ configured: boolean; available: boolean } | null>(null);
+    const [apolloSaving, setApolloSaving] = useState(false);
+    const [apolloMessage, setApolloMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Hunter.io key management
+    const [hunterKey, setHunterKey] = useState('');
+    const [hunterKeyVisible, setHunterKeyVisible] = useState(false);
+    const [hunterConfigured, setHunterConfigured] = useState(false);
+    const [hunterSaving, setHunterSaving] = useState(false);
+    const [hunterMessage, setHunterMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Claude (Anthropic) key management
+    const [claudeKey, setClaudeKey] = useState('');
+    const [claudeKeyVisible, setClaudeKeyVisible] = useState(false);
+    const [claudeConfigured, setClaudeConfigured] = useState(false);
+    const [claudeSaving, setClaudeSaving] = useState(false);
+    const [claudeMessage, setClaudeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Load Apollo + Hunter + Claude status when AI tab opens
+    React.useEffect(() => {
+        if (!isAiTabOpen) return;
+        apiFetch('/api/v1/prospection/status')
+            .then(r => r.json())
+            .then(data => {
+                setApolloStatus({ configured: data.apollo_configured, available: data.apollo_available });
+                setHunterConfigured(!!data.hunter_configured);
+            })
+            .catch(() => {});
+        apiFetch('/api/v1/ai/claude/status')
+            .then(r => r.json())
+            .then(data => setClaudeConfigured(!!data.configured))
+            .catch(() => {});
+    }, [isAiTabOpen]);
+
+    const handleSaveClaudeKey = async () => {
+        if (!claudeKey.trim()) return;
+        setClaudeSaving(true);
+        setClaudeMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/ai/claude/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: claudeKey.trim() }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setClaudeMessage({ type: 'success', text: 'Clé Claude enregistrée et validée !' });
+                setClaudeConfigured(true);
+                setClaudeKey('');
+            } else {
+                setClaudeMessage({ type: 'error', text: data.error || 'Erreur inconnue' });
+            }
+        } catch {
+            setClaudeMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setClaudeSaving(false);
+        }
+    };
+
+    const handleRemoveClaudeKey = async () => {
+        setClaudeSaving(true);
+        setClaudeMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/ai/claude/setup', { method: 'DELETE' });
+            if (res.ok) {
+                setClaudeMessage({ type: 'success', text: 'Clé Claude supprimée.' });
+                setClaudeConfigured(false);
+                setClaudeKey('');
+            }
+        } catch {
+            setClaudeMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setClaudeSaving(false);
+        }
+    };
+
+    const handleSaveApolloKey = async () => {
+        if (!apolloKey.trim()) return;
+        setApolloSaving(true);
+        setApolloMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/prospection/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apolloKey.trim() }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setApolloMessage({ type: 'success', text: 'Clé Apollo.io enregistrée et validée !' });
+                setApolloStatus({ configured: true, available: true });
+                setApolloKey('');
+            } else {
+                setApolloMessage({ type: 'error', text: data.error || 'Erreur inconnue' });
+            }
+        } catch {
+            setApolloMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setApolloSaving(false);
+        }
+    };
+
+    const handleRemoveApolloKey = async () => {
+        setApolloSaving(true);
+        setApolloMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/prospection/setup', { method: 'DELETE' });
+            if (res.ok) {
+                setApolloMessage({ type: 'success', text: 'Clé Apollo.io supprimée.' });
+                setApolloStatus({ configured: false, available: false });
+                setApolloKey('');
+            }
+        } catch {
+            setApolloMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setApolloSaving(false);
+        }
+    };
+
+    const handleSaveHunterKey = async () => {
+        if (!hunterKey.trim()) return;
+        setHunterSaving(true);
+        setHunterMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/prospection/hunter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: hunterKey.trim() }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setHunterMessage({ type: 'success', text: 'Clé Hunter.io enregistrée !' });
+                setHunterConfigured(true);
+                setHunterKey('');
+            } else {
+                setHunterMessage({ type: 'error', text: data.error || 'Erreur inconnue' });
+            }
+        } catch {
+            setHunterMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setHunterSaving(false);
+        }
+    };
+
+    const handleRemoveHunterKey = async () => {
+        setHunterSaving(true);
+        setHunterMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/prospection/hunter', { method: 'DELETE' });
+            if (res.ok) {
+                setHunterMessage({ type: 'success', text: 'Clé Hunter.io supprimée.' });
+                setHunterConfigured(false);
+                setHunterKey('');
+            }
+        } catch {
+            setHunterMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setHunterSaving(false);
+        }
+    };
+
+    // Cloud backup hooks (fetch local + cloud status whenever Cloud tab is open)
     const { data: cloudBackupConfig } = useCloudBackupConfig();
-    const { data: backupStatus } = useBackupStatus(cloudConfig.googleDrive.connected);
+    const { data: backupStatus, refetch: refetchBackupStatus } = useBackupStatus(isOpen && activeTab === 'cloud');
     const setCloudBackupConfigMutation = useSetCloudBackupConfig();
     const cloudBackupMutation = useCloudBackup();
+    const manualLocalBackupMutation = useManualLocalBackup();
+    const downloadBundleMutation = useDownloadBackupBundle();
     const isCloudBackupEnabled = cloudBackupConfig?.cloudBackupEnabled ?? false;
 
     // Sync OAuth status from React Query into local cloud config
@@ -484,6 +683,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <option value="£">GBP (Livre Sterling)</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Modèles de relance (factures)</h4>
+                                <p className="text-xs text-slate-500">Variables : <code className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{client} {numero} {montant} {echeance}'}</code></p>
+                                <RelanceTemplateFields />
                             </div>
 
                             <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
@@ -856,6 +1061,311 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     </div>
                                 </div>
                              </div>
+
+                             {/* Apollo.io — Prospection B2B */}
+                             <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                <div className="flex items-center gap-4 bg-gradient-to-r from-indigo-500 to-violet-600 p-5 text-white">
+                                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/30 flex-shrink-0">
+                                        <Telescope size={24} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-base">Apollo.io — Prospection B2B</h4>
+                                        <p className="text-xs text-indigo-100 mt-0.5">210M+ contacts · Fallback IA automatique si crédits épuisés</p>
+                                    </div>
+                                    {apolloStatus && (
+                                        <div className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                                            apolloStatus.configured
+                                                ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-300/30'
+                                                : 'bg-white/10 text-white/70 border border-white/20'
+                                        }`}>
+                                            {apolloStatus.configured ? <><CheckCircle size={12} /> Connecté</> : <><AlertCircle size={12} /> Non configuré</>}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-5 space-y-4 bg-white dark:bg-slate-900">
+                                    {apolloStatus?.configured ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700">
+                                                <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Clé Apollo.io enregistrée</p>
+                                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">La prospection utilise Apollo en priorité, Gemini en fallback.</p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Remplacer la clé</p>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type={apolloKeyVisible ? 'text' : 'password'}
+                                                            value={apolloKey}
+                                                            onChange={(e) => setApolloKey(e.target.value)}
+                                                            placeholder="Nouvelle clé Apollo.io"
+                                                            className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-indigo-400 dark:text-white"
+                                                        />
+                                                        <button onClick={() => setApolloKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                            {apolloKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        onClick={handleSaveApolloKey}
+                                                        disabled={apolloSaving || !apolloKey.trim()}
+                                                        className="px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+                                                    >
+                                                        {apolloSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                        Mettre à jour
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={handleRemoveApolloKey}
+                                                disabled={apolloSaving}
+                                                className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors"
+                                            >
+                                                <Trash2 size={13} /> Supprimer la clé Apollo
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                Connecte ton compte Apollo.io pour rechercher de vrais contacts B2B.
+                                                Crée un compte sur <a href="https://app.apollo.io" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline inline-flex items-center gap-1">apollo.io <ExternalLink size={10} /></a> → Settings → API → "Create new API key".
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type={apolloKeyVisible ? 'text' : 'password'}
+                                                        value={apolloKey}
+                                                        onChange={(e) => setApolloKey(e.target.value)}
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleSaveApolloKey()}
+                                                        placeholder="Colle ta clé API Apollo.io ici"
+                                                        className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-indigo-400 dark:text-white"
+                                                    />
+                                                    <button onClick={() => setApolloKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                        {apolloKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={handleSaveApolloKey}
+                                                    disabled={apolloSaving || !apolloKey.trim()}
+                                                    className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2"
+                                                >
+                                                    {apolloSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                    Enregistrer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {apolloMessage && (
+                                        <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-semibold ${
+                                            apolloMessage.type === 'success'
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
+                                                : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
+                                        }`}>
+                                            {apolloMessage.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                            {apolloMessage.text}
+                                        </div>
+                                    )}
+                                </div>
+                             </div>
+
+                             {/* Hunter.io — Email Finder */}
+                             <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                <div className="flex items-center gap-4 bg-gradient-to-r from-emerald-500 to-teal-600 p-5 text-white">
+                                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/30 flex-shrink-0">
+                                        <Mail size={24} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-base">Hunter.io — Recherche d'emails</h4>
+                                        <p className="text-xs text-emerald-100 mt-0.5">Trouve les vrais emails professionnels · 25 recherches/mois gratuites</p>
+                                    </div>
+                                    <div className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                                        hunterConfigured
+                                            ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-300/30'
+                                            : 'bg-white/10 text-white/70 border border-white/20'
+                                    }`}>
+                                        {hunterConfigured ? <><CheckCircle size={12} /> Connecté</> : <><AlertCircle size={12} /> Non configuré</>}
+                                    </div>
+                                </div>
+
+                                <div className="p-5 space-y-4 bg-white dark:bg-slate-900">
+                                    {hunterConfigured ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700">
+                                                <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Clé Hunter.io enregistrée</p>
+                                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">Les emails des prospects sont recherchés automatiquement lors de chaque import.</p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Remplacer la clé</p>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type={hunterKeyVisible ? 'text' : 'password'}
+                                                            value={hunterKey}
+                                                            onChange={(e) => setHunterKey(e.target.value)}
+                                                            placeholder="Nouvelle clé Hunter.io"
+                                                            className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-400 dark:text-white"
+                                                        />
+                                                        <button onClick={() => setHunterKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                            {hunterKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        onClick={handleSaveHunterKey}
+                                                        disabled={hunterSaving || !hunterKey.trim()}
+                                                        className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+                                                    >
+                                                        {hunterSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                        Mettre à jour
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={handleRemoveHunterKey}
+                                                disabled={hunterSaving}
+                                                className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors"
+                                            >
+                                                <Trash2 size={13} /> Supprimer la clé Hunter
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                Hunter.io trouve les vrais emails professionnels à partir d'un nom et d'un domaine.
+                                                Crée un compte gratuit sur <a href="https://hunter.io" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline inline-flex items-center gap-1">hunter.io <ExternalLink size={10} /></a> → API → copie ta clé.
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type={hunterKeyVisible ? 'text' : 'password'}
+                                                        value={hunterKey}
+                                                        onChange={(e) => setHunterKey(e.target.value)}
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleSaveHunterKey()}
+                                                        placeholder="Colle ta clé API Hunter.io ici"
+                                                        className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-400 dark:text-white"
+                                                    />
+                                                    <button onClick={() => setHunterKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                        {hunterKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={handleSaveHunterKey}
+                                                    disabled={hunterSaving || !hunterKey.trim()}
+                                                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2"
+                                                >
+                                                    {hunterSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                    Enregistrer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {hunterMessage && (
+                                        <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-semibold ${
+                                            hunterMessage.type === 'success'
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
+                                                : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
+                                        }`}>
+                                            {hunterMessage.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                            {hunterMessage.text}
+                                        </div>
+                                    )}
+                                </div>
+                             </div>
+
+                             {/* Claude (Anthropic) */}
+                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-sm">
+                                        <span className="text-white font-black text-sm">C</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-base">Claude (Anthropic)</h4>
+                                        <p className="text-xs text-slate-400">3e provider IA · claude-sonnet-4-6 / opus-4-7</p>
+                                    </div>
+                                    {claudeConfigured && (
+                                        <div className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                            <CheckCircle size={14} /> Connecté
+                                        </div>
+                                    )}
+                                </div>
+
+                                {claudeConfigured ? (
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Clé Anthropic enregistrée</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Claude est disponible comme provider IA dans Franck et les analyses.</p>
+                                        <div className="flex gap-2">
+                                            <div className="relative flex-1">
+                                                <input
+                                                    type={claudeKeyVisible ? 'text' : 'password'}
+                                                    value={claudeKey}
+                                                    onChange={(e) => setClaudeKey(e.target.value)}
+                                                    placeholder="Nouvelle clé Anthropic"
+                                                    className="w-full px-3 py-2.5 pr-10 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm outline-none focus:border-orange-400 dark:text-white"
+                                                />
+                                                <button onClick={() => setClaudeKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                    {claudeKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                </button>
+                                            </div>
+                                            {claudeKey.trim() && (
+                                                <button onClick={handleSaveClaudeKey} disabled={claudeSaving} className="px-3 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                                                    {claudeSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                </button>
+                                            )}
+                                            <button onClick={handleRemoveClaudeKey} disabled={claudeSaving} className="px-3 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors flex items-center gap-1.5">
+                                                <Trash2 size={14} /> Supprimer
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            Ajoute Claude d'Anthropic comme 3e provider IA. Idéal pour le mode Code Review de Franck.
+                                            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline ml-1">Obtenir une clé →</a>
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <div className="relative flex-1">
+                                                <input
+                                                    type={claudeKeyVisible ? 'text' : 'password'}
+                                                    value={claudeKey}
+                                                    onChange={(e) => setClaudeKey(e.target.value)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveClaudeKey()}
+                                                    placeholder="sk-ant-api03-..."
+                                                    className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-orange-400 dark:text-white"
+                                                />
+                                                <button onClick={() => setClaudeKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                    {claudeKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                </button>
+                                            </div>
+                                            <button
+                                                onClick={handleSaveClaudeKey}
+                                                disabled={claudeSaving || !claudeKey.trim()}
+                                                className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2"
+                                            >
+                                                {claudeSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                Enregistrer
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {claudeMessage && (
+                                    <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-semibold mt-3 ${
+                                        claudeMessage.type === 'success'
+                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
+                                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
+                                    }`}>
+                                        {claudeMessage.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                        {claudeMessage.text}
+                                    </div>
+                                )}
+                             </div>
+
                         </div>
                     )}
 
@@ -886,6 +1396,60 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <h3 className="text-xl font-serif text-slate-800 dark:text-white mb-2">Stockage Cloud</h3>
                             <p className="text-sm text-slate-500 mb-6">Synchronisez automatiquement les fichiers de vos clients avec votre cloud préféré.</p>
+
+                            {/* Santé des données — SQLite local */}
+                            <div className="bg-emerald-50/80 dark:bg-emerald-950/30 rounded-2xl p-5 border border-emerald-200/80 dark:border-emerald-800/50">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Shield size={18} className="text-emerald-600 dark:text-emerald-400" />
+                                    <h4 className="font-bold text-slate-800 dark:text-white">Santé des données</h4>
+                                </div>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
+                                    La base SQLite est sauvegardée au démarrage du serveur et selon la planification. Pour restaurer une copie, voir la documentation du projet&nbsp;:
+                                    <code className="mx-1 text-[10px] bg-white/60 dark:bg-slate-800 px-1 rounded">docs/backup-restore.md</code>
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-4">
+                                    <div className="bg-white/70 dark:bg-slate-800/80 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900/40">
+                                        <p className="text-[10px] uppercase font-bold text-slate-400">Dernière sauvegarde locale</p>
+                                        <p className="font-semibold text-slate-800 dark:text-slate-100">
+                                            {backupStatus?.lastBackup
+                                                ? new Date(backupStatus.lastBackup).toLocaleString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                                : '—'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-white/70 dark:bg-slate-800/80 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900/40">
+                                        <p className="text-[10px] uppercase font-bold text-slate-400">Fichiers conservés / taille</p>
+                                        <p className="font-semibold text-slate-800 dark:text-slate-100">
+                                            {backupStatus != null ? `${backupStatus.backupCount} · ${backupStatus.totalSizeMB} Mo` : '…'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => manualLocalBackupMutation.mutate(undefined, { onSuccess: () => refetchBackupStatus() })}
+                                        disabled={manualLocalBackupMutation.isPending}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl disabled:opacity-50"
+                                    >
+                                        {manualLocalBackupMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
+                                        Sauvegarder maintenant
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => downloadBundleMutation.mutate()}
+                                        disabled={downloadBundleMutation.isPending}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-bold rounded-xl"
+                                    >
+                                        {downloadBundleMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Package size={14} />}
+                                        Télécharger paquet (.zip)
+                                    </button>
+                                </div>
+                                {manualLocalBackupMutation.isSuccess && (
+                                    <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">{manualLocalBackupMutation.data?.message || 'Sauvegarde créée.'}</p>
+                                )}
+                                {(manualLocalBackupMutation.isError || downloadBundleMutation.isError) && (
+                                    <p className="mt-2 text-xs text-red-600">{(manualLocalBackupMutation.error as Error)?.message || (downloadBundleMutation.error as Error)?.message}</p>
+                                )}
+                            </div>
 
                             {/* Google Drive */}
                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">

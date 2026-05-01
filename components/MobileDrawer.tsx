@@ -11,7 +11,7 @@ import { useUIStore } from '../stores';
 import {
     X, LayoutGrid, StickyNote, Wand2, Tent, Target,
     Mail, MessageCircle, Sparkles, Settings,
-    HelpCircle, Sun, Moon, Upload,
+    HelpCircle, Sun, Moon, Upload, Sunrise,
 } from 'lucide-react';
 
 export const MobileDrawer: React.FC = () => {
@@ -46,6 +46,7 @@ export const MobileDrawer: React.FC = () => {
     };
 
     const items = [
+        { icon: Sunrise, label: 'Ma journée', color: 'text-amber-500', action: () => { close(); navigate('/today'); } },
         { icon: LayoutGrid, label: 'Briefing du jour', color: 'text-orange-500', action: () => menuAction(() => setShowMondayBriefing(true)) },
         { icon: StickyNote, label: 'Notes rapides', color: 'text-amber-500', action: () => menuAction(() => setShowNotes(true)) },
         { icon: Wand2, label: 'Atelier Média', color: 'text-purple-500', action: () => menuAction(() => setShowMediaWorkshop(true)) },

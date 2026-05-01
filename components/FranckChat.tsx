@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 
-import { Bot, Send, X, Sparkles, Calendar, FileText, DollarSign, Clock, Lightbulb, Mic, MicOff, CreditCard, AlertTriangle, Mail, Coffee, CheckSquare, Zap } from 'lucide-react';
+import { Bot, Send, X, Sparkles, Calendar, FileText, DollarSign, Clock, Lightbulb, Mic, MicOff, CreditCard, AlertTriangle, Mail, Coffee, CheckSquare, Zap, Code2, ChevronDown, Copy, CheckCircle2, Users } from 'lucide-react';
 import { QueryClient } from '@tanstack/react-query';
 
 import { ChatMessage, Project, CalendarEvent } from '../types';
@@ -41,46 +42,128 @@ interface FranckChatProps {
 
 
 
-function formatFranckMessage(text: string): string {
+function formatFranckMessage(text: string, codeMode = false): string {
     if (!text) return '';
-    let html = text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/`(.+?)`/g, '<code class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs">$1</code>');
 
-    const lines = html.split('\n');
-    const result: string[] = [];
-    let inList = false;
+    // Handle fenced code blocks first (before escaping)
+    const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+    const parts: { type: 'text' | 'code'; content: string; lang: string }[] = [];
+    let lastIndex = 0;
+    let match;
 
-    for (const line of lines) {
-        const bulletMatch = line.match(/^(\s*)[•\-\*]\s+(.+)/);
-        const numberMatch = line.match(/^(\s*)\d+[\.\)]\s+(.+)/);
-        if (bulletMatch || numberMatch) {
-            if (!inList) { result.push('<ul class="space-y-1 my-1.5">'); inList = true; }
-            const content = bulletMatch ? bulletMatch[2] : numberMatch![2];
-            result.push(`<li class="flex items-start gap-1.5"><span class="text-brand-orange mt-0.5 shrink-0">•</span><span>${content}</span></li>`);
-        } else {
-            if (inList) { result.push('</ul>'); inList = false; }
-            if (line.trim() === '') {
-                result.push('<div class="h-2"></div>');
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            parts.push({ type: 'text', content: text.slice(lastIndex, match.index), lang: '' });
+        }
+        parts.push({ type: 'code', content: match[2] || '', lang: match[1] || '' });
+        lastIndex = codeBlockRegex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+        parts.push({ type: 'text', content: text.slice(lastIndex), lang: '' });
+    }
+
+    if (parts.length === 0 || (parts.length === 1 && parts[0].type === 'text')) {
+        // No code blocks — use standard formatting
+        let html = text
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/`(.+?)`/g, '<code class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs font-mono">$1</code>');
+
+        const lines = html.split('\n');
+        const result: string[] = [];
+        let inList = false;
+
+        for (const line of lines) {
+            const bulletMatch = line.match(/^(\s*)[•\-\*]\s+(.+)/);
+            const numberMatch = line.match(/^(\s*)\d+[\.\)]\s+(.+)/);
+            if (bulletMatch || numberMatch) {
+                if (!inList) { result.push('<ul class="space-y-1 my-1.5">'); inList = true; }
+                const content = bulletMatch ? bulletMatch[2] : numberMatch![2];
+                result.push(`<li class="flex items-start gap-1.5"><span class="text-brand-orange mt-0.5 shrink-0">•</span><span>${content}</span></li>`);
             } else {
-                result.push(`<p class="leading-relaxed">${line}</p>`);
+                if (inList) { result.push('</ul>'); inList = false; }
+                if (line.trim() === '') {
+                    result.push('<div class="h-2"></div>');
+                } else {
+                    result.push(`<p class="leading-relaxed">${line}</p>`);
+                }
             }
         }
+        if (inList) result.push('</ul>');
+        return result.join('');
     }
-    if (inList) result.push('</ul>');
-    return result.join('');
+
+    // Mixed content with code blocks
+    return parts.map(part => {
+        if (part.type === 'code') {
+            const escaped = part.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const lang = part.lang ? `<span class="text-[10px] text-slate-400 ml-auto">${part.lang}</span>` : '';
+            return `<div class="my-2 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <span class="text-[10px] font-bold text-slate-500">CODE</span>${lang}
+                </div>
+                <pre class="p-3 overflow-x-auto text-xs font-mono bg-slate-950 text-slate-100 dark:text-slate-200 leading-relaxed">${escaped}</pre>
+            </div>`;
+        }
+        // Text part
+        let html = part.content
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/`(.+?)`/g, '<code class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs font-mono">$1</code>');
+        return `<p class="leading-relaxed">${html.replace(/\n/g, '<br/>')}</p>`;
+    }).join('');
 }
 
+const CODE_COMMANDS = [
+    { cmd: '/review', label: '🔍 Review', prompt: 'Analyse ce code, identifie les problèmes et suggère des améliorations :\n\n' },
+    { cmd: '/optimize', label: '⚡ Optimize', prompt: 'Optimise ce code pour de meilleures performances et lisibilité :\n\n' },
+    { cmd: '/tailwind', label: '🎨 Tailwind', prompt: 'Convertis ce code CSS en classes Tailwind CSS. Garde les mêmes effets visuels :\n\n' },
+    { cmd: '/component', label: '🧩 Component', prompt: 'Transforme ce code en un composant React réutilisable avec TypeScript et Tailwind :\n\n' },
+];
+
 export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, projects = [], events = [], todos = [], onAddTodo, onAddEvent, queryClient }) => {
+    const location = useLocation();
+
+    const routeClientContext = useMemo(() => {
+        const m = location.pathname.match(/^\/client\/([^/]+)/);
+        if (!m) return null;
+        const id = decodeURIComponent(m[1]);
+        const p = projects.find((pr) => pr.id === id);
+        if (!p) return null;
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        return {
+            projectId: p.id,
+            clientName: p.clientName,
+            openInvoices: p.invoices.filter((i) => i.status !== 'Paid' && i.type === 'Invoice').length,
+            overdueInvoices: p.invoices.filter(
+                (i) =>
+                    i.status !== 'Paid' &&
+                    i.dueDate &&
+                    new Date(i.dueDate + 'T12:00:00') < todayStart,
+            ).length,
+            urgentTasks: p.tasks.filter((t) => !t.completed && t.priority === 'High').length,
+        };
+    }, [location.pathname, projects]);
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
-
     const [input, setInput] = useState('');
-
     const [isThinking, setIsThinking] = useState(false);
     const [thinkingLabel, setThinkingLabel] = useState('');
+    const [codeMode, setCodeModeState] = useState<boolean>(() => {
+        try { return localStorage.getItem('franck_code_mode') === 'true'; } catch { return false; }
+    });
+    const setCodeMode = (updater: boolean | ((prev: boolean) => boolean)) => {
+        setCodeModeState(prev => {
+            const next = typeof updater === 'function' ? (updater as (p: boolean) => boolean)(prev) : updater;
+            try { localStorage.setItem('franck_code_mode', String(next)); } catch {}
+            return next;
+        });
+    };
+    const [showCodeCommands, setShowCodeCommands] = useState(false);
+    const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
 
     const chatSession = useRef<any>(null);
 
@@ -120,26 +203,40 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         'low': 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
     };
 
-    // Static fallback quick actions
-    const quickActions = [
-        { icon: Calendar, label: 'Agenda', prompt: 'Comment se présente ma journée ?' },
-        { icon: DollarSign, label: 'Finances', prompt: 'Comment vont mes finances ?' },
-        { icon: FileText, label: 'Tâches', prompt: 'Quelles sont mes tâches prioritaires ?' },
-        { icon: Lightbulb, label: 'Conseils', prompt: 'Tu as des suggestions pour moi ?' },
-    ];
-    
-    // Function to get app context
+    const quickActions = useMemo(() => {
+        const base: { icon: typeof Calendar; label: string; prompt: string }[] = [
+            { icon: Calendar, label: 'Agenda', prompt: 'Comment se présente ma journée ?' },
+            { icon: DollarSign, label: 'Finances', prompt: 'Comment vont mes finances ?' },
+            { icon: FileText, label: 'Tâches', prompt: 'Quelles sont mes tâches prioritaires ?' },
+            { icon: Lightbulb, label: 'Conseils', prompt: 'Tu as des suggestions pour moi ?' },
+        ];
+        if (routeClientContext) {
+            return [
+                {
+                    icon: Users,
+                    label: 'Ce client',
+                    prompt: `Tu es sur la fiche client "${routeClientContext.clientName}". Résume la situation : factures ouvertes ${routeClientContext.openInvoices}, factures en retard ${routeClientContext.overdueInvoices}, tâches urgentes ${routeClientContext.urgentTasks}. Propose une prochaine action concrète.`,
+                },
+                ...base,
+            ];
+        }
+        return base;
+    }, [routeClientContext]);
+
     const getAppContext = () => ({
-        projects: projects.map(p => ({
+        projects: projects.map((p) => ({
             id: p.id,
             clientName: p.clientName,
             status: p.status,
             phase: p.phase,
             invoices: p.invoices,
-            tasks: p.tasks
+            tasks: p.tasks,
         })),
-        events: events.slice(0, 20), // Limit to avoid too much data
-        todos: todos
+        events: events.slice(0, 20),
+        todos: todos,
+        routePath: location.pathname,
+        routeSearch: location.search,
+        activeClient: routeClientContext,
     });
 
     // Initialize Speech Recognition
@@ -229,10 +326,9 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
     }, []);
     
-    // Update chat session when context changes
     useEffect(() => {
         chatSession.current = createChatSession(getAppContext);
-    }, [projects, events, todos]);
+    }, [projects, events, todos, location.pathname, location.search, routeClientContext]);
 
     // Fetch proactive suggestions when chat opens
     useEffect(() => {
@@ -407,7 +503,18 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
                 </div>
 
-                <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-full transition-colors"><X size={20} /></button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setCodeMode(m => !m)}
+                        title={codeMode ? 'Passer en mode chat' : 'Passer en mode Code Review'}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            codeMode ? 'bg-violet-600 text-white shadow-inner' : 'bg-white/20 text-white/80 hover:bg-white/30'
+                        }`}
+                    >
+                        <Code2 size={13} /> {codeMode ? 'Code' : '</>'}
+                    </button>
+                    <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-full transition-colors"><X size={20} /></button>
+                </div>
 
             </div>
 
@@ -426,13 +533,25 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                         )}
 
                         {msg.role === 'user' ? (
-                            <div className="max-w-[80%] p-3 rounded-2xl text-sm whitespace-pre-wrap bg-orange-100 text-orange-900 rounded-br-none">
+                            <div className={`max-w-[80%] p-3 rounded-2xl text-sm bg-orange-100 text-orange-900 rounded-br-none ${codeMode ? 'font-mono text-xs whitespace-pre-wrap' : 'whitespace-pre-wrap'}`}>
                                 {msg.text}
                             </div>
                         ) : (
-                            <div className="max-w-[85%] p-4 rounded-2xl text-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-bl-none franck-message"
-                                dangerouslySetInnerHTML={{ __html: formatFranckMessage(msg.text) }}
-                            />
+                            <div className="relative group max-w-[85%]">
+                                <div className="p-4 rounded-2xl text-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm rounded-bl-none franck-message"
+                                    dangerouslySetInnerHTML={{ __html: formatFranckMessage(msg.text, codeMode) }}
+                                />
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(msg.text);
+                                        setCopiedMsgIdx(idx);
+                                        setTimeout(() => setCopiedMsgIdx(null), 2000);
+                                    }}
+                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-400 hover:text-slate-600 transition-all"
+                                >
+                                    {copiedMsgIdx === idx ? <CheckCircle2 size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                                </button>
+                            </div>
                         )}
 
                     </div>
@@ -522,65 +641,73 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
 
             {/* Input */}
-
-            <div className="p-4 border-t border-white/50 dark:border-white/10">
+            <div className="p-4 border-t border-white/50 dark:border-white/10 space-y-2">
+                {/* Code commands bar */}
+                {codeMode && (
+                    <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                        {CODE_COMMANDS.map(cc => (
+                            <button
+                                key={cc.cmd}
+                                onClick={() => setInput(prev => cc.prompt + prev)}
+                                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-[10px] font-bold hover:bg-violet-200 dark:hover:bg-violet-900/60 transition-colors"
+                                title={cc.cmd}
+                            >
+                                {cc.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <div className="relative">
+                    {codeMode ? (
+                        <textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend();
+                            }}
+                            placeholder="Colle ton code ici... (Ctrl+Entrée pour envoyer)"
+                            rows={5}
+                            className="w-full bg-slate-950 text-slate-100 dark:bg-slate-900 rounded-xl py-3 pl-4 pr-14 focus:outline-none focus:ring-2 focus:ring-violet-400 placeholder:text-slate-500 text-xs font-mono resize-none"
+                            autoFocus
+                        />
+                    ) : (
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                            placeholder="Demande quelque chose à Franck..."
+                            className="w-full bg-white/50 dark:bg-slate-800/50 rounded-xl py-3 pl-4 pr-24 focus:outline-none focus:ring-2 focus:ring-orange-300 placeholder:text-slate-400"
+                            autoFocus
+                        />
+                    )}
 
-                    <input 
-
-                        type="text" 
-
-                        value={input}
-
-                        onChange={(e) => setInput(e.target.value)}
-
-                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-
-                        placeholder="Demande quelque chose à Franck..."
-
-                        className="w-full bg-white/50 dark:bg-slate-800/50 rounded-xl py-3 pl-4 pr-24 focus:outline-none focus:ring-2 focus:ring-orange-300 placeholder:text-slate-400"
-
-                        autoFocus // Add autoFocus here
-
-                    />
-
-                    <div className="absolute right-2 top-2 flex gap-1">
-
-                        <button 
-
-                            onClick={toggleVoiceRecognition}
-
-                            className={`p-1.5 rounded-lg transition-all ${
-                                isListening 
-                                    ? 'bg-red-500 text-white animate-pulse' 
-                                    : 'bg-purple-500 text-white hover:bg-purple-600'
-                            }`}
-
-                            title={isListening ? 'Arrêter l\'écoute' : 'Parler à Franck'}
-
-                        >
-
-                            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
-
-                        </button>
-
-                        <button 
-
+                    <div className={`absolute right-2 flex gap-1 ${codeMode ? 'bottom-2' : 'top-2'}`}>
+                        {!codeMode && (
+                            <button
+                                onClick={toggleVoiceRecognition}
+                                className={`p-1.5 rounded-lg transition-all ${
+                                    isListening
+                                        ? 'bg-red-500 text-white animate-pulse'
+                                        : 'bg-purple-500 text-white hover:bg-purple-600'
+                                }`}
+                                title={isListening ? "Arrêter l'écoute" : 'Parler à Franck'}
+                            >
+                                {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                            </button>
+                        )}
+                        <button
                             onClick={handleSend}
-
-                            className="p-1.5 bg-brand-orange text-white rounded-lg hover:bg-orange-600 transition-colors"
-
+                            className={`p-1.5 text-white rounded-lg transition-colors ${codeMode ? 'bg-violet-600 hover:bg-violet-700' : 'bg-brand-orange hover:bg-orange-600'}`}
                         >
-
                             {input.length > 0 ? <Send size={16} /> : <Sparkles size={16} />}
-
                         </button>
-
                     </div>
-
                 </div>
-
+                {codeMode && (
+                    <p className="text-[10px] text-slate-400 text-center">Mode Code Review actif · Ctrl+Entrée pour envoyer</p>
+                )}
             </div>
 
         </div>

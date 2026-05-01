@@ -68,6 +68,10 @@ interface UIState {
     // Subscription
     subscriptionDate: string; // ISO date of subscription start
 
+    /** Email relance templates — variables: {client}, {montant}, {numero}, {echeance} */
+    relanceTemplatePolite: string;
+    relanceTemplateFirm: string;
+
     // Actions
     setTheme: (theme: Theme) => void;
     cycleTheme: () => void;
@@ -115,6 +119,8 @@ interface UIState {
     setNotificationPrefs: (v: { id: string; title: string; desc: string; checked: boolean }[]) => void;
     setIsTourCompleted: (v: boolean) => void;
     setSubscriptionDate: (v: string) => void;
+    setRelanceTemplatePolite: (v: string) => void;
+    setRelanceTemplateFirm: (v: string) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -192,6 +198,13 @@ export const useUIStore = create<UIState>((set, get) => ({
 
     // Subscription date (persisted)
     subscriptionDate: localStorage.getItem('marion_sub_date') || new Date().toISOString().split('T')[0],
+
+    relanceTemplatePolite:
+        localStorage.getItem('marion_relance_polite') ||
+        `Bonjour,\n\nSauf erreur de notre part, la facture {numero} ({montant} CHF, échéance {echeance}) est toujours en attente de paiement.\n\nMerci de faire le nécessaire.\n\nCordialement`,
+    relanceTemplateFirm:
+        localStorage.getItem('marion_relance_firm') ||
+        `Bonjour,\n\nNous n'avons pas reçu le règlement de la facture {numero} ({montant} CHF), échue le {echeance}. Merci de régulariser sous 8 jours ou de nous contacter.\n\nCordialement`,
 
     // Theme actions
     setTheme: (theme) => {
@@ -294,5 +307,13 @@ export const useUIStore = create<UIState>((set, get) => ({
     setSubscriptionDate: (v) => {
         localStorage.setItem('marion_sub_date', v);
         set({ subscriptionDate: v });
+    },
+    setRelanceTemplatePolite: (v) => {
+        localStorage.setItem('marion_relance_polite', v);
+        set({ relanceTemplatePolite: v });
+    },
+    setRelanceTemplateFirm: (v) => {
+        localStorage.setItem('marion_relance_firm', v);
+        set({ relanceTemplateFirm: v });
     },
 }));

@@ -9,7 +9,7 @@ import { apiFetch } from '../../services/api';
 
 // ──────────────────────────── Types ────────────────────────────
 
-export type ToolMode = 'none' | 'resize' | 'ai' | 'adjust' | 'export';
+export type ToolMode = 'none' | 'resize' | 'ai' | 'adjust' | 'export' | 'generate';
 export type ExportFormat = 'png' | 'jpeg' | 'webp';
 
 export interface Filters {
@@ -91,6 +91,7 @@ export interface MediaEditorActions {
     handleUpload: (file: File) => void;
     handleNewImage: () => void;
     handleDrop: (e: React.DragEvent) => void;
+    loadImageFromDataUrl: (dataUrl: string, fileName?: string) => void;
     // Filters
     setFilter: (key: keyof Filters, value: number) => void;
     resetFilters: () => void;
@@ -300,6 +301,28 @@ export function useMediaEditor() {
         loadImage(file);
         setActiveTool('adjust');
     }, [loadImage]);
+
+    const loadImageFromDataUrl = useCallback((dataUrl: string, name: string = 'ai-generated.png') => {
+        setFileName(name);
+        setOriginalFile(null);
+        setImage(dataUrl);
+        setOriginalImage(dataUrl);
+        const img = new Image();
+        img.onload = () => {
+            setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+            setCustomDims({ width: img.naturalWidth, height: img.naturalHeight });
+        };
+        img.src = dataUrl;
+        historyRef.current = [{
+            imageDataUrl: dataUrl,
+            filters: { ...DEFAULT_FILTERS },
+            rotation: 0,
+            flipH: false,
+            flipV: false,
+        }];
+        historyIndexRef.current = 0;
+        setActiveTool('adjust');
+    }, []);
 
     const handleNewImage = useCallback(() => {
         setImage(null);
@@ -606,6 +629,7 @@ export function useMediaEditor() {
         handleUpload,
         handleNewImage,
         handleDrop,
+        loadImageFromDataUrl,
         setFilter,
         resetFilters,
         setRotation,

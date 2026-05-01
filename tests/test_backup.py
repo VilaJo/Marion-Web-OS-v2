@@ -114,3 +114,31 @@ def test_validate_json_decorator():
         # Valid
         resp = client.post('/test', json={"name": "test", "age": 25})
         assert resp.status_code == 200
+
+
+class TestBackupHTTPApi:
+    """Integration tests for /api/v1/backup* (requires app + auth)."""
+
+    def test_backup_status_authenticated(self, client, auth_headers):
+        resp = client.get('/api/v1/backup/status', headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data.get('success') is True
+        assert 'backupCount' in data
+        assert 'lastBackup' in data
+
+    def test_manual_backup_authenticated(self, client, auth_headers):
+        resp = client.get('/api/v1/backup', headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data.get('success') is True
+        assert 'path' in data
+
+    def test_bundle_download_authenticated(self, client, auth_headers):
+        from database.db import init_database
+
+        init_database()
+        resp = client.get('/api/v1/backup/bundle', headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.mimetype == 'application/zip'
+        assert len(resp.data) > 100

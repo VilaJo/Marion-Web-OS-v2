@@ -63,6 +63,21 @@ git clone https://github.com/VilaJo/Marion-CRM-v1.0.git
 ./LANCER_MARION.command
 ```
 
+### Développement local (tests & build)
+
+```bash
+# Backend — activer le venv du projet, puis :
+python3 -m pytest tests/ -v
+
+# Frontend — à la racine du repo :
+npm ci
+npx tsc --noEmit
+npm run test
+npm run build
+```
+
+La CI (`.github/workflows/ci.yml`) exécute les mêmes étapes sur les pull requests vers `main`.
+
 ---
 
 ## 🎨 Galerie & Thèmes

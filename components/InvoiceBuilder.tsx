@@ -5,6 +5,7 @@ import { formatCurrency } from '../utils';
 import { apiFetch } from '../services/api';
 import { Language, LANGUAGE_OPTIONS, invoiceT } from '../translations/i18n';
 import { printElementAsPdf } from '../utils/pdfExport';
+import { useUIStore } from '../stores';
 
 declare const confetti: any;
 
@@ -19,6 +20,7 @@ interface InvoiceBuilderProps {
 }
 
 export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project, allProjects = [], onSave, onClose, currency = 'CHF', currentTheme }) => {
+    const tjhFromSettings = useUIStore((s) => s.tjh);
     // Manually editable sender info and invoice title
     const [senderName, setSenderName] = useState<string>('Marion Kindynis');
     const [senderAddress, setSenderAddress] = useState<string>('4A chemin du Port • 1246 • Corsier');
@@ -158,6 +160,11 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
              setCurrentInvoice(prev => ({ ...prev, dueDate: defaultDue.toISOString().split('T')[0] }));
         }
     }, []);
+
+    useEffect(() => {
+        const n = parseFloat(String(tjhFromSettings).replace(',', '.'));
+        if (!Number.isNaN(n) && n > 0) setHourlyRate(n);
+    }, [tjhFromSettings]);
 
     // Sync Client Data
     useEffect(() => {

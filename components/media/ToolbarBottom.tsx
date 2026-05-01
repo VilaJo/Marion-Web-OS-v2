@@ -4,7 +4,7 @@
 import React from 'react';
 import {
     Crop, Sliders, Sparkles, Download, Eye, EyeOff,
-    Undo2, Redo2, ImagePlus
+    Undo2, Redo2, ImagePlus, WandSparkles,
 } from 'lucide-react';
 import type { MediaEditorState, MediaEditorActions, ToolMode } from './useMediaEditor';
 
@@ -17,6 +17,7 @@ const TOOLS: { id: ToolMode; icon: React.ElementType; label: string }[] = [
     { id: 'adjust', icon: Sliders, label: 'Réglages' },
     { id: 'resize', icon: Crop, label: 'Format' },
     { id: 'ai', icon: Sparkles, label: 'IA' },
+    { id: 'generate', icon: WandSparkles, label: 'Générer' },
     { id: 'export', icon: Download, label: 'Export' },
 ];
 

@@ -617,27 +617,61 @@ def gcal_delete_event(event_id):
 
 @oauth_bp.route('/gcal/sync-status')
 def gcal_sync_status():
-    """Check if Google Calendar is connected — uses proactive token refresh, no extra API call."""
+    """Check if Google Calendar is connected.
+
+    Verifies by making a lightweight tokeninfo call to Google so that
+    stale / expired tokens are correctly detected even when expires_at
+    is unknown (e.g. right after server restart from persisted DB tokens).
+    """
     email = get_first_email()
     if not email:
         return jsonify({"connected": False})
 
     access_token = get_valid_token(email)
-    if access_token:
+    if not access_token:
+        return jsonify({
+            "connected": False,
+            "email": email,
+            "needsReconnect": True,
+            "error": "Token expired or unavailable",
+        })
+
+    # Quick token validation: Google's tokeninfo endpoint is free & fast
+    try:
+        check = requests.get(
+            "https://www.googleapis.com/oauth2/v3/tokeninfo",
+            params={"access_token": access_token},
+            timeout=5,
+        )
+        if check.status_code == 200:
+            return jsonify({
+                "connected": True,
+                "email": email,
+                "lastSync": datetime.now().isoformat(),
+            })
+
+        # 400 from tokeninfo means the token is invalid/expired
+        # Try one more proactive refresh before giving up
+        if refresh_google_token(email):
+            return jsonify({
+                "connected": True,
+                "email": email,
+                "lastSync": datetime.now().isoformat(),
+            })
+
+        return jsonify({
+            "connected": False,
+            "email": email,
+            "needsReconnect": True,
+            "error": "Token expired — please reconnect Google Calendar",
+        })
+    except Exception:
+        # Network error — assume connected to avoid false "reconnect" loops
         return jsonify({
             "connected": True,
             "email": email,
             "lastSync": datetime.now().isoformat(),
         })
-
-    # Token unavailable after refresh attempt
-    has_refresh = bool(oauth_tokens.get(email, {}).get('refresh_token'))
-    return jsonify({
-        "connected": False,
-        "email": email,
-        "needsReconnect": not has_refresh,
-        "error": "Token expired",
-    })
 
 
 # ============================================================================

@@ -3,8 +3,135 @@ import { createPortal } from 'react-dom';
 import {
     ArrowLeft, Camera, Plus, Trash2, Mail, Phone, Globe, MapPin,
     Link2, Server, FolderPlus, Sparkles, User, ExternalLink,
+    LayoutTemplate, ChevronDown, ChevronRight, CheckCircle2,
 } from 'lucide-react';
-import { ProjectStatus, ClientProfile } from '../types';
+import { ProjectStatus, ClientProfile, WorkflowPhase } from '../types';
+
+// ---------------------------------------------------------------------------
+// Project templates
+// ---------------------------------------------------------------------------
+export interface ProjectTemplate {
+    id: string;
+    label: string;
+    description: string;
+    icon: string;
+    defaultStatus: ProjectStatus;
+    defaultPhase: WorkflowPhase;
+    tasks: { title: string; priority: 'Low' | 'Medium' | 'High'; phase: WorkflowPhase }[];
+    cursorPrompts: string[];
+}
+
+export const PROJECT_TEMPLATES: ProjectTemplate[] = [
+    {
+        id: 'landing-saas',
+        label: 'Landing Page SaaS',
+        description: 'Site vitrine + hero + pricing + onboarding',
+        icon: '🚀',
+        defaultStatus: ProjectStatus.EN_COURS,
+        defaultPhase: WorkflowPhase.DESIGN,
+        tasks: [
+            { title: 'Brief et moodboard', priority: 'High', phase: WorkflowPhase.DISCOVERY },
+            { title: 'Wireframes (Figma)', priority: 'High', phase: WorkflowPhase.DESIGN },
+            { title: 'Section Hero + navigation', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Section Features (3-6 blocs)', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Section Pricing (3 plans)', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Section Testimonials', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Section CTA final + footer', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Responsive mobile', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Dark mode', priority: 'Low', phase: WorkflowPhase.DEV },
+            { title: 'SEO & meta tags', priority: 'Medium', phase: WorkflowPhase.QA },
+            { title: 'Tests cross-browser', priority: 'High', phase: WorkflowPhase.QA },
+            { title: 'Déploiement Vercel', priority: 'High', phase: WorkflowPhase.QA },
+        ],
+        cursorPrompts: ['Hero section avec gradient et CTA', 'Pricing table avec toggle annuel/mensuel', 'Footer responsive avec newsletter'],
+    },
+    {
+        id: 'ecommerce',
+        label: 'E-commerce',
+        description: 'Boutique en ligne complète avec panier',
+        icon: '🛒',
+        defaultStatus: ProjectStatus.EN_COURS,
+        defaultPhase: WorkflowPhase.DISCOVERY,
+        tasks: [
+            { title: 'Audit et brief e-commerce', priority: 'High', phase: WorkflowPhase.DISCOVERY },
+            { title: 'Architecture pages (catégories, fiches produit)', priority: 'High', phase: WorkflowPhase.STRATEGY },
+            { title: 'Maquettes Figma', priority: 'High', phase: WorkflowPhase.DESIGN },
+            { title: 'Page accueil + hero', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Liste produits + filtres', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Fiche produit', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Panier et checkout', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Intégration paiement (Stripe)', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Compte client + historique', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Responsive + performances', priority: 'High', phase: WorkflowPhase.QA },
+            { title: 'Tests achat complet', priority: 'High', phase: WorkflowPhase.QA },
+            { title: 'Mise en ligne + DNS', priority: 'High', phase: WorkflowPhase.QA },
+        ],
+        cursorPrompts: ['Product card avec hover zoom et add to cart', 'Checkout form multi-étapes', 'Filtres produits avec URL params'],
+    },
+    {
+        id: 'portfolio',
+        label: 'Portfolio',
+        description: 'Site portfolio créatif et personnel',
+        icon: '🎨',
+        defaultStatus: ProjectStatus.EN_COURS,
+        defaultPhase: WorkflowPhase.DESIGN,
+        tasks: [
+            { title: 'Brief créatif + direction artistique', priority: 'High', phase: WorkflowPhase.DISCOVERY },
+            { title: 'Sélection des projets à mettre en avant', priority: 'High', phase: WorkflowPhase.STRATEGY },
+            { title: 'Maquettes Figma', priority: 'High', phase: WorkflowPhase.DESIGN },
+            { title: 'Page d\'accueil + intro', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Grille portfolio filtrable', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Pages de cas d\'étude', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Page À propos', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Page Contact + formulaire', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Animations et transitions', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'SEO et performances', priority: 'High', phase: WorkflowPhase.QA },
+        ],
+        cursorPrompts: ['Portfolio grid avec filtres et animations', 'Hero section avec effet texte animé', 'Case study layout avec images et résultats'],
+    },
+    {
+        id: 'refonte',
+        label: 'Refonte de site',
+        description: 'Modernisation d\'un site existant',
+        icon: '♻️',
+        defaultStatus: ProjectStatus.EN_COURS,
+        defaultPhase: WorkflowPhase.DISCOVERY,
+        tasks: [
+            { title: 'Audit UX du site existant', priority: 'High', phase: WorkflowPhase.DISCOVERY },
+            { title: 'Analyse concurrentielle', priority: 'High', phase: WorkflowPhase.DISCOVERY },
+            { title: 'Définition des objectifs de refonte', priority: 'High', phase: WorkflowPhase.STRATEGY },
+            { title: 'Nouvelle architecture de l\'information', priority: 'High', phase: WorkflowPhase.STRATEGY },
+            { title: 'Nouvelles maquettes Figma', priority: 'High', phase: WorkflowPhase.DESIGN },
+            { title: 'Validation design client', priority: 'High', phase: WorkflowPhase.DESIGN },
+            { title: 'Développement nouvelles pages', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Migration contenus', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Redirections 301', priority: 'Medium', phase: WorkflowPhase.QA },
+            { title: 'Tests et recettage', priority: 'High', phase: WorkflowPhase.QA },
+            { title: 'Mise en ligne et suivi post-lancement', priority: 'High', phase: WorkflowPhase.QA },
+        ],
+        cursorPrompts: ['Audit composant existant et refonte Tailwind', 'Migration CSS vers Tailwind utilities', 'Navigation redesign avec animations'],
+    },
+    {
+        id: 'vitrine',
+        label: 'Site vitrine',
+        description: 'Site institutionnel pour PME ou artisan',
+        icon: '🏢',
+        defaultStatus: ProjectStatus.EN_COURS,
+        defaultPhase: WorkflowPhase.DISCOVERY,
+        tasks: [
+            { title: 'Réunion de brief client', priority: 'High', phase: WorkflowPhase.DISCOVERY },
+            { title: 'Collecte des contenus (textes, photos)', priority: 'High', phase: WorkflowPhase.STRATEGY },
+            { title: 'Maquettes Figma', priority: 'High', phase: WorkflowPhase.DESIGN },
+            { title: 'Développement page d\'accueil', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Développement pages internes', priority: 'High', phase: WorkflowPhase.DEV },
+            { title: 'Formulaire de contact', priority: 'Medium', phase: WorkflowPhase.DEV },
+            { title: 'Google Maps + infos pratiques', priority: 'Low', phase: WorkflowPhase.DEV },
+            { title: 'Responsive + SEO local', priority: 'High', phase: WorkflowPhase.QA },
+            { title: 'Mise en ligne + formation client', priority: 'High', phase: WorkflowPhase.QA },
+        ],
+        cursorPrompts: ['Page vitrine avec sections services et contact', 'Section équipe avec cards', 'Footer avec carte Google Maps'],
+    },
+];
 
 const AVATAR_GRADIENTS = [
     'from-brand-primary to-brand-secondary',
@@ -40,6 +167,9 @@ export interface NewClientData {
     avatarImage?: string;
     profile: ClientProfile;
     links: Record<string, string>;
+    templateId?: string;
+    templateTasks?: { title: string; priority: 'Low' | 'Medium' | 'High'; phase: WorkflowPhase }[];
+    cursorPrompts?: string[];
 }
 
 interface NewClientScreenProps {
@@ -52,6 +182,8 @@ interface NewClientScreenProps {
 export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClose, onCreate, isCreating = false }) => {
     const [name, setName] = useState('');
     const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.EN_COURS);
+    const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
+    const [templateSectionOpen, setTemplateSectionOpen] = useState(true);
     const [avatarColor, setAvatarColor] = useState(AVATAR_GRADIENTS[0]);
     const [avatarImage, setAvatarImage] = useState<string | undefined>();
     const [email, setEmail] = useState('');
@@ -85,6 +217,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
         setDriveLink(''); setServerAccess('');
         setCustomFields([]); setLinks({});
         setShowLinkAdd(false); setNewLinkKey(''); setNewLinkValue('');
+        setSelectedTemplate(null); setTemplateSectionOpen(true);
     };
 
     const handleClose = () => { resetForm(); onClose(); };
@@ -96,11 +229,14 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
         }
         onCreate({
             name: name.trim(),
-            status,
+            status: selectedTemplate?.defaultStatus ?? status,
             avatarColor,
             avatarImage,
             profile: { email, phone, website, address, driveLink, serverAccess, customFields },
             links,
+            templateId: selectedTemplate?.id,
+            templateTasks: selectedTemplate?.tasks,
+            cursorPrompts: selectedTemplate?.cursorPrompts,
         });
         resetForm();
     };
@@ -268,6 +404,67 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+
+                                {/* Template selector */}
+                                <div className={sectionCardCls}>
+                                    <button
+                                        className="w-full flex items-center justify-between gap-2 mb-1"
+                                        onClick={() => setTemplateSectionOpen(o => !o)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <LayoutTemplate size={16} className="text-brand-orange" />
+                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Template de projet</span>
+                                        </div>
+                                        {templateSectionOpen ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                                    </button>
+                                    {templateSectionOpen && (
+                                        <div className="mt-3 space-y-2">
+                                            <button
+                                                onClick={() => setSelectedTemplate(null)}
+                                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                                                    !selectedTemplate
+                                                        ? 'bg-gradient-to-r from-brand-orange to-pink-500 text-white shadow-sm'
+                                                        : 'bg-white/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/40 hover:bg-white dark:hover:bg-slate-700/50'
+                                                }`}
+                                            >
+                                                ✦ Projet vide (sans template)
+                                            </button>
+                                            {PROJECT_TEMPLATES.map(tpl => (
+                                                <button
+                                                    key={tpl.id}
+                                                    onClick={() => { setSelectedTemplate(tpl); setStatus(tpl.defaultStatus); }}
+                                                    className={`w-full text-left px-3 py-2 rounded-xl transition-all ${
+                                                        selectedTemplate?.id === tpl.id
+                                                            ? 'bg-gradient-to-r from-brand-orange to-pink-500 text-white shadow-sm'
+                                                            : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/40 hover:bg-white dark:hover:bg-slate-700/50'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{tpl.icon}</span>
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-semibold truncate">{tpl.label}</p>
+                                                            <p className={`text-[10px] truncate ${selectedTemplate?.id === tpl.id ? 'text-white/70' : 'text-slate-400'}`}>{tpl.tasks.length} tâches · {tpl.description}</p>
+                                                        </div>
+                                                        {selectedTemplate?.id === tpl.id && <CheckCircle2 size={14} className="ml-auto flex-shrink-0" />}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {selectedTemplate && (
+                                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Tâches incluses</p>
+                                            <div className="space-y-0.5 max-h-32 overflow-y-auto">
+                                                {selectedTemplate.tasks.map((t, i) => (
+                                                    <div key={i} className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-brand-orange flex-shrink-0" />
+                                                        {t.title}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Franck helper note */}

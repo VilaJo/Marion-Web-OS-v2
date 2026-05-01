@@ -6,13 +6,12 @@ const preview: Preview = {
   parameters: {
     layout: 'centered',
     backgrounds: {
-      default: 'light',
-      values: [
-        { name: 'light', value: 'linear-gradient(135deg, #FFE4D6 0%, #FFF8F5 50%, #FFF0F5 100%)' },
-        { name: 'dark', value: '#0F172A' },
-        { name: 'unicorn', value: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 50%, #f5d0fe 100%)' },
-        { name: 'white', value: '#FFFFFF' },
-      ],
+      options: {
+        light: { name: 'light', value: 'linear-gradient(135deg, #FFE4D6 0%, #FFF8F5 50%, #FFF0F5 100%)' },
+        dark: { name: 'dark', value: '#0F172A' },
+        unicorn: { name: 'unicorn', value: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 50%, #f5d0fe 100%)' },
+        white: { name: 'white', value: '#FFFFFF' }
+      }
     },
     controls: {
       matchers: {
@@ -38,6 +37,10 @@ const preview: Preview = {
   },
   initialGlobals: {
     theme: 'light',
+
+    backgrounds: {
+      value: 'light'
+    }
   },
 };
 

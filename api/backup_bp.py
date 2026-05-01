@@ -7,7 +7,9 @@ import json
 import requests
 from datetime import datetime
 from pathlib import Path
-from flask import Blueprint, jsonify, request
+import io
+import zipfile
+from flask import Blueprint, jsonify, request, send_file
 
 from services.logger import get_logger
 from database.db import backup_database, get_db_path
@@ -412,3 +414,39 @@ def backup_status():
         })
     except Exception as e:
         return error_response(e, user_msg="Impossible de récupérer le statut des sauvegardes.")
+
+
+@backup_bp.route('/api/v1/backup/bundle', methods=['GET'])
+def download_backup_bundle():
+    """
+    Zip the SQLite database plus a small manifest JSON for off-site archiving.
+    Uses the same snapshot logic as manual backup (works with :memory: and file DBs).
+    Does not include project files on disk — only marion.db + manifest.
+    """
+    try:
+        snap_path = backup_database(max_backups=10)
+        if not snap_path:
+            return jsonify({"error": "Impossible de créer une copie de la base."}), 500
+
+        db_path = get_db_path()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(Path(snap_path), arcname="marion.db")
+            manifest = {
+                "exportedAt": datetime.now().isoformat(),
+                "app": "Marion Web OS",
+                "databaseFile": "marion.db",
+                "dbPathHint": str(db_path),
+                "snapshotSource": snap_path,
+            }
+            zf.writestr("manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False))
+        buf.seek(0)
+        fname = f"marion_bundle_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        return send_file(
+            buf,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=fname,
+        )
+    except Exception as e:
+        return error_response(e, user_msg="Impossible de créer l'archive.")

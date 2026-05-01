@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUIStore, useNotificationStore, useAuthStore } from '../stores';
 import { Tooltip } from './Shared';
 import { NotificationCenterPanel } from './NotificationSystem';
@@ -19,7 +19,8 @@ import {
     LayoutGrid, Bell, Settings, Sun, Moon,
     HelpCircle, Sparkles, MessageCircle, Wand2, Tent,
     StickyNote, Target, Mail, Menu, Search,
-    Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X,
+    Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X, Telescope,
+    Code2, Newspaper, Sunrise,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
 
@@ -31,6 +32,8 @@ interface AppHeaderProps {
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDown, onReconnect }) => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const isActiveRoute = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
     const isOnline = useOfflineStore((s) => s.isOnline);
     const queueCount = useOfflineStore((s) => s.queue.length);
     const isSyncing = useOfflineStore((s) => s.isSyncing);
@@ -270,6 +273,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 <button onClick={() => setShowMondayBriefing(true)} className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-gradient-to-r from-brand-orange to-pink-500 text-white flex items-center gap-1.5">
                     <LayoutGrid size={14} /> Briefing
                 </button>
+                <Tooltip content="Ma journée — priorités et échéances">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/today')}
+                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5"
+                    >
+                        <Sunrise size={14} className="text-brand-orange" /> Journée
+                    </button>
+                </Tooltip>
                 <Tooltip content="Recherche (⌘K)">
                     <button onClick={() => setShowGlobalSearch(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors">
                         <Search size={18} className="text-slate-500 dark:text-slate-300" />
@@ -295,9 +307,52 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Target size={18} className="text-violet-500" />
                     </button>
                 </Tooltip>
+                <Tooltip content="Prospection">
+                    <button
+                        onClick={() => navigate('/prospection')}
+                        className={`hidden lg:flex p-2 rounded-full transition-colors ${
+                            isActiveRoute('/prospection')
+                                ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 ring-1 ring-indigo-300/50'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                        <Telescope size={18} className={isActiveRoute('/prospection') ? '' : 'text-indigo-500'} />
+                    </button>
+                </Tooltip>
+                <Tooltip content="Bibliothèque de Prompts">
+                    <button
+                        onClick={() => navigate('/prompts')}
+                        className={`hidden lg:flex p-2 rounded-full transition-colors ${
+                            isActiveRoute('/prompts')
+                                ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 ring-1 ring-violet-300/50'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                        <Code2 size={18} className={isActiveRoute('/prompts') ? '' : 'text-violet-500'} />
+                    </button>
+                </Tooltip>
+                <Tooltip content="Veille Marché">
+                    <button
+                        onClick={() => navigate('/market-watch')}
+                        className={`hidden lg:flex p-2 rounded-full transition-colors ${
+                            isActiveRoute('/market-watch')
+                                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 ring-1 ring-amber-300/50'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                        <Newspaper size={18} className={isActiveRoute('/market-watch') ? '' : 'text-amber-500'} />
+                    </button>
+                </Tooltip>
                 <Tooltip content="Emails">
-                    <button onClick={() => navigate('/emails')} className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors relative">
-                        <Mail size={18} className="text-blue-500" />
+                    <button
+                        onClick={() => navigate('/emails')}
+                        className={`hidden lg:flex p-2 rounded-full transition-colors relative ${
+                            isActiveRoute('/emails')
+                                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 ring-1 ring-blue-300/50'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                        <Mail size={18} className={isActiveRoute('/emails') ? '' : 'text-blue-500'} />
                         {unseenCount > 0 && (
                             <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-sm animate-pulse">
                                 {unseenCount > 99 ? '99+' : unseenCount}

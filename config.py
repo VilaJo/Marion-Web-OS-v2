@@ -28,7 +28,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.4.7'
+    APP_VERSION = '2.5.0'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -59,6 +59,7 @@ class Config:
     # -- API Keys -----------------------------------------------------------
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
+    APOLLO_API_KEY = os.getenv('APOLLO_API_KEY', '')
 
     # -- AI Provider Routing ------------------------------------------------
     AI_PROVIDER = os.getenv('AI_PROVIDER', 'cloud').lower()  # cloud | local | hybrid
@@ -145,6 +146,7 @@ class Config:
         has_google = '✓' if (cls.GOOGLE_CLIENT_ID and cls.GOOGLE_CLIENT_SECRET) else '✗'
         has_github = '✓' if cls.GITHUB_TOKEN else '✗'
         has_smtp = '✓' if cls.SMTP_HOST else '✗'
+        has_apollo = '✓' if cls.APOLLO_API_KEY else '✗'
         _config_logger.info(
             "\n╔══════════════════════════════════════════╗\n"
             "║  %s v%s\n"
@@ -154,11 +156,11 @@ class Config:
             "║  Database    : %s\n"
             "║  Data path   : %s\n"
             "║  Server      : %s:%s\n"
-            "║  Integrations: Gemini %s  Google %s  GitHub %s  SMTP %s\n"
+            "║  Integrations: Gemini %s  Google %s  GitHub %s  SMTP %s  Apollo %s\n"
             "╚══════════════════════════════════════════╝",
             cls.APP_NAME, cls.APP_VERSION, cls.ENVIRONMENT, cls.DEBUG, cls.LOG_LEVEL,
             cls.get_db_path(), cls.DATA_PATH, cls.HOST, cls.PORT,
-            has_gemini, has_google, has_github, has_smtp,
+            has_gemini, has_google, has_github, has_smtp, has_apollo,
         )
 
 

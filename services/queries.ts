@@ -792,13 +792,19 @@ export function useGoogleCalendarEvents(enabled: boolean = true) {
             const timeMin = startOfPrevMonth.toISOString();
             const timeMax = endRange.toISOString();
             const res = await apiFetch(`/api/v1/gcal/events?time_min=${timeMin}&time_max=${timeMax}&refresh=true`);
+            if (res.status === 401) {
+                // Token expired — update local flag so reconnect button appears immediately
+                localStorage.setItem('marion_gcal_connected', 'false');
+                return [];
+            }
             if (!res.ok) return [];
             const data = await res.json();
             return (data.events || []) as CalendarEvent[];
         },
         enabled,
         staleTime: 60 * 1000,
-        refetchInterval: 3 * 60 * 1000, // Refresh every 3 minutes
+        refetchInterval: 3 * 60 * 1000,
+        retry: false, // Do not retry on 401 — user must reconnect
     });
 }
 
@@ -839,7 +845,11 @@ export function useCreateGoogleEvent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(event),
             });
-            if (!res.ok) throw new Error('Failed to create Google Calendar event');
+            if (res.status === 401) {
+                localStorage.setItem('marion_gcal_connected', 'false');
+                throw new Error('Token Google expiré — reconnecte ton compte Google Calendar dans l\'Agenda');
+            }
+            if (!res.ok) throw new Error('Impossible de créer l\'événement Google Calendar');
             return res.json();
         },
         onSuccess: () => {
@@ -1532,6 +1542,49 @@ export function useCloudBackup() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.backupStatus });
             queryClient.invalidateQueries({ queryKey: queryKeys.cloudBackupConfig });
+        },
+    });
+}
+
+/** Trigger a local SQLite backup only (same as scheduled backup file). */
+export function useManualLocalBackup() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async () => {
+            const res = await apiFetch('/api/v1/backup', { method: 'GET' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Sauvegarde locale échouée');
+            return data as { success: boolean; message?: string; path?: string };
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.backupStatus });
+        },
+    });
+}
+
+/** Download zip bundle (marion.db + manifest.json). Opens blob download in browser. */
+export function useDownloadBackupBundle() {
+    return useMutation({
+        mutationFn: async () => {
+            const res = await apiFetch('/api/v1/backup/bundle', { method: 'GET' });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error((err as { error?: string }).error || 'Téléchargement impossible');
+            }
+            const blob = await res.blob();
+            const cd = res.headers.get('Content-Disposition');
+            let filename = 'marion_bundle.zip';
+            if (cd) {
+                const m = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i.exec(cd);
+                if (m?.[1]) filename = m[1].replace(/['"]/g, '').trim();
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            return { ok: true };
         },
     });
 }

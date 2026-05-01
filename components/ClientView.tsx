@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen, ZoomIn, ZoomOut, Move, RotateCcw } from 'lucide-react';
 import {
-    DndContext, DragOverlay, closestCorners, PointerSensor, TouchSensor,
+    DndContext, DragOverlay, PointerSensor, TouchSensor,
     useSensor, useSensors, DragStartEvent, DragEndEvent,
     useDroppable, MeasuringStrategy,
+    pointerWithin, rectIntersection,
 } from '@dnd-kit/core';
+import type { CollisionDetection } from '@dnd-kit/core';
 import type { Modifier } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 
@@ -50,6 +52,10 @@ const FileExplorer = React.lazy(() => import('./FileExplorer').then(m => ({ defa
 const LogoLab = React.lazy(() => import('./LogoLab').then(m => ({ default: m.LogoLab })));
 const EmailClient = React.lazy(() => import('./email/EmailWidget').then(m => ({ default: m.EmailWidget })));
 const ClientPortal = React.lazy(() => import('./ClientPortal').then(m => ({ default: m.ClientPortal })));
+const CompetitorAnalysis = React.lazy(() => import('./CompetitorAnalysis').then(m => ({ default: m.CompetitorAnalysis })));
+const PricingIntelligence = React.lazy(() => import('./PricingIntelligence').then(m => ({ default: m.PricingIntelligence })));
+const ProjectProgressReport = React.lazy(() => import('./ProjectProgressReport').then(m => ({ default: m.ProjectProgressReport })));
+const CaseStudyGenerator = React.lazy(() => import('./CaseStudyGenerator').then(m => ({ default: m.CaseStudyGenerator })));
 
 const LazyFallback = () => (
     <div className="flex items-center justify-center p-12">
@@ -230,6 +236,47 @@ const DroppableColumn: React.FC<{ id: string; children: React.ReactNode }> = ({ 
     return <div ref={setNodeRef} className="flex-1 flex flex-col min-h-0">{children}</div>;
 };
 
+// --- KANBAN COLUMN IDS ---
+const KANBAN_COLUMNS = ['todo', 'doing', 'done'] as const;
+
+/**
+ * Custom collision detection for multi-column Kanban.
+ *
+ * Strategy:
+ * 1. pointerWithin — exact hit-test: which droppables contain the cursor tip?
+ *    - If the cursor is over a TASK card → return that task (precise insertion).
+ *    - If the cursor is inside a column but not over a task → return the column
+ *      (append to end, handles empty columns correctly).
+ * 2. Fallback to rectIntersection for fast/edge-case drags.
+ *
+ * Why not closestCorners?
+ *   closestCorners uses the corners of the *dragged item*, not the cursor.
+ *   When columns are adjacent, a task's corners can be closer to items in a
+ *   neighbouring column, causing the task to land in the wrong column.
+ */
+const kanbanCollisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+
+    if (pointerCollisions.length > 0) {
+        // Prefer a task-card collision (smaller droppable → precise position)
+        const taskHit = pointerCollisions.find(
+            c => !KANBAN_COLUMNS.includes(c.id as typeof KANBAN_COLUMNS[number])
+        );
+        if (taskHit) return [taskHit];
+
+        // Cursor is in column space but not over a card (e.g. empty column or gap)
+        const colHit = pointerCollisions.find(
+            c => KANBAN_COLUMNS.includes(c.id as typeof KANBAN_COLUMNS[number])
+        );
+        if (colHit) return [colHit];
+
+        return pointerCollisions;
+    }
+
+    // Fallback: geometric rect intersection for fast/edge-case drags
+    return rectIntersection(args);
+};
+
 interface ClientViewProps {
     project: Project;
     onBack: () => void;
@@ -243,8 +290,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     // Undo support
     const pushUndo = useUndoStore((s) => s.pushUndo);
 
-    // Tabs: Tasks, Time, Finance, Files, Emails, Portal
-    const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'finance' | 'files' | 'emails' | 'portal'>('tasks');
+    // Tabs: Tasks, Time, Finance, Files, Emails, Portal, Concurrents, Rapport IA, Case Study
+    const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'finance' | 'files' | 'emails' | 'portal' | 'competitors' | 'progress' | 'casestudy'>('tasks');
     
     // --- Google OAuth status (for Drive section) ---
     const { data: oauthStatus } = useOAuthStatus();
@@ -1767,14 +1814,27 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 <div className="lg:col-span-2 space-y-4 md:space-y-6">
                     <Card className="min-h-[300px] md:min-h-[600px] flex flex-col">
                         <div className="flex items-center gap-3 md:gap-6 mb-4 md:mb-6 border-b border-slate-100 dark:border-slate-700 pb-3 md:pb-4 overflow-x-auto no-scrollbar -mx-2 px-2">
-                            {[
-                                { id: 'tasks', label: 'Tâches' },
-                                { id: 'time', label: 'Temps' },
-                                { id: 'finance', label: 'Finances' },
-                                { id: 'files', label: 'Fichiers' },
-                                { id: 'emails', label: 'E-mails' },
-                                { id: 'portal', label: 'Portail' }
-                            ].map(tab => (
+                            {(() => {
+                                // Case Study tab only appears when project is finished or archived
+                                // (no point generating a case study mid-project)
+                                const projectFinished =
+                                    project.status === ProjectStatus.ARCHIVED
+                                    || project.status === ProjectStatus.MAINTENANCE
+                                    || (project.tasks?.length > 0 && project.tasks.every(t => t.completed));
+
+                                const tabs = [
+                                    { id: 'tasks', label: 'Tâches' },
+                                    { id: 'time', label: 'Temps' },
+                                    { id: 'finance', label: 'Finances' },
+                                    { id: 'files', label: 'Fichiers' },
+                                    { id: 'emails', label: 'E-mails' },
+                                    { id: 'portal', label: 'Portail' },
+                                    { id: 'competitors', label: '🔍 Concurrents' },
+                                    { id: 'progress', label: '📊 Rapport IA' },
+                                    ...(projectFinished ? [{ id: 'casestudy', label: '📄 Case Study' }] : []),
+                                ];
+                                return tabs;
+                            })().map(tab => (
                                 <button 
                                     key={tab.id}
                                     onClick={() => { setActiveTab(tab.id as any); if (tab.id !== 'emails') setMeetingFollowUpDraft(null); }}
@@ -1823,7 +1883,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 ) : (
                                     <DndContext
                                         sensors={sensors}
-                                        collisionDetection={closestCorners}
+                                        collisionDetection={kanbanCollisionDetection}
                                         onDragStart={handleDndDragStart}
                                         onDragEnd={handleDndDragEnd}
                                         measuring={{
@@ -2031,6 +2091,16 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                             ))}
                                         </div>
                                     )}
+                                </div>
+
+                                {/* AI Pricing Intelligence — at the bottom of Finance */}
+                                <div className="border-t border-slate-100 dark:border-slate-700 pt-6">
+                                    <React.Suspense fallback={<LazyFallback />}>
+                                        <PricingIntelligence
+                                            defaultCountry="France"
+                                            defaultIndustry={project.profile?.customFields?.find(f => f.key === 'Secteur')?.value}
+                                        />
+                                    </React.Suspense>
                                 </div>
                             </div>
                         )}
@@ -2253,6 +2323,34 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                         onUpdateProject={onUpdateProject}
                                         onNotify={onNotify}
                                     />
+                                </React.Suspense>
+                            </div>
+                        )}
+
+                        {activeTab === 'competitors' && (
+                            <div className="min-h-[400px] animate-in fade-in slide-in-from-bottom-2">
+                                <React.Suspense fallback={<LazyFallback />}>
+                                    <CompetitorAnalysis
+                                        projectId={project.id}
+                                        clientName={project.clientName}
+                                        clientDescription={project.profile?.customFields?.find(f => f.key === 'Secteur')?.value}
+                                    />
+                                </React.Suspense>
+                            </div>
+                        )}
+
+                        {activeTab === 'progress' && (
+                            <div className="min-h-[400px] animate-in fade-in slide-in-from-bottom-2">
+                                <React.Suspense fallback={<LazyFallback />}>
+                                    <ProjectProgressReport project={project} />
+                                </React.Suspense>
+                            </div>
+                        )}
+
+                        {activeTab === 'casestudy' && (
+                            <div className="min-h-[400px] animate-in fade-in slide-in-from-bottom-2">
+                                <React.Suspense fallback={<LazyFallback />}>
+                                    <CaseStudyGenerator project={project} />
                                 </React.Suspense>
                             </div>
                         )}

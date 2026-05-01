@@ -135,7 +135,12 @@ def save_project():
     try:
         project_path = get_safe_path(project_id)
         if not project_path.exists():
-            return jsonify({"error": "Project not found"}), 404
+            # Allow creation of new projects — verify the parent is a known status folder
+            parent_name = project_path.parent.name
+            if parent_name not in FOLDER_STATUS_MAP:
+                return jsonify({"error": "Project not found"}), 404
+            os.makedirs(project_path, exist_ok=True)
+            logger.info("Created new project folder: %s", project_path)
 
         # Handle avatar image
         avatar_data = data.get('avatarImage')
