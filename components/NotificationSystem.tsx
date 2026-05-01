@@ -65,7 +65,15 @@ export const ToastItem: React.FC<{ notification: Notification, onClose: (id: str
     const isClickable = !!notification.link;
 
     const handleClick = () => {
-        if (notification.link && onNavigate) {
+        if (!notification.link) return;
+        // External URL → open in a new tab (e.g. GitHub release pages)
+        if (/^https?:\/\//i.test(notification.link)) {
+            window.open(notification.link, '_blank', 'noopener,noreferrer');
+            onClose(notification.id);
+            return;
+        }
+        // Internal route
+        if (onNavigate) {
             onNavigate(notification.link);
             onClose(notification.id);
         }
@@ -134,9 +142,12 @@ export const NotificationCenterPanel: React.FC<{
 
     const handleItemClick = (n: Notification) => {
         if (!n.read) onMarkRead(n.id);
-        if (n.link && onNavigate) {
-            onNavigate(n.link);
+        if (!n.link) return;
+        if (/^https?:\/\//i.test(n.link)) {
+            window.open(n.link, '_blank', 'noopener,noreferrer');
+            return;
         }
+        if (onNavigate) onNavigate(n.link);
     };
 
     const renderList = (list: Notification[]) => (

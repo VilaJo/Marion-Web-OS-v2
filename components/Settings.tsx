@@ -50,35 +50,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores';
 import { apiFetch } from '../services/api';
 
-const RelanceTemplateFields: React.FC = () => {
-    const polite = useUIStore((s) => s.relanceTemplatePolite);
-    const firm = useUIStore((s) => s.relanceTemplateFirm);
-    const setPolite = useUIStore((s) => s.setRelanceTemplatePolite);
-    const setFirm = useUIStore((s) => s.setRelanceTemplateFirm);
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase">Relance polie</label>
-                <textarea
-                    value={polite}
-                    onChange={(e) => setPolite(e.target.value)}
-                    rows={7}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-orange dark:text-white font-mono text-xs leading-relaxed"
-                />
-            </div>
-            <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase">Relance ferme</label>
-                <textarea
-                    value={firm}
-                    onChange={(e) => setFirm(e.target.value)}
-                    rows={7}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-orange dark:text-white font-mono text-xs leading-relaxed"
-                />
-            </div>
-        </div>
-    );
-};
-
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -191,7 +162,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [claudeSaving, setClaudeSaving] = useState(false);
     const [claudeMessage, setClaudeMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    // Load Apollo + Hunter + Claude status when AI tab opens
+    // Gemini (Google) key management — persisted in DB so it survives reloads / reinstalls
+    const [geminiKey, setGeminiKey] = useState('');
+    const [geminiKeyVisible, setGeminiKeyVisible] = useState(false);
+    const [geminiConfigured, setGeminiConfigured] = useState(false);
+    const [geminiSaving, setGeminiSaving] = useState(false);
+    const [geminiMessage, setGeminiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Load Apollo + Hunter + Claude + Gemini status when AI tab opens
     React.useEffect(() => {
         if (!isAiTabOpen) return;
         apiFetch('/api/v1/prospection/status')
@@ -205,7 +183,57 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             .then(r => r.json())
             .then(data => setClaudeConfigured(!!data.configured))
             .catch(() => {});
+        apiFetch('/api/v1/ai/gemini/status')
+            .then(r => r.json())
+            .then(data => setGeminiConfigured(!!data.configured))
+            .catch(() => {});
     }, [isAiTabOpen]);
+
+    const handleSaveGeminiKey = async () => {
+        if (!geminiKey.trim()) return;
+        setGeminiSaving(true);
+        setGeminiMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/ai/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: geminiKey.trim() }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setGeminiMessage({ type: 'success', text: 'Clé Gemini enregistrée et validée. Elle est sauvegardée durablement.' });
+                setGeminiConfigured(true);
+                setGeminiKey('');
+                refetchAiHealth();
+            } else {
+                setGeminiMessage({ type: 'error', text: data.error || 'Clé invalide' });
+            }
+        } catch {
+            setGeminiMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setGeminiSaving(false);
+        }
+    };
+
+    const handleRemoveGeminiKey = async () => {
+        setGeminiSaving(true);
+        setGeminiMessage(null);
+        try {
+            const res = await apiFetch('/api/v1/ai/setup', { method: 'DELETE' });
+            if (res.ok) {
+                setGeminiMessage({ type: 'success', text: 'Clé Gemini supprimée.' });
+                setGeminiConfigured(false);
+                setGeminiKey('');
+                refetchAiHealth();
+            } else {
+                setGeminiMessage({ type: 'error', text: 'Suppression impossible.' });
+            }
+        } catch {
+            setGeminiMessage({ type: 'error', text: 'Impossible de joindre le serveur' });
+        } finally {
+            setGeminiSaving(false);
+        }
+    };
 
     const handleSaveClaudeKey = async () => {
         if (!claudeKey.trim()) return;
@@ -685,12 +713,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
-                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Modèles de relance (factures)</h4>
-                                <p className="text-xs text-slate-500">Variables : <code className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{client} {numero} {montant} {echeance}'}</code></p>
-                                <RelanceTemplateFields />
-                            </div>
-
                             <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
                                 <div className="flex justify-between items-center mb-4">
                                     <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Signature Email</h4>
@@ -904,72 +926,142 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                     {/* AI TAB */}
                     {activeTab === 'ai' && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                             {/* ─── HERO ─── */}
                              <div className="flex items-center gap-4 bg-gradient-to-r from-purple-500 to-indigo-600 p-6 rounded-2xl text-white shadow-lg">
                                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30">
                                     <Bot size={32} />
                                 </div>
-                                <div>
-                                    <h3 className="text-xl font-serif">Franck (v2.4)</h3>
-                                    <p className="text-sm opacity-90 text-purple-100">Assistant connecté à Google Gemini Pro</p>
+                                <div className="flex-1">
+                                    <h3 className="text-xl font-serif">IA & Assistants</h3>
+                                    <p className="text-sm opacity-90 text-purple-100">Franck, providers IA et outils de prospection</p>
+                                </div>
+                                <div className="hidden md:flex flex-col items-end gap-1 text-[11px] text-white/80">
+                                    <div className="flex items-center gap-1.5">
+                                        {aiHealth?.cloudAvailable ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
+                                        <span>Gemini</span>
+                                    </div>
+                                    {claudeConfigured && (
+                                        <div className="flex items-center gap-1.5">
+                                            <CheckCircle size={12} /> <span>Claude</span>
+                                        </div>
+                                    )}
+                                    {apolloStatus?.configured && (
+                                        <div className="flex items-center gap-1.5">
+                                            <CheckCircle size={12} /> <span>Apollo</span>
+                                        </div>
+                                    )}
                                 </div>
                              </div>
 
-                             <div className="space-y-4">
-                                <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Personnalité</label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[
-                                        { id: 'professional', label: 'Professionnel', icon: Briefcase },
-                                        { id: 'witty', label: 'Drôle & Zen', icon: Sparkles },
-                                        { id: 'minimalist', label: 'Minimaliste', icon: Zap },
-                                    ].map(tone => (
-                                        <button
-                                            key={tone.id}
-                                            onClick={() => setLocalAiTone(tone.id)}
-                                            className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
-                                                localAiTone === tone.id 
-                                                ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 text-purple-700 dark:text-purple-300' 
-                                                : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                            }`}
-                                        >
-                                            <tone.icon size={24} className={localAiTone === tone.id ? 'text-purple-500' : 'text-slate-400'} />
-                                            <span className="text-xs font-bold">{tone.label}</span>
-                                        </button>
-                                    ))}
+                             {/* ═══════════════════════════════════════════════════ */}
+                             {/* SECTION 1 — Personnalité de Franck                 */}
+                             {/* ═══════════════════════════════════════════════════ */}
+                             <section className="space-y-5">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                        <Bot size={14} className="text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-800 dark:text-white">Personnalité de Franck</h4>
+                                        <p className="text-[11px] text-slate-400">Comment ton assistant te parle au quotidien</p>
+                                    </div>
                                 </div>
-                             </div>
 
-                             <div className="space-y-3">
-                                <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Mode IA</label>
-                                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                                    {([
-                                        { id: 'cloud', label: 'Cloud' },
-                                        { id: 'hybrid', label: 'Hybride' },
-                                        { id: 'local', label: 'Local' },
-                                    ] as const).map(mode => (
-                                        <button
-                                            key={mode.id}
-                                            onClick={() => setLocalAiMode(mode.id)}
-                                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                                                localAiMode === mode.id
-                                                    ? 'bg-white dark:bg-slate-700 text-brand-orange shadow-sm'
-                                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                                            }`}
-                                        >
-                                            {mode.label}
-                                        </button>
-                                    ))}
+                                <div className="space-y-3">
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ton de la conversation</label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[
+                                            { id: 'professional', label: 'Professionnel', icon: Briefcase },
+                                            { id: 'witty', label: 'Drôle & Zen', icon: Sparkles },
+                                            { id: 'minimalist', label: 'Minimaliste', icon: Zap },
+                                        ].map(tone => (
+                                            <button
+                                                key={tone.id}
+                                                onClick={() => setLocalAiTone(tone.id)}
+                                                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                                                    localAiTone === tone.id
+                                                    ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 text-purple-700 dark:text-purple-300'
+                                                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                <tone.icon size={22} className={localAiTone === tone.id ? 'text-purple-500' : 'text-slate-400'} />
+                                                <span className="text-xs font-bold">{tone.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <p className="text-xs text-slate-400">
-                                    Local: Ollama uniquement · Hybride: local puis fallback cloud · Cloud: Gemini uniquement
-                                </p>
-                             </div>
 
-                             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 space-y-3">
+                                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <Volume2 className="text-slate-400" size={20} />
+                                        <div>
+                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Briefing vocal</div>
+                                            <div className="text-xs text-slate-500">Lire le résumé du lundi à haute voix</div>
+                                        </div>
+                                    </div>
+                                    <div
+                                        onClick={() => setLocalBriefingVocal(!localBriefingVocal)}
+                                        className={`w-10 h-6 rounded-full relative cursor-pointer transition-colors ${localBriefingVocal ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                    >
+                                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm ${localBriefingVocal ? 'left-5' : 'left-1'}`}></div>
+                                    </div>
+                                </div>
+                             </section>
+
+                             {/* ═══════════════════════════════════════════════════ */}
+                             {/* SECTION 2 — Moteurs IA                              */}
+                             {/* ═══════════════════════════════════════════════════ */}
+                             <section className="space-y-5">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                        <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-800 dark:text-white">Moteurs IA</h4>
+                                        <p className="text-[11px] text-slate-400">Providers connectés (Gemini, Claude, Ollama local)</p>
+                                    </div>
+                                </div>
+
+                                {/* 2a — Mode IA selector */}
+                                <div className="space-y-3">
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mode d'exécution</label>
+                                    <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                                        {([
+                                            { id: 'cloud', label: 'Cloud' },
+                                            { id: 'hybrid', label: 'Hybride' },
+                                            { id: 'local', label: 'Local' },
+                                        ] as const).map(mode => (
+                                            <button
+                                                key={mode.id}
+                                                onClick={() => setLocalAiMode(mode.id)}
+                                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                                                    localAiMode === mode.id
+                                                        ? 'bg-white dark:bg-slate-700 text-brand-orange shadow-sm'
+                                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                                }`}
+                                            >
+                                                {mode.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-slate-400">
+                                        <strong>Cloud</strong> : Gemini uniquement · <strong>Hybride</strong> : Local puis fallback cloud · <strong>Local</strong> : Ollama uniquement
+                                    </p>
+                                </div>
+
+                                {/* 2b — Health card */}
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Santé IA locale (Ollama)</div>
-                                        <div className="text-xs text-slate-500">Contrôle runtime local et fallback cloud</div>
+                                        <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Santé des moteurs IA</div>
+                                        <div className="text-xs text-slate-500">
+                                            {localAiMode === 'cloud'
+                                                ? 'Mode Cloud actif — l\'IA locale Ollama n\'est pas utilisée'
+                                                : localAiMode === 'local'
+                                                    ? 'Mode Local actif — utilise Ollama uniquement'
+                                                    : 'Mode Hybride — local en priorité, fallback cloud si indisponible'}
+                                        </div>
                                     </div>
                                     <button
                                         onClick={() => refetchAiHealth()}
@@ -986,81 +1078,324 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                        {/* Cloud — toujours pertinent */}
                                         <div className="flex items-center gap-2">
-                                            {aiHealth?.localAvailable ? <CheckCircle size={14} className="text-emerald-500" /> : <AlertCircle size={14} className="text-amber-500" />}
+                                            {aiHealth?.cloudAvailable ? <CheckCircle size={14} className="text-emerald-500" /> : <AlertCircle size={14} className="text-amber-500" />}
                                             <span className="text-slate-600 dark:text-slate-300">
-                                                Local: {aiHealth?.localAvailable ? 'Disponible' : 'Indisponible'}
+                                                Cloud (Gemini): {aiHealth?.cloudAvailable ? 'Disponible' : 'Non configuré'}
                                             </span>
                                         </div>
-                                        <div className="text-slate-600 dark:text-slate-300">
-                                            Latence locale: {typeof aiHealth?.localLatencyMs === 'number' ? `${aiHealth.localLatencyMs} ms` : 'N/A'}
-                                        </div>
-                                        <div className="text-slate-600 dark:text-slate-300">
-                                            Modèle local: {aiHealth?.localModel || localAiModelName}
-                                        </div>
-                                        {aiHealth?.localModelAvailable === false && (
-                                            <div className="md:col-span-2 text-amber-600 dark:text-amber-400">
-                                                Modèle non installé dans Ollama. Disponible(s): {(aiHealth?.availableLocalModels || []).join(', ') || 'aucun'}
+
+                                        {/* Local — n'a de sens qu'en mode local ou hybride */}
+                                        {(localAiMode === 'local' || localAiMode === 'hybrid') ? (
+                                            <>
+                                                <div className="flex items-center gap-2">
+                                                    {aiHealth?.localAvailable ? <CheckCircle size={14} className="text-emerald-500" /> : <AlertCircle size={14} className="text-amber-500" />}
+                                                    <span className="text-slate-600 dark:text-slate-300">
+                                                        Local (Ollama): {aiHealth?.localAvailable ? 'Disponible' : 'Indisponible'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-slate-600 dark:text-slate-300">
+                                                    Latence locale: {typeof aiHealth?.localLatencyMs === 'number' ? `${aiHealth.localLatencyMs} ms` : 'N/A'}
+                                                </div>
+                                                <div className="text-slate-600 dark:text-slate-300">
+                                                    Modèle local: {aiHealth?.localModel || localAiModelName}
+                                                </div>
+                                                {aiHealth?.localModelAvailable === false && (
+                                                    <div className="md:col-span-2 text-amber-600 dark:text-amber-400">
+                                                        Modèle non installé dans Ollama. Disponible(s): {(aiHealth?.availableLocalModels || []).join(', ') || 'aucun'}
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-slate-400">
+                                                <AlertCircle size={14} className="text-slate-300 dark:text-slate-600" />
+                                                <span>Local (Ollama): non utilisé en mode Cloud</span>
                                             </div>
                                         )}
-                                        <div className="text-slate-600 dark:text-slate-300">
-                                            Cloud: {aiHealth?.cloudAvailable ? 'Disponible' : 'Non configuré'}
+
+                                        <div className="text-slate-500 dark:text-slate-400 md:col-span-2 pt-1 border-t border-slate-100 dark:border-slate-800 mt-1">
+                                            Backend: {aiHealth?.provider || 'N/A'} · Fallback: {localAiFallbackEnabled ? 'ON' : 'OFF'}
                                         </div>
-                                        <div className="text-slate-600 dark:text-slate-300 md:col-span-2">
-                                            Mode sélectionné: {localAiMode} · Mode backend: {aiHealth?.provider || 'N/A'} · Fallback: {localAiFallbackEnabled ? 'ON' : 'OFF'}
-                                        </div>
-                                        {!aiHealth?.localAvailable && aiHealth?.errors?.local && (
-                                            <div className="md:col-span-2 text-amber-600 dark:text-amber-400">
-                                                Erreur locale: {aiHealth.errors.local}
+
+                                        {/* Erreur locale — friendly + actionnable, uniquement si mode local/hybrid */}
+                                        {(localAiMode === 'local' || localAiMode === 'hybrid')
+                                            && !aiHealth?.localAvailable
+                                            && aiHealth?.errors?.local && (
+                                            <div className="md:col-span-2 mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 space-y-2">
+                                                <div className="font-semibold flex items-center gap-1.5">
+                                                    <AlertCircle size={13} />
+                                                    Ollama n'est pas démarré sur ta machine
+                                                </div>
+                                                <div className="text-[11px] leading-relaxed">
+                                                    {localAiMode === 'hybrid'
+                                                        ? 'Pas de panique : en mode Hybride, Marion bascule automatiquement sur Gemini.'
+                                                        : 'Installe et lance Ollama pour utiliser l\'IA locale, ou bascule sur le mode Cloud ci-dessus.'}
+                                                </div>
+                                                <div className="flex items-center gap-2 pt-1">
+                                                    <a
+                                                        href="https://ollama.com/download"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[11px] font-bold underline hover:no-underline"
+                                                    >
+                                                        Installer Ollama →
+                                                    </a>
+                                                    <span className="text-[10px] text-amber-500">·</span>
+                                                    <button
+                                                        onClick={() => setLocalAiMode('cloud')}
+                                                        className="text-[11px] font-bold underline hover:no-underline"
+                                                    >
+                                                        Passer en mode Cloud
+                                                    </button>
+                                                </div>
+                                                <details className="text-[10px] opacity-70">
+                                                    <summary className="cursor-pointer">Détails techniques</summary>
+                                                    <code className="block mt-1 text-[10px] break-all opacity-80">{aiHealth.errors.local}</code>
+                                                </details>
                                             </div>
                                         )}
                                     </div>
                                 )}
                              </div>
 
-                             {(localAiMode === 'local' || localAiMode === 'hybrid') && (
-                                <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Modèle local</label>
-                                        <input
-                                            value={localAiModelName}
-                                            onChange={(e) => setLocalModelNameState(e.target.value)}
-                                            placeholder="qwen2.5:7b-instruct"
-                                            className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-orange"
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between">
+                                {/* 2c — Local model config (only in local/hybrid) */}
+                                {(localAiMode === 'local' || localAiMode === 'hybrid') && (
+                                    <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700">
                                         <div>
-                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Fallback cloud</div>
-                                            <div className="text-xs text-slate-500">Si Ollama échoue, utiliser Gemini</div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Modèle Ollama local</label>
+                                            <input
+                                                value={localAiModelName}
+                                                onChange={(e) => setLocalModelNameState(e.target.value)}
+                                                placeholder="qwen2.5:7b-instruct"
+                                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-orange"
+                                            />
                                         </div>
-                                        <button
-                                            onClick={() => setLocalAiFallbackEnabledState(!localAiFallbackEnabled)}
-                                            className={`w-12 h-6 rounded-full transition-colors relative ${localAiFallbackEnabled ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-700'}`}
-                                        >
-                                            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm ${localAiFallbackEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
-                                        </button>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Fallback cloud</div>
+                                                <div className="text-xs text-slate-500">Si Ollama échoue, basculer sur Gemini</div>
+                                            </div>
+                                            <button
+                                                onClick={() => setLocalAiFallbackEnabledState(!localAiFallbackEnabled)}
+                                                className={`w-12 h-6 rounded-full transition-colors relative ${localAiFallbackEnabled ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                            >
+                                                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm ${localAiFallbackEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                             )}
+                                )}
 
-                             <div className="space-y-2">
-                                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                                    <div className="flex items-center gap-3">
-                                        <Volume2 className="text-slate-400" size={20} />
-                                        <div>
-                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Briefing Vocal</div>
-                                            <div className="text-xs text-slate-500">Lire le résumé du lundi à haute voix</div>
+                                {/* 2c-bis — Gemini (Google) — provider IA principal */}
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-sky-500 to-indigo-600 text-white">
+                                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md border border-white/30 flex-shrink-0">
+                                            <span className="font-black text-base">G</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h5 className="font-bold text-sm">Gemini (Google)</h5>
+                                            <p className="text-[11px] text-white/85">Provider IA principal · clé sauvegardée durablement (DB + .env.local)</p>
+                                        </div>
+                                        <div className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                            geminiConfigured
+                                                ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-300/30'
+                                                : 'bg-white/10 text-white/70 border border-white/20'
+                                        }`}>
+                                            {geminiConfigured ? <><CheckCircle size={11} /> Connecté</> : <><AlertCircle size={11} /> Non configuré</>}
                                         </div>
                                     </div>
-                                    <div 
-                                        onClick={() => setLocalBriefingVocal(!localBriefingVocal)}
-                                        className={`w-10 h-6 rounded-full relative cursor-pointer transition-colors ${localBriefingVocal ? 'bg-brand-orange' : 'bg-slate-300 dark:bg-slate-700'}`}
-                                    >
-                                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm ${localBriefingVocal ? 'left-5' : 'left-1'}`}></div>
+
+                                    <div className="p-4 space-y-3 bg-white dark:bg-slate-900">
+                                        {geminiConfigured ? (
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700">
+                                                    <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Clé Gemini enregistrée</p>
+                                                        <p className="text-xs text-emerald-600 dark:text-emerald-400">Persistée en base — plus besoin de la ressaisir après un Cmd+Shift+R.</p>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Remplacer la clé</p>
+                                                    <div className="flex gap-2">
+                                                        <div className="relative flex-1">
+                                                            <input
+                                                                type={geminiKeyVisible ? 'text' : 'password'}
+                                                                value={geminiKey}
+                                                                onChange={(e) => setGeminiKey(e.target.value)}
+                                                                placeholder="Nouvelle clé Gemini (AIza...)"
+                                                                className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-sky-400 dark:text-white"
+                                                            />
+                                                            <button onClick={() => setGeminiKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                                {geminiKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                            </button>
+                                                        </div>
+                                                        <button onClick={handleSaveGeminiKey} disabled={geminiSaving || !geminiKey.trim()} className="px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors flex items-center gap-2">
+                                                            {geminiSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                            Mettre à jour
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <button onClick={handleRemoveGeminiKey} disabled={geminiSaving} className="text-xs text-red-500 hover:text-red-600 font-semibold flex items-center gap-1.5 disabled:opacity-50">
+                                                    <Trash2 size={13} /> Supprimer la clé Gemini
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                    Clé Google AI Studio (commence par <code>AIza</code>). Une fois validée, elle est stockée en base et ne te sera plus redemandée.
+                                                </p>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type={geminiKeyVisible ? 'text' : 'password'}
+                                                            value={geminiKey}
+                                                            onChange={(e) => setGeminiKey(e.target.value)}
+                                                            placeholder="AIza..."
+                                                            className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-sky-400 dark:text-white"
+                                                        />
+                                                        <button onClick={() => setGeminiKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                            {geminiKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                        </button>
+                                                    </div>
+                                                    <button onClick={handleSaveGeminiKey} disabled={geminiSaving || !geminiKey.trim()} className="px-4 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2">
+                                                        {geminiSaving ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+                                                        Sauvegarder
+                                                    </button>
+                                                </div>
+                                                <a
+                                                    href="https://aistudio.google.com/apikey"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline inline-flex items-center gap-1"
+                                                >
+                                                    Obtenir une clé Gemini gratuite →
+                                                </a>
+                                            </div>
+                                        )}
+
+                                        {geminiMessage && (
+                                            <div className={`p-2.5 rounded-lg text-xs flex items-center gap-2 ${
+                                                geminiMessage.type === 'success'
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
+                                                    : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
+                                            }`}>
+                                                {geminiMessage.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                                {geminiMessage.text}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                             </div>
+
+                                {/* 2d — Claude (Anthropic) — provider IA optionnel */}
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-orange-400 to-red-500 text-white">
+                                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md border border-white/30 flex-shrink-0">
+                                            <span className="font-black text-base">C</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h5 className="font-bold text-sm">Claude (Anthropic)</h5>
+                                            <p className="text-[11px] text-white/85">Provider IA optionnel · sonnet-4-6 / opus-4-7 · idéal pour Code Review</p>
+                                        </div>
+                                        <div className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                            claudeConfigured
+                                                ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-300/30'
+                                                : 'bg-white/10 text-white/70 border border-white/20'
+                                        }`}>
+                                            {claudeConfigured ? <><CheckCircle size={11} /> Connecté</> : <><AlertCircle size={11} /> Non configuré</>}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 space-y-3 bg-white dark:bg-slate-900">
+                                        {claudeConfigured ? (
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700">
+                                                    <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Clé Anthropic enregistrée</p>
+                                                        <p className="text-xs text-emerald-600 dark:text-emerald-400">Disponible dans Franck (Code Mode) et les analyses avancées.</p>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Remplacer la clé</p>
+                                                    <div className="flex gap-2">
+                                                        <div className="relative flex-1">
+                                                            <input
+                                                                type={claudeKeyVisible ? 'text' : 'password'}
+                                                                value={claudeKey}
+                                                                onChange={(e) => setClaudeKey(e.target.value)}
+                                                                placeholder="Nouvelle clé Anthropic"
+                                                                className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-orange-400 dark:text-white"
+                                                            />
+                                                            <button onClick={() => setClaudeKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                                {claudeKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                            </button>
+                                                        </div>
+                                                        <button onClick={handleSaveClaudeKey} disabled={claudeSaving || !claudeKey.trim()} className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors flex items-center gap-2">
+                                                            {claudeSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                            Mettre à jour
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <button onClick={handleRemoveClaudeKey} disabled={claudeSaving} className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors">
+                                                    <Trash2 size={13} /> Supprimer la clé Anthropic
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                    Ajoute Claude comme 3e provider IA (en plus de Gemini et Ollama). Idéal pour le mode Code Review de Franck.
+                                                    <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline ml-1 inline-flex items-center gap-1">Obtenir une clé <ExternalLink size={10} /></a>
+                                                </p>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type={claudeKeyVisible ? 'text' : 'password'}
+                                                            value={claudeKey}
+                                                            onChange={(e) => setClaudeKey(e.target.value)}
+                                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveClaudeKey()}
+                                                            placeholder="sk-ant-api03-..."
+                                                            className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-orange-400 dark:text-white"
+                                                        />
+                                                        <button onClick={() => setClaudeKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                            {claudeKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                        </button>
+                                                    </div>
+                                                    <button onClick={handleSaveClaudeKey} disabled={claudeSaving || !claudeKey.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2">
+                                                        {claudeSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                        Enregistrer
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {claudeMessage && (
+                                            <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-semibold ${
+                                                claudeMessage.type === 'success'
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
+                                                    : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
+                                            }`}>
+                                                {claudeMessage.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                                {claudeMessage.text}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                             </section>
+
+                             {/* ═══════════════════════════════════════════════════ */}
+                             {/* SECTION 3 — Outils de Prospection                   */}
+                             {/* ═══════════════════════════════════════════════════ */}
+                             <section className="space-y-5">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="w-7 h-7 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                                        <Telescope size={14} className="text-teal-600 dark:text-teal-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-800 dark:text-white">Outils de Prospection</h4>
+                                        <p className="text-[11px] text-slate-400">Sources externes pour trouver et qualifier des prospects</p>
+                                    </div>
+                                </div>
 
                              {/* Apollo.io — Prospection B2B */}
                              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -1277,94 +1612,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     )}
                                 </div>
                              </div>
-
-                             {/* Claude (Anthropic) */}
-                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-sm">
-                                        <span className="text-white font-black text-sm">C</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-base">Claude (Anthropic)</h4>
-                                        <p className="text-xs text-slate-400">3e provider IA · claude-sonnet-4-6 / opus-4-7</p>
-                                    </div>
-                                    {claudeConfigured && (
-                                        <div className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                            <CheckCircle size={14} /> Connecté
-                                        </div>
-                                    )}
-                                </div>
-
-                                {claudeConfigured ? (
-                                    <div className="space-y-3">
-                                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Clé Anthropic enregistrée</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Claude est disponible comme provider IA dans Franck et les analyses.</p>
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-1">
-                                                <input
-                                                    type={claudeKeyVisible ? 'text' : 'password'}
-                                                    value={claudeKey}
-                                                    onChange={(e) => setClaudeKey(e.target.value)}
-                                                    placeholder="Nouvelle clé Anthropic"
-                                                    className="w-full px-3 py-2.5 pr-10 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm outline-none focus:border-orange-400 dark:text-white"
-                                                />
-                                                <button onClick={() => setClaudeKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                                                    {claudeKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
-                                                </button>
-                                            </div>
-                                            {claudeKey.trim() && (
-                                                <button onClick={handleSaveClaudeKey} disabled={claudeSaving} className="px-3 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-                                                    {claudeSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                                                </button>
-                                            )}
-                                            <button onClick={handleRemoveClaudeKey} disabled={claudeSaving} className="px-3 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors flex items-center gap-1.5">
-                                                <Trash2 size={14} /> Supprimer
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                                            Ajoute Claude d'Anthropic comme 3e provider IA. Idéal pour le mode Code Review de Franck.
-                                            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline ml-1">Obtenir une clé →</a>
-                                        </p>
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-1">
-                                                <input
-                                                    type={claudeKeyVisible ? 'text' : 'password'}
-                                                    value={claudeKey}
-                                                    onChange={(e) => setClaudeKey(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveClaudeKey()}
-                                                    placeholder="sk-ant-api03-..."
-                                                    className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-orange-400 dark:text-white"
-                                                />
-                                                <button onClick={() => setClaudeKeyVisible(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                                                    {claudeKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
-                                                </button>
-                                            </div>
-                                            <button
-                                                onClick={handleSaveClaudeKey}
-                                                disabled={claudeSaving || !claudeKey.trim()}
-                                                className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2"
-                                            >
-                                                {claudeSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                                                Enregistrer
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {claudeMessage && (
-                                    <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-semibold mt-3 ${
-                                        claudeMessage.type === 'success'
-                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
-                                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
-                                    }`}>
-                                        {claudeMessage.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-                                        {claudeMessage.text}
-                                    </div>
-                                )}
-                             </div>
+                             </section>
 
                         </div>
                     )}

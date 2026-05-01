@@ -28,6 +28,7 @@ import { useFocusStore } from './stores/useFocusStore';
 import { AppHeader } from './components/AppHeader';
 import { GlobalOverlays } from './components/GlobalOverlays';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useUpdateChecker } from './hooks/useUpdateChecker';
 import { useEmailNotifications } from './hooks/useEmailNotifications';
 import { usePortalNotifications } from './hooks/usePortalNotifications';
 import { useOAuthMonitor } from './hooks/useOAuthMonitor';
@@ -116,6 +117,9 @@ const App: React.FC = () => {
 
     // === Keyboard Shortcuts ===
     useKeyboardShortcuts();
+
+    // === Auto-check for new GitHub releases (notifies once per release) ===
+    useUpdateChecker();
 
     // === Email Notifications (background polling) ===
     useEmailNotifications();

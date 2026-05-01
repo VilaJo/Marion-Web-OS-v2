@@ -38,6 +38,7 @@ import { exportSimpleCSV } from '../utils/exportUtils';
 import { printElementAsPdf } from '../utils/pdfExport';
 import { useUIStore } from '../stores';
 import { applyRelanceTemplate } from '../utils/relanceTemplates';
+import { RelanceTemplateFields } from './RelanceTemplateFields';
 
 declare const confetti: any;
 
@@ -74,6 +75,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
     const scanExpenseMutation = useScanExpense();
     const [isScanning, setIsScanning] = useState(false);
     const [isReminding, setIsReminding] = useState<string | null>(null);
+    const [showRelanceTemplates, setShowRelanceTemplates] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Analytics data from backend (real time tracking, conversions, trends)
@@ -496,6 +498,32 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                 {/* REVENUS TABLE */}
                 {activeTab === 'revenus' && (
                     <>
+                        {/* Modèles de relance — collapsible (used when sending reminder emails below) */}
+                        <div className="border-b border-slate-100 dark:border-slate-700">
+                            <button
+                                onClick={() => setShowRelanceTemplates(s => !s)}
+                                className="w-full px-6 py-3 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Send size={14} className="text-slate-400" />
+                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Modèles de relance</span>
+                                    <span className="text-[10px] text-slate-400">utilisés quand tu cliques sur "Relancer" ci-dessous</span>
+                                </div>
+                                <ChevronDown
+                                    size={16}
+                                    className={`text-slate-400 transition-transform ${showRelanceTemplates ? 'rotate-180' : ''}`}
+                                />
+                            </button>
+                            {showRelanceTemplates && (
+                                <div className="px-6 pb-5 pt-2 space-y-3 bg-slate-50/40 dark:bg-slate-800/30">
+                                    <p className="text-xs text-slate-500">
+                                        Variables disponibles : <code className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{client} {numero} {montant} {echeance}'}</code>
+                                    </p>
+                                    <RelanceTemplateFields />
+                                </div>
+                            )}
+                        </div>
+
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
                             <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                 <FileText className="text-slate-400" size={20} />

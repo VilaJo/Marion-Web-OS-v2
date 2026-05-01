@@ -24,12 +24,126 @@ cfg = get_current_config()
 # Gemini client singleton
 # ---------------------------------------------------------------------------
 _client = None
+_api_key_cache: Optional[str] = None
+_ENV_LOCAL_PATH = '.env.local'
+
+
+def _read_key_from_db() -> Optional[str]:
+    """Best-effort read of the Gemini API key from workspace_settings.
+
+    Returns the persisted key if any, else None. Never raises.
+    The DB is the canonical, durable store for the key (survives even if
+    `.env.local` gets wiped, the user reinstalls, or the app runs in a
+    container without a mounted env file).
+    """
+    try:
+        # Local import to avoid circular import / cold-start ordering issues
+        from database.db import get_workspace_settings
+        settings = get_workspace_settings(1) or {}
+        key = (settings.get('geminiApiKey') or '').strip()
+        return key or None
+    except Exception:
+        return None
+
+
+def _save_key_to_db(key: Optional[str]) -> None:
+    """Persist (or remove) the Gemini API key in workspace_settings."""
+    try:
+        from database.db import get_workspace_settings, update_workspace_settings
+        settings = get_workspace_settings(1) or {}
+        if key:
+            settings['geminiApiKey'] = key
+        else:
+            settings.pop('geminiApiKey', None)
+        update_workspace_settings(1, settings)
+    except Exception as e:
+        logger.warning("Could not persist Gemini API key to DB: %s", e)
+
+
+def _write_env_local(key: str) -> None:
+    """Update GEMINI_API_KEY in `.env.local`, preserving other lines.
+
+    Previously this file was overwritten with only GEMINI_API_KEY, which
+    would silently destroy any other env variables the user might have
+    placed in it (Google OAuth secrets, Ollama URL overrides, etc.).
+    """
+    try:
+        existing_lines: list[str] = []
+        if os.path.exists(_ENV_LOCAL_PATH):
+            with open(_ENV_LOCAL_PATH, 'r', encoding='utf-8') as f:
+                existing_lines = f.read().splitlines()
+
+        new_lines: list[str] = []
+        replaced = False
+        for line in existing_lines:
+            stripped = line.strip()
+            if stripped.startswith('GEMINI_API_KEY=') or stripped.startswith('GEMINI_API_KEY ='):
+                new_lines.append(f"GEMINI_API_KEY={key}")
+                replaced = True
+            else:
+                new_lines.append(line)
+        if not replaced:
+            new_lines.append(f"GEMINI_API_KEY={key}")
+
+        # Strip trailing blank lines for cleanliness, then re-append exactly one newline
+        while new_lines and new_lines[-1].strip() == '':
+            new_lines.pop()
+
+        with open(_ENV_LOCAL_PATH, 'w', encoding='utf-8') as f:
+            f.write("\n".join(new_lines) + "\n")
+    except Exception as e:
+        logger.warning("Could not write GEMINI_API_KEY to .env.local: %s", e)
+
+
+def _resolve_api_key() -> Optional[str]:
+    """Resolve the Gemini API key from the most durable source available.
+
+    Priority:
+      1. In-memory cache (set by previous resolutions / `set_api_key`)
+      2. workspace_settings DB entry (`geminiApiKey`)
+      3. Environment variable loaded by `config.py` from `.env`/`.env.local`
+
+    If a key is found only in the env layer, it is auto-promoted to the DB
+    on first resolution so the user never has to re-enter it again — even
+    after the next reinstall, Docker rebuild, or accidental `.env.local`
+    overwrite.
+    """
+    global _api_key_cache
+    if _api_key_cache:
+        return _api_key_cache
+    db_key = _read_key_from_db()
+    if db_key:
+        _api_key_cache = db_key
+        try:
+            cfg.GEMINI_API_KEY = db_key
+        except Exception:
+            pass
+        return db_key
+    env_key = (cfg.GEMINI_API_KEY or '').strip()
+    if env_key:
+        _api_key_cache = env_key
+        # One-shot migration: copy the env-only key into the DB so it
+        # survives any future loss of `.env.local`.
+        _save_key_to_db(env_key)
+        return env_key
+    return None
+
+
+def invalidate_key_cache() -> None:
+    """Drop the in-memory key/client caches (forces re-read on next access)."""
+    global _api_key_cache, _client
+    _api_key_cache = None
+    _client = None
 
 
 def init_client():
-    """Initialise (or re-initialise) the Gemini client from the config key."""
+    """Initialise (or re-initialise) the Gemini client.
+
+    Looks up the API key from the DB first (durable across env-file
+    accidents) then falls back to the environment-loaded `cfg`.
+    """
     global _client
-    api_key = cfg.GEMINI_API_KEY
+    api_key = _resolve_api_key()
 
     if api_key:
         try:
@@ -41,6 +155,7 @@ def init_client():
             logger.error("Gemini Client Init Failed: %s", e, exc_info=True)
             _client = None
     else:
+        _client = None
         logger.warning("No Gemini API Key found")
 
 
@@ -52,11 +167,50 @@ def get_client():
 
 
 def set_api_key(key: str):
-    """Persist a new API key to .env.local and reinitialise the client."""
-    with open('.env.local', 'w') as f:
-        f.write(f"GEMINI_API_KEY={key}\n")
-    cfg.GEMINI_API_KEY = key
+    """Persist a new Gemini API key durably and reinitialise the client.
+
+    The key is stored in BOTH `workspace_settings` (DB — canonical, durable)
+    and `.env.local` (legacy / subprocess compatibility). Other lines in
+    `.env.local` are preserved.
+    """
+    cleaned = (key or '').strip()
+    _save_key_to_db(cleaned)
+    if cleaned:
+        _write_env_local(cleaned)
+    try:
+        cfg.GEMINI_API_KEY = cleaned
+    except Exception:
+        pass
+    invalidate_key_cache()
     init_client()
+
+
+def remove_api_key() -> None:
+    """Remove the persisted Gemini API key from DB and `.env.local`."""
+    _save_key_to_db(None)
+    try:
+        if os.path.exists(_ENV_LOCAL_PATH):
+            with open(_ENV_LOCAL_PATH, 'r', encoding='utf-8') as f:
+                lines = f.read().splitlines()
+            new_lines = [
+                ln for ln in lines
+                if not (ln.strip().startswith('GEMINI_API_KEY=')
+                        or ln.strip().startswith('GEMINI_API_KEY ='))
+            ]
+            while new_lines and new_lines[-1].strip() == '':
+                new_lines.pop()
+            with open(_ENV_LOCAL_PATH, 'w', encoding='utf-8') as f:
+                if new_lines:
+                    f.write("\n".join(new_lines) + "\n")
+                else:
+                    f.write("")
+    except Exception as e:
+        logger.warning("Could not remove GEMINI_API_KEY from .env.local: %s", e)
+    try:
+        cfg.GEMINI_API_KEY = ''
+    except Exception:
+        pass
+    invalidate_key_cache()
 
 
 def is_configured() -> bool:

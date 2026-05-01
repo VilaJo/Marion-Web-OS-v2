@@ -26,7 +26,7 @@ from config import get_current_config
 
 import services.claude_service as claude_svc
 from services.gemini_service import (
-    get_client, init_client, set_api_key, is_configured,
+    get_client, init_client, set_api_key, remove_api_key, is_configured,
     ai_status_payload, resolve_ai_prefs, is_local_available, get_default_ai_mode,
     FRANCK_SYSTEM_PROMPT, COACH_FRANCK_SYSTEM_PROMPT,
     load_franck_memory, save_franck_memory, get_time_greeting,
@@ -375,11 +375,22 @@ def check_status():
     return jsonify(ai_status_payload(prefs))
 
 
-@ai_bp.route('/ai/setup', methods=['POST'])
+@ai_bp.route('/ai/setup', methods=['POST', 'DELETE'])
 def setup():
-    """Configure Gemini API key (optional if local mode)."""
-    data = request.json
-    api_key = data.get('api_key')
+    """Configure / remove the Gemini API key.
+
+    POST  body: { api_key, ai_mode? }   → validate, persist (DB + .env.local)
+    DELETE                              → wipe the persisted key everywhere
+    """
+    if request.method == 'DELETE':
+        try:
+            remove_api_key()
+            return jsonify({"success": True})
+        except Exception as e:
+            return error_response(e, 500, "Suppression impossible.")
+
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('api_key') or '').strip()
     ai_mode = (data.get("ai_mode") or get_default_ai_mode()).lower()
     if ai_mode == "local":
         return jsonify({"success": True, "message": "Local mode does not require a Gemini key."})
@@ -1746,6 +1757,12 @@ def claude_setup():
 @ai_bp.route('/ai/claude/status', methods=['GET'])
 def claude_status():
     return jsonify({"configured": claude_svc.is_configured()})
+
+
+@ai_bp.route('/ai/gemini/status', methods=['GET'])
+def gemini_status():
+    """Lightweight Gemini configuration check (DB + env aware)."""
+    return jsonify({"configured": get_client() is not None})
 
 
 # ===========================================================================
