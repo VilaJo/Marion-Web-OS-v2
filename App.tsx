@@ -149,9 +149,11 @@ const App: React.FC = () => {
             try {
                 const res = await apiFetch(getAiStatusUrl());
                 const data = await res.json();
-                setIsConfigured(data.configured);
+                const hasAnyEngine = !!(data?.cloudAvailable || data?.localAvailable);
+                const effectivelyConfigured = !!data?.configured || hasAnyEngine;
+                setIsConfigured(effectivelyConfigured);
                 setIsBackendDown(false);
-                if (data.configured) {
+                if (effectivelyConfigured) {
                     loadWorkspace();
                     await queryClient.refetchQueries({ queryKey: queryKeys.projects });
                     setTimeout(() => setIsLoading(false), 2000);
@@ -201,9 +203,31 @@ const App: React.FC = () => {
                     : provider === 'hybrid'
                         ? 'Hybride (Local -> Cloud)'
                         : 'Cloud (Gemini)';
-            setIsConfigured(data.configured);
+
+            // Marion is "set up" as long as ANY engine works (cloud OR local).
+            // Only show the Onboarding screen on truly first-time setup — i.e.
+            // the user has no Gemini key AND no local Ollama. Otherwise a
+            // missing local engine (e.g. Ollama not started) when the user
+            // happens to have picked "Local" mode would wrongly trigger
+            // Onboarding and re-ask for the Gemini key on every refresh.
+            const hasAnyEngine = !!(data?.cloudAvailable || data?.localAvailable);
+            const effectivelyConfigured = !!data?.configured || hasAnyEngine;
+
+            setIsConfigured(effectivelyConfigured);
             setIsBackendDown(false);
-            if (data.configured) {
+
+            // If the user's preferred mode is unavailable but cloud works,
+            // transparently fall back to cloud so the app stays usable.
+            if (!data?.configured && data?.cloudAvailable && preferredMode === 'local') {
+                try { localStorage.setItem('marion_ai_mode', 'cloud'); } catch {}
+                addNotification(
+                    'Mode Cloud activé',
+                    "Ollama n'est pas accessible — Marion bascule sur Gemini.",
+                    'ai'
+                );
+            }
+
+            if (effectivelyConfigured) {
                 await queryClient.refetchQueries({ queryKey: queryKeys.projects });
                 if (isLoading) {
                     setTimeout(() => {
@@ -221,7 +245,7 @@ const App: React.FC = () => {
             setIsBackendDown(true);
             setIsLoading(false);
         }
-    }, [isLoading, queryClient]);
+    }, [isLoading, queryClient, addNotification]);
 
     useEffect(() => {
         if (hasInitialized.current) return;

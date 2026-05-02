@@ -124,7 +124,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 const res = await apiFetch(getAiStatusUrl());
                 const data = await res.json();
                 if (!cancelled) {
-                    setIsConfigured(data.configured);
+                    const hasAnyEngine = !!(data?.cloudAvailable || data?.localAvailable);
+                    setIsConfigured(!!data?.configured || hasAnyEngine);
                     applyAiStatus(data);
                 }
             } catch {
@@ -175,9 +176,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         try {
             const res = await apiFetch(getAiStatusUrl());
             const data = await res.json();
-            setIsConfigured(data.configured);
+            const hasAnyEngine = !!(data?.cloudAvailable || data?.localAvailable);
+            const effectivelyConfigured = !!data?.configured || hasAnyEngine;
+            setIsConfigured(effectivelyConfigured);
             applyAiStatus(data);
-            if (data.configured) {
+            if (effectivelyConfigured) {
                 setFranckSetupSuccess(true);
                 setTimeout(() => {
                     setShowFranckMenu(false);
