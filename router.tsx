@@ -31,6 +31,13 @@ const ProspectingPage = React.lazy(() => import('./pages/ProspectingPage'));
 const PromptLibraryPage = React.lazy(() => import('./pages/PromptLibraryPage'));
 const MarketWatchPage = React.lazy(() => import('./pages/MarketWatchPage'));
 const TodayPage = React.lazy(() => import('./pages/TodayPage'));
+// Marion 2030 Atelier Edition (v2.6.0)
+const WpStudioPage = React.lazy(() => import('./pages/WpStudioPage'));
+const RecipesPage = React.lazy(() => import('./pages/RecipesPage'));
+const ComponentCatalogPage = React.lazy(() => import('./pages/ComponentCatalogPage'));
+const StackPickerPage = React.lazy(() => import('./pages/StackPickerPage'));
+const SkillsPage = React.lazy(() => import('./pages/SkillsPage'));
+const AuditWpPage = React.lazy(() => import('./pages/AuditWpPage'));
 
 const router = createBrowserRouter([
     // Public portal route (standalone, outside App layout)
@@ -141,6 +148,61 @@ const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de la veille marché..." />}>
                         <MarketWatchPage />
+                    </Suspense>
+                ),
+            },
+            // ───────── Marion 2030 Atelier Edition (v2.6.0) ─────────
+            {
+                path: 'wp-studio',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de l'atelier..." />}>
+                        <WpStudioPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'recipes',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement des recettes..." />}>
+                        <RecipesPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'components',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement du catalog..." />}>
+                        <ComponentCatalogPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'stack-picker',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement du Stack Picker..." />}>
+                        <StackPickerPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'skills',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de tes compétences..." />}>
+                        <SkillsPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'audit-wp',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de l'audit..." />}>
+                        <AuditWpPage />
                     </Suspense>
                 ),
             },

@@ -53,6 +53,8 @@ const LogoLab = React.lazy(() => import('./LogoLab').then(m => ({ default: m.Log
 const EmailClient = React.lazy(() => import('./email/EmailWidget').then(m => ({ default: m.EmailWidget })));
 const ClientPortal = React.lazy(() => import('./ClientPortal').then(m => ({ default: m.ClientPortal })));
 const CompetitorAnalysis = React.lazy(() => import('./CompetitorAnalysis').then(m => ({ default: m.CompetitorAnalysis })));
+const BeforeAfterCompare = React.lazy(() => import('./BeforeAfterCompare').then(m => ({ default: m.BeforeAfterCompare })));
+const DeployChecklist = React.lazy(() => import('./DeployChecklist').then(m => ({ default: m.DeployChecklist })));
 const PricingIntelligence = React.lazy(() => import('./PricingIntelligence').then(m => ({ default: m.PricingIntelligence })));
 const ProjectProgressReport = React.lazy(() => import('./ProjectProgressReport').then(m => ({ default: m.ProjectProgressReport })));
 const CaseStudyGenerator = React.lazy(() => import('./CaseStudyGenerator').then(m => ({ default: m.CaseStudyGenerator })));
@@ -291,7 +293,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     const pushUndo = useUndoStore((s) => s.pushUndo);
 
     // Tabs: Tasks, Time, Finance, Files, Emails, Portal, Concurrents, Rapport IA, Case Study
-    const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'finance' | 'files' | 'emails' | 'portal' | 'competitors' | 'progress' | 'casestudy'>('tasks');
+    const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'finance' | 'files' | 'emails' | 'portal' | 'competitors' | 'compare' | 'predeploy' | 'progress' | 'casestudy'>('tasks');
     
     // --- Google OAuth status (for Drive section) ---
     const { data: oauthStatus } = useOAuthStatus();
@@ -1830,6 +1832,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                     { id: 'emails', label: 'E-mails' },
                                     { id: 'portal', label: 'Portail' },
                                     { id: 'competitors', label: '🔍 Concurrents' },
+                                    { id: 'compare', label: '🪞 Avant/Après' },
+                                    { id: 'predeploy', label: '🚀 Pre-deploy' },
                                     { id: 'progress', label: '📊 Rapport IA' },
                                     ...(projectFinished ? [{ id: 'casestudy', label: '📄 Case Study' }] : []),
                                 ];
@@ -2335,6 +2339,22 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                         clientName={project.clientName}
                                         clientDescription={project.profile?.customFields?.find(f => f.key === 'Secteur')?.value}
                                     />
+                                </React.Suspense>
+                            </div>
+                        )}
+
+                        {activeTab === 'compare' && (
+                            <div className="min-h-[400px] animate-in fade-in slide-in-from-bottom-2">
+                                <React.Suspense fallback={<LazyFallback />}>
+                                    <BeforeAfterCompare projectId={project.id} />
+                                </React.Suspense>
+                            </div>
+                        )}
+
+                        {activeTab === 'predeploy' && (
+                            <div className="min-h-[400px] animate-in fade-in slide-in-from-bottom-2">
+                                <React.Suspense fallback={<LazyFallback />}>
+                                    <DeployChecklist initialUrl={project.links?.preview || project.links?.website || ''} />
                                 </React.Suspense>
                             </div>
                         )}

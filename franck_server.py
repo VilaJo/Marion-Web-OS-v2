@@ -118,6 +118,8 @@ from api.backup_bp import backup_bp
 from api.portal_bp import portal_bp
 from api.analytics_bp import analytics_bp
 from api.prospection_bp import prospection_bp
+from api.wp_studio_bp import wp_studio_bp
+from api.audit_bp import audit_bp
 
 app.register_blueprint(auth_bp)        # /api/v1/auth/*
 app.register_blueprint(projects_bp)    # /api/v1/projects/*
@@ -131,6 +133,8 @@ app.register_blueprint(backup_bp)      # /api/v1/backup
 app.register_blueprint(portal_bp)
 app.register_blueprint(analytics_bp)   # /api/v1/analytics/*      # /api/v1/portal/*
 app.register_blueprint(prospection_bp) # /api/v1/prospection/*
+app.register_blueprint(wp_studio_bp)   # /api/v1/ai/wp-studio/*
+app.register_blueprint(audit_bp)       # /api/v1/audit/*
 
 # ---------------------------------------------------------------------------
 # Authentication middleware

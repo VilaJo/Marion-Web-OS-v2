@@ -21,6 +21,7 @@ import {
     StickyNote, Target, Mail, Menu, Search,
     Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X, Telescope,
     Code2, Newspaper, Sunrise,
+    Hammer, ChevronDown, BookOpen, Palette, Shield,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
 
@@ -169,6 +170,30 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
     };
 
     const [franckTestLoading, setFranckTestLoading] = useState(false);
+    const [showAtelierMenu, setShowAtelierMenu] = useState(false);
+    const atelierMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close atelier dropdown when clicking outside
+    useEffect(() => {
+        if (!showAtelierMenu) return;
+        const handleClick = (e: MouseEvent) => {
+            if (atelierMenuRef.current && !atelierMenuRef.current.contains(e.target as Node)) {
+                setShowAtelierMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [showAtelierMenu]);
+
+    const ATELIER_ITEMS = [
+        { path: '/wp-studio', label: 'Atelier Refonte WP', icon: Hammer, color: 'text-fuchsia-500', desc: 'Screenshots → plan Cursor' },
+        { path: '/recipes', label: 'Recettes WP → React', icon: BookOpen, color: 'text-blue-500', desc: '12 patterns prêts à coller' },
+        { path: '/components', label: 'Catalog Marion', icon: Palette, color: 'text-violet-500', desc: 'Tes snippets favoris' },
+        { path: '/stack-picker', label: 'Stack Picker', icon: Wand2, color: 'text-emerald-500', desc: 'Quelle stack pour ce projet ?' },
+        { path: '/skills', label: 'Mes compétences', icon: Target, color: 'text-purple-500', desc: 'Radar 8 axes + skill du mois' },
+        { path: '/audit-wp', label: 'Audit Prospect WP', icon: Shield, color: 'text-rose-500', desc: 'Lighthouse + pitch de vente' },
+    ];
+    const isAtelierActive = ATELIER_ITEMS.some(it => isActiveRoute(it.path));
     const handleFranckReconnect = async () => {
         setFranckSetupError('');
         setFranckSetupSuccess(false);
@@ -310,6 +335,55 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Target size={18} className="text-violet-500" />
                     </button>
                 </Tooltip>
+                {/* Atelier dropdown — Marion 2030 (v2.6.0) */}
+                <div ref={atelierMenuRef} className="relative hidden lg:flex">
+                    <Tooltip content="Atelier (WP Studio, Recettes, Stack Picker, Skills, Audit…)">
+                        <button
+                            onClick={() => setShowAtelierMenu(v => !v)}
+                            className={`p-2 rounded-full transition-colors flex items-center gap-1 ${
+                                isAtelierActive
+                                    ? 'bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 ring-1 ring-fuchsia-300/50'
+                                    : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                            }`}
+                            aria-expanded={showAtelierMenu}
+                            aria-haspopup="menu"
+                        >
+                            <Hammer size={18} className={isAtelierActive ? '' : 'text-fuchsia-500'} />
+                            <ChevronDown size={12} className={`transition-transform ${showAtelierMenu ? 'rotate-180' : ''}`} />
+                        </button>
+                    </Tooltip>
+                    {showAtelierMenu && (
+                        <div className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden" role="menu">
+                            <div className="p-3 bg-gradient-to-r from-fuchsia-50 to-pink-50 dark:from-fuchsia-900/20 dark:to-pink-900/20 border-b border-slate-200 dark:border-slate-700">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-600 dark:text-fuchsia-400">Atelier 2030</div>
+                                <div className="text-xs text-slate-500 mt-0.5">Outils pour ta transition WP → Cursor</div>
+                            </div>
+                            <ul className="p-1">
+                                {ATELIER_ITEMS.map(it => {
+                                    const Icon = it.icon;
+                                    const active = isActiveRoute(it.path);
+                                    return (
+                                        <li key={it.path}>
+                                            <button
+                                                onClick={() => { navigate(it.path); setShowAtelierMenu(false); }}
+                                                className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg transition-colors ${
+                                                    active ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                                                }`}
+                                                role="menuitem"
+                                            >
+                                                <Icon size={16} className={`mt-0.5 flex-shrink-0 ${it.color}`} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-semibold text-slate-800 dark:text-white">{it.label}</div>
+                                                    <div className="text-[11px] text-slate-500">{it.desc}</div>
+                                                </div>
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    )}
+                </div>
                 <Tooltip content="Prospection">
                     <button
                         onClick={() => navigate('/prospection')}

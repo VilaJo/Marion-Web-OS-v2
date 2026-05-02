@@ -2152,3 +2152,283 @@ Retourne en JSON :
     except Exception as e:
         logger.error("Prompt improvement failed: %s", e)
         return jsonify({"error": "Amélioration impossible"}), 500
+
+
+# ===========================================================================
+# Marion 2030 Atelier — additional endpoints (v2.6.0)
+# ===========================================================================
+
+
+@ai_bp.route('/ai/code-review', methods=['POST'])
+def code_review():
+    """Marion pastes JSX/Tailwind code, Claude Opus 4.7 reviews it.
+
+    Body JSON:
+      code:        str (required) — the snippet to review
+      framework:   "react"|"vue"|"svelte"|... (default react)
+      focus:       optional list of categories to prioritise
+
+    Categories evaluated: a11y, dry, responsive, dark_mode, performance, naming.
+    """
+    body = request.get_json(silent=True) or {}
+    code = (body.get('code') or '').strip()
+    if not code:
+        return jsonify({"error": "Aucun code fourni"}), 400
+    if len(code) > 16000:
+        return jsonify({"error": "Code trop long (max ~16 000 caractères)"}), 400
+    framework = (body.get('framework') or 'react').strip()
+    focus = body.get('focus') or []
+
+    if not claude_svc.is_configured():
+        return jsonify({
+            "error": "Claude n'est pas configuré. Va dans Settings → IA & Assistants pour ajouter ta clé Anthropic."
+        }), 503
+
+    focus_str = ", ".join(focus) if focus else "tout"
+    prompt = f"""Tu es un senior frontend engineer (10+ ans React/Tailwind).
+
+Marion te montre un snippet ({framework}) qu'elle a généré avec Cursor. Tu dois faire une code review constructive et didactique pour l'aider à progresser.
+
+Code à reviewer :
+```
+{code}
+```
+
+Évalue selon ces 6 dimensions (concentre-toi en priorité sur : {focus_str}) :
+1. accessibility (a11y) — rôles ARIA, contraste, focus, sémantique HTML
+2. dry — duplication, abstractions manquantes
+3. responsive — mobile-first, breakpoints, débordements
+4. dark_mode — classes dark:, contrastes
+5. performance — re-renders, useMemo, images, bundle
+6. naming — clarté des variables/composants
+
+Pour chaque issue trouvée :
+- severity: high|medium|low
+- category: a11y|dry|responsive|dark_mode|performance|naming
+- title: court (≤ 80 chars)
+- explanation: pédagogique (2-4 phrases, en français)
+- suggested_fix: extrait de code corrigé (max 15 lignes)
+
+Termine par un overall_score /100 et un mot d'encouragement.
+
+JSON strict :
+{{
+  "overall_score": 78,
+  "summary": "Bon code, mais 3 problèmes d'a11y faciles à corriger.",
+  "issues": [
+    {{
+      "severity": "high",
+      "category": "a11y",
+      "title": "Bouton sans label accessible",
+      "explanation": "Le bouton ne contient qu'une icône. Les lecteurs d'écran ne sauront pas ce qu'il fait. Ajoute un aria-label ou un texte visuellement caché.",
+      "suggested_fix": "<button aria-label=\\"Fermer\\"><X /></button>"
+    }}
+  ],
+  "encouragement": "Tu progresses vite, continue !"
+}}"""
+
+    try:
+        result = claude_svc.generate_json(prompt=prompt, model=claude_svc.POWER_MODEL)
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Code review failed: %s", e)
+        return jsonify({"error": "Review impossible pour le moment"}), 500
+
+
+@ai_bp.route('/ai/stack-picker', methods=['POST'])
+def stack_picker():
+    """Stack picker wizard — 3 questions in, recommended stack out.
+
+    Body JSON:
+      cms:           "headless"|"none"|"editable_by_client"|"unsure"
+      ecommerce:     "none"|"few_products"|"catalog"|"subscriptions"
+      multilingual:  "no"|"2"|"3+"
+      project_name:  optional, used in tone of recommendation
+      complexity:    optional, "simple"|"standard"|"complex"
+    """
+    body = request.get_json(silent=True) or {}
+    cms = body.get('cms') or 'unsure'
+    ecommerce = body.get('ecommerce') or 'none'
+    multi = body.get('multilingual') or 'no'
+    project = (body.get('project_name') or '').strip() or 'le projet'
+    complexity = body.get('complexity') or 'standard'
+
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré."}), 503
+
+    prompt = f"""Tu es un consultant tech qui aide une freelance designer (Marion) à choisir une stack pour {project}.
+
+Réponses au questionnaire :
+- CMS : {cms} (none = en dur dans le code, headless = Sanity/Contentful, editable_by_client = il faut un éditeur visuel)
+- E-commerce : {ecommerce}
+- Multilingue : {multi}
+- Complexité ressentie : {complexity}
+
+Recommande UNE stack principale (la plus pragmatique) et UNE alternative.
+Sois concrète, mentionne les versions actuelles (Next.js 15, React 19, Tailwind v4, etc).
+
+Inclut :
+- la commande de scaffold complète
+- les libs additionnelles à installer
+- 3 raisons clés (en français, percutantes)
+- 1 piège à éviter
+
+JSON strict :
+{{
+  "primary": {{
+    "name": "Next.js 15 + Sanity + Stripe",
+    "framework": "Next.js 15",
+    "ui": "Tailwind v4 + shadcn/ui",
+    "cms": "Sanity",
+    "ecommerce": "Stripe Checkout",
+    "deploy": "Vercel",
+    "scaffold_command": "npx create-next-app@latest mon-projet --typescript --tailwind --app",
+    "extra_install": "npm i sanity @sanity/client stripe",
+    "why": ["...", "...", "..."],
+    "pitfall": "..."
+  }},
+  "alternative": {{
+    "name": "Astro 5 + MDX + Snipcart",
+    "framework": "Astro 5",
+    "ui": "Tailwind v4",
+    "cms": "MDX local",
+    "ecommerce": "Snipcart",
+    "deploy": "Netlify",
+    "scaffold_command": "npm create astro@latest mon-projet -- --template minimal",
+    "extra_install": "npx astro add tailwind mdx react",
+    "why": ["...", "...", "..."],
+    "pitfall": "..."
+  }},
+  "reasoning": "1-2 phrases pédagogiques expliquant pourquoi le primary l'emporte sur l'alternative ici."
+}}"""
+
+    gemini_client = get_client()
+    prefs = resolve_ai_prefs(get_workspace_settings(1).get('aiPreferences'))
+    try:
+        result = generate_json_with_fallback(
+            gemini_client=gemini_client,
+            prompt=prompt,
+            prefs=prefs,
+            cloud_model="gemini-2.0-flash",
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Stack picker failed: %s", e)
+        return jsonify({"error": "Suggestion impossible pour le moment"}), 500
+
+
+@ai_bp.route('/ai/wp-glossary/lookup', methods=['POST'])
+def wp_glossary_lookup():
+    """Look up a WordPress term and return its modern equivalent.
+
+    Body JSON:
+      term: str (required)  e.g. "ACF", "wp_query", "shortcode"
+    """
+    body = request.get_json(silent=True) or {}
+    term = (body.get('term') or '').strip()
+    if not term:
+        return jsonify({"error": "Terme requis"}), 400
+    if len(term) > 80:
+        return jsonify({"error": "Terme trop long"}), 400
+
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré."}), 503
+
+    prompt = f"""Marion connaît bien WordPress et apprend React/Next.js/Tailwind avec Cursor.
+Elle te demande l'équivalent moderne du terme WordPress suivant : "{term}".
+
+Donne :
+- définition courte du terme WP (1 phrase)
+- équivalent moderne (lib / pattern / API)
+- exemple de code minimal (10-20 lignes max)
+- 1 piège classique à éviter
+- lien officiel le plus utile
+
+JSON strict :
+{{
+  "wp_term": "{term}",
+  "wp_definition": "Plugin permettant d'ajouter des champs personnalisés.",
+  "modern_equivalent": "Sanity references + groq / Schéma TypeScript",
+  "code_example": "// types/page.ts\\nexport interface Page {{ title: string; hero_image: string; }}",
+  "code_lang": "ts",
+  "pitfall": "Ne mélange pas tes types frontend avec ton schéma CMS, garde 1 source de vérité.",
+  "doc_url": "https://www.sanity.io/docs/schema-types"
+}}"""
+
+    gemini_client = get_client()
+    prefs = resolve_ai_prefs(get_workspace_settings(1).get('aiPreferences'))
+    try:
+        result = generate_json_with_fallback(
+            gemini_client=gemini_client,
+            prompt=prompt,
+            prefs=prefs,
+            cloud_model="gemini-2.0-flash",
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error("WP glossary lookup failed: %s", e)
+        return jsonify({"error": "Recherche impossible"}), 500
+
+
+@ai_bp.route('/ai/daily-lesson', methods=['POST'])
+def daily_lesson():
+    """Generate a 3-5 minute daily lesson tailored to Marion's level.
+
+    Body JSON:
+      level: "debutant"|"intermediaire"|"avance" (default intermediaire)
+      topic: optional — explicit topic to cover
+      avoid: optional list of recent topic ids to avoid repeating
+    """
+    body = request.get_json(silent=True) or {}
+    level = body.get('level') or 'intermediaire'
+    topic = (body.get('topic') or '').strip()
+    avoid = body.get('avoid') or []
+
+    if not is_configured():
+        return jsonify({"error": "Gemini n'est pas configuré."}), 503
+
+    avoid_str = ", ".join(avoid[:10]) if avoid else "aucune"
+    topic_directive = (
+        f"Le sujet est imposé : {topic}."
+        if topic
+        else "Choisis un sujet utile et pratique parmi : Tailwind, React Hooks, Next.js routing, Server Components, animations Framer Motion, Cursor mastery, Git/Vercel, accessibilité, performance, dark mode, design tokens."
+    )
+
+    prompt = f"""Tu es le coach de Marion. Elle a 5 minutes pour apprendre un truc concret aujourd'hui.
+
+Niveau de Marion : {level}.
+{topic_directive}
+
+Sujets déjà vus récemment (à éviter) : {avoid_str}.
+
+Produis une mini-leçon :
+- titre court et accrocheur
+- 1 phrase explicative (le "quoi" + le "pourquoi c'est utile")
+- 1 exemple de code de 5-15 lignes (Tailwind / React / TypeScript)
+- 1 challenge Cursor : un mini exercice qu'elle fait dans Cursor en 5 minutes pour assimiler
+
+JSON strict :
+{{
+  "id": "cursor-keyboard-shortcuts",
+  "topic": "Cursor mastery",
+  "title": "3 raccourcis Cursor que personne n'utilise (et tu devrais)",
+  "explanation": "Cmd+K te génère du code inline, Cmd+L ouvre le chat, Cmd+I lance Composer multi-fichiers. Tu doubleras ta vitesse.",
+  "code_lang": "tsx",
+  "code_example": "// Sélectionne ce bloc, Cmd+K, et tape :\\n// 'rends ce composant responsive et ajoute le dark mode'\\nfunction Card({{ title }}: {{ title: string }}) {{\\n  return <div className=\\"p-4 bg-white rounded\\">{{title}}</div>;\\n}}",
+  "cursor_challenge": "Ouvre un de tes composants existants. Sélectionne tout, Cmd+K, demande à Cursor d'ajouter le dark mode. Compare avant/après.",
+  "estimated_minutes": 4
+}}"""
+
+    gemini_client = get_client()
+    prefs = resolve_ai_prefs(get_workspace_settings(1).get('aiPreferences'))
+    try:
+        result = generate_json_with_fallback(
+            gemini_client=gemini_client,
+            prompt=prompt,
+            prefs=prefs,
+            cloud_model="gemini-2.0-flash",
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Daily lesson failed: %s", e)
+        return jsonify({"error": "Leçon indisponible pour le moment"}), 500

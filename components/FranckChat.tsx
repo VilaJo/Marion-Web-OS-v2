@@ -9,6 +9,8 @@ import { ChatMessage, Project, CalendarEvent } from '../types';
 
 import { createChatSession, fetchFranckData, clearFranckData, fetchFranckSuggestions } from '../services/geminiService';
 import { useFranckGreeting } from '../services/queries';
+import { wpGlossaryLookup } from './WpGlossary';
+import { CodeReviewPanel } from './CodeReviewPanel';
 
 // @ts-ignore
 import franckAvatar from '../assets/franck-avatar.png';
@@ -155,6 +157,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
     const [codeMode, setCodeModeState] = useState<boolean>(() => {
         try { return localStorage.getItem('franck_code_mode') === 'true'; } catch { return false; }
     });
+    const [showClaudeReview, setShowClaudeReview] = useState(false);
     const setCodeMode = (updater: boolean | ((prev: boolean) => boolean)) => {
         setCodeModeState(prev => {
             const next = typeof updater === 'function' ? (updater as (p: boolean) => boolean)(prev) : updater;
@@ -440,6 +443,27 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
         if (!input.trim() || !chatSession.current) return;
 
+        // Local slash command: /wp <terme> -> WP glossary lookup
+        const wpMatch = input.trim().match(/^\/wp\s+(.+)$/i);
+        if (wpMatch) {
+            const term = wpMatch[1].trim();
+            const userMsg: ChatMessage = { role: 'user', text: input, timestamp: new Date() };
+            setMessages(prev => [...prev, userMsg]);
+            setInput('');
+            try {
+                const entry = await wpGlossaryLookup(term);
+                const reply = `**${entry.wp_term}** → ${entry.modern_equivalent}\n\n${entry.wp_definition}\n\n\`\`\`${entry.code_lang || 'tsx'}\n${entry.code_example}\n\`\`\`\n\n💡 **Piège** : ${entry.pitfall}${entry.doc_url ? `\n\n📖 [Documentation](${entry.doc_url})` : ''}`;
+                setMessages(prev => [...prev, { role: 'model', text: reply, timestamp: new Date() }]);
+            } catch (e: any) {
+                setMessages(prev => [...prev, {
+                    role: 'model',
+                    text: `Désolé, je n'ai pas pu trouver "${term}" dans le glossaire WP. ${e?.message || ''}`,
+                    timestamp: new Date(),
+                }]);
+            }
+            return;
+        }
+
         // Local command: show Franck menu again without resetting history.
         if (isMenuCommand(input)) {
             const userMsg: ChatMessage = { role: 'user', text: input, timestamp: new Date() };
@@ -655,6 +679,13 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                                 {cc.label}
                             </button>
                         ))}
+                        <button
+                            onClick={() => setShowClaudeReview(true)}
+                            className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[10px] font-bold hover:brightness-110 transition-all"
+                            title="Review approfondie via Claude Opus 4.7"
+                        >
+                            🦾 Claude Opus
+                        </button>
                     </div>
                 )}
 
@@ -709,6 +740,20 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                     <p className="text-[10px] text-slate-400 text-center">Mode Code Review actif · Ctrl+Entrée pour envoyer</p>
                 )}
             </div>
+
+            {showClaudeReview && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
+                            <h3 className="font-bold text-sm text-slate-800 dark:text-white">Code Review (Claude Opus 4.7)</h3>
+                            <button onClick={() => setShowClaudeReview(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><X size={16} /></button>
+                        </div>
+                        <div className="p-4">
+                            <CodeReviewPanel initialCode={input} compact />
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
 
