@@ -1669,20 +1669,42 @@ def generate_qr():
     data = request.json
     try:
         raw_iban = str(data.get('iban', '')).replace(" ", "")
-        debtor = data.get('debtor', {})
-        d_name = debtor.get('name') or 'Client'
-        d_addr = debtor.get('address') or ''
-        d_zip = debtor.get('zip') or '1000'
-        d_city = debtor.get('city') or 'Lausanne'
+
+        # Creditor (Marion). Read from payload, fallback only if frontend omits it.
+        creditor = data.get('creditor', {}) or {}
+        c_name = (creditor.get('name') or 'Marion Kindynis').strip()
+        c_addr = (creditor.get('address') or '4A chemin du Port').strip()
+        c_zip = (creditor.get('zip') or '1246').strip()
+        c_city = (creditor.get('city') or 'Corsier').strip()
+        c_country = (creditor.get('country') or 'CH').strip().upper()
+
+        debtor = data.get('debtor', {}) or {}
+        d_name = (debtor.get('name') or 'Client').strip()
+        d_addr = (debtor.get('address') or '').strip()
+        d_zip = (debtor.get('zip') or '').strip()
+        d_city = (debtor.get('city') or '').strip()
+        d_country = (debtor.get('country') or 'CH').strip().upper()
+
         amount = f"{float(data.get('amount', 0.0)):.2f}"
+        currency = (data.get('currency') or 'CHF').upper()
+        if currency not in ('CHF', 'EUR'):
+            currency = 'CHF'
         ref_msg = data.get('message', '')
+
+        # Swiss QR-bill v2.0 — only emit a debtor block if zip+city are usable.
+        # Otherwise leave the debtor block empty (the bank/payer fills it in).
+        if d_zip and d_city:
+            d_zip_city = f"{d_zip} {d_city}"
+            debtor_block = ["K", d_name, d_addr or d_city, d_zip_city, "", "", d_country]
+        else:
+            debtor_block = ["", "", "", "", "", "", ""]
 
         lines = [
             "SPC", "0200", "1", raw_iban,
-            "K", "Marion Web", "4A chemin du Port", "1246 Corsier", "", "", "CH",
+            "K", c_name, c_addr, f"{c_zip} {c_city}", "", "", c_country,
             "", "", "", "", "", "", "",
-            amount, "CHF",
-            "K", d_name, d_addr, f"{d_zip} {d_city}", "", "", "CH",
+            amount, currency,
+        ] + debtor_block + [
             "NON", "", ref_msg, "EPD",
         ]
 

@@ -9,6 +9,103 @@ import { useUIStore } from '../stores';
 
 declare const confetti: any;
 
+// ---------------------------------------------------------------------------
+// Address parsing helpers — used to fill the Swiss QR debtor/creditor blocks
+// from free-form text (clients can enter addresses any way they want).
+// ---------------------------------------------------------------------------
+
+interface ParsedAddress {
+    street: string;
+    zip: string;
+    city: string;
+    country: string;
+}
+
+/** Detect a postal code anywhere in a string. Supports CH (4 digits),
+ *  FR/DE/ES/IT (5 digits), UK (alphanumeric).
+ */
+function extractZipAndCity(line: string): { zip: string; city: string } | null {
+    if (!line) return null;
+    // Try "1234 Ville" / "75001 Paris" / "10115 Berlin"
+    let m = line.match(/(\d{4,5})\s+([A-Za-zÀ-ÿ' \-.]+)/);
+    if (m) return { zip: m[1].trim(), city: m[2].trim() };
+    // Try "Ville 1234" (rare)
+    m = line.match(/([A-Za-zÀ-ÿ' \-.]+)\s+(\d{4,5})/);
+    if (m) return { zip: m[2].trim(), city: m[1].trim() };
+    return null;
+}
+
+/** Parse a free-form client address into structured fields.
+ *  Accepts multi-line ("Rue X 1\n1234 Ville\nFrance") OR single-line
+ *  with comma separators ("Rue X 1, 1234 Ville, France").
+ */
+export function parseAddress(raw: string): ParsedAddress {
+    const result: ParsedAddress = { street: '', zip: '', city: '', country: 'CH' };
+    if (!raw || !raw.trim()) return result;
+    // Normalize: split on newlines OR commas (but only commas if no newlines).
+    const hasNewline = raw.includes('\n');
+    const parts = (hasNewline ? raw.split('\n') : raw.split(','))
+        .map(p => p.trim())
+        .filter(Boolean);
+
+    // Find the line with the postal code first.
+    let zipCityIdx = -1;
+    for (let i = 0; i < parts.length; i++) {
+        const found = extractZipAndCity(parts[i]);
+        if (found) {
+            result.zip = found.zip;
+            result.city = found.city;
+            zipCityIdx = i;
+            break;
+        }
+    }
+    // The street is everything before the zip line (joined by space).
+    if (zipCityIdx > 0) {
+        result.street = parts.slice(0, zipCityIdx).join(', ').trim();
+    } else if (zipCityIdx === -1 && parts.length > 0) {
+        // No zip detected — first part is the street, last part may be city.
+        result.street = parts[0];
+        if (parts.length >= 2) result.city = parts[parts.length - 1];
+    }
+    // The country is whatever comes after the zip line, if any.
+    if (zipCityIdx >= 0 && zipCityIdx < parts.length - 1) {
+        const tail = parts[parts.length - 1].trim();
+        // Common country names → ISO code (Swiss QR-bill needs ISO)
+        const countryMap: Record<string, string> = {
+            'suisse': 'CH', 'switzerland': 'CH', 'schweiz': 'CH', 'svizzera': 'CH',
+            'france': 'FR', 'francia': 'FR',
+            'allemagne': 'DE', 'germany': 'DE', 'deutschland': 'DE',
+            'italie': 'IT', 'italy': 'IT', 'italia': 'IT',
+            'espagne': 'ES', 'spain': 'ES', 'españa': 'ES',
+            'belgique': 'BE', 'belgium': 'BE', 'belgië': 'BE',
+            'luxembourg': 'LU',
+            'autriche': 'AT', 'austria': 'AT',
+            'royaume-uni': 'GB', 'uk': 'GB', 'united kingdom': 'GB',
+            'usa': 'US', 'états-unis': 'US', 'united states': 'US',
+        };
+        const k = tail.toLowerCase();
+        result.country = countryMap[k] || (tail.length === 2 ? tail.toUpperCase() : 'CH');
+    }
+    return result;
+}
+
+/** Parse Marion's sender address. Uses the same engine but starts with the
+ *  legacy "•"-separated format ("4A chemin du Port • 1246 • Corsier").
+ */
+export function parseSenderAddress(raw: string): ParsedAddress {
+    if (!raw) return { street: '4A chemin du Port', zip: '1246', city: 'Corsier', country: 'CH' };
+    if (raw.includes('•')) {
+        const parts = raw.split('•').map(p => p.trim()).filter(Boolean);
+        return {
+            street: parts[0] || '',
+            zip: parts[1] || '',
+            city: parts[2] || '',
+            country: parts[3] || 'CH',
+        };
+    }
+    return parseAddress(raw);
+}
+
 interface InvoiceBuilderProps {
     invoice: Invoice;
     project?: Project;
@@ -23,7 +120,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
     const tjhFromSettings = useUIStore((s) => s.tjh);
     // Manually editable sender info and invoice title
     const [senderName, setSenderName] = useState<string>('Marion Kindynis');
-    const [senderAddress, setSenderAddress] = useState<string>('4A chemin du Port • 1246 • Corsier');
+    const [senderAddress, setSenderAddress] = useState<string>('4A chemin du Port\n1246 Corsier\nSuisse');
     const [invoiceTitle, setInvoiceTitle] = useState<string>('');
     const [paymentTerms, setPaymentTerms] = useState<string>('');
 
@@ -244,7 +341,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
         navigator.clipboard.writeText(link);
     };
 
-    // --- QR Code Fetching (Corrected Backend Route) ---
+    // --- QR Code Fetching ---
     useEffect(() => {
         if (activeBank.id !== 'main' || (currentInvoice.currency !== 'CHF' && currentInvoice.currency !== 'EUR' && currentInvoice.currency !== '€')) {
             setQrImage(null);
@@ -253,25 +350,36 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
 
         const fetchQR = async () => {
             try {
-                // Address Parsing
-                const rawAddr = currentInvoice.clientAddress || '';
-                const clientLines = rawAddr.split('\n');
-                const zipCityLine = clientLines.find(l => /\d{4}/.test(l)) || '';
-                const zipMatch = zipCityLine.match(/(\d{4})\s+(.+)/);
+                // ---- Debtor (client) parsing -----------------------------------
+                // Accept multi-line addresses ("Rue X 1\n1234 Ville\nPays"),
+                // single-line ("Rue X 1, 1234 Ville, Pays") and missing pieces.
+                const debtor = parseAddress(currentInvoice.clientAddress || '');
+
+                // ---- Creditor (Marion) parsing ---------------------------------
+                // senderAddress is something like "4A chemin du Port • 1246 • Corsier"
+                // or any free text. We split on bullets first, fallback to comma/newline.
+                const creditor = parseSenderAddress(senderAddress);
 
                 const payload = {
                     amount: calculateTotal(),
                     currency: currentInvoice.currency === '€' ? 'EUR' : currentInvoice.currency || 'CHF',
                     reference: currentInvoice.number,
                     iban: activeBank.iban.replace(/\s/g, ''),
-                    debtor: {
-                        name: activeProject?.clientName || t.unknownClient,
-                        address: clientLines[0] || t.unknownAddress,
-                        zip: zipMatch ? zipMatch[1] : "1000",
-                        city: zipMatch ? zipMatch[2] : "Lausanne",
-                        country: 'CH'
+                    creditor: {
+                        name: senderName || activeBank.beneficiary || 'Marion Kindynis',
+                        address: creditor.street,
+                        zip: creditor.zip,
+                        city: creditor.city,
+                        country: creditor.country || 'CH',
                     },
-                    message: `${t.invoice} ${currentInvoice.number}`
+                    debtor: {
+                        name: currentInvoice.clientDisplayName || activeProject?.clientName || t.unknownClient,
+                        address: debtor.street,
+                        zip: debtor.zip,
+                        city: debtor.city,
+                        country: debtor.country || 'CH',
+                    },
+                    message: `${t.invoice} ${currentInvoice.number}`,
                 };
 
                 const res = await apiFetch('/api/v1/generate-qr', {
@@ -291,7 +399,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
         const timeout = setTimeout(fetchQR, 800);
         return () => clearTimeout(timeout);
 
-    }, [calculateTotal(), currentInvoice.currency, selectedBankId, currentInvoice.clientAddress, activeBank]);
+    }, [calculateTotal(), currentInvoice.currency, selectedBankId, currentInvoice.clientAddress, currentInvoice.clientDisplayName, activeBank, senderAddress, senderName]);
 
     // --- Actions ---
     const updateField = (field: keyof Invoice, value: any) => setCurrentInvoice(prev => ({ ...prev, [field]: value }));
@@ -489,14 +597,16 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                         />
                                     )}
                                 </div>
-                                <div className="text-xs text-slate-600">
+                                <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
                                     {isGenerating ? (
                                         senderAddress
                                     ) : (
                                         <textarea
                                             value={senderAddress}
                                             onChange={e => setSenderAddress(e.target.value)}
-                                            className="w-full bg-transparent outline-none resize-none border-b border-transparent hover:border-slate-300 focus:border-brand-orange h-8"
+                                            rows={3}
+                                            placeholder={"4A chemin du Port\n1246 Corsier\nSuisse"}
+                                            className="w-full bg-transparent outline-none resize-y border border-transparent hover:border-slate-300 focus:border-brand-orange min-h-[3.5rem] leading-relaxed p-1"
                                         />
                                     )}
                                 </div>
@@ -516,7 +626,8 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                     value={currentInvoice.clientAddress} 
                                     onChange={e => updateField('clientAddress', e.target.value)}
                                     placeholder={t.clientAddressPlaceholder}
-                                    className="w-full text-xs text-slate-700 bg-transparent resize-none whitespace-pre-wrap outline-none border-transparent hover:border-slate-200 focus:border-brand-orange transition-colors h-20 leading-relaxed"
+                                    rows={4}
+                                    className="w-full text-xs text-slate-700 bg-transparent resize-y whitespace-pre-wrap outline-none border border-transparent hover:border-slate-200 focus:border-brand-orange transition-colors min-h-[5rem] leading-relaxed p-1"
                                 />
                             </div>
 
@@ -733,9 +844,14 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     {/* Footer / Divider */}
                     <div className="px-[15mm] mb-4">
                         <div className="border-t border-dotted border-slate-400 w-full mb-2"></div>
-                        <div className="flex justify-between text-[9px] text-slate-500">
-                            <span>{senderAddress.split('•')[0]?.trim()} • {senderAddress.split('•')[1]?.trim()}</span>
-                            <span>N° IDE CHE-265.310.079</span>
+                        <div className="flex justify-between text-[9px] text-slate-500 gap-4">
+                            <span className="truncate">{
+                                // Full sender address on one footer line, bullet-separated.
+                                senderAddress.includes('•')
+                                    ? senderAddress.split('•').map(s => s.trim()).filter(Boolean).join(' • ')
+                                    : senderAddress.split('\n').map(s => s.trim()).filter(Boolean).join(' • ')
+                            }</span>
+                            <span className="flex-shrink-0">N° IDE CHE-265.310.079</span>
                         </div>
                     </div>
 
@@ -754,7 +870,10 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                         <p className="font-bold mb-1">{t.payableTo}</p>
                                         <p>{activeBank.iban}</p>
                                         <p>{senderName}</p>
-                                        <div className="text-xs">{senderAddress.split('•')[0].trim()}</div>
+                                        <div className="text-xs whitespace-pre-line">{(() => {
+                                            const a = parseSenderAddress(senderAddress);
+                                            return [a.street, [a.zip, a.city].filter(Boolean).join(' ')].filter(Boolean).join('\n');
+                                        })()}</div>
                                     </div>
                                     <div className="flex-1">
                                         <p className="font-bold mb-1">{t.payableBy}</p>
@@ -797,7 +916,10 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                                 <p className="font-bold mb-1">{t.payableTo}</p>
                                                 <p>{activeBank.iban}</p>
                                                 <p>{senderName}</p>
-                                                <div className="text-xs opacity-80">{senderAddress.split('•')[0].trim()}</div>
+                                                <div className="text-xs opacity-80 whitespace-pre-line">{(() => {
+                                                    const a = parseSenderAddress(senderAddress);
+                                                    return [a.street, [a.zip, a.city].filter(Boolean).join(' ')].filter(Boolean).join('\n');
+                                                })()}</div>
                                             </div>
                                             <div className="mb-3">
                                                 <p className="font-bold mb-1">{t.reference}</p>
