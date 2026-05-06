@@ -573,11 +573,12 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
             {/* Document Scroll Area */}
             <div className="flex-1 w-full overflow-y-auto bg-slate-200 dark:bg-black/50 p-8 flex justify-center">
                 
-                {/* THE A4 PAPER (WYSIWYG) */}
+                {/* THE A4 PAPER (WYSIWYG) — exact A4 size so the Swiss QR-bill
+                    section sits flush at the bottom (105mm zone, per ISO 20022 spec). */}
                 <div 
                     id="invoice-paper"
                     className="bg-white text-black shadow-2xl relative transition-all font-sans"
-                    style={{ width: '210mm', minHeight: '290mm', padding: '0', display: 'flex', flexDirection: 'column' }}
+                    style={{ width: '210mm', minHeight: '297mm', padding: '0', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}
                 >
                     {/* TOP SECTION (Custom Layout based on Facture LN Avocats.pdf) */}
                     <div className="px-[15mm] py-[10mm] flex-1">
@@ -855,16 +856,21 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                         </div>
                     </div>
 
-                    {/* BOTTOM SECTION (Swiss QR or SEPA) */}
+                    {/* BOTTOM SECTION (Swiss QR or SEPA)
+                        Swiss QR-bill spec: 210mm × 105mm exactement, fixé au bas de la page A4.
+                        Récépissé 62mm | Section paiement 148mm. */}
                     {(activeBank.id === 'main' && ['CHF', 'EUR', '€'].includes(currentInvoice.currency || 'CHF')) ? (
-                        <div className="w-full border-t border-dashed border-slate-300 relative break-inside-avoid shrink-0 bg-white" style={{ height: '105mm', padding: '0' }}>
+                        <div
+                            className="w-full border-t border-dashed border-slate-300 relative break-inside-avoid shrink-0 bg-white"
+                            style={{ width: '210mm', height: '105mm', padding: '0', boxSizing: 'border-box' }}
+                        >
                             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-slate-400 print:hidden">
                                 <span className="text-xs tabular-nums">{t.qrZone}</span>
                             </div>
 
-                            <div className="flex h-full font-sans text-black text-xs leading-tight">
-                                {/* Receipt */}
-                                <div className="w-[62mm] h-full p-[5mm] border-r border-dashed border-slate-300 flex flex-col shrink-0">
+                            <div className="flex h-full font-sans text-black text-xs leading-tight" style={{ boxSizing: 'border-box' }}>
+                                {/* Récépissé — 62mm × 105mm (spec Swiss QR-bill) */}
+                                <div className="h-full p-[5mm] border-r border-dashed border-slate-300 flex flex-col shrink-0" style={{ width: '62mm', boxSizing: 'border-box' }}>
                                     <h3 className="font-bold text-sm mb-3">{t.receipt}</h3>
                                     <div className="mb-3">
                                         <p className="font-bold mb-1">{t.payableTo}</p>
@@ -889,12 +895,12 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                     </div>
                                 </div>
 
-                                {/* Main Part */}
-                                <div className="flex-1 h-full p-[5mm] flex flex-col">
+                                {/* Section paiement — 148mm × 105mm (spec Swiss QR-bill) */}
+                                <div className="h-full p-[5mm] flex flex-col" style={{ width: '148mm', boxSizing: 'border-box' }}>
                                     <h3 className="font-bold text-base mb-3">{t.paymentSection}</h3>
                                     <div className="flex gap-6 h-full">
-                                        <div className="w-[46mm] shrink-0">
-                                            <div className="w-[46mm] h-[46mm] border border-black flex items-center justify-center bg-white mb-4 relative">
+                                        <div className="shrink-0" style={{ width: '46mm' }}>
+                                            <div className="border border-black flex items-center justify-center bg-white mb-4 relative" style={{ width: '46mm', height: '46mm', boxSizing: 'border-box' }}>
                                                 {qrImage ? (
                                                     <img src={qrImage} alt="Swiss QR" className="w-full h-full object-contain" />
                                                 ) : (
