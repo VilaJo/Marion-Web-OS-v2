@@ -583,9 +583,8 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     {/* TOP SECTION (Custom Layout based on Facture LN Avocats.pdf) */}
                     <div className="px-[15mm] py-[10mm] flex-1">
                         
-                        {/* Header: Logo and Sender (Top Left) */}
+                        {/* Header: Sender (Top Left) — logo retiré, l'expéditeur suffit */}
                         <div className="flex items-start gap-5 mb-10">
-                            <img src="/logo-marion.png" alt="Marion Logo" className="h-14 w-auto mt-1 flex-shrink-0" />
                             <div className="min-w-[50mm]">
                                 <div className="text-lg font-bold text-slate-900 leading-tight">
                                     {isGenerating ? (
