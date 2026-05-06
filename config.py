@@ -39,7 +39,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.6.1'
+    APP_VERSION = '2.6.2'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -64,12 +64,14 @@ class Config:
 
     # -- Paths --------------------------------------------------------------
     USER_HOME = Path.home()
-    # Toujours résoudre en absolu : un DATA_PATH relatif dépendrait du répertoire de
-    # lancement du serveur et pourrait « perdre » le dossier Bureau par erreur.
+    # Défaut : ~/Desktop/Marion Web OS Database pour l'utilisateur macOS qui lance Marion
+    # (toujours $HOME du compte local — pas besoin de .env.local si le dossier est au bon endroit).
     _data_path_env = Path(
         os.getenv('DATA_PATH', str(USER_HOME / "Desktop" / "Marion Web OS Database"))
     ).expanduser()
     DATA_PATH = _data_path_env.resolve()
+    # Toujours résolu en absolu (évite une ambiguïté si le serveur est lancé depuis un autre cwd).
+
     STATIC_FOLDER = os.getenv('STATIC_FOLDER', '.dist')
 
     # -- API Keys -----------------------------------------------------------

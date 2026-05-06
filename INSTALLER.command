@@ -243,6 +243,23 @@ echo ""
 echo "───────────────────────────────────────────────────────────────────"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 4b. Dossier données sur le Bureau (sans DATA_PATH dans .env.local =
+#       identique au défaut dans config.py — toujours TON utilisateur macOS.)
+# ─────────────────────────────────────────────────────────────────────────────
+echo ""
+echo "💾 Dossiers clients + SQLite : emplacement PAR DÉFAUT sur ce Mac :"
+DATA_ROOT="$HOME/Desktop/Marion Web OS Database"
+echo "    $DATA_ROOT"
+if mkdir -p "$DATA_ROOT" 2>/dev/null; then
+    echo "   ✅ Ce dossier sur le Bureau est prêt — garde-le seul lors d'une réinstallation."
+else
+    echo "   ⚠️  Impossible de créer ce dossier (permissions ?)."
+fi
+
+echo ""
+echo "───────────────────────────────────────────────────────────────────"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 5. Configuration (optionnel)
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
@@ -277,8 +294,13 @@ echo "║   🖥️  Une icône 'Marion Web OS' a été créée sur ton Bureau  
 echo "║                                                               ║"
 echo "║   👉 Double-clique dessus pour lancer l'application !         ║"
 echo "║                                                               ║"
-echo "║   📥 Mise à jour : git pull dans ce dossier — ou              ║"
-echo "║      ACTIVER_GIT.command si « not a git repository »         ║"
+echo "║   📥 Mise à jour : git pull — ou METTRE_A_JOUR.command        ║"
+echo "║      ACTIVER_GIT.command si pas de dossier .git              ║"
+echo "║                                                               ║"
+echo "║   🗂️  Réinstall : garde seul sur le Bureau le dossier         ║"
+echo "║      « Marion Web OS Database » ; supprime le dossier code   ║"
+echo "║      et Marion Web OS.app puis retélécharge. Lire alors       ║"
+echo "║      REINSTALLATION_PROPURE.txt dans le projet.               ║"
 echo "║                                                               ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""
