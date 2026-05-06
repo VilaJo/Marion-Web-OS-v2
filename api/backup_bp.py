@@ -2,6 +2,8 @@
 Backup Blueprint - Local and cloud database backup endpoints.
 Handles: manual backup, backup status, cloud backup to Google Drive.
 """
+from __future__ import annotations
+
 import os
 import json
 import requests

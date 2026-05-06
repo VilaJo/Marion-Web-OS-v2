@@ -12,6 +12,8 @@ Features:
   - Delete, attachments (read & send), configurable server
 """
 
+from __future__ import annotations
+
 import imaplib
 import smtplib
 import email as email_lib

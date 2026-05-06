@@ -13,6 +13,8 @@ Usage in any module:
     logger.info("Something happened")
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import logging

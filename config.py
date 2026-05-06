@@ -7,6 +7,12 @@ All application settings are centralised here. Modules should import
 environment-specific overrides and validation happen in one place.
 """
 
+# `from __future__ import annotations` rend toutes les annotations paresseuses
+# (évaluées comme strings), ce qui permet la syntaxe `X | None` même sur
+# Python 3.9 (Mac de Marion). Sans ça, `_config: type[Config] | None = None`
+# crashe à l'import avec TypeError.
+from __future__ import annotations
+
 import os
 import logging
 from pathlib import Path

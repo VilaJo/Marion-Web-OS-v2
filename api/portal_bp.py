@@ -27,6 +27,8 @@ Admin endpoints (Marion auth required):
   GET    /api/v1/portal/unseen/<pid>         - Get unseen counts
 """
 
+from __future__ import annotations
+
 import os
 import json
 import uuid

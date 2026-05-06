@@ -9,6 +9,8 @@ session token.  Phase 3.1: credentials are encrypted with Fernet (via
 crypto_utils) using the session password as encryption key.
 """
 
+from __future__ import annotations
+
 import base64
 from flask import Blueprint, request, jsonify, Response
 from services.logger import get_logger

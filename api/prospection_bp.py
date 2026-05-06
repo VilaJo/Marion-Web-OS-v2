@@ -6,6 +6,8 @@ when Apollo credits are exhausted (HTTP 422) or rate-limited (HTTP 429).
 The fallback is re-attempted after APOLLO_RETRY_AFTER_SECONDS.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import random
