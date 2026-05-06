@@ -868,8 +868,10 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                             </div>
 
                             <div className="flex h-full font-sans text-black text-xs leading-tight" style={{ boxSizing: 'border-box' }}>
-                                {/* Récépissé — 62mm × 105mm (spec Swiss QR-bill) */}
-                                <div className="h-full p-[5mm] border-r border-dashed border-slate-300 flex flex-col shrink-0" style={{ width: '62mm', boxSizing: 'border-box' }}>
+                                {/* Récépissé — 62mm × 105mm (spec Swiss QR-bill).
+                                    Padding-left 15mm pour aligner le texte avec le contenu de la facture au-dessus
+                                    (qui utilise px-[15mm]). Padding-right/y restent à 5mm (standard QR-bill). */}
+                                <div className="h-full pl-[15mm] pr-[5mm] py-[5mm] border-r border-dashed border-slate-300 flex flex-col shrink-0" style={{ width: '62mm', boxSizing: 'border-box' }}>
                                     <h3 className="font-bold text-sm mb-3">{t.receipt}</h3>
                                     <div className="mb-3">
                                         <p className="font-bold mb-1">{t.payableTo}</p>
@@ -894,8 +896,9 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                     </div>
                                 </div>
 
-                                {/* Section paiement — 148mm × 105mm (spec Swiss QR-bill) */}
-                                <div className="h-full p-[5mm] flex flex-col" style={{ width: '148mm', boxSizing: 'border-box' }}>
+                                {/* Section paiement — 148mm × 105mm (spec Swiss QR-bill).
+                                    Padding-right 15mm pour aligner avec le bord droit de la facture (px-[15mm]). */}
+                                <div className="h-full pl-[5mm] pr-[15mm] py-[5mm] flex flex-col" style={{ width: '148mm', boxSizing: 'border-box' }}>
                                     <h3 className="font-bold text-base mb-3">{t.paymentSection}</h3>
                                     <div className="flex gap-6 h-full">
                                         <div className="shrink-0" style={{ width: '46mm' }}>
