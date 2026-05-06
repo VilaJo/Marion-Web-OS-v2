@@ -435,12 +435,6 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
             return acc + (Number.isFinite(q) ? q : 0) * (Number.isFinite(p) ? p : 0);
         }, 0);
 
-    const parseQtyInput = (raw: string) => {
-        const n = parseFloat(raw);
-        if (!Number.isFinite(n)) return 1;
-        return n <= 0 ? 1 : n;
-    };
-
     const parseMoneyInput = (raw: string) => {
         if (raw === '' || raw === '-') return 0;
         const n = parseFloat(raw);
@@ -453,16 +447,13 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
             return { ...prev, items: newItems, amount: subtotalFromItems(newItems) };
         });
     };
-    
-    const updateItemLineTotal = (id: string, lineTotal: number) => {
+
+    /** Une seule colonne « Montant » : on stocke quantité = 1, prix unitaire = montant de ligne. */
+    const updateItemMontant = (id: string, montant: number) => {
         setCurrentInvoice(prev => {
-            const newItems = prev.items.map(item => {
-                if (item.id !== id) return item;
-                const q = Number(item.quantity);
-                const qty = Number.isFinite(q) && q > 0 ? q : 1;
-                const newPrice = qty > 0 ? lineTotal / qty : lineTotal;
-                return { ...item, price: newPrice };
-            });
+            const newItems = prev.items.map(item =>
+                item.id === id ? { ...item, quantity: 1, price: montant } : item
+            );
             return { ...prev, items: newItems, amount: subtotalFromItems(newItems) };
         });
     };
@@ -484,11 +475,12 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
         if (pendingLogs.length === 0) return;
         const hours = parseFloat((pendingLogs.reduce((acc, log) => acc + log.duration, 0) / 3600).toFixed(2));
         setCurrentInvoice(prev => {
+            const lineTotal = hours * hourlyRate;
             const items = [...prev.items, {
                 id: `time-${Date.now()}`,
                 desc: `${t.hourlyServices} (${new Date(pendingLogs[0].startTime).toLocaleDateString()})`,
-                quantity: hours,
-                price: hourlyRate
+                quantity: 1,
+                price: lineTotal,
             }];
             return { ...prev, items, amount: subtotalFromItems(items) };
         });
@@ -782,9 +774,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                 <thead>
                                     <tr className="bg-slate-100 text-slate-800">
                                         <th className="text-left py-2 px-3 font-bold">{t.description}</th>
-                                        <th className="text-right py-2 px-2 font-bold w-[4.5rem]">{t.quantity}</th>
-                                        <th className="text-right py-2 px-3 font-bold w-24">{t.unitPrice}</th>
-                                        <th className="text-right py-2 px-3 font-bold w-28">{t.amount}</th>
+                                        <th className="text-right py-2 px-3 font-bold w-32">{t.amount}</th>
                                         <th className="w-6 print:hidden"></th>
                                     </tr>
                                 </thead>
@@ -803,33 +793,6 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                                     />
                                                 )}
                                             </td>
-                                            <td className="py-2.5 px-2 text-right align-top">
-                                                {isGenerating ? (
-                                                    <div className="text-slate-800 tabular-nums">{item.quantity}</div>
-                                                ) : (
-                                                    <input
-                                                        type="number"
-                                                        min={0.01}
-                                                        step={0.01}
-                                                        value={item.quantity}
-                                                        onChange={e => updateItem(item.id, 'quantity', parseQtyInput(e.target.value))}
-                                                        className="w-full min-w-0 bg-transparent outline-none text-slate-800 text-right tabular-nums"
-                                                    />
-                                                )}
-                                            </td>
-                                            <td className="py-2.5 px-3 text-right align-top">
-                                                {isGenerating ? (
-                                                    <div className="text-slate-800">{formatCurrency(item.price, 2)}</div>
-                                                ) : (
-                                                    <input 
-                                                        type="number" 
-                                                        step={0.01}
-                                                        value={Number.isFinite(Number(item.price)) ? item.price : 0} 
-                                                        onChange={e => updateItem(item.id, 'price', parseMoneyInput(e.target.value))}
-                                                        className="w-full bg-transparent outline-none text-slate-800 text-right tabular-nums"
-                                                    />
-                                                )}
-                                            </td>
                                             <td className="py-2.5 px-3 text-right align-top font-bold text-slate-900">
                                                 {(() => {
                                                     const q = Number(item.quantity);
@@ -843,8 +806,8 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                                             type="number"
                                                             step={0.01}
                                                             value={Math.round(lineTot * 100) / 100}
-                                                            onChange={e => updateItemLineTotal(item.id, parseMoneyInput(e.target.value))}
-                                                            className="w-full bg-transparent outline-none text-slate-900 text-right tabular-nums font-bold"
+                                                            onChange={e => updateItemMontant(item.id, parseMoneyInput(e.target.value))}
+                                                            className="w-full max-w-[8.5rem] ml-auto bg-transparent outline-none text-slate-900 text-right tabular-nums font-bold"
                                                         />
                                                     );
                                                 })()}
