@@ -297,11 +297,16 @@ def screenshot_to_prompt():
     context = (body.get('context') or '').strip()
     style = (body.get('style') or '').strip()
 
+    # f-string expressions ne tolèrent pas les backslashes avant Python 3.12
+    # (PEP 701). On pré-calcule les valeurs pour rester compatible 3.9.
+    context_label = context or 'aucun'
+    style_label = style or "fidèle à l'image"
+
     prompt = f"""Tu es un senior web designer expert React + Tailwind CSS.
 
 Voici une capture d'écran d'une section de site web.
-Contexte fourni : {context or 'aucun'}
-Style souhaité : {style or 'fidèle à l\'image'}
+Contexte fourni : {context_label}
+Style souhaité : {style_label}
 
 Analyse l'image et produis :
 1. Un prompt Cursor prêt à coller (français, 5-10 lignes, mentionne les composants,
