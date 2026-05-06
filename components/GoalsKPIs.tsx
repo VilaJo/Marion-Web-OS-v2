@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Goal, KPI, Project, Invoice } from '../types';
 import { Card, Modal } from './Shared';
-import { formatCurrency } from '../utils';
+import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import {
     Target,
     TrendingUp,
@@ -109,25 +109,25 @@ export const GoalsKPIs: React.FC<GoalsKPIsProps> = ({ projects, currency = 'CHF'
         
         const thisYearRevenue = paidInvoices
             .filter(inv => new Date(inv.date).getFullYear() === thisYear)
-            .reduce((sum, inv) => sum + inv.amount, 0);
+            .reduce((sum, inv) => sum + invoiceEffectiveAmount(inv), 0);
         
         const lastYearRevenue = paidInvoices
             .filter(inv => new Date(inv.date).getFullYear() === thisYear - 1)
-            .reduce((sum, inv) => sum + inv.amount, 0);
+            .reduce((sum, inv) => sum + invoiceEffectiveAmount(inv), 0);
 
         const thisMonthRevenue = paidInvoices
             .filter(inv => {
                 const d = new Date(inv.date);
                 return d.getFullYear() === thisYear && d.getMonth() === thisMonth;
             })
-            .reduce((sum, inv) => sum + inv.amount, 0);
+            .reduce((sum, inv) => sum + invoiceEffectiveAmount(inv), 0);
 
         const lastMonthRevenue = paidInvoices
             .filter(inv => {
                 const d = new Date(inv.date);
                 return d.getFullYear() === lastMonthYear && d.getMonth() === lastMonth;
             })
-            .reduce((sum, inv) => sum + inv.amount, 0);
+            .reduce((sum, inv) => sum + invoiceEffectiveAmount(inv), 0);
 
         // Client calculations
         const activeClients = projects.filter(p => p.status === 'En cours').length;
@@ -141,8 +141,18 @@ export const GoalsKPIs: React.FC<GoalsKPIsProps> = ({ projects, currency = 'CHF'
         // Project calculations
         const completedProjects = projects.filter(p => p.status === 'Archivé').length;
         const pendingInvoicesAmount = allInvoices
-            .filter(inv => inv.status === 'Pending')
-            .reduce((sum, inv) => sum + inv.amount, 0);
+            .filter(inv =>
+                inv.type === 'Invoice' &&
+                (inv.status === 'Pending' || inv.status === 'Draft' || inv.status === 'Partial'),
+            )
+            .reduce((sum, inv) => {
+                const eff = invoiceEffectiveAmount(inv);
+                if (inv.status === 'Partial' && inv.payments) {
+                    const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+                    return sum + Math.max(0, eff - paid);
+                }
+                return sum + eff;
+            }, 0);
 
         // Average invoice value
         const avgInvoiceValue = paidInvoices.length > 0 
@@ -232,14 +242,14 @@ export const GoalsKPIs: React.FC<GoalsKPIsProps> = ({ projects, currency = 'CHF'
                 if (goal.period === 'yearly') {
                     return paidInvoices
                         .filter(inv => new Date(inv.date).getFullYear() === goal.year)
-                        .reduce((sum, inv) => sum + inv.amount, 0);
+                        .reduce((sum, inv) => sum + invoiceEffectiveAmount(inv), 0);
                 } else if (goal.period === 'monthly' && goal.month) {
                     return paidInvoices
                         .filter(inv => {
                             const d = new Date(inv.date);
                             return d.getFullYear() === goal.year && d.getMonth() + 1 === goal.month;
                         })
-                        .reduce((sum, inv) => sum + inv.amount, 0);
+                        .reduce((sum, inv) => sum + invoiceEffectiveAmount(inv), 0);
                 }
                 break;
             case 'clients':

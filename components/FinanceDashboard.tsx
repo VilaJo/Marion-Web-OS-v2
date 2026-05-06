@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Project, Invoice, Expense } from '../types';
 import { Card, Badge, Modal } from './Shared';
 import { EmailWidget as EmailClient } from './email/EmailWidget';
-import { formatCurrency } from '../utils';
+import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import { 
     TrendingUp, 
     CreditCard, 
@@ -99,8 +99,8 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                     item.number,
                     item.clientName || item.project?.clientName || 'Inconnu',
                     "Prestations de services",
-                    formatCurrency(item.amount / 1.081), 
-                    formatCurrency(item.amount),
+                    formatCurrency(invoiceEffectiveAmount(item as Invoice) / 1.081), 
+                    formatCurrency(invoiceEffectiveAmount(item as Invoice)),
                     item.status
                 ];
             } else {
@@ -184,7 +184,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
         const vars: Record<string, string> = {
             client: project.clientName,
             numero: invoice.number,
-            montant: formatCurrency(invoice.amount, 2),
+            montant: formatCurrency(invoiceEffectiveAmount(invoice), 2),
             echeance: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fr-CH') : '—',
         };
         let subject = `Relance facture ${invoice.number}`;
@@ -197,7 +197,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                 body: JSON.stringify({
                     clientName: project.clientName,
                     number: invoice.number,
-                    amount: invoice.amount,
+                    amount: invoiceEffectiveAmount(invoice),
                     dueDate: invoice.dueDate
                 })
             });
@@ -250,16 +250,17 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
     // KPI Calc
     const totalRevenue = filteredInvoices
         .filter(i => i.status === 'Paid' && i.type === 'Invoice')
-        .reduce((sum, i) => sum + i.amount, 0);
+        .reduce((sum, i) => sum + invoiceEffectiveAmount(i), 0);
 
     const pendingRevenue = filteredInvoices
         .filter(i => (i.status === 'Pending' || i.status === 'Draft' || i.status === 'Partial') && i.type === 'Invoice')
         .reduce((sum, i) => {
+            const eff = invoiceEffectiveAmount(i);
             if (i.status === 'Partial' && i.payments) {
                 const paidAmount = i.payments.reduce((s, p) => s + p.amount, 0);
-                return sum + (i.amount - paidAmount);
+                return sum + (eff - paidAmount);
             }
-            return sum + i.amount;
+            return sum + eff;
         }, 0);
 
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -287,14 +288,14 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
         for (const inv of p.invoices) {
             if (inv.type !== 'Invoice') continue;
             if (inv.status === 'Paid') {
-                snapEncaisse += inv.amount;
+                snapEncaisse += invoiceEffectiveAmount(inv);
                 continue;
             }
             const paid =
                 inv.status === 'Partial' && inv.payments
                     ? inv.payments.reduce((s, x) => s + x.amount, 0)
                     : 0;
-            const remaining = Math.max(0, inv.amount - paid);
+            const remaining = Math.max(0, invoiceEffectiveAmount(inv) - paid);
             if (remaining <= 0) continue;
             const due = inv.dueDate ? new Date(inv.dueDate) : null;
             if (due && due < todayStart) snapRetard += remaining;
@@ -564,7 +565,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             </td>
                                             <td className="px-6 py-4 text-slate-900 dark:text-slate-200">{new Date(inv.date).toLocaleDateString()}</td>
                                             <td className="px-6 py-4 text-right tabular-nums font-bold text-slate-900 dark:text-white">
-                                                {formatCurrency(inv.amount)} {currency}
+                                                {formatCurrency(invoiceEffectiveAmount(inv))} {currency}
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <Badge color={inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'blue' : inv.status === 'Pending' ? 'yellow' : 'gray'}>
@@ -825,8 +826,8 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                         const revenueByClient = projects.map(p => ({
                                             name: p.clientName,
                                             initials: p.avatarInitials,
-                                            revenue: p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0),
-                                            pending: p.invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0)
+                                            revenue: p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0),
+                                            pending: p.invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0)
                                         })).filter(c => c.revenue > 0 || c.pending > 0).sort((a, b) => b.revenue - a.revenue);
                                         const maxRevenue = Math.max(...revenueByClient.map(c => c.revenue + c.pending), 1);
                                         return revenueByClient.slice(0, 10).map((client, idx) => (
@@ -865,11 +866,11 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                         const thisYear = allInvoices.filter(i => {
                                             const d = new Date(i.date);
                                             return d.getFullYear() === currentYear && d.getMonth() === idx && i.status === 'Paid';
-                                        }).reduce((s, i) => s + i.amount, 0);
+                                        }).reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                                         const lastYear = allInvoices.filter(i => {
                                             const d = new Date(i.date);
                                             return d.getFullYear() === currentYear - 1 && d.getMonth() === idx && i.status === 'Paid';
-                                        }).reduce((s, i) => s + i.amount, 0);
+                                        }).reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                                         return { month: m, thisYear, lastYear };
                                     });
                                     const maxVal = Math.max(...monthlyData.flatMap(d => [d.thisYear, d.lastYear]), 1);
@@ -903,17 +904,17 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                             <Card className="p-4">
                                 <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Cette Année</h4>
                                 <div className="text-3xl font-bold text-emerald-600 tabular-nums">
-                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + i.amount, 0).toLocaleString('fr-CH')} {currency}
+                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0).toLocaleString('fr-CH')} {currency}
                                 </div>
                             </Card>
                             <Card className="p-4">
                                 <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Année Précédente</h4>
                                 <div className="text-3xl font-bold text-slate-500 tabular-nums">
-                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + i.amount, 0).toLocaleString('fr-CH')} {currency}
+                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0).toLocaleString('fr-CH')} {currency}
                                 </div>
                                 {(() => {
-                                    const thisY = allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
-                                    const lastY = allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
+                                    const thisY = allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
+                                    const lastY = allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                                     const diff = lastY > 0 ? ((thisY - lastY) / lastY * 100).toFixed(0) : 0;
                                     return (
                                         <div className={`text-sm mt-2 flex items-center gap-1 ${Number(diff) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -970,7 +971,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                     const estimatedHours = p.tasks.filter(t => t.completed).length * 2 + p.tasks.filter(t => !t.completed).length * 4;
                                     const hours = realHours > 0 ? realHours : estimatedHours;
                                     const isReal = realHours > 0;
-                                    const revenue = p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
+                                    const revenue = p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                                     const hourlyRate = hours > 0 ? revenue / hours : 0;
                                     return {
                                         name: p.clientName,
@@ -1068,7 +1069,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                 onClick={() => {
                                     const data = projects.map(p => {
                                         const hours = p.tasks.filter(t => t.completed).length * 2 + p.tasks.filter(t => !t.completed).length * 4;
-                                        const revenue = p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
+                                        const revenue = p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                                         return {
                                             client: p.clientName,
                                             hours,
@@ -1109,7 +1110,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                             // Calculate current balance from paid invoices minus expenses
                             const currentYear = now.getFullYear();
                             const allPaidInvoices = projects.flatMap(p => p.invoices.filter(i => i.status === 'Paid'));
-                            const totalPaid = allPaidInvoices.reduce((s, i) => s + i.amount, 0);
+                            const totalPaid = allPaidInvoices.reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                             const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
                             runningBalance = totalPaid - totalExpenses;
 
@@ -1127,7 +1128,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                                dueDate.getFullYear() === forecastDate.getFullYear();
                                     })
                                 );
-                                const expectedIncome = pendingInvoices.reduce((s, i) => s + i.amount, 0);
+                                const expectedIncome = pendingInvoices.reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
 
                                 // Estimated expenses (average of past expenses or fixed estimate)
                                 const avgMonthlyExpense = expenses.length > 0 
@@ -1159,7 +1160,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                         <Card className="p-4">
                                             <div className="text-sm text-slate-500 uppercase font-bold mb-1">Factures en Attente</div>
                                             <div className="text-2xl font-bold text-amber-600" style={{ fontFamily: 'Raleway, sans-serif' }}>
-                                                {formatCurrency(projects.flatMap(p => p.invoices.filter(i => i.status === 'Pending')).reduce((s, i) => s + i.amount, 0), currency)}
+                                                {formatCurrency(projects.flatMap(p => p.invoices.filter(i => i.status === 'Pending' || i.status === 'Draft')).reduce((s, i) => s + invoiceEffectiveAmount(i), 0), currency)}
                                             </div>
                                         </Card>
                                         <Card className="p-4">
@@ -1301,15 +1302,18 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                     onClick={() => {
                                         // Bexio CSV format
                                         const headers = ['Date', 'Numéro', 'Client', 'Montant', 'TVA', 'Total TTC', 'Statut'];
-                                        const rows = filteredInvoices.map(inv => [
+                                        const rows = filteredInvoices.map(inv => {
+                                            const eff = invoiceEffectiveAmount(inv);
+                                            return [
                                             inv.date,
                                             inv.number,
                                             projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || '',
-                                            inv.amount.toFixed(2),
+                                            eff.toFixed(2),
                                             '0.00', // TVA
-                                            inv.amount.toFixed(2),
+                                            eff.toFixed(2),
                                             inv.status === 'Paid' ? 'Payé' : 'En attente'
-                                        ].join(';'));
+                                        ].join(';');
+                                        });
                                         exportSimpleCSV(headers, rows.map(r => r.split(';')), `Export_Bexio_${new Date().getFullYear()}.csv`);
                                     }}
                                     className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
@@ -1333,14 +1337,17 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                     onClick={() => {
                                         // Banana accounting format
                                         const headers = ['Date', 'Pièce', 'Description', 'Débit', 'Crédit', 'Compte'];
-                                        const rows = filteredInvoices.map(inv => [
+                                        const rows = filteredInvoices.map(inv => {
+                                            const eff = invoiceEffectiveAmount(inv);
+                                            return [
                                             inv.date,
                                             inv.number,
                                             `Facture ${projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || ''}`,
-                                            inv.status === 'Paid' ? '' : inv.amount.toFixed(2),
-                                            inv.status === 'Paid' ? inv.amount.toFixed(2) : '',
+                                            inv.status === 'Paid' ? '' : eff.toFixed(2),
+                                            inv.status === 'Paid' ? eff.toFixed(2) : '',
                                             inv.status === 'Paid' ? '1020' : '1100' // Bank or Accounts Receivable
-                                        ].join('\t'));
+                                        ].join('\t');
+                                        });
                                         exportSimpleCSV(headers, rows.map(r => r.split('\t')), `Export_Banana_${new Date().getFullYear()}.txt`, '\t');
                                     }}
                                     className="w-full px-4 py-3 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
@@ -1364,13 +1371,16 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                     onClick={() => {
                                         // Crésus format (simplified)
                                         const headers = ['Date', 'Libellé', 'Débit', 'Crédit', 'Pièce'];
-                                        const rows = filteredInvoices.map(inv => [
+                                        const rows = filteredInvoices.map(inv => {
+                                            const eff = invoiceEffectiveAmount(inv);
+                                            return [
                                             inv.date.split('-').reverse().join('.'), // DD.MM.YYYY format
                                             `Fact. ${inv.number} - ${projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || ''}`,
-                                            inv.status === 'Pending' ? inv.amount.toFixed(2) : '',
-                                            inv.status === 'Paid' ? inv.amount.toFixed(2) : '',
+                                            inv.status === 'Pending' ? eff.toFixed(2) : '',
+                                            inv.status === 'Paid' ? eff.toFixed(2) : '',
                                             inv.number
-                                        ].join(';'));
+                                        ].join(';');
+                                        });
                                         exportSimpleCSV(headers, rows.map(r => r.split(';')), `Export_Cresus_${new Date().getFullYear()}.csv`);
                                     }}
                                     className="w-full px-4 py-3 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
@@ -1546,7 +1556,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                                                 <td className="px-4 py-3 text-slate-600">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
                                                                 <td className="px-4 py-3 font-medium text-slate-900">{inv.project.clientName}</td>
                                                                 <td className="px-4 py-3 text-slate-600">{inv.number}</td>
-                                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-700">{formatCurrency(inv.amount)}</td>
+                                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-700">{formatCurrency(invoiceEffectiveAmount(inv))}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -1664,16 +1674,18 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map(inv => (
+                                        {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map(inv => {
+                                            const eff = invoiceEffectiveAmount(inv);
+                                            return (
                                             <tr key={inv.id}>
                                                 <td className="p-2 font-bold text-black dark:text-white">{inv.number}</td>
                                                 <td className="p-2 text-black dark:text-white">{inv.project.clientName}</td>
                                                 <td className="p-2 text-black dark:text-white">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
-                                                <td className="p-2 text-right font-bold text-black dark:text-white">{formatCurrency(inv.amount / 1.081)}</td>
-                                                <td className="p-2 text-right text-black dark:text-white">{formatCurrency(inv.amount - (inv.amount / 1.081))}</td>
-                                                <td className="p-2 text-right font-extrabold text-black dark:text-white">{formatCurrency(inv.amount)}</td>
+                                                <td className="p-2 text-right font-bold text-black dark:text-white">{formatCurrency(eff / 1.081)}</td>
+                                                <td className="p-2 text-right text-black dark:text-white">{formatCurrency(eff - (eff / 1.081))}</td>
+                                                <td className="p-2 text-right font-extrabold text-black dark:text-white">{formatCurrency(eff)}</td>
                                             </tr>
-                                        ))}
+                                        );})}
                                     </tbody>
                                 </table>
                             )}

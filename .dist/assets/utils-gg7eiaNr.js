@@ -1,1 +1,0 @@
-function u(t,n=2){const r=typeof t=="string"?parseFloat(t)||0:t,o=typeof n=="string",a=o?2:n,e=o?n:null,f=r.toFixed(a),[l,s]=f.split("."),c=l.replace(/\B(?=(\d{3})+(?!\d))/g,"'"),i=s?`${c}.${s}`:c;return e?`${i} ${e}`:i}function p(t,n="CHF",r=2){return`${u(t,r)} ${n}`}export{u as a,p as f};

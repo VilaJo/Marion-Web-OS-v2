@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Project, ProjectStatus } from '../types';
-import { formatCurrencyWithSymbol } from '../utils';
+import { formatCurrencyWithSymbol, invoiceEffectiveAmount } from '../utils';
 import {
     CheckSquare, Clock, DollarSign, Mail, Calendar,
     ArrowUpRight, PieChart
@@ -32,17 +32,21 @@ export const getProjectHealth = (project: Project): 'good' | 'warning' | 'danger
 
 export const getPendingAmount = (project: Project): number => {
     return project.invoices
-        .filter(i => i.status === 'Pending' || i.status === 'Partial')
+        .filter(i =>
+            i.type === 'Invoice' &&
+            (i.status === 'Pending' || i.status === 'Partial' || i.status === 'Draft'),
+        )
         .reduce((sum, inv) => {
+            const eff = invoiceEffectiveAmount(inv);
             const paid = inv.payments?.reduce((p, pay) => p + pay.amount, 0) || 0;
-            return sum + (inv.amount - paid);
+            return sum + Math.max(0, eff - paid);
         }, 0);
 };
 
 export const getTotalRevenue = (project: Project): number => {
     return project.invoices
         .filter(i => i.status === 'Paid')
-        .reduce((sum, inv) => sum + inv.amount, 0);
+        .reduce((sum, inv) => sum + invoiceEffectiveAmount(inv), 0);
 };
 
 export const getNextDeadline = (project: Project): { title: string; date: string } | null => {

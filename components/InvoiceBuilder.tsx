@@ -427,24 +427,71 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
 
     // --- Actions ---
     const updateField = (field: keyof Invoice, value: any) => setCurrentInvoice(prev => ({ ...prev, [field]: value }));
-    
-    const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
-        const newItems = currentInvoice.items.map(item => item.id === id ? { ...item, [field]: value } : item);
-        setCurrentInvoice(prev => ({ ...prev, items: newItems }));
+
+    const subtotalFromItems = (items: typeof currentInvoice.items) =>
+        items.reduce((acc, item) => {
+            const q = Number(item.quantity);
+            const p = Number(item.price);
+            return acc + (Number.isFinite(q) ? q : 0) * (Number.isFinite(p) ? p : 0);
+        }, 0);
+
+    const parseQtyInput = (raw: string) => {
+        const n = parseFloat(raw);
+        if (!Number.isFinite(n)) return 1;
+        return n <= 0 ? 1 : n;
     };
 
-    const addItem = () => setCurrentInvoice(prev => ({ ...prev, items: [...prev.items, { id: `item-${Date.now()}`, desc: '', quantity: 1, price: 0 }] }));
-    const removeItem = (id: string) => setCurrentInvoice(prev => ({ ...prev, items: prev.items.filter(i => i.id !== id) }));
+    const parseMoneyInput = (raw: string) => {
+        if (raw === '' || raw === '-') return 0;
+        const n = parseFloat(raw);
+        return Number.isFinite(n) ? n : 0;
+    };
+    
+    const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
+        setCurrentInvoice(prev => {
+            const newItems = prev.items.map(item => (item.id === id ? { ...item, [field]: value } : item));
+            return { ...prev, items: newItems, amount: subtotalFromItems(newItems) };
+        });
+    };
+    
+    const updateItemLineTotal = (id: string, lineTotal: number) => {
+        setCurrentInvoice(prev => {
+            const newItems = prev.items.map(item => {
+                if (item.id !== id) return item;
+                const q = Number(item.quantity);
+                const qty = Number.isFinite(q) && q > 0 ? q : 1;
+                const newPrice = qty > 0 ? lineTotal / qty : lineTotal;
+                return { ...item, price: newPrice };
+            });
+            return { ...prev, items: newItems, amount: subtotalFromItems(newItems) };
+        });
+    };
+
+    const addItem = () => {
+        setCurrentInvoice(prev => {
+            const items = [...prev.items, { id: `item-${Date.now()}`, desc: '', quantity: 1, price: 0 }];
+            return { ...prev, items, amount: subtotalFromItems(items) };
+        });
+    };
+    const removeItem = (id: string) => {
+        setCurrentInvoice(prev => {
+            const items = prev.items.filter(i => i.id !== id);
+            return { ...prev, items, amount: subtotalFromItems(items) };
+        });
+    };
 
     const handleImportTime = () => {
         if (pendingLogs.length === 0) return;
         const hours = parseFloat((pendingLogs.reduce((acc, log) => acc + log.duration, 0) / 3600).toFixed(2));
-        setCurrentInvoice(prev => ({ ...prev, items: [...prev.items, {
-            id: `time-${Date.now()}`,
-            desc: `${t.hourlyServices} (${new Date(pendingLogs[0].startTime).toLocaleDateString()})`,
-            quantity: hours,
-            price: hourlyRate
-        }]}));
+        setCurrentInvoice(prev => {
+            const items = [...prev.items, {
+                id: `time-${Date.now()}`,
+                desc: `${t.hourlyServices} (${new Date(pendingLogs[0].startTime).toLocaleDateString()})`,
+                quantity: hours,
+                price: hourlyRate
+            }];
+            return { ...prev, items, amount: subtotalFromItems(items) };
+        });
     };
 
     const handleSave = () => {
@@ -735,8 +782,9 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                 <thead>
                                     <tr className="bg-slate-100 text-slate-800">
                                         <th className="text-left py-2 px-3 font-bold">{t.description}</th>
+                                        <th className="text-right py-2 px-2 font-bold w-[4.5rem]">{t.quantity}</th>
                                         <th className="text-right py-2 px-3 font-bold w-24">{t.unitPrice}</th>
-                                        <th className="text-right py-2 px-3 font-bold w-24">{t.amount}</th>
+                                        <th className="text-right py-2 px-3 font-bold w-28">{t.amount}</th>
                                         <th className="w-6 print:hidden"></th>
                                     </tr>
                                 </thead>
@@ -755,20 +803,51 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                                     />
                                                 )}
                                             </td>
+                                            <td className="py-2.5 px-2 text-right align-top">
+                                                {isGenerating ? (
+                                                    <div className="text-slate-800 tabular-nums">{item.quantity}</div>
+                                                ) : (
+                                                    <input
+                                                        type="number"
+                                                        min={0.01}
+                                                        step={0.01}
+                                                        value={item.quantity}
+                                                        onChange={e => updateItem(item.id, 'quantity', parseQtyInput(e.target.value))}
+                                                        className="w-full min-w-0 bg-transparent outline-none text-slate-800 text-right tabular-nums"
+                                                    />
+                                                )}
+                                            </td>
                                             <td className="py-2.5 px-3 text-right align-top">
                                                 {isGenerating ? (
                                                     <div className="text-slate-800">{formatCurrency(item.price, 2)}</div>
                                                 ) : (
                                                     <input 
                                                         type="number" 
-                                                        value={item.price} 
-                                                        onChange={e => updateItem(item.id, 'price', parseFloat(e.target.value))}
-                                                        className="w-full bg-transparent outline-none text-slate-800 text-right"
+                                                        step={0.01}
+                                                        value={Number.isFinite(Number(item.price)) ? item.price : 0} 
+                                                        onChange={e => updateItem(item.id, 'price', parseMoneyInput(e.target.value))}
+                                                        className="w-full bg-transparent outline-none text-slate-800 text-right tabular-nums"
                                                     />
                                                 )}
                                             </td>
                                             <td className="py-2.5 px-3 text-right align-top font-bold text-slate-900">
-                                                {formatCurrency(item.price * item.quantity, 2)}
+                                                {(() => {
+                                                    const q = Number(item.quantity);
+                                                    const qn = Number.isFinite(q) && q > 0 ? q : 1;
+                                                    const pn = Number.isFinite(Number(item.price)) ? Number(item.price) : 0;
+                                                    const lineTot = qn * pn;
+                                                    return isGenerating ? (
+                                                        formatCurrency(lineTot, 2)
+                                                    ) : (
+                                                        <input
+                                                            type="number"
+                                                            step={0.01}
+                                                            value={Math.round(lineTot * 100) / 100}
+                                                            onChange={e => updateItemLineTotal(item.id, parseMoneyInput(e.target.value))}
+                                                            className="w-full bg-transparent outline-none text-slate-900 text-right tabular-nums font-bold"
+                                                        />
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="py-2.5 px-1 text-center print:hidden opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {!isGenerating && <button onClick={() => removeItem(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={12} /></button>}

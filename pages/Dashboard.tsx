@@ -6,7 +6,7 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Project, ProjectStatus, CalendarEvent, WorkflowPhase, Invoice, Activity } from '../types';
-import { formatCurrency, formatCurrencyWithSymbol } from '../utils';
+import { formatCurrency, formatCurrencyWithSymbol, invoiceEffectiveAmount } from '../utils';
 import { sanitizeHTML } from '../utils/sanitize';
 import { useProjectStore, useUIStore, useNotificationStore, useUndoStore } from '../stores';
 import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache, useCreateGoogleEvent } from '../services/queries';
@@ -496,7 +496,7 @@ export const Dashboard: React.FC = () => {
         setIsBriefingLoading(true);
         setBriefingContent('');
         const activeProjects = projects.filter(p => p.status === ProjectStatus.EN_COURS);
-        const revenue = projects.flatMap(p => p.invoices).filter(i => i.status === 'Paid').reduce((acc, i) => acc + i.amount, 0);
+        const revenue = projects.flatMap(p => p.invoices).filter(i => i.status === 'Paid').reduce((acc, i) => acc + invoiceEffectiveAmount(i), 0);
         const urgentTasks = projects.flatMap(p => p.tasks).filter(t => t.priority === 'High' && !t.completed);
         const nextEvents = events.filter(e => new Date(e.date) >= new Date()).slice(0, 3);
         const context = `
@@ -801,10 +801,10 @@ export const Dashboard: React.FC = () => {
                                 { header: 'Téléphone', key: 'phone', format: (_, row) => row.profile?.phone || '' },
                                 { header: 'Statut', key: 'status' },
                                 { header: 'Date création', key: 'createdAt', format: (v) => v ? new Date(v).toLocaleDateString('fr-CH') : '' },
-                                { header: 'CA Total (payé)', key: 'revenue', format: (_, row) => String(row.invoices?.filter((i: any) => i.status === 'Paid').reduce((s: number, i: any) => s + (i.amount || 0), 0) || 0) },
+                                { header: 'CA Total (payé)', key: 'revenue', format: (_, row) => String(row.invoices?.filter((i: any) => i.status === 'Paid').reduce((s: number, i: any) => s + invoiceEffectiveAmount(i as Invoice), 0) || 0) },
                                 { header: 'Nb Projets', key: 'projectCount', format: () => '1' },
                                 { header: 'Nb Tâches', key: 'taskCount', format: (_, row) => String(row.tasks?.length || 0) },
-                                { header: 'Factures en attente', key: 'pending', format: (_, row) => String(row.invoices?.filter((i: any) => i.status !== 'Paid').reduce((s: number, i: any) => s + (i.amount || 0), 0) || 0) },
+                                { header: 'Factures en attente', key: 'pending', format: (_, row) => String(row.invoices?.filter((i: any) => i.status !== 'Paid').reduce((s: number, i: any) => s + invoiceEffectiveAmount(i as Invoice), 0) || 0) },
                             ];
                             const clientData = projects.map(p => ({ ...p }));
                             exportCSV(clientData, clientColumns, `Export_Clients_${new Date().getFullYear()}.csv`);

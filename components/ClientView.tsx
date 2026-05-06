@@ -38,7 +38,7 @@ const snapOverlayToCursor: Modifier = ({ activatorEvent, draggingNodeRect, trans
     return transform;
 };
 import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential, MeetingReport } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import { MaintenanceWidget } from './MaintenanceWidget';
 import { Badge, Card, Modal, Tooltip, EmptyState } from './Shared';
 import { Loader2 } from 'lucide-react';
@@ -2054,13 +2054,13 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                     <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30">
                                         <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Total Encaissé</div>
                                         <div className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-300">
-                                            {formatCurrency(project.invoices.filter(i => i.status === 'Paid' && i.type === 'Invoice').reduce((sum, i) => sum + i.amount, 0), 2)} CHF
+                                            {formatCurrency(project.invoices.filter(i => i.status === 'Paid' && i.type === 'Invoice').reduce((sum, i) => sum + invoiceEffectiveAmount(i), 0), 2)} CHF
                                         </div>
                                     </div>
                                     <div className="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30">
                                         <div className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">En Attente</div>
                                         <div className="text-2xl font-serif font-bold text-orange-700 dark:text-orange-300">
-                                            {formatCurrency(project.invoices.filter(i => i.status !== 'Paid' && i.type === 'Invoice').reduce((sum, i) => sum + i.amount, 0), 2)} CHF
+                                            {formatCurrency(project.invoices.filter(i => i.status !== 'Paid' && i.type === 'Invoice').reduce((sum, i) => sum + invoiceEffectiveAmount(i), 0), 2)} CHF
                                         </div>
                                     </div>
                                 </div>
@@ -2088,7 +2088,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="tabular-nums font-bold text-slate-700 dark:text-slate-200">{formatCurrency(inv.amount, 2)} CHF</div>
+                                                        <div className="tabular-nums font-bold text-slate-700 dark:text-slate-200">{formatCurrency(invoiceEffectiveAmount(inv), 2)} CHF</div>
                                                         <Badge color={inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'blue' : 'yellow'}>{inv.status === 'Partial' ? 'Acompte' : inv.status}</Badge>
                                                     </div>
                                                 </div>

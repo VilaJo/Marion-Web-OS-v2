@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizza, Ship, Mic, ListTodo, RefreshCw } from 'lucide-react';
 import { Project, Expense } from '../types';
 import { Card } from './Shared';
-import { formatCurrency } from '../utils';
+import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import { useExpenses } from '../services/queries';
 
 interface FinancialHealthWidgetProps {
@@ -315,17 +315,18 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     // Revenue (Paid this year)
     const totalRevenue = allInvoices
         .filter(i => i.status === 'Paid' && i.type === 'Invoice' && new Date(i.date).getFullYear() === currentYear)
-        .reduce((sum, i) => sum + convert(i.amount, i.currency || 'CHF'), 0);
+        .reduce((sum, i) => sum + convert(invoiceEffectiveAmount(i), i.currency || 'CHF'), 0);
 
     // Pending (Sent but not paid)
     const pendingRevenue = allInvoices
         .filter(i => (i.status === 'Pending' || i.status === 'Draft' || i.status === 'Partial') && i.type === 'Invoice')
         .reduce((sum, i) => {
+            const eff = invoiceEffectiveAmount(i);
             if (i.status === 'Partial' && i.payments) {
                 const paidAmount = i.payments.reduce((s, p) => s + p.amount, 0);
-                return sum + convert(i.amount - paidAmount, i.currency || 'CHF');
+                return sum + convert(eff - paidAmount, i.currency || 'CHF');
             }
-            return sum + convert(i.amount, i.currency || 'CHF');
+            return sum + convert(eff, i.currency || 'CHF');
         }, 0);
 
     // Expenses (This year)
