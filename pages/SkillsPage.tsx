@@ -19,6 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../services/api';
 import { CodeReviewPanel } from '../components/CodeReviewPanel';
+import { DailyLessonCard } from '../components/DailyLessonCard';
 
 // ---------------------------------------------------------------------------
 // Skills definition
@@ -232,6 +233,11 @@ const SkillsPage: React.FC = () => {
                 <p className="text-sm text-slate-500 mt-1">
                     Auto-évalue-toi sur 8 axes. L'app te suggère un "skill du mois" et des exercices Cursor.
                 </p>
+            </div>
+
+            {/* Leçon du jour — Marion peut piocher 5 min de pratique avant de bosser */}
+            <div className="mb-6">
+                <DailyLessonCard />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -24,7 +24,6 @@ const InvoiceBuilder = React.lazy(() => import('../components/InvoiceBuilder').t
 const GoalsKPIs = React.lazy(() => import('../components/GoalsKPIs').then(m => ({ default: m.GoalsKPIs })));
 const DocumentTemplates = React.lazy(() => import('../components/DocumentTemplates').then(m => ({ default: m.DocumentTemplates })));
 const MessagingHub = React.lazy(() => import('../components/MessagingHub').then(m => ({ default: m.MessagingHub })));
-const DailyLessonCard = React.lazy(() => import('../components/DailyLessonCard').then(m => ({ default: m.DailyLessonCard })));
 
 import {
     Search, Plus, RefreshCw, Database, Clock, DollarSign,
@@ -559,13 +558,6 @@ export const Dashboard: React.FC = () => {
 
     return (
         <div className="animate-in fade-in slide-in-from-left-8 duration-500">
-            {/* DAILY LESSON CARD (Marion 2030 Atelier Edition) */}
-            <div className="mb-4 md:mb-6">
-                <Suspense fallback={<Card className="h-24 animate-pulse" />}>
-                    <DailyLessonCard />
-                </Suspense>
-            </div>
-
             {/* TOP ROW: Agenda + Financial */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8 mb-4 md:mb-8">
                 <div className="lg:col-span-2 space-y-4 md:space-y-8 animate-in slide-in-from-left-8 duration-700">
