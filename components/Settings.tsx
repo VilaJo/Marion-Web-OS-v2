@@ -33,6 +33,7 @@ import {
     Loader2,
     ArrowUpCircle,
     FileText,
+    Copy,
     Clock,
     Shield,
     Lock,
@@ -45,10 +46,305 @@ import {
     Trash2,
     Mail,
 } from 'lucide-react';
-import { useOAuthStatus, useVersion, useCheckUpdates, useApplyUpdate, useConnectGoogle, useDisconnectGoogle, useCloudBackupConfig, useSetCloudBackupConfig, useCloudBackup, useBackupStatus, useManualLocalBackup, useDownloadBackupBundle, useCheckStatus, queryKeys } from '../services/queries';
+import {
+    useOAuthStatus,
+    useVersion,
+    useCheckUpdates,
+    useApplyUpdate,
+    useConnectGoogle,
+    useDisconnectGoogle,
+    useCloudBackupConfig,
+    useSetCloudBackupConfig,
+    useCloudBackup,
+    useBackupStatus,
+    useManualLocalBackup,
+    useDownloadBackupBundle,
+    useCheckStatus,
+    queryKeys,
+    useClientWorkspacePaths,
+    useClientDataPathSetting,
+    useSetClientDataPath,
+    clientPathsFromVersionPayload,
+    type ClientWorkspacePaths,
+} from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores';
 import { apiFetch } from '../services/api';
+
+/** Helps spot “git pull dans un dossier, mais Marion lance un autre” (icone Bureau ou vieux dossier). */
+function ServerInstallDiagnostic({ payload }: { payload: unknown }) {
+    if (!payload || typeof payload !== 'object') return null;
+    const o = payload as Record<string, unknown>;
+    const ver = typeof o.version === 'string' ? o.version : null;
+    const root = typeof o.appInstallationRoot === 'string' ? o.appInstallationRoot : null;
+    const dist = typeof o.staticFolderResolved === 'string' ? o.staticFolderResolved : null;
+    const built = typeof o.settingsBundleBuiltAt === 'string' ? o.settingsBundleBuiltAt : null;
+    if (!root && !dist) return null;
+
+    return (
+        <div className="mt-4 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/30">
+            <div className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide mb-2">
+                Où Marion tourne réellement sur ton Mac
+            </div>
+            <p className="text-xs text-amber-900/90 dark:text-amber-100/95 mb-3 leading-relaxed">
+                Compare ces chemins avec le dossier dans lequel tu as fait{' '}
+                <span className="font-mono">git pull</span> et{' '}
+                <span className="font-mono">npm run build</span>. S’ils ne sont{' '}
+                <strong>pas identiques</strong>, tu ouvres une <strong>ancienne copie</strong> pendant que tu modifies une
+                autre (souvent l’icône <strong>Bureau « Marion Web OS »</strong> pointait vers un chemin lors de{' '}
+                <span className="font-mono">INSTALLER.command</span> — il faut relancer l’app depuis{' '}
+                <strong>le bon dossier</strong> ou revoir cet installateur.)
+            </p>
+            <ul className="text-[11px] font-mono text-amber-950 dark:text-amber-50 space-y-1.5 break-all">
+                {ver ? (
+                    <li>
+                        <span className="text-amber-800/80 dark:text-amber-300">Version renvoyée par le serveur :</span> v
+                        {ver}
+                    </li>
+                ) : null}
+                {root ? (
+                    <li>
+                        <span className="text-amber-800/80 dark:text-amber-300">Racine code Python Marion :</span> {root}
+                    </li>
+                ) : null}
+                {dist ? (
+                    <li>
+                        <span className="text-amber-800/80 dark:text-amber-300">Interface chargée depuis (.dist) :</span> {dist}
+                    </li>
+                ) : null}
+                {built ? (
+                    <li>
+                        <span className="text-amber-800/80 dark:text-amber-300">Dernière compil. écran Réglages (fichier) :</span>{' '}
+                        {built}
+                    </li>
+                ) : null}
+            </ul>
+        </div>
+    );
+}
+
+function LocalClientFoldersCard({
+    paths,
+    loading,
+    pathCopied,
+    onCopyPath,
+    onCopyDefaultPathHint,
+    fallbackNote,
+}: {
+    paths: ClientWorkspacePaths | null;
+    loading: boolean;
+    pathCopied: boolean;
+    onCopyPath: () => void;
+    /** When server path is unavailable, copy the usual default location. */
+    onCopyDefaultPathHint: () => void;
+    fallbackNote?: string | null;
+}) {
+    return (
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+            <h4 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                <FolderSync size={18} className="text-indigo-500" />
+                Dossiers clients (disque local)
+            </h4>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                Marion lit vos projets dans les sous-dossiers de ce répertoire (
+                <span className="font-medium">1. En cours</span>, <span className="font-medium">4. Prospects</span>,
+                etc.). Si le tableau de bord ne liste pas vos clients, ouvre ce dossier dans le Finder et vérifie
+                que tes projets s’y trouvent (pas une ancienne copie du dossier « Marion Web OS Database »). Tu peux aussi
+                fixer le chemin via <span className="font-mono text-xs">DATA_PATH</span> dans{' '}
+                <span className="font-mono text-xs">.env.local</span> (ou via le formulaire ci-dessous),
+                puis redémarrer l’application.
+            </p>
+            {fallbackNote ? (
+                <p className="text-xs text-slate-700 dark:text-slate-300 mb-3 p-3 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900">
+                    {fallbackNote}
+                </p>
+            ) : null}
+            {loading && !paths ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Loader2 size={16} className="animate-spin" /> Chargement…
+                </div>
+            ) : paths ? (
+                <>
+                    {!paths.clientDataPathExists && (
+                        <div className="flex items-start gap-2 p-3 mb-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-200">
+                            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                            Ce dossier n’existe pas ou n’est pas accessible. Créez-le ou corrigez DATA_PATH.
+                        </div>
+                    )}
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-xs font-mono break-all text-slate-700 dark:text-slate-200 mb-3">
+                        {paths.clientDataPath}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="text-xs font-bold text-slate-500 uppercase">
+                            Dossiers détectés : {paths.clientFolderCount < 0 ? '—' : paths.clientFolderCount}
+                        </span>
+                    </div>
+                    {paths.sqliteDatabasePath ? (
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3">
+                            Base SQLite :{' '}
+                            <span className="font-mono break-all">{paths.sqliteDatabasePath}</span>
+                        </p>
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={onCopyPath}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors"
+                    >
+                        {pathCopied ? <Check size={16} /> : <Copy size={16} />}
+                        {pathCopied ? 'Copié' : 'Copier le chemin'}
+                    </button>
+                </>
+            ) : (
+                <div className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                    <p>
+                        Marion n’a pas pu lire le chemin exact depuis le serveur (connexion, cache du navigateur, ou
+                        backend pas redémarré après mise à jour). Recharge la page avec{' '}
+                        <span className="font-mono text-xs">Cmd + Shift + R</span>, puis redémarre l’app Python si besoin.
+                    </p>
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1">
+                            Emplacement habituel sur Mac (si tu n’as rien changé)
+                        </div>
+                        <code className="font-mono text-xs text-slate-800 dark:text-slate-100 break-all block">
+                            ~/Desktop/Marion Web OS Database
+                        </code>
+                        <p className="text-xs text-slate-500 mt-2">
+                            Dans le Finder :{' '}
+                            <span className="font-mono text-[11px]">Cmd + Shift + G</span> et colle cette ligne ou
+                            navigue jusqu’à ton <strong>Bureau</strong>.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={onCopyDefaultPathHint}
+                            className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 text-xs font-medium rounded-lg"
+                        >
+                            {pathCopied ? <Check size={14} /> : <Copy size={14} />}
+                            {pathCopied ? 'Copié' : 'Copier le chemin par défaut'}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ClientDataPathSettingCard({ isOpen }: { isOpen: boolean }) {
+    const { data, isPending } = useClientDataPathSetting(isOpen);
+    const setPathMut = useSetClientDataPath();
+    const [draft, setDraft] = useState('');
+    const [dirty, setDirty] = useState(false);
+    const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+    React.useEffect(() => {
+        if (!data || dirty) return;
+        setDraft(data.savedResolved ?? data.savedRaw ?? '');
+    }, [data, dirty]);
+
+    const save = () => {
+        setFeedback(null);
+        setPathMut.mutate(
+            { path: draft },
+            {
+                onSuccess: (res) => {
+                    setDirty(false);
+                    setFeedback({ type: 'ok', text: res.message ?? 'Enregistré dans .env.local.' });
+                },
+                onError: (e: Error) => setFeedback({ type: 'err', text: e.message }),
+            },
+        );
+    };
+
+    const resetDefault = () => {
+        setFeedback(null);
+        setPathMut.mutate(
+            { reset: true },
+            {
+                onSuccess: (res) => {
+                    setDirty(false);
+                    setDraft('');
+                    setFeedback({ type: 'ok', text: res.message ?? 'Réinitialisé.' });
+                },
+                onError: (e: Error) => setFeedback({ type: 'err', text: e.message }),
+            },
+        );
+    };
+
+    const busy = setPathMut.isPending;
+
+    return (
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+            <h4 className="font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                <FolderSync size={18} className="text-emerald-600 dark:text-emerald-400" />
+                Dossier données (prochain démarrage)
+            </h4>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                Indique le chemin absolu du dossier « Marion Web OS Database » (ou équivalent). Marion écrit la ligne{' '}
+                <span className="font-mono text-xs">DATA_PATH</span> dans le fichier{' '}
+                <span className="font-mono text-xs">.env.local</span> à la racine du code Python — pas besoin d’ouvrir ce
+                fichier à la main.
+            </p>
+            {data ? (
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 font-mono break-all">
+                    Fichier : {data.envLocalAbsolute}
+                </p>
+            ) : null}
+            {isPending && !data ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500 mb-3">
+                    <Loader2 size={16} className="animate-spin" /> Chargement…
+                </div>
+            ) : null}
+            <label className="text-xs font-bold text-slate-400 uppercase block mb-1.5">Chemin du dossier clients</label>
+            <input
+                type="text"
+                value={draft}
+                onChange={(e) => {
+                    setDirty(true);
+                    setDraft(e.target.value);
+                }}
+                placeholder={data?.effectiveNow ?? '/Users/…/Marion Web OS Database'}
+                disabled={busy}
+                className="w-full px-4 py-2.5 mb-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:border-emerald-500 text-sm font-mono text-slate-800 dark:text-slate-100"
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                En cours d’exécution, Marion utilise encore :{' '}
+                <span className="font-mono break-all text-slate-700 dark:text-slate-200">
+                    {data?.effectiveNow ?? '—'}
+                </span>
+                . {data?.restartRequiredHint ?? 'Après modification, redémarre le serveur Python pour appliquer.'}
+            </p>
+            {feedback ? (
+                <div
+                    className={`text-sm mb-3 p-3 rounded-xl border ${
+                        feedback.type === 'ok'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200'
+                            : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900 text-red-800 dark:text-red-200'
+                    }`}
+                >
+                    {feedback.text}
+                </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+                <button
+                    type="button"
+                    onClick={save}
+                    disabled={busy || !draft.trim()}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors"
+                >
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    Enregistrer dans .env.local
+                </button>
+                <button
+                    type="button"
+                    onClick={resetDefault}
+                    disabled={busy}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 text-sm font-medium rounded-xl transition-colors"
+                >
+                    Revenir au défaut
+                </button>
+            </div>
+        </div>
+    );
+}
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -99,7 +395,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     signatureSettings, setSignatureSettings,
     notificationSettings, setNotificationSettings
 }) => {
-    const [activeTab, setActiveTab] = useState<'agency' | 'appearance' | 'ai' | 'notifications' | 'cloud' | 'updates' | 'security'>('agency');
+    const [activeTab, setActiveTab] = useState<
+        'agency' | 'appearance' | 'ai' | 'notifications' | 'cloud' | 'localData' | 'security' | 'updates'
+    >('agency');
+    const [pathCopied, setPathCopied] = useState(false);
     
     // Subscription date from store
     const subscriptionDate = useUIStore(s => s.subscriptionDate);
@@ -573,7 +872,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
     // React Query hooks for version & updates
-    const { data: versionData } = useVersion();
+    const { data: versionData, isFetching: versionFetching } = useVersion(isOpen);
+    const { data: workspacePaths, isFetching: workspacePathsFetching } = useClientWorkspacePaths(isOpen);
+    const pathsFromVersion = React.useMemo(
+        () => clientPathsFromVersionPayload(versionData),
+        [versionData]
+    );
+    const mergedLocalPaths: ClientWorkspacePaths | null =
+        workspacePaths ?? pathsFromVersion ?? null;
+    const localPathsLoading =
+        mergedLocalPaths === null &&
+        (workspacePathsFetching || (versionFetching && !versionData));
+    const pathsFallbackNote =
+        mergedLocalPaths && !workspacePaths
+            ? 'Ces infos viennent du serveur (réponse publique « version ») : ça évite une erreur si l’API « workspace » nécessite une session différente. Le chemin est bien celui que Marion utilise pour scanner les dossiers sur ce Mac.'
+            : null;
+
+    const handleCopyDataPath = () => {
+        const p = mergedLocalPaths?.clientDataPath;
+        if (!p) return;
+        void navigator.clipboard.writeText(p).then(() => {
+            setPathCopied(true);
+            window.setTimeout(() => setPathCopied(false), 2000);
+        });
+    };
+
+    const handleCopyDefaultDataPathHint = () => {
+        void navigator.clipboard.writeText('~/Desktop/Marion Web OS Database').then(() => {
+            setPathCopied(true);
+            window.setTimeout(() => setPathCopied(false), 2000);
+        });
+    };
+
     const checkUpdatesMutation = useCheckUpdates();
     const applyUpdateMutation = useApplyUpdate();
 
@@ -624,6 +954,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         { id: 'ai', label: 'IA & Assistant', icon: Bot },
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'cloud', label: 'Cloud & Sync', icon: Cloud },
+        { id: 'localData', label: 'Données locales', icon: HardDrive },
         { id: 'security', label: 'Sécurité', icon: Lock },
         { id: 'updates', label: 'Mises à jour', icon: Download },
     ];
@@ -1959,6 +2290,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                     )}
 
+                    {/* DONNÉES LOCALES TAB — chemin dossiers clients (visible dans la barre latérale) */}
+                    {activeTab === 'localData' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="flex items-center gap-4 bg-gradient-to-r from-indigo-500 to-slate-700 p-6 rounded-2xl text-white shadow-lg">
+                                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30">
+                                    <HardDrive size={32} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">Données locales</h3>
+                                    <p className="text-sm text-white/80">Où Marion lit vos dossiers clients sur ce Mac</p>
+                                </div>
+                            </div>
+
+                            <LocalClientFoldersCard
+                                paths={mergedLocalPaths}
+                                loading={localPathsLoading}
+                                pathCopied={pathCopied}
+                                onCopyPath={handleCopyDataPath}
+                                onCopyDefaultPathHint={handleCopyDefaultDataPathHint}
+                                fallbackNote={pathsFallbackNote}
+                            />
+                            <ClientDataPathSettingCard isOpen={isOpen} />
+                            <ServerInstallDiagnostic payload={versionData} />
+                        </div>
+                    )}
+
                     {/* SECURITY TAB */}
                     {activeTab === 'security' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -1972,6 +2329,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <p className="text-sm text-white/80">Protégez vos données avec un mot de passe et le chiffrement</p>
                                 </div>
                             </div>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Ces réglages sont aussi rassemblés sous l’onglet{' '}
+                                <button
+                                    type="button"
+                                    className="font-bold text-indigo-600 dark:text-indigo-400 underline underline-offset-2"
+                                    onClick={() => setActiveTab('localData')}
+                                >
+                                    Données locales
+                                </button>
+                                .
+                            </p>
+
+                            <LocalClientFoldersCard
+                                paths={mergedLocalPaths}
+                                loading={localPathsLoading}
+                                pathCopied={pathCopied}
+                                onCopyPath={handleCopyDataPath}
+                                onCopyDefaultPathHint={handleCopyDefaultDataPathHint}
+                                fallbackNote={pathsFallbackNote}
+                            />
+                            <ClientDataPathSettingCard isOpen={isOpen} />
+                            <ServerInstallDiagnostic payload={versionData} />
 
                             {/* Authentication Status */}
                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">

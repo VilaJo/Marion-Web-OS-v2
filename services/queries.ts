@@ -44,6 +44,10 @@ export const queryKeys = {
     analytics: ['analytics'] as const,
     backupStatus: ['backup', 'status'] as const,
     cloudBackupConfig: ['backup', 'cloud', 'config'] as const,
+    /** Local FS root where client folders are scanned (distinct from SaaS `/api/v1/workspace`). */
+    clientWorkspacePaths: ['projects', 'workspace-paths'] as const,
+    /** DATA_PATH persisted in project `.env.local` (next server start). */
+    clientDataPathSetting: ['settings', 'client-data-path'] as const,
 };
 
 // ============================================================================
@@ -757,6 +761,8 @@ export function useCreateClientFolder() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+            queryClient.invalidateQueries({ queryKey: queryKeys.clientWorkspacePaths });
+            queryClient.invalidateQueries({ queryKey: queryKeys.version });
         },
     });
 }
@@ -765,10 +771,102 @@ export function useCreateClientFolder() {
  * Initialize the database.
  */
 export function useInitDatabase() {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: async () => {
             const res = await apiFetch('/api/v1/database/init', { method: 'POST' });
             return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+            queryClient.invalidateQueries({ queryKey: queryKeys.clientWorkspacePaths });
+            queryClient.invalidateQueries({ queryKey: queryKeys.version });
+        },
+    });
+}
+
+/** Resolved local folder where Marion scans client projects (auth required when configured). */
+export interface ClientWorkspacePaths {
+    clientDataPath: string;
+    clientDataPathExists: boolean;
+    clientFolderCount: number;
+    sqliteDatabasePath: string;
+}
+
+/** Read client paths from `/api/v1/version` when `/projects/workspace` fails (401, etc.). */
+export function clientPathsFromVersionPayload(v: unknown): ClientWorkspacePaths | null {
+    if (!v || typeof v !== 'object') return null;
+    const o = v as Record<string, unknown>;
+    if (typeof o.clientDataPath !== 'string') return null;
+    return {
+        clientDataPath: o.clientDataPath,
+        clientDataPathExists: o.clientDataPathExists === true,
+        clientFolderCount: typeof o.clientFolderCount === 'number' ? o.clientFolderCount : -1,
+        sqliteDatabasePath: typeof o.sqliteDatabasePath === 'string' ? o.sqliteDatabasePath : '',
+    };
+}
+
+export function useClientWorkspacePaths(enabled = true) {
+    return useQuery({
+        queryKey: queryKeys.clientWorkspacePaths,
+        queryFn: async (): Promise<ClientWorkspacePaths | null> => {
+            const res = await apiFetch('/api/v1/projects/workspace');
+            if (!res.ok) return null;
+            return res.json();
+        },
+        staleTime: 60 * 1000,
+        enabled,
+    });
+}
+
+/** `/api/v1/settings/client-data-path` — valeur dans `.env.local` vs dossier effectif du serveur en cours. */
+export interface ClientDataPathSetting {
+    envLocalRelative: string;
+    envLocalAbsolute: string;
+    savedRaw: string | null;
+    savedResolved: string | null;
+    effectiveNow: string;
+    restartRequiredHint: string;
+}
+
+export function useClientDataPathSetting(enabled = true) {
+    return useQuery({
+        queryKey: queryKeys.clientDataPathSetting,
+        queryFn: async (): Promise<ClientDataPathSetting> => {
+            const res = await apiFetch('/api/v1/settings/client-data-path');
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(typeof data === 'object' && data && 'error' in data ? String((data as { error?: string }).error) : 'Impossible de charger le chemin données');
+            }
+            return data as ClientDataPathSetting;
+        },
+        staleTime: 30 * 1000,
+        enabled,
+    });
+}
+
+export function useSetClientDataPath() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (payload: { path: string } | { reset: true }) => {
+            const res = await apiFetch('/api/v1/settings/client-data-path', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(typeof data === 'object' && data && 'error' in data ? String((data as { error?: string }).error) : 'Enregistrement impossible');
+            }
+            return data as { success?: boolean; message?: string; restartRequired?: boolean; reset?: boolean };
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.clientDataPathSetting });
+            queryClient.invalidateQueries({ queryKey: queryKeys.version });
+            queryClient.invalidateQueries({ queryKey: queryKeys.clientWorkspacePaths });
+            queryClient.invalidateQueries({ queryKey: queryKeys.projects });
         },
     });
 }
@@ -1074,9 +1172,11 @@ export function useFranckGreeting() {
 // ============================================================================
 
 /**
- * Fetch current app version.
+ * Fetch current app version (includes local DATA_PATH fields for diagnostics).
+ * staleTime must stay 0: an hour-long cache kept old /version JSON without
+ * clientDataPath after backend upgrades, so Paramètres showed no disk path.
  */
-export function useVersion() {
+export function useVersion(enabled = true) {
     return useQuery({
         queryKey: queryKeys.version,
         queryFn: async () => {
@@ -1084,7 +1184,9 @@ export function useVersion() {
             if (!res.ok) throw new Error('Failed to fetch version');
             return res.json();
         },
-        staleTime: 60 * 60 * 1000,
+        staleTime: 0,
+        refetchOnMount: 'always',
+        enabled,
     });
 }
 

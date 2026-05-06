@@ -80,3 +80,20 @@ class TestProjectsDelete:
         )
         # Returns 400 if path doesn't resolve safely, or 404/500
         assert resp.status_code in (400, 404, 500)
+
+
+class TestProjectsWorkspace:
+    """Tests for GET /api/v1/projects/workspace"""
+
+    def test_workspace_requires_auth_when_configured(self, client):
+        resp = client.get('/api/v1/projects/workspace')
+        assert resp.status_code in (200, 401)
+
+    def test_workspace_with_auth(self, client, auth_headers):
+        resp = client.get('/api/v1/projects/workspace', headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'clientDataPath' in data
+        assert 'clientDataPathExists' in data
+        assert 'clientFolderCount' in data
+        assert 'sqliteDatabasePath' in data

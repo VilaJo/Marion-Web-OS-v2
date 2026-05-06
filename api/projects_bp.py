@@ -14,11 +14,34 @@ from api.shared import (
     load_project_data, save_project_data_file, get_project_progress,
     save_avatar_file, load_avatar_file,
     FOLDER_STATUS_MAP, STATUS_FOLDER_MAP, ARCHIVE_CATEGORIES,
+    count_scanned_project_folders,
     error_response, validate_json,
 )
 
+from config import get_current_config
+
 logger = get_logger('api.projects')
 projects_bp = Blueprint('projects', __name__, url_prefix='/api/v1/projects')
+
+
+@projects_bp.route('/workspace', methods=['GET'])
+def workspace_paths():
+    """Resolved client data folder and counts (requires auth when configured)."""
+    cfg_class = get_current_config()
+    count = count_scanned_project_folders()
+    root = DESKTOP_PATH.resolve()
+    try:
+        db_path = cfg_class.get_db_path()
+        db_str = str(db_path.expanduser().resolve())
+    except Exception:
+        db_str = ""
+
+    return jsonify({
+        "clientDataPath": str(root),
+        "clientDataPathExists": root.is_dir(),
+        "clientFolderCount": count,
+        "sqliteDatabasePath": db_str,
+    })
 
 
 @projects_bp.route('/scan', methods=['GET'])

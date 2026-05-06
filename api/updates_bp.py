@@ -4,6 +4,8 @@ Handles: /api/version, /api/updates/check, /api/updates/apply, /api/updates/chan
          /api/report-bug
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import threading
@@ -14,7 +16,7 @@ from pathlib import Path
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 
-from api.shared import error_response
+from api.shared import error_response, DESKTOP_PATH, count_scanned_project_folders
 
 import requests as http_requests  # avoid shadowing flask.request
 
@@ -24,17 +26,70 @@ cfg = get_current_config()
 
 updates_bp = Blueprint('updates', __name__, url_prefix='/api/v1')
 
+_APP_ROOT = Path(__file__).resolve().parent.parent
 APP_VERSION = cfg.APP_VERSION
 GITHUB_REPO_API = "https://api.github.com/repos/VilaJo/Marion-Web-OS-v2"
 
 
+def _resolved_static_folder() -> str:
+    p = Path(cfg.STATIC_FOLDER)
+    if not p.is_absolute():
+        p = _APP_ROOT / p
+    return str(p.resolve())
+
+
+def _settings_js_mtime_iso() -> str | None:
+    """Best-effort: newest mtime among Settings chunk in .dist — proves UI rebuild landed."""
+    static_dir = Path(_resolved_static_folder())
+    assets = static_dir / "assets"
+    if not assets.is_dir():
+        return None
+    try:
+        newest = None
+        newest_ts = 0.0
+        for f in assets.iterdir():
+            if not f.is_file():
+                continue
+            name = f.name
+            if not name.startswith("Settings-") or not name.endswith(".js"):
+                continue
+            mt = f.stat().st_mtime
+            if mt > newest_ts:
+                newest_ts = mt
+                newest = f
+        if newest is None:
+            return None
+        return datetime.fromtimestamp(newest_ts).strftime("%Y-%m-%d %H:%M")
+    except OSError:
+        return None
+
+
 @updates_bp.route('/version')
 def get_version():
-    """Get current app version."""
+    """Get current app version and resolved local DATA_PATH (public — same host only in practice).
+
+    Mirrors key fields from GET /projects/workspace so Marion can diagnose missing clients
+    even when the session rejects the authenticated workspace route (e.g. token issues).
+    """
+    root = DESKTOP_PATH.resolve()
+    folder_count = count_scanned_project_folders()
+    db_str = ""
+    try:
+        db_str = str(cfg.get_db_path().expanduser().resolve())
+    except Exception:
+        pass
     return jsonify({
         "version": APP_VERSION,
         "name": "Marion Web OS",
         "buildDate": datetime.now().strftime("%Y-%m-%d"),
+        "clientDataPath": str(root),
+        "clientDataPathExists": root.is_dir(),
+        "clientFolderCount": folder_count,
+        "sqliteDatabasePath": db_str,
+        # Aide support : souvent Marion lance un autre dossier que celui où git pull a été fait.
+        "appInstallationRoot": str(_APP_ROOT.resolve()),
+        "staticFolderResolved": _resolved_static_folder(),
+        "settingsBundleBuiltAt": _settings_js_mtime_iso(),
     })
 
 

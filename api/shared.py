@@ -83,6 +83,32 @@ FOLDER_STATUS_MAP = {
 }
 
 
+def count_scanned_project_folders() -> int:
+    """
+    Count directories that ``scan_projects`` would list (same traversal rules).
+    Returns -1 if the filesystem cannot be read.
+    """
+    n = 0
+    try:
+        for folder_name in FOLDER_STATUS_MAP:
+            status_path = DESKTOP_PATH / folder_name
+            if not status_path.exists():
+                continue
+            for entry in status_path.iterdir():
+                if not entry.is_dir() or entry.name.startswith('.'):
+                    continue
+                if folder_name in ("5. Archivés", "Archivé") and entry.name in ARCHIVE_CATEGORIES:
+                    for sub in entry.iterdir():
+                        if sub.is_dir() and not sub.name.startswith('.'):
+                            n += 1
+                else:
+                    n += 1
+    except OSError as e:
+        logger.warning("count_scanned_project_folders: %s", e)
+        return -1
+    return n
+
+
 def init_db_structure():
     """Initialize the database folder structure on disk."""
     if not DESKTOP_PATH.exists():

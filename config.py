@@ -25,6 +25,11 @@ load_dotenv('.env.local')
 load_dotenv('.env')
 
 
+def get_application_root() -> Path:
+    """Directory containing this file: Marion project root (next to ``franck_server.py``)."""
+    return Path(__file__).resolve().parent
+
+
 # ---------------------------------------------------------------------------
 # Base configuration
 # ---------------------------------------------------------------------------
@@ -34,7 +39,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.6.0'
+    APP_VERSION = '2.6.1'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -59,7 +64,12 @@ class Config:
 
     # -- Paths --------------------------------------------------------------
     USER_HOME = Path.home()
-    DATA_PATH = Path(os.getenv('DATA_PATH', str(USER_HOME / "Desktop" / "Marion Web OS Database")))
+    # Toujours résoudre en absolu : un DATA_PATH relatif dépendrait du répertoire de
+    # lancement du serveur et pourrait « perdre » le dossier Bureau par erreur.
+    _data_path_env = Path(
+        os.getenv('DATA_PATH', str(USER_HOME / "Desktop" / "Marion Web OS Database"))
+    ).expanduser()
+    DATA_PATH = _data_path_env.resolve()
     STATIC_FOLDER = os.getenv('STATIC_FOLDER', '.dist')
 
     # -- API Keys -----------------------------------------------------------

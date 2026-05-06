@@ -101,3 +101,10 @@ class TestV1Health:
         data = resp.get_json()
         assert 'version' in data
         assert 'name' in data
+        assert 'clientDataPath' in data
+        assert 'clientDataPathExists' in data
+        assert 'clientFolderCount' in data
+        assert 'sqliteDatabasePath' in data
+        assert 'appInstallationRoot' in data
+        assert 'staticFolderResolved' in data
+        assert 'settingsBundleBuiltAt' in data

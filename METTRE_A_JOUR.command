@@ -1,19 +1,51 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-echo "🦄 Recherche de mises à jour pour Marion CRM..."
-echo "------------------------------------------------"
+echo "🦄 Mise à jour Marion Web OS"
+echo "────────────────────────────────────────────────────────────────────"
+
+UPDATED_VIA_GIT=0
+
+# ──────────────────────────────────────────────────────────────────────────
+# 0. Si c'est un clone Git → pull depuis le remote (évite « rien ne change » avec seulement ZIP)
+# ──────────────────────────────────────────────────────────────────────────
+if [ -d ".git" ]; then
+    echo ""
+    echo "📂 Clone Git détecté."
+    if ! command -v git >/dev/null 2>&1; then
+        echo "⚠️  git absent du PATH → on passe au téléchargement ZIP."
+    else
+        BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+        echo "    Branche : $BRANCH"
+        REMOTE="$(git remote get-url origin 2>/dev/null || true)"
+        if [ -z "$REMOTE" ]; then
+            echo "⚠️  Pas de remote « origin » → impossible de tirer depuis GitHub."
+            echo "    Configure : git remote add origin <url-du-depot>"
+        else
+            echo "    Origin   : $REMOTE"
+            git fetch origin 2>/dev/null || true
+            if git pull --ff-only 2>/dev/null || git pull 2>/dev/null; then
+                echo "✅ git pull terminé."
+                UPDATED_VIA_GIT=1
+            else
+                echo "⚠️  git pull a échoué (conflits, hors ligne…) → téléchargement ZIP ci-dessous."
+            fi
+        fi
+    fi
+fi
+
+if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
 
 # 1. Sauvegarde de la config locale
 if [ -f .env.local ]; then
-    echo "🔒 Sauvegarde de votre clé API..."
+    echo "🔒 Sauvegarde de votre fichier local..."
     cp .env.local .env.local.bak
 fi
 
-# 2. Téléchargement de la dernière version (depuis la branche main)
-echo "⬇️  Téléchargement de la nouvelle version..."
+# 2. Téléchargement (ZIP) — même logique que l’historique Marion
+echo ""
+echo "⬇️  Téléchargement de la version GitHub (branche main)…"
 
-# URL du nouveau repo v2
 URLS=(
     "https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip"
     "https://github.com/VilaJo/Marion-Web-OS-v2/archive/main.zip"
@@ -22,91 +54,82 @@ URLS=(
 SUCCESS=0
 
 for URL in "${URLS[@]}"; do
-    echo "Essai depuis : $URL"
+    echo "    Essai : $URL"
     curl -L -o update.zip "$URL"
-    
-    # Vérification si c'est un ZIP valide (en testant l'intégrité)
-    if unzip -t update.zip > /dev/null 2>&1; then
-        echo "✅ Téléchargement réussi."
+
+    if unzip -t update.zip >/dev/null 2>&1; then
+        echo "✅ ZIP valide."
         SUCCESS=1
         break
     else
-        echo "⚠️ Echec. Fichier invalide."
+        echo "⚠️  ZIP invalide, autre URL…"
     fi
 done
 
 if [ $SUCCESS -eq 0 ]; then
-    echo "❌ ERREUR CRITIQUE : Impossible de télécharger la mise à jour."
-    echo "Le fichier téléchargé n'est pas un ZIP valide. Contenu :"
-    head -n 5 update.zip
-    rm update.zip
+    echo "❌ Impossible de télécharger une mise à jour (ZIP)."
+    head -n 5 update.zip 2>/dev/null || true
+    rm -f update.zip
     exit 1
 fi
 
-# 3. Décompression et Installation
-echo "📦 Installation de la mise à jour..."
+echo "📦 Décompression…"
 unzip -q -o update.zip
 
-# Trouver le dossier dézippé (quel que soit son nom)
 EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "Marion-Web-OS-v2-*" | head -n 1)
 
 if [ -z "$EXTRACTED_DIR" ]; then
-    echo "❌ Erreur : Impossible de trouver le dossier de mise à jour."
+    echo "❌ Dossier décompressé introuvable."
+    rm -f update.zip
     exit 1
 fi
 
-echo "📂 Dossier trouvé : $EXTRACTED_DIR"
-
-# Copier le contenu du dossier dézippé vers le dossier courant
+echo "📂 Fusion dans le dossier actuel depuis : $EXTRACTED_DIR"
 cp -R "$EXTRACTED_DIR"/* .
-
-# Nettoyage
 rm -rf "$EXTRACTED_DIR"
-rm update.zip
+rm -f update.zip
 
-# Rendre les scripts exécutables pour la prochaine fois
-chmod +x *.command
-
-# 4. Restauration de la config
 if [ -f .env.local.bak ]; then
     mv .env.local.bak .env.local
-    echo "✅ Clé API restaurée."
+    echo "✅ .env.local restauré."
 fi
 
-# 5. Mise à jour des dépendances (si nécessaire)
-echo "🧠 Mise à jour du Cerveau (Python)..."
+fi # fin branche ZIP
+
+# ──────────────────────────────────────────────────────────────────────────
+# Toujours faire : deps + build UI (sans ça « git pull » ne change pas l’écran !)
+# ──────────────────────────────────────────────────────────────────────────
+
+chmod +x *.command 2>/dev/null || true
+
+echo ""
+echo "🧠 Dépendances Python…"
 if [ -d ".venv" ]; then
+    # shellcheck source=/dev/null
     source .venv/bin/activate
     pip install -r .requirements.txt
 else
-    echo "⚠️ Pas d'environnement virtuel trouvé. Tentative d'installation globale..."
-    pip3 install -r .requirements.txt
+    echo "⚠️  Pas de .venv — lance INSTALLER.command une fois."
+    pip3 install -r .requirements.txt 2>/dev/null || true
 fi
 
-echo "🎨 Mise à jour de l'Interface..."
+echo ""
+echo "🎨 Interface (obligatoire pour voir les changements après pull) …"
 if command -v npm >/dev/null 2>&1; then
-    echo "📦 Installation des paquets Node..."
     npm install
-    
-    echo "🏗️ Construction de l'application..."
     npm run build
-    
-    if [ $? -ne 0 ]; then
-        echo "❌ ERREUR CRITIQUE : La construction de l'interface a échoué."
-        echo "L'application risque de ne pas fonctionner."
-        read -p "Appuyez sur Entrée pour voir les détails..."
-    fi
-    
     if [ ! -f ".dist/index.html" ]; then
-        echo "⚠️ ATTENTION : Le fichier index.html est manquant dans .dist/"
-        echo "Cela provoquera une erreur 'Not Found'."
+        echo "❌ Pas de .dist/index.html après le build — l’interface ne pourra pas s’afficher."
     fi
 else
-    echo "❌ Node.js (npm) n'est pas trouvé. Impossible de mettre à jour l'interface."
+    echo "❌ npm introuvable — installe Node.js puis relance ce script."
 fi
 
-echo "------------------------------------------------"
-echo "✨ Mise à jour terminée avec succès !"
-echo "👉 Vous pouvez relancer 'LANCER_MARION.command'"
-echo "------------------------------------------------"
-read -p "Appuyez sur Entrée pour fermer..."
+echo ""
+echo "────────────────────────────────────────────────────────────────────"
+echo "✨ Mise à jour terminée."
+echo ""
+echo "👉 IMPORTANT : si Marion tournait déjà, STOPPER puis LANCER (ou fermer puis rouvrir l’app),"
+echo "   puis dans Safari/Chrome : rechargement forcé (Cmd + Shift + R)."
+echo "────────────────────────────────────────────────────────────────────"
+read -p "Appuie sur Entrée pour fermer…"
