@@ -52,6 +52,17 @@ echo ""
 echo "───────────────────────────────────────────────────────────────────"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 1b. Git — pour que « git pull » fonctionne (ZIP GitHub sans dossier .git)
+# ─────────────────────────────────────────────────────────────────────────────
+if [ -f "$APP_DIR/ACTIVER_GIT.command" ]; then
+  echo ""
+  echo "🔗 Liaison GitHub (optionnel : mises à jour avec git pull)…"
+  bash "$APP_DIR/ACTIVER_GIT.command" --installer
+  echo ""
+  echo "───────────────────────────────────────────────────────────────────"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 2. Installation Backend Python
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
@@ -265,6 +276,9 @@ echo "║                                                               ║"
 echo "║   🖥️  Une icône 'Marion Web OS' a été créée sur ton Bureau    ║"
 echo "║                                                               ║"
 echo "║   👉 Double-clique dessus pour lancer l'application !         ║"
+echo "║                                                               ║"
+echo "║   📥 Mise à jour : git pull dans ce dossier — ou              ║"
+echo "║      ACTIVER_GIT.command si « not a git repository »         ║"
 echo "║                                                               ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""

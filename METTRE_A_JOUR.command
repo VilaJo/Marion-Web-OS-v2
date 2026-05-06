@@ -36,6 +36,11 @@ fi
 
 if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
 
+    if [ ! -d .git ]; then
+        echo ""
+        echo "💡 Pas de dépôt Git (souvent après un ZIP). Pour activer « git pull » : lance une fois ACTIVER_GIT.command."
+    fi
+
 # 1. Sauvegarde de la config locale
 if [ -f .env.local ]; then
     echo "🔒 Sauvegarde de votre fichier local..."
