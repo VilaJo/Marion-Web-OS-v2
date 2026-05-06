@@ -129,6 +129,8 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [qrImage, setQrImage] = useState<string | null>(null);
+    /** Set when /api/v1/generate-qr fails (e.g. missing Python package `segno`). */
+    const [qrError, setQrError] = useState<string | null>(null);
 
     // Time Tracking State
     const [pendingLogs, setPendingLogs] = useState<any[]>([]);
@@ -345,10 +347,12 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
     useEffect(() => {
         if (activeBank.id !== 'main' || (currentInvoice.currency !== 'CHF' && currentInvoice.currency !== 'EUR' && currentInvoice.currency !== '€')) {
             setQrImage(null);
+            setQrError(null);
             return;
         }
 
         const fetchQR = async () => {
+            setQrError(null);
             try {
                 // ---- Debtor (client) parsing -----------------------------------
                 // Accept multi-line addresses ("Rue X 1\n1234 Ville\nPays"),
@@ -387,19 +391,39 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
-                if (data.success && data.image) {
-                    setQrImage(data.image);
+                let data: { success?: boolean; image?: string; error?: string } = {};
+                try {
+                    data = await res.json();
+                } catch {
+                    setQrImage(null);
+                    setQrError(t.qrLoadError);
+                    return;
                 }
+                if (!res.ok || !data.success || !data.image) {
+                    setQrImage(null);
+                    const apiErr = (data.error || '').trim();
+                    const segnoMissing =
+                        apiErr.toLowerCase().includes('segno');
+                    setQrError(
+                        segnoMissing
+                            ? `${t.qrLoadError} ${t.qrSegnoMissingHint}`
+                            : `${t.qrLoadError}${apiErr ? ` (${apiErr})` : ''}`
+                    );
+                    return;
+                }
+                setQrImage(data.image);
+                setQrError(null);
             } catch (e) {
-                console.error("Failed to fetch QR", e);
+                console.error('Failed to fetch QR', e);
+                setQrImage(null);
+                setQrError(t.qrLoadError);
             }
         };
 
         const timeout = setTimeout(fetchQR, 800);
         return () => clearTimeout(timeout);
 
-    }, [calculateTotal(), currentInvoice.currency, selectedBankId, currentInvoice.clientAddress, currentInvoice.clientDisplayName, activeBank, senderAddress, senderName]);
+    }, [calculateTotal(), currentInvoice.currency, selectedBankId, currentInvoice.clientAddress, currentInvoice.clientDisplayName, activeBank, senderAddress, senderName, lang]);
 
     // --- Actions ---
     const updateField = (field: keyof Invoice, value: any) => setCurrentInvoice(prev => ({ ...prev, [field]: value }));
@@ -906,8 +930,12 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                                 {qrImage ? (
                                                     <img src={qrImage} alt="Swiss QR" className="w-full h-full object-contain" />
                                                 ) : (
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-gray-400">
-                                                        <span className="text-xs">QR...</span>
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 px-1 text-center pointer-events-none">
+                                                        {qrError ? (
+                                                            <span className="text-[7px] leading-tight text-red-600 print:text-[6px]">{qrError}</span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">{t.qrPending}</span>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>

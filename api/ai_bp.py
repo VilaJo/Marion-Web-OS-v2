@@ -50,6 +50,12 @@ try:
 except ImportError:
     segno = None
 
+if segno is None:
+    logger.warning(
+        "Swiss QR disabled: Python package 'segno' missing. Run: pip install segno "
+        "(or rerun INSTALLER.command)."
+    )
+
 cfg = get_current_config()
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/api/v1')

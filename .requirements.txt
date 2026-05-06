@@ -3,4 +3,5 @@ flask-cors
 python-dotenv
 google-genai
 Pillow
+segno>=1.6.0
 requests
