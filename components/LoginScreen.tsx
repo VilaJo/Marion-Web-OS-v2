@@ -6,6 +6,26 @@ interface LoginScreenProps {
     onSkip?: () => void;
 }
 
+/** Lit le corps HTTP même vide ou non-JSON — évite « Unexpected end of JSON input » côté navigateur. */
+async function parseMarionAuthResponse(response: Response): Promise<Record<string, unknown>> {
+    const raw = await response.text();
+    if (!raw.trim()) {
+        if (!response.ok) {
+            throw new Error(
+                `Le serveur a répondu sans détail (code ${response.status}). Consulte .marion.log dans le dossier Marion ou redémarre l’application.`
+            );
+        }
+        return {};
+    }
+    try {
+        return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+        throw new Error(
+            'Réponse invalide du serveur Marion. Consulte .marion.log dans le dossier du projet, ou redémarre l’application.'
+        );
+    }
+}
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSkip }) => {
     const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
     const [password, setPassword] = useState('');
@@ -29,9 +49,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             if (!response.ok) {
                 throw new Error('Backend not available');
             }
-            const data = await response.json();
-            
-            setIsConfigured(data.configured);
+            const data = await parseMarionAuthResponse(response);
+
+            setIsConfigured(data.configured === true);
             
             // If already authenticated, skip login
             if (data.configured && data.authenticated) {
@@ -72,15 +92,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                 body: JSON.stringify({ password })
             });
 
-            const data = await response.json();
+            const data = await parseMarionAuthResponse(response);
 
             if (!response.ok) {
-                throw new Error(data.error || 'Erreur de configuration');
+                throw new Error(typeof data.error === 'string' ? data.error : `Erreur ${response.status}`);
+            }
+
+            const token = data.token;
+            if (typeof token !== 'string' || !token) {
+                throw new Error(
+                    'Session non créée. Vérifie que le dossier « Marion Web OS Database » est accessible et redémarre Marion.'
+                );
             }
 
             // Store token in sessionStorage (cleared when browser closes)
-            sessionStorage.setItem('marion_token', data.token);
-            onAuthenticated(data.token);
+            sessionStorage.setItem('marion_token', token);
+            onAuthenticated(token);
         } catch (err: any) {
             setError(err.message || 'Erreur de connexion');
         } finally {
@@ -100,15 +127,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                 body: JSON.stringify({ password })
             });
 
-            const data = await response.json();
+            const data = await parseMarionAuthResponse(response);
 
             if (!response.ok) {
-                throw new Error(data.error || 'Mot de passe incorrect');
+                throw new Error(typeof data.error === 'string' ? data.error : 'Mot de passe incorrect');
+            }
+
+            const token = data.token;
+            if (typeof token !== 'string' || !token) {
+                throw new Error('Connexion impossible — réponse serveur incomplète.');
             }
 
             // Store token in sessionStorage
-            sessionStorage.setItem('marion_token', data.token);
-            onAuthenticated(data.token);
+            sessionStorage.setItem('marion_token', token);
+            onAuthenticated(token);
         } catch (err: any) {
             setError(err.message || 'Erreur de connexion');
         } finally {
@@ -132,10 +164,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                 body: JSON.stringify({ confirm: 'RESET' })
             });
 
-            const data = await response.json();
+            const data = await parseMarionAuthResponse(response);
 
             if (!response.ok) {
-                throw new Error(data.error || 'Erreur de réinitialisation');
+                throw new Error(typeof data.error === 'string' ? data.error : 'Erreur de réinitialisation');
             }
 
             // Clear local storage and reload

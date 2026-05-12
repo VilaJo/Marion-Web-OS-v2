@@ -82,54 +82,67 @@ def auth_check():
 @auth_bp.route('/setup', methods=['POST'])
 def auth_setup():
     """Configure the initial password."""
-    if AUTH_FILE.exists():
-        return jsonify({"error": "Deja configure"}), 400
+    try:
+        if AUTH_FILE.exists():
+            return jsonify({"error": "Deja configure"}), 400
 
-    data = request.get_json()
-    password = data.get('password', '')
+        data = request.get_json(silent=True) or {}
+        password = data.get('password', '') or ''
 
-    if len(password) < 6:
-        return jsonify({"error": "Mot de passe trop court (min 6 caracteres)"}), 400
+        if len(password) < 6:
+            return jsonify({"error": "Mot de passe trop court (min 6 caracteres)"}), 400
 
-    salt = generate_salt()
-    password_hash = hash_password(password, salt)
+        # .marion_auth.json vit sous DATA_PATH — le dossier doit exister et être writable
+        DESKTOP_PATH.mkdir(parents=True, exist_ok=True)
 
-    auth_data = {
-        "salt": base64.b64encode(salt).decode(),
-        "password_hash": password_hash,
-        "created_at": __import__('datetime').datetime.now().isoformat()
-    }
+        salt = generate_salt()
+        password_hash = hash_password(password, salt)
 
-    with open(AUTH_FILE, 'w') as f:
-        json.dump(auth_data, f)
+        auth_data = {
+            "salt": base64.b64encode(salt).decode(),
+            "password_hash": password_hash,
+            "created_at": __import__('datetime').datetime.now().isoformat()
+        }
 
-    # Create user in SQLite
-    user = get_user_by_email('marion@local')
-    if not user:
-        user_id = create_user(
-            email='marion@local',
-            password_hash=password_hash,
-            password_salt=base64.b64encode(salt).decode(),
-            display_name='Marion'
+        with open(AUTH_FILE, 'w') as f:
+            json.dump(auth_data, f)
+
+        # Create user in SQLite
+        user = get_user_by_email('marion@local')
+        if not user:
+            user_id = create_user(
+                email='marion@local',
+                password_hash=password_hash,
+                password_salt=base64.b64encode(salt).decode(),
+                display_name='Marion'
+            )
+        else:
+            user_id = user['id']
+
+        # Create session (SQLite)
+        token = db_create_session(
+            user_id=user_id,
+            password_for_encryption=password,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', ''),
+            duration_hours=cfg.SESSION_DURATION_HOURS
         )
-    else:
-        user_id = user['id']
+        set_current_password(password)
 
-    # Create session (SQLite)
-    token = db_create_session(
-        user_id=user_id,
-        password_for_encryption=password,
-        ip_address=request.remote_addr,
-        user_agent=request.headers.get('User-Agent', ''),
-        duration_hours=cfg.SESSION_DURATION_HOURS
-    )
-    set_current_password(password)
-
-    return jsonify({
-        "success": True,
-        "token": token,
-        "message": "Mot de passe configure"
-    })
+        return jsonify({
+            "success": True,
+            "token": token,
+            "message": "Mot de passe configure"
+        })
+    except Exception as e:
+        logger.exception("auth_setup failed: %s", e)
+        return jsonify({
+            "error": (
+                "Impossible de finaliser la protection. "
+                "Vérifie que le dossier « Marion Web OS Database » sur le Bureau existe "
+                "et que Marion peut y écrire, puis redémarre l’application."
+            ),
+        }), 500
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -148,8 +161,8 @@ def auth_login():
     if not AUTH_FILE.exists():
         return jsonify({"error": "Non configure", "code": "NOT_CONFIGURED"}), 400
 
-    data = request.get_json()
-    password = data.get('password', '')
+    data = request.get_json(silent=True) or {}
+    password = data.get('password', '') or ''
 
     try:
         with open(AUTH_FILE, 'r') as f:
@@ -218,8 +231,8 @@ def auth_reset():
     from database.db import delete_user_sessions
     from database.db import delete_oauth_token as _db_delete_oauth
 
-    data = request.get_json()
-    confirm = data.get('confirm', '')
+    data = request.get_json(silent=True) or {}
+    confirm = data.get('confirm', '') or ''
 
     if confirm != 'RESET':
         return jsonify({"error": "Confirmation requise"}), 400
