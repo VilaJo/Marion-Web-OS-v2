@@ -165,7 +165,30 @@ export const logout = () => {
 // Online/offline detection + auto-sync
 // ---------------------------------------------------------------------------
 
+/** Safari/macOS peut signaler navigator.onLine === false alors que Marion locale répond — on corrige avec une sonde HTTP. */
+async function reconcileOnlineWithMarionBackend(): Promise<void> {
+    try {
+        const res = await fetch('/api/v1/version', {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'same-origin',
+        });
+        if (res.ok) {
+            const { useOfflineStore } = await import('../stores/useOfflineStore');
+            useOfflineStore.getState().setOnline(true);
+        }
+    } catch {
+        /* Pas de réécriture forcée « hors ligne » : fetch GET ne touche pas au store ici */
+    }
+}
+
 if (typeof window !== 'undefined') {
+    const scheduleReconcile = () => void reconcileOnlineWithMarionBackend();
+
+    scheduleReconcile();
+    setTimeout(scheduleReconcile, 2000);
+    setTimeout(scheduleReconcile, 5000);
+
     window.addEventListener('online', async () => {
         try {
             const { useOfflineStore } = await import('../stores/useOfflineStore');
@@ -173,6 +196,7 @@ if (typeof window !== 'undefined') {
             // Auto-replay queued mutations
             await useOfflineStore.getState().processQueue();
         } catch { /* ignore */ }
+        scheduleReconcile();
     });
 
     window.addEventListener('offline', async () => {
@@ -180,6 +204,7 @@ if (typeof window !== 'undefined') {
             const { useOfflineStore } = await import('../stores/useOfflineStore');
             useOfflineStore.getState().setOnline(false);
         } catch { /* ignore */ }
+        setTimeout(scheduleReconcile, 400);
     });
 }
 
