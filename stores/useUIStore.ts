@@ -14,6 +14,14 @@ interface UIState {
     currency: string;
     agencyName: string;
     agencyWebsite: string;
+    /** N° IDE/UID Suisse au format CHE-xxx.xxx.xxx (affiché en footer facture). */
+    agencyIde: string;
+    /** N° TVA Suisse au format CHE-xxx.xxx.xxx TVA (mentions légales). */
+    agencyVatNumber: string;
+    /** Frais de rappel par niveau de relance [niv1, niv2, niv3] (CHF). */
+    agencyReminderFees: [number, number, number];
+    /** Taux TVA appliqué par défaut aux nouvelles lignes. 0 = pas de TVA. */
+    defaultVatRate: 0 | 2.6 | 3.8 | 8.1;
     tjh: string;
     aiTone: string;
     briefingVocal: boolean;
@@ -43,6 +51,9 @@ interface UIState {
     // Mobile
     isMobileMenuOpen: boolean;
 
+    // Toolbar collapse (header)
+    isToolbarCollapsed: boolean;
+
     // Misc UI
     showScrollTop: boolean;
     isDraggingOver: boolean;
@@ -71,6 +82,8 @@ interface UIState {
     /** Email relance templates — variables: {client}, {montant}, {numero}, {echeance} */
     relanceTemplatePolite: string;
     relanceTemplateFirm: string;
+    /** Relance niveau 3 (mise en demeure) — utilise les mêmes variables. */
+    relanceTemplateFinal: string;
 
     // Actions
     setTheme: (theme: Theme) => void;
@@ -79,6 +92,10 @@ interface UIState {
     setCurrency: (currency: string) => void;
     setAgencyName: (name: string) => void;
     setAgencyWebsite: (website: string) => void;
+    setAgencyIde: (ide: string) => void;
+    setAgencyVatNumber: (vat: string) => void;
+    setAgencyReminderFees: (fees: [number, number, number]) => void;
+    setDefaultVatRate: (rate: 0 | 2.6 | 3.8 | 8.1) => void;
     setTjh: (tjh: string) => void;
     setAiTone: (tone: string) => void;
     setBriefingVocal: (v: boolean) => void;
@@ -106,6 +123,8 @@ interface UIState {
     setShowTour: (v: boolean) => void;
     setIsFocusMode: (v: boolean) => void;
     setIsMobileMenuOpen: (v: boolean) => void;
+    setIsToolbarCollapsed: (v: boolean) => void;
+    toggleToolbarCollapsed: () => void;
     setShowScrollTop: (v: boolean) => void;
     setIsDraggingOver: (v: boolean) => void;
     setIsTorchActive: (v: boolean) => void;
@@ -121,6 +140,7 @@ interface UIState {
     setSubscriptionDate: (v: string) => void;
     setRelanceTemplatePolite: (v: string) => void;
     setRelanceTemplateFirm: (v: string) => void;
+    setRelanceTemplateFinal: (v: string) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -130,6 +150,26 @@ export const useUIStore = create<UIState>((set, get) => ({
     currency: localStorage.getItem('marion_currency') || 'CHF',
     agencyName: localStorage.getItem('marion_agency_name') || 'Marion Web',
     agencyWebsite: localStorage.getItem('marion_agency_website') || 'marionweb.ch',
+    agencyIde: localStorage.getItem('marion_agency_ide') || 'CHE-265.310.079',
+    agencyVatNumber: localStorage.getItem('marion_agency_vat_number') || '',
+    agencyReminderFees: (() => {
+        try {
+            const raw = localStorage.getItem('marion_agency_reminder_fees');
+            if (!raw) return [0, 20, 40] as [number, number, number];
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length === 3) {
+                return parsed.map((n) => (Number.isFinite(Number(n)) ? Number(n) : 0)) as [number, number, number];
+            }
+            return [0, 20, 40] as [number, number, number];
+        } catch {
+            return [0, 20, 40] as [number, number, number];
+        }
+    })(),
+    defaultVatRate: ((): 0 | 2.6 | 3.8 | 8.1 => {
+        const raw = localStorage.getItem('marion_default_vat_rate');
+        const n = raw ? Number(raw) : 0;
+        return [0, 2.6, 3.8, 8.1].includes(n) ? (n as 0 | 2.6 | 3.8 | 8.1) : 0;
+    })(),
     tjh: localStorage.getItem('marion_tjh') || '60',
     aiTone: localStorage.getItem('marion_ai_tone') || 'witty',
     briefingVocal: localStorage.getItem('marion_briefing_vocal') === 'true',
@@ -158,6 +198,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     
     // Mobile
     isMobileMenuOpen: false,
+
+    // Toolbar collapse — persisted
+    isToolbarCollapsed: localStorage.getItem('marion_toolbar_collapsed') === 'true',
 
     // Misc
     showScrollTop: false,
@@ -205,6 +248,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     relanceTemplateFirm:
         localStorage.getItem('marion_relance_firm') ||
         `Bonjour,\n\nNous n'avons pas reçu le règlement de la facture {numero} ({montant} CHF), échue le {echeance}. Merci de régulariser sous 8 jours ou de nous contacter.\n\nCordialement`,
+    relanceTemplateFinal:
+        localStorage.getItem('marion_relance_final') ||
+        `Bonjour,\n\nMise en demeure de payer — la facture {numero} ({montant} CHF), échue le {echeance}, demeure impayée malgré nos relances précédentes.\n\nÀ défaut de règlement complet dans un délai de 10 jours dès réception de la présente, nous saisirons l'Office des poursuites compétent (art. 102 ss CO).\n\nLes frais de rappel et intérêts moratoires (5% l'an, art. 104 CO) sont applicables.\n\nCordialement`,
 
     // Theme actions
     setTheme: (theme) => {
@@ -232,6 +278,22 @@ export const useUIStore = create<UIState>((set, get) => ({
     setAgencyWebsite: (website) => {
         localStorage.setItem('marion_agency_website', website);
         set({ agencyWebsite: website });
+    },
+    setAgencyIde: (ide) => {
+        localStorage.setItem('marion_agency_ide', ide);
+        set({ agencyIde: ide });
+    },
+    setAgencyVatNumber: (vat) => {
+        localStorage.setItem('marion_agency_vat_number', vat);
+        set({ agencyVatNumber: vat });
+    },
+    setAgencyReminderFees: (fees) => {
+        localStorage.setItem('marion_agency_reminder_fees', JSON.stringify(fees));
+        set({ agencyReminderFees: fees });
+    },
+    setDefaultVatRate: (rate) => {
+        localStorage.setItem('marion_default_vat_rate', String(rate));
+        set({ defaultVatRate: rate });
     },
     setTjh: (tjh) => {
         localStorage.setItem('marion_tjh', tjh);
@@ -283,6 +345,15 @@ export const useUIStore = create<UIState>((set, get) => ({
     setShowTour: (v) => set({ showTour: v }),
     setIsFocusMode: (v) => set({ isFocusMode: v }),
     setIsMobileMenuOpen: (v) => set({ isMobileMenuOpen: v }),
+    setIsToolbarCollapsed: (v) => {
+        localStorage.setItem('marion_toolbar_collapsed', String(v));
+        set({ isToolbarCollapsed: v });
+    },
+    toggleToolbarCollapsed: () => {
+        const next = !get().isToolbarCollapsed;
+        localStorage.setItem('marion_toolbar_collapsed', String(next));
+        set({ isToolbarCollapsed: next });
+    },
     setShowScrollTop: (v) => set({ showScrollTop: v }),
     setIsDraggingOver: (v) => set({ isDraggingOver: v }),
     setIsTorchActive: (v) => set({ isTorchActive: v }),
@@ -315,5 +386,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     setRelanceTemplateFirm: (v) => {
         localStorage.setItem('marion_relance_firm', v);
         set({ relanceTemplateFirm: v });
+    },
+    setRelanceTemplateFinal: (v) => {
+        localStorage.setItem('marion_relance_final', v);
+        set({ relanceTemplateFinal: v });
     },
 }));

@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Invoice, InvoiceItem, InvoicePayment, InvoiceTemplate, Project } from '../types';
-import { Plus, Trash2, Download, Save, RefreshCw, X, Clock, Wand2, Calendar, CreditCard, Link2, BookmarkPlus, Check, ChevronDown, Globe } from 'lucide-react';
+import { Invoice, InvoiceItem, InvoicePayment, InvoiceTemplate, Project, SwissVatRate } from '../types';
+import { Plus, Trash2, Download, Save, RefreshCw, X, Clock, Wand2, Calendar, CreditCard, Link2, BookmarkPlus, Check, ChevronDown, Globe, Repeat, History } from 'lucide-react';
+import { InvoiceHistoryDrawer } from './InvoiceHistoryDrawer';
 import { formatCurrency } from '../utils';
 import { apiFetch } from '../services/api';
 import { Language, LANGUAGE_OPTIONS, invoiceT } from '../translations/i18n';
 import { printElementAsPdf } from '../utils/pdfExport';
 import { useUIStore } from '../stores';
+import { computeInvoiceTotals } from '../utils/invoiceEngine';
+import {
+    isValidIban,
+    isQrIban,
+    chooseReferenceMode,
+    generateReferenceForMode,
+    formatQrReference,
+    type QrReferenceMode,
+} from '../utils/swissQrBill';
 
 declare const confetti: any;
 
@@ -110,7 +120,8 @@ interface InvoiceBuilderProps {
     invoice: Invoice;
     project?: Project;
     allProjects?: Project[];
-    onSave: (invoice: Invoice, projectId: string) => void;
+    /** Return false to keep the editor open (validation / persistence refused synchronously). */
+    onSave: (invoice: Invoice, projectId: string) => boolean | void;
     onClose: () => void;
     currency?: string;
     currentTheme?: string;
@@ -118,6 +129,9 @@ interface InvoiceBuilderProps {
 
 export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project, allProjects = [], onSave, onClose, currency = 'CHF', currentTheme }) => {
     const tjhFromSettings = useUIStore((s) => s.tjh);
+    const agencyIde = useUIStore((s) => s.agencyIde);
+    const agencyVatNumber = useUIStore((s) => s.agencyVatNumber);
+    const defaultVatRate = useUIStore((s) => s.defaultVatRate);
     // Manually editable sender info and invoice title
     const [senderName, setSenderName] = useState<string>('Marion Kindynis');
     const [senderAddress, setSenderAddress] = useState<string>('4A chemin du Port\n1246 Corsier\nSuisse');
@@ -126,6 +140,10 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
 
     const [currentInvoice, setCurrentInvoice] = useState<Invoice>({ ...invoice });
     const [selectedProjectId, setSelectedProjectId] = useState<string>(project?.id || '');
+
+    useEffect(() => {
+        setSelectedProjectId(project?.id || '');
+    }, [project?.id]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [qrImage, setQrImage] = useState<string | null>(null);
@@ -150,6 +168,9 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
 
     // Footer note
     const [footerNote, setFooterNote] = useState(invoice.footerNote || '');
+
+    // History drawer
+    const [showHistory, setShowHistory] = useState(false);
 
     // Language for the invoice document
     const [lang, setLang] = useState<Language>('fr');
@@ -289,9 +310,13 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
     }, [selectedProjectId]);
 
     // --- Calculations ---
-    const calculateSubtotal = () => currentInvoice.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const calculateVAT = () => 0;
-    const calculateTotal = () => calculateSubtotal() + calculateVAT();
+    // Mode TVA "actif" si au moins une ligne porte explicitement un vatRate.
+    // Sinon mode legacy : pas de TVA appliquée, pas de ventilation.
+    const vatActive = currentInvoice.items.some((it) => typeof it.vatRate === 'number');
+    const totals = React.useMemo(() => computeInvoiceTotals(currentInvoice.items), [currentInvoice.items]);
+    const calculateSubtotal = () => totals.subtotalHt;
+    const calculateVAT = () => totals.totalVat;
+    const calculateTotal = () => totals.totalTtc;
 
     // Payments helpers
     const totalPaid = (currentInvoice.payments || []).reduce((sum, p) => sum + p.amount, 0);
@@ -364,11 +389,29 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                 // or any free text. We split on bullets first, fallback to comma/newline.
                 const creditor = parseSenderAddress(senderAddress);
 
+                // ---- Référence QR-bill v2.0 ----------------------------------
+                // QR-IBAN ⇒ QRR (27 digits, mod10 récursif).
+                // IBAN normal ⇒ SCOR (Creditor Reference RF, ISO 11649) si possible,
+                //               sinon NON (message libre seul).
+                const ibanRaw = activeBank.iban.replace(/\s/g, '');
+                const refMode: QrReferenceMode = currentInvoice.qr?.referenceType
+                    ?? chooseReferenceMode(ibanRaw, isQrIban(ibanRaw) ? 'QRR' : 'SCOR');
+                let refValue: string | undefined = currentInvoice.qr?.reference;
+                if (!refValue || refValue.trim() === '') {
+                    try {
+                        refValue = generateReferenceForMode(refMode, currentInvoice.number);
+                    } catch {
+                        refValue = undefined;
+                    }
+                }
+
                 const payload = {
                     amount: calculateTotal(),
                     currency: currentInvoice.currency === '€' ? 'EUR' : currentInvoice.currency || 'CHF',
-                    reference: currentInvoice.number,
-                    iban: activeBank.iban.replace(/\s/g, ''),
+                    iban: ibanRaw,
+                    reference_type: refMode,
+                    reference: refValue || '',
+                    message: `${t.invoice} ${currentInvoice.number}`,
                     creditor: {
                         name: senderName || activeBank.beneficiary || 'Marion Kindynis',
                         address: creditor.street,
@@ -383,7 +426,6 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                         city: debtor.city,
                         country: debtor.country || 'CH',
                     },
-                    message: `${t.invoice} ${currentInvoice.number}`,
                 };
 
                 const res = await apiFetch('/api/v1/generate-qr', {
@@ -460,8 +502,37 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
 
     const addItem = () => {
         setCurrentInvoice(prev => {
-            const items = [...prev.items, { id: `item-${Date.now()}`, desc: '', quantity: 1, price: 0 }];
+            const base: InvoiceItem = { id: `item-${Date.now()}`, desc: '', quantity: 1, price: 0 };
+            // Si une autre ligne a déjà un taux TVA, on hérite du même taux par défaut.
+            const existingRate = prev.items.find(it => typeof it.vatRate === 'number')?.vatRate;
+            if (typeof existingRate === 'number') base.vatRate = existingRate;
+            else if (defaultVatRate > 0) base.vatRate = defaultVatRate;
+            const items = [...prev.items, base];
             return { ...prev, items, amount: subtotalFromItems(items) };
+        });
+    };
+
+    /** Bascule globale Activer/Désactiver TVA — applique le taux par défaut à toutes les lignes. */
+    const toggleVatMode = () => {
+        setCurrentInvoice(prev => {
+            const hasAny = prev.items.some(it => typeof it.vatRate === 'number');
+            const items = prev.items.map(it => {
+                if (hasAny) {
+                    // Désactivation : on retire vatRate sans toucher au prix.
+                    const { vatRate, vatExempt, ...rest } = it as any;
+                    return rest as InvoiceItem;
+                }
+                return { ...it, vatRate: defaultVatRate || 8.1 } as InvoiceItem;
+            });
+            return { ...prev, items };
+        });
+    };
+
+    /** Met à jour le taux TVA d'une ligne (ou la marque exonérée). */
+    const updateItemVat = (id: string, rate: SwissVatRate, exempt = false) => {
+        setCurrentInvoice(prev => {
+            const items = prev.items.map(it => it.id === id ? { ...it, vatRate: rate, vatExempt: exempt } : it);
+            return { ...prev, items };
         });
     };
     const removeItem = (id: string) => {
@@ -484,6 +555,29 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
             }];
             return { ...prev, items, amount: subtotalFromItems(items) };
         });
+    };
+
+    /**
+     * Récupère le taux de change vers CHF pour la devise donnée.
+     * Utilisé à la save d'une facture multi-devise pour figer le `fxRateChf`,
+     * conformément à la pratique CH (le montant CHF historique reste stable
+     * même si le taux fluctue ensuite).
+     */
+    const fetchFxRateChf = async (fromCurrency: string): Promise<number | undefined> => {
+        const iso = fromCurrency === '€' ? 'EUR' : fromCurrency === '$' ? 'USD' : fromCurrency === '£' ? 'GBP' : fromCurrency;
+        if (!iso || iso === 'CHF') return 1;
+        try {
+            const res = await fetch('https://open.er-api.com/v6/latest/CHF');
+            if (!res.ok) return undefined;
+            const data = await res.json();
+            const rate = data?.rates?.[iso];
+            if (!rate || !Number.isFinite(Number(rate)) || Number(rate) <= 0) return undefined;
+            // L'API retourne combien d'unités de la devise pour 1 CHF.
+            // fxRateChf = combien de CHF pour 1 unité = 1 / rate.
+            return 1 / Number(rate);
+        } catch {
+            return undefined;
+        }
     };
 
     const handleSave = () => {
@@ -510,8 +604,28 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     body: JSON.stringify({ clientId: selectedProjectId, logIds: pendingLogs.map(l => l.id) })
                 });
             }
-            onSave({ ...currentInvoice, amount: calculateTotal() }, selectedProjectId);
+            // Multi-devise : si l'invoice n'est pas en CHF et n'a pas encore de
+            // taux figé, on le récupère maintenant pour archive historique.
+            let fxRateChf = currentInvoice.fxRateChf;
+            if (!fxRateChf && currentInvoice.currency && currentInvoice.currency !== 'CHF') {
+                fxRateChf = await fetchFxRateChf(currentInvoice.currency);
+            }
+            const payload: Invoice = {
+                ...currentInvoice,
+                amount: calculateTotal(),
+                subtotalHt: totals.subtotalHt,
+                totalVat: totals.totalVat,
+                totalTtc: totals.totalTtc,
+                vatBreakdown: totals.vatBreakdown.length > 0 ? totals.vatBreakdown : undefined,
+                fxRateChf,
+                history: [
+                    ...(currentInvoice.history || []),
+                    { at: new Date().toISOString(), actor: 'Marion', action: 'edit', note: `Édition (total ${totals.totalTtc.toFixed(2)} ${currentInvoice.currency || 'CHF'})` },
+                ],
+            };
+            const ok = onSave(payload, selectedProjectId);
             setIsSaving(false);
+            if (ok === false) return;
             confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
             onClose();
         }, 800);
@@ -596,6 +710,20 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                         <option value="USD">USD</option>
                     </select>
 
+                    {allProjects.length > 0 && (
+                        <select
+                            value={selectedProjectId}
+                            onChange={e => setSelectedProjectId(e.target.value)}
+                            className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold max-w-[220px]"
+                            title={t.chooseProjectFolder}
+                        >
+                            <option value="">{t.chooseProjectFolder}</option>
+                            {allProjects.map(p => (
+                                <option key={p.id} value={p.id}>{p.clientName}</option>
+                            ))}
+                        </select>
+                    )}
+
                     {/* Language selector */}
                     <select
                         value={lang}
@@ -622,6 +750,45 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                         title={t.generatePaymentLink}
                     >
                         <CreditCard size={14} /> {t.paymentLink}
+                    </button>
+
+                    {/* Récurrence */}
+                    <div className="relative">
+                        <select
+                            value={currentInvoice.recurrence?.frequency || ''}
+                            onChange={(e) => {
+                                const freq = e.target.value as 'monthly' | 'quarterly' | 'yearly' | '';
+                                if (!freq) {
+                                    setCurrentInvoice(prev => ({ ...prev, recurrence: undefined }));
+                                    return;
+                                }
+                                const next = new Date();
+                                if (freq === 'monthly') next.setMonth(next.getMonth() + 1);
+                                else if (freq === 'quarterly') next.setMonth(next.getMonth() + 3);
+                                else if (freq === 'yearly') next.setFullYear(next.getFullYear() + 1);
+                                setCurrentInvoice(prev => ({
+                                    ...prev,
+                                    recurrence: { frequency: freq, nextRunAt: next.toISOString().split('T')[0] },
+                                }));
+                            }}
+                            className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${currentInvoice.recurrence ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}
+                            title="Configurer la récurrence (génère automatiquement un brouillon à chaque échéance)"
+                        >
+                            <option value="">↺ Une fois</option>
+                            <option value="monthly">↺ Mensuelle</option>
+                            <option value="quarterly">↺ Trimestrielle</option>
+                            <option value="yearly">↺ Annuelle</option>
+                        </select>
+                    </div>
+
+                    {/* Historique (journal d'audit) — désactivé tant qu'on n'a pas d'entrées */}
+                    <button
+                        onClick={() => setShowHistory(true)}
+                        disabled={!(currentInvoice.history && currentInvoice.history.length > 0)}
+                        className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-white rounded-lg font-bold text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Voir le journal d'audit de cette facture"
+                    >
+                        <History size={14} /> Historique
                     </button>
 
                     <button onClick={handleDownloadPDF} disabled={isGenerating} className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-white rounded-lg font-bold text-xs transition-colors">
@@ -770,11 +937,25 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
 
                         {/* Items Table */}
                         <div className="mb-6">
+                            {/* Toggle TVA — visible en édition uniquement, n'altère pas le rendu print/PDF si désactivé */}
+                            {!isGenerating && (
+                                <div className="flex justify-end mb-2 print:hidden">
+                                    <button
+                                        type="button"
+                                        onClick={toggleVatMode}
+                                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-colors ${vatActive ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                        title={vatActive ? 'Désactiver la TVA sur cette facture' : 'Activer la TVA suisse sur cette facture'}
+                                    >
+                                        {vatActive ? `TVA: ON` : 'TVA: OFF'}
+                                    </button>
+                                </div>
+                            )}
                             <table className="w-full text-[11px]">
                                 <thead>
                                     <tr className="bg-slate-100 text-slate-800">
                                         <th className="text-left py-2 px-3 font-bold">{t.description}</th>
-                                        <th className="text-right py-2 px-3 font-bold w-32">{t.amount}</th>
+                                        {vatActive && <th className="text-center py-2 px-2 font-bold w-20">TVA</th>}
+                                        <th className="text-right py-2 px-3 font-bold w-32">{vatActive ? `${t.amount} HT` : t.amount}</th>
                                         <th className="w-6 print:hidden"></th>
                                     </tr>
                                 </thead>
@@ -793,6 +974,31 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                                     />
                                                 )}
                                             </td>
+                                            {vatActive && (
+                                                <td className="py-2.5 px-2 align-top text-center">
+                                                    {isGenerating ? (
+                                                        <span className="tabular-nums text-slate-600">
+                                                            {item.vatExempt ? 'Exo.' : (typeof item.vatRate === 'number' ? `${item.vatRate}%` : '—')}
+                                                        </span>
+                                                    ) : (
+                                                        <select
+                                                            value={item.vatExempt ? 'exo' : String(item.vatRate ?? 0)}
+                                                            onChange={(e) => {
+                                                                const v = e.target.value;
+                                                                if (v === 'exo') updateItemVat(item.id, 0, true);
+                                                                else updateItemVat(item.id, Number(v) as SwissVatRate, false);
+                                                            }}
+                                                            className="bg-transparent text-[10px] outline-none cursor-pointer tabular-nums text-slate-700 hover:text-brand-orange"
+                                                        >
+                                                            <option value="0">0%</option>
+                                                            <option value="2.6">2.6%</option>
+                                                            <option value="3.8">3.8%</option>
+                                                            <option value="8.1">8.1%</option>
+                                                            <option value="exo">Exo.</option>
+                                                        </select>
+                                                    )}
+                                                </td>
+                                            )}
                                             <td className="py-2.5 px-3 text-right align-top font-bold text-slate-900">
                                                 {(() => {
                                                     const q = Number(item.quantity);
@@ -830,10 +1036,28 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                             )}
                         </div>
 
+                        {/* Récap TVA + Total — récap inséré dans la zone totaux existante (pas de bloc visuel ajouté en mode legacy) */}
+                        {vatActive && totals.vatBreakdown.length > 0 && (
+                            <div className="flex justify-end mb-2">
+                                <div className="w-56 text-[10px] text-slate-600 space-y-0.5 tabular-nums">
+                                    <div className="flex justify-between">
+                                        <span>Sous-total HT</span>
+                                        <span>{formatCurrency(totals.subtotalHt, 2)}</span>
+                                    </div>
+                                    {totals.vatBreakdown.map((b) => (
+                                        <div key={b.rate} className="flex justify-between">
+                                            <span>TVA {b.rate.toFixed(b.rate % 1 === 0 ? 0 : 1)}% sur {formatCurrency(b.netHt, 2)}</span>
+                                            <span>{formatCurrency(b.vat, 2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Total */}
                         <div className="flex justify-end mb-4 border-t-2 border-slate-900 pt-2">
                             <div className="w-48 flex justify-between items-center text-[11px]">
-                                <span className="font-bold text-slate-900">{t.total} {currentInvoice.currency}</span>
+                                <span className="font-bold text-slate-900">{vatActive ? `${t.total} TTC` : t.total} {currentInvoice.currency}</span>
                                 <span className="text-base font-bold text-slate-900">{formatCurrency(calculateTotal(), 2)}</span>
                             </div>
                         </div>
@@ -907,17 +1131,21 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                         ) : null}
                     </div>
 
-                    {/* Footer / Divider */}
+                    {/* Footer / Divider — mentions légales suisses */}
                     <div className="px-[15mm] mb-4">
                         <div className="border-t border-dotted border-slate-400 w-full mb-2"></div>
                         <div className="flex justify-between text-[9px] text-slate-500 gap-4">
                             <span className="truncate">{
-                                // Full sender address on one footer line, bullet-separated.
                                 senderAddress.includes('•')
                                     ? senderAddress.split('•').map(s => s.trim()).filter(Boolean).join(' • ')
                                     : senderAddress.split('\n').map(s => s.trim()).filter(Boolean).join(' • ')
                             }</span>
-                            <span className="flex-shrink-0">N° IDE CHE-265.310.079</span>
+                            <span className="flex-shrink-0">
+                                {[
+                                    agencyIde && `N° IDE ${agencyIde}`,
+                                    agencyVatNumber && `N° TVA ${agencyVatNumber}`,
+                                ].filter(Boolean).join(' • ') || 'N° IDE non renseigné'}
+                            </span>
                         </div>
                     </div>
 
@@ -941,7 +1169,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                     <h3 className="font-bold text-sm mb-3">{t.receipt}</h3>
                                     <div className="mb-3">
                                         <p className="font-bold mb-1">{t.payableTo}</p>
-                                        <p>{activeBank.iban}</p>
+                                        <p className="whitespace-nowrap font-mono tracking-tight" style={{ fontSize: '8pt' }}>{activeBank.iban}</p>
                                         <p>{senderName}</p>
                                         <div className="text-xs whitespace-pre-line">{(() => {
                                             const a = parseSenderAddress(senderAddress);
@@ -992,17 +1220,28 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                         <div className="flex-1 flex flex-col">
                                             <div className="mb-3">
                                                 <p className="font-bold mb-1">{t.payableTo}</p>
-                                                <p>{activeBank.iban}</p>
+                                                <p className="whitespace-nowrap font-mono tracking-tight" style={{ fontSize: '9pt' }}>{activeBank.iban}</p>
                                                 <p>{senderName}</p>
                                                 <div className="text-xs opacity-80 whitespace-pre-line">{(() => {
                                                     const a = parseSenderAddress(senderAddress);
                                                     return [a.street, [a.zip, a.city].filter(Boolean).join(' ')].filter(Boolean).join('\n');
                                                 })()}</div>
                                             </div>
-                                            <div className="mb-3">
-                                                <p className="font-bold mb-1">{t.reference}</p>
-                                                <p>{currentInvoice.number}</p>
-                                            </div>
+                                            {(() => {
+                                                // Affiche la référence QRR/SCOR si calculable, sinon le n° de facture (message libre)
+                                                const ibanRaw = activeBank.iban.replace(/\s/g, '');
+                                                const mode = chooseReferenceMode(ibanRaw, isQrIban(ibanRaw) ? 'QRR' : 'SCOR');
+                                                let ref: string | undefined;
+                                                try { ref = generateReferenceForMode(mode, currentInvoice.number); } catch { ref = undefined; }
+                                                if (mode === 'NON' || !ref) return null;
+                                                const formatted = mode === 'QRR' ? formatQrReference(ref) : ref;
+                                                return (
+                                                    <div className="mb-3">
+                                                        <p className="font-bold mb-1">{t.reference}</p>
+                                                        <p className="font-mono tracking-tight" style={{ fontSize: '9pt' }}>{formatted}</p>
+                                                    </div>
+                                                );
+                                            })()}
                                             <div className="flex-1">
                                                  <p className="font-bold mb-1">{t.payableBy}</p>
                                                  <p>{currentInvoice.clientDisplayName || activeProject?.clientName}</p>
@@ -1132,6 +1371,13 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     </div>
                 </div>
             )}
+
+            {/* History Drawer (audit log timeline) */}
+            <InvoiceHistoryDrawer
+                invoice={currentInvoice}
+                isOpen={showHistory}
+                onClose={() => setShowHistory(false)}
+            />
         </div>
     );
 };

@@ -22,6 +22,7 @@ import {
     Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X, Telescope,
     Code2, Newspaper, Sunrise,
     Hammer, ChevronDown, BookOpen, Palette, Shield,
+    ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
 
@@ -49,6 +50,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         setIsFocusMode,
         setDroppedFiles, setShowImporter,
         isMobileMenuOpen, setIsMobileMenuOpen,
+        isToolbarCollapsed, toggleToolbarCollapsed,
     } = useUIStore();
 
     const {
@@ -297,7 +299,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             </div>
 
             {/* Desktop: full toolbar */}
-            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white/70 dark:bg-slate-800/40 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-md md:-mt-2">
+            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white/70 dark:bg-slate-800/40 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-md md:-mt-2 transition-all duration-300">
+                <Tooltip content={isToolbarCollapsed ? 'Déplier la barre' : 'Replier la barre'}>
+                    <button
+                        onClick={toggleToolbarCollapsed}
+                        aria-label={isToolbarCollapsed ? 'Déplier la barre' : 'Replier la barre'}
+                        aria-pressed={isToolbarCollapsed}
+                        className="p-2 rounded-full text-slate-400 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                    >
+                        {isToolbarCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+                    </button>
+                </Tooltip>
+                {!isToolbarCollapsed && (<>
                 <button onClick={() => setShowMondayBriefing(true)} className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-gradient-to-r from-brand-orange to-pink-500 text-white flex items-center gap-1.5">
                     <LayoutGrid size={14} /> Briefing
                 </button>
@@ -315,6 +328,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Search size={18} className="text-slate-500 dark:text-slate-300" />
                     </button>
                 </Tooltip>
+                </>)}
+                {!isToolbarCollapsed && (<>
                 <Tooltip content="Notes Rapides">
                     <button onClick={() => setShowNotes(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors">
                         <StickyNote size={18} className="text-amber-500" />
@@ -335,7 +350,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Target size={18} className="text-violet-500" />
                     </button>
                 </Tooltip>
+                </>)}
                 {/* Atelier dropdown — Marion 2030 (v2.6.0) */}
+                {!isToolbarCollapsed && (
                 <div ref={atelierMenuRef} className="relative hidden lg:flex">
                     <Tooltip content="Atelier (WP Studio, Recettes, Stack Picker, Skills, Audit…)">
                         <button
@@ -384,6 +401,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         </div>
                     )}
                 </div>
+                )}
+                {!isToolbarCollapsed && (<>
                 <Tooltip content="Prospection">
                     <button
                         onClick={() => navigate('/prospection')}
@@ -458,6 +477,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Sparkles size={18} className="text-emerald-500" />
                     </button>
                 </Tooltip>
+                </>)}
+                {!isToolbarCollapsed && (<>
                 <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
                 <Tooltip content="Changer de thème">
                     <button onClick={() => { const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'unicorn' : 'light'; setTheme(next as any); }} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
@@ -466,6 +487,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         {theme === 'unicorn' && <Sparkles size={18} className="text-pink-500" />}
                     </button>
                 </Tooltip>
+                </>)}
+                {!isToolbarCollapsed && (<>
                 <Tooltip content="Paramètres">
                     <button onClick={() => navigate('/settings')} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
                         <Settings size={18} />
@@ -476,6 +499,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <HelpCircle size={18} />
                     </button>
                 </Tooltip>
+                </>)}
                 {/* Notifications */}
                 <div className="relative">
                     <Tooltip content="Notifications">

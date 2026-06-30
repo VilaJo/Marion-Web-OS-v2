@@ -3,10 +3,11 @@
  * Extracted from App.tsx for route-based navigation
  */
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Project, ProjectStatus, CalendarEvent, WorkflowPhase, Invoice, Activity } from '../types';
 import { formatCurrency, formatCurrencyWithSymbol, invoiceEffectiveAmount } from '../utils';
+import { loadStandaloneInvoices, upsertStandaloneInvoice, removeStandaloneInvoice } from '../utils/standaloneInvoicesStorage';
 import { sanitizeHTML } from '../utils/sanitize';
 import { useProjectStore, useUIStore, useNotificationStore, useUndoStore } from '../stores';
 import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache, useCreateGoogleEvent } from '../services/queries';
@@ -98,6 +99,8 @@ export const Dashboard: React.FC = () => {
     const [briefingContent, setBriefingContent] = useState('');
     const [isBriefingLoading, setIsBriefingLoading] = useState(false);
     const [showAllActivities, setShowAllActivities] = useState(false);
+    const [standaloneRev, setStandaloneRev] = useState(0);
+    const standaloneInvoices = useMemo(() => loadStandaloneInvoices(), [standaloneRev]);
 
     // Module-level sets persist across mount/unmount cycles
 
@@ -387,16 +390,35 @@ export const Dashboard: React.FC = () => {
         setShowGlobalInvoiceModal(true);
     };
 
-    const handleSaveGlobalInvoice = (invoice: Invoice, projectId: string) => {
-        if (!projectId) {
-            addNotification('Facture Créée', `La facture ${invoice.number} a été générée (sans client associé). Télécharge le PDF.`, 'finance', '/finances');
-            addActivity('invoice_created', `Facture ${invoice.number} créée`, undefined, invoice.clientDisplayName || 'Sans client', `${formatCurrency(invoice.amount, 2)} ${invoice.currency || 'CHF'}`);
+    const handleSaveGlobalInvoice = (invoice: Invoice, projectId: string): boolean | void => {
+        if (!projectId.trim()) {
+            upsertStandaloneInvoice(invoice);
+            setStandaloneRev((r) => r + 1);
+            addNotification(
+                'Facture enregistrée',
+                `La facture ${invoice.number} est enregistrée sur cet appareil (sans dossier Marion). Elle est incluse dans la santé financière. Pour aussi la copier dans un dossier client sur le disque, choisis « Ranger dans un dossier » puis enregistre à nouveau.`,
+                'finance',
+                '/finances',
+            );
+            addActivity(
+                'invoice_created',
+                `Facture ${invoice.number} créée`,
+                undefined,
+                invoice.clientDisplayName || 'Sans dossier',
+                `${formatCurrency(invoice.amount, 2)} ${invoice.currency || 'CHF'}`,
+            );
             setShowGlobalInvoiceModal(false);
             return;
         }
 
         const projectIndex = projects.findIndex(p => p.id === projectId);
-        if (projectIndex === -1) return;
+        if (projectIndex === -1) {
+            addNotification('Erreur', 'Ce dossier client est introuvable. Rafraîchissez la liste ou choisissez un autre client.', 'error');
+            return false;
+        }
+
+        removeStandaloneInvoice(invoice.id);
+        setStandaloneRev((r) => r + 1);
 
         const targetProject = { ...projects[projectIndex] };
         const existingIdx = targetProject.invoices.findIndex(i => i.id === invoice.id);
@@ -407,7 +429,14 @@ export const Dashboard: React.FC = () => {
             targetProject.invoices = [...targetProject.invoices, invoice];
         }
 
-        saveProjectMutation.mutate({ project: targetProject });
+        saveProjectMutation.mutate(
+            { project: targetProject },
+            {
+                onError: () => {
+                    addNotification('Erreur Sauvegarde', 'La facture n’a pas pu être enregistrée sur le disque.', 'error');
+                },
+            },
+        );
         addNotification('Facture Enregistrée', `La facture ${invoice.number} a été sauvegardée.`, 'finance', '/finances');
         addActivity('invoice_created', `Facture ${invoice.number} créée`, targetProject.id, targetProject.clientName, `${formatCurrency(invoice.amount, 2)} ${invoice.currency || 'CHF'}`);
         setShowGlobalInvoiceModal(false);
@@ -576,6 +605,7 @@ export const Dashboard: React.FC = () => {
                     <Suspense fallback={<Card className="h-64 animate-pulse" />}>
                         <FinancialHealthWidget
                             projects={projects}
+                            standaloneInvoices={standaloneInvoices}
                             currency={currency}
                             onClick={() => navigate('/finances')}
                             currentTheme={theme}

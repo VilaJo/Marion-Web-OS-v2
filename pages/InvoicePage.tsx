@@ -6,13 +6,14 @@
  * Without the param, creates a new invoice for the given client.
  */
 
-import React, { Suspense, useEffect, useMemo } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUIStore, useProjectStore, useNotificationStore } from '../stores';
 import { useProjects, useSaveProject } from '../services/queries';
 import { SplashScreen } from '../components/SplashScreen';
 import { Invoice } from '../types';
 import { formatCurrency } from '../utils';
+import { requestNextInvoiceNumber } from '../services/invoiceNumbering';
 
 const InvoiceBuilder = React.lazy(() => import('../components/InvoiceBuilder').then(m => ({ default: m.InvoiceBuilder })));
 
@@ -37,32 +38,51 @@ export const InvoicePage: React.FC = () => {
         }
     }, [project, projects.length, decodedId, navigate]);
 
+    // Allocated invoice number for new invoices (fetched async from backend)
+    const [allocatedNumber, setAllocatedNumber] = useState<string | null>(null);
+    const requestedNumberRef = React.useRef(false);
+    const invoiceId = searchParams.get('invoiceId');
+
+    useEffect(() => {
+        // Only allocate when creating a brand new invoice (no ?invoiceId=).
+        if (invoiceId || !project || requestedNumberRef.current) return;
+        requestedNumberRef.current = true;
+        requestNextInvoiceNumber()
+            .then((n) => setAllocatedNumber(n))
+            .catch(() => setAllocatedNumber(`F${new Date().getFullYear()}-DRAFT-${Date.now().toString().slice(-6)}`));
+    }, [invoiceId, project]);
+
     // Resolve existing invoice or create a new one
     const invoice = useMemo<Invoice | null>(() => {
         if (!project) return null;
 
-        const invoiceId = searchParams.get('invoiceId');
         if (invoiceId) {
             const existing = project.invoices.find(i => i.id === invoiceId);
             if (existing) return existing;
         }
 
-        // New invoice
+        // New invoice — wait for backend-allocated number
+        if (!allocatedNumber) return null;
         return {
             id: `inv-${Date.now()}`,
-            number: `F${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+            number: allocatedNumber,
             date: new Date().toISOString().split('T')[0],
             amount: 0,
             status: 'Draft',
             type: 'Invoice',
             items: [],
-            clientAddress: project.profile?.address || ''
+            clientAddress: project.profile?.address || '',
+            paymentTermsDays: 30,
+            history: [{ at: new Date().toISOString(), actor: 'Marion', action: 'create' }],
         };
-    }, [project, searchParams]);
+    }, [project, invoiceId, allocatedNumber]);
 
-    const handleSave = (savedInvoice: Invoice, projectId: string) => {
+    const handleSave = (savedInvoice: Invoice, projectId: string): boolean | void => {
         const targetProject = projects.find(p => p.id === projectId);
-        if (!targetProject) return;
+        if (!targetProject) {
+            addNotification('Erreur', 'Projet introuvable.', 'error');
+            return false;
+        }
 
         const updatedProject = { ...targetProject };
         const existingIdx = updatedProject.invoices.findIndex(i => i.id === savedInvoice.id);
@@ -73,7 +93,14 @@ export const InvoicePage: React.FC = () => {
             updatedProject.invoices = [...updatedProject.invoices, savedInvoice];
         }
 
-        saveProjectMutation.mutate({ project: updatedProject });
+        saveProjectMutation.mutate(
+            { project: updatedProject },
+            {
+                onError: () => {
+                    addNotification('Erreur Sauvegarde', 'La facture n’a pas pu être enregistrée.', 'error');
+                },
+            },
+        );
         addNotification('Facture Enregistrée', `La facture ${savedInvoice.number} a été sauvegardée.`, 'finance', '/finances');
         addActivity('invoice_created', `Facture ${savedInvoice.number} créée`, updatedProject.id, updatedProject.clientName, `${formatCurrency(savedInvoice.amount, 2)} ${savedInvoice.currency || 'CHF'}`);
         navigate(`/client/${encodeURIComponent(projectId)}`);

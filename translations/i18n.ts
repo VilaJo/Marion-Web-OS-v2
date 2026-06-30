@@ -87,6 +87,7 @@ export const invoiceT: Record<Language, Record<string, string>> = {
         cancel: 'Annuler',
         // Validation
         selectClient: 'Veuillez sélectionner un client.',
+        chooseProjectFolder: '— (Optionnel) Ranger dans un dossier —',
         fillRequired: 'Merci de renseigner au minimum le numéro et la date de la facture.',
         addAtLeastOneLine: 'Ajoute au moins une ligne avec un montant positif avant d\'enregistrer.',
         pdfError: 'Erreur PDF',
@@ -155,6 +156,7 @@ export const invoiceT: Record<Language, Record<string, string>> = {
         notePlaceholder: 'Ex: 30% deposit',
         cancel: 'Cancel',
         selectClient: 'Please select a client.',
+        chooseProjectFolder: '— (Optional) Save under a client folder —',
         fillRequired: 'Please fill in at least the invoice number and date.',
         addAtLeastOneLine: 'Add at least one line with a positive amount before saving.',
         pdfError: 'PDF Error',
@@ -222,6 +224,7 @@ export const invoiceT: Record<Language, Record<string, string>> = {
         notePlaceholder: 'Ej: Anticipo 30%',
         cancel: 'Cancelar',
         selectClient: 'Por favor seleccione un cliente.',
+        chooseProjectFolder: '— (Opcional) Guardar en carpeta de cliente —',
         fillRequired: 'Por favor complete al menos el número y la fecha de la factura.',
         addAtLeastOneLine: 'Añada al menos una línea con un importe positivo antes de guardar.',
         pdfError: 'Error PDF',

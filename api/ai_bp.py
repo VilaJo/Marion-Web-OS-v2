@@ -1669,12 +1669,41 @@ CONSIGNES :
 
 @ai_bp.route('/generate-qr', methods=['POST'])
 def generate_qr():
-    """Generate a Swiss QR-bill QR code."""
+    """
+    Generate a Swiss QR-bill QR code (spec v2.0 / Implementation Guidelines v2.3).
+
+    Body JSON :
+      - iban            : str (IBAN ou QR-IBAN, espaces autorisés)
+      - amount          : float
+      - currency        : 'CHF' | 'EUR'
+      - reference_type  : 'QRR' | 'SCOR' | 'NON'   (default: 'NON')
+      - reference       : str — QR Reference (27 digits) OU Creditor Reference (RF…)
+      - message         : str (max 140 chars, unstructured message)
+      - additional_info : str (max 140 chars, structured "billing information")
+      - creditor / debtor : { name, address, zip, city, country }
+
+    Validation côté serveur :
+      - QRR : 27 chiffres
+      - SCOR : commence par "RF" + 2 digits + 1..21 alphanum
+      - NON : reference doit être vide
+
+    Si le type n'est pas conforme à l'IBAN (QRR sans QR-IBAN ou inverse), on
+    retourne 400 avec un message explicite.
+    """
     if not segno:
         return jsonify({"error": "Segno manquant"}), 500
-    data = request.json
+    data = request.json or {}
     try:
-        raw_iban = str(data.get('iban', '')).replace(" ", "")
+        raw_iban = str(data.get('iban', '')).replace(" ", "").upper()
+
+        # Detect QR-IBAN (IID positions 5-9 entre 30000-31999)
+        is_qr_iban = False
+        if len(raw_iban) >= 9 and raw_iban[:2] in ('CH', 'LI'):
+            try:
+                iid = int(raw_iban[4:9])
+                is_qr_iban = 30000 <= iid <= 31999
+            except ValueError:
+                is_qr_iban = False
 
         # Creditor (Marion). Read from payload, fallback only if frontend omits it.
         creditor = data.get('creditor', {}) or {}
@@ -1695,7 +1724,32 @@ def generate_qr():
         currency = (data.get('currency') or 'CHF').upper()
         if currency not in ('CHF', 'EUR'):
             currency = 'CHF'
-        ref_msg = data.get('message', '')
+
+        # --- Reference handling (Phase 3 of Swiss-grade invoicing) ---
+        ref_type_raw = (data.get('reference_type') or data.get('referenceType') or 'NON').upper()
+        if ref_type_raw not in ('QRR', 'SCOR', 'NON'):
+            ref_type_raw = 'NON'
+        ref_value = (data.get('reference') or '').strip().replace(' ', '')
+
+        # Cross-check IBAN/QRR consistency (QR-bill v2.0 spec)
+        if ref_type_raw == 'QRR' and not is_qr_iban:
+            return jsonify({"error": "QRR requires a QR-IBAN (IID 30000-31999). Use SCOR or NON with this IBAN."}), 400
+        if ref_type_raw != 'QRR' and is_qr_iban:
+            return jsonify({"error": "QR-IBAN requires QRR reference type."}), 400
+
+        # Validate structure of the reference
+        if ref_type_raw == 'QRR':
+            if not (ref_value.isdigit() and len(ref_value) == 27):
+                return jsonify({"error": "QRR reference must be exactly 27 digits."}), 400
+        elif ref_type_raw == 'SCOR':
+            import re as _re
+            if not _re.match(r'^RF\d{2}[A-Z0-9]{1,21}$', ref_value):
+                return jsonify({"error": "SCOR reference must match RF + 2 check digits + 1..21 alphanumeric."}), 400
+        elif ref_type_raw == 'NON':
+            ref_value = ''  # NON ⇒ champ référence vide
+
+        ref_msg = (data.get('message') or '')[:140]
+        add_info = (data.get('additional_info') or data.get('additionalInfo') or '')[:140]
 
         # Swiss QR-bill v2.0 — only emit a debtor block if zip+city are usable.
         # Otherwise leave the debtor block empty (the bank/payer fills it in).
@@ -1711,7 +1765,8 @@ def generate_qr():
             "", "", "", "", "", "", "",
             amount, currency,
         ] + debtor_block + [
-            "NON", "", ref_msg, "EPD",
+            ref_type_raw, ref_value, ref_msg, "EPD",
+            add_info,
         ]
 
         payload = "\r\n".join(lines)

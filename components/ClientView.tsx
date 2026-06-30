@@ -67,6 +67,8 @@ const LazyFallback = () => (
 
 import { PROSPECT_PHASE_TEMPLATES, ACTIVE_PHASE_TEMPLATES, WORKFLOW_CONFIG, WORKFLOW_STEPS } from '../constants';
 import { apiFetch } from '../services/api';
+import { requestNextInvoiceNumber } from '../services/invoiceNumbering';
+import { voidInvoice, canHardDelete, restoreInvoice, appendAudit } from '../utils/invoiceEngine';
 import { useOAuthStatus, useConnectGoogle, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { exportMeetingReportPdf } from '../utils/meetingReportPdf';
@@ -1179,29 +1181,73 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     };
 
     // --- INVOICE LOGIC ---
-    const handleOpenInvoiceModal = (invoice?: Invoice) => {
-        if (invoice) setSelectedInvoice(invoice);
-        else setSelectedInvoice({ id: `inv-${Date.now()}`, number: `F${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`, date: new Date().toISOString().split('T')[0], amount: 0, status: 'Draft', type: 'Invoice', items: [], clientAddress: '' });
+    const handleOpenInvoiceModal = async (invoice?: Invoice) => {
+        if (invoice) {
+            setSelectedInvoice(invoice);
+        } else {
+            const number = await requestNextInvoiceNumber();
+            setSelectedInvoice({
+                id: `inv-${Date.now()}`,
+                number,
+                date: new Date().toISOString().split('T')[0],
+                amount: 0,
+                status: 'Draft',
+                type: 'Invoice',
+                items: [],
+                clientAddress: '',
+                paymentTermsDays: 30,
+                history: [{ at: new Date().toISOString(), actor: 'Marion', action: 'create' }],
+            });
+        }
         setShowInvoiceModal(true);
     }
 
-    const handleSaveInvoice = (invoice: Invoice) => {
+    const handleSaveInvoice = (invoice: Invoice, _projectId?: string) => {
         let updatedInvoices = [...project.invoices];
         if (project.invoices.find(i => i.id === invoice.id)) updatedInvoices = updatedInvoices.map(i => i.id === invoice.id ? invoice : i);
         else updatedInvoices.push(invoice);
         onUpdateProject({ ...project, invoices: updatedInvoices });
     };
 
+    /**
+     * Suppression conforme CO art. 958f (10 ans de conservation) :
+     *   - Brouillon non émis → hard delete autorisé (avec undo via pushUndo).
+     *   - Facture émise → soft delete (status = 'Voided', voidedAt, voidReason) +
+     *     entrée d'audit. Restorable via pushUndo le temps de la session.
+     */
     const handleDeleteInvoice = (invId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         const invoice = project.invoices.find(i => i.id === invId);
         if (!invoice) return;
         const previousInvoices = [...project.invoices];
-        onUpdateProject({ ...project, invoices: project.invoices.filter(i => i.id !== invId) });
+
+        if (canHardDelete(invoice)) {
+            const ok = window.confirm(
+                `Supprimer définitivement le brouillon ${invoice.number || invId.slice(0, 8)} ? Cette action est irréversible.`
+            );
+            if (!ok) return;
+            onUpdateProject({ ...project, invoices: project.invoices.filter(i => i.id !== invId) });
+            pushUndo({
+                description: `Brouillon ${invoice.number || invId.slice(0, 8)} supprimé`,
+                restore: () => onUpdateProject({ ...project, invoices: previousInvoices }),
+            });
+            return;
+        }
+
+        const reason = window.prompt(
+            `La facture ${invoice.number} a été émise — elle ne peut pas être supprimée (CO art. 958f).\n\nElle va être annulée et archivée (conservée 10 ans, exclue des KPIs).\n\nMotif d'annulation (optionnel) :`,
+            ''
+        );
+        if (reason === null) return; // cancel = abort
+        const voided = voidInvoice(invoice, reason || undefined);
+        const updatedInvoices = project.invoices.map(i => i.id === invId ? voided : i);
+        onUpdateProject({ ...project, invoices: updatedInvoices });
         pushUndo({
-            description: `Facture ${invoice.number || invId.slice(0, 8)} supprimée`,
+            description: `Facture ${invoice.number} annulée — restaurable`,
             restore: () => {
-                onUpdateProject({ ...project, invoices: previousInvoices });
+                const restored = restoreInvoice(voided, invoice.status);
+                const final = project.invoices.map(i => i.id === invId ? restored : i);
+                onUpdateProject({ ...project, invoices: final });
             },
         });
     }
@@ -2076,8 +2122,10 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                         <div className="text-center py-10 text-slate-400 italic">Aucun document financier.</div>
                                     ) : (
                                         <div className="space-y-2">
-                                            {project.invoices.map(inv => (
-                                                <div key={inv.id} onClick={() => handleOpenInvoiceModal(inv)} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors border border-slate-100 dark:border-slate-700">
+                                            {project.invoices
+                                                .filter(inv => inv.status !== 'Voided' && inv.status !== 'Archived')
+                                                .map(inv => (
+                                                <div key={inv.id} onClick={() => handleOpenInvoiceModal(inv)} className="group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors border border-slate-100 dark:border-slate-700">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`p-2 rounded-lg ${inv.type === 'Invoice' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
                                                             {inv.type === 'Invoice' ? <DollarSign size={16} /> : <FileText size={16} />}
@@ -2087,9 +2135,18 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                                             <div className="text-xs text-slate-400">{inv.date}</div>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className="tabular-nums font-bold text-slate-700 dark:text-slate-200">{formatCurrency(invoiceEffectiveAmount(inv), 2)} CHF</div>
-                                                        <Badge color={inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'blue' : 'yellow'}>{inv.status === 'Partial' ? 'Acompte' : inv.status}</Badge>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="text-right">
+                                                            <div className="tabular-nums font-bold text-slate-700 dark:text-slate-200">{formatCurrency(invoiceEffectiveAmount(inv), 2)} CHF</div>
+                                                            <Badge color={inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'blue' : 'yellow'}>{inv.status === 'Partial' ? 'Acompte' : inv.status}</Badge>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => handleDeleteInvoice(inv.id, e)}
+                                                            className="opacity-0 group-hover:opacity-100 p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                                                            title={canHardDelete(inv) ? 'Supprimer le brouillon' : 'Annuler la facture (conservée 10 ans)'}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}

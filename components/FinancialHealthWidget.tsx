@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizza, Ship, Mic, ListTodo, RefreshCw } from 'lucide-react';
-import { Project, Expense } from '../types';
+import { Project, Expense, Invoice } from '../types';
 import { Card } from './Shared';
 import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import { useExpenses } from '../services/queries';
 
 interface FinancialHealthWidgetProps {
     projects: Project[];
+    /** Factures enregistrées sans dossier client (navigateur / localStorage). */
+    standaloneInvoices?: Invoice[];
     currency?: string;
     onClick?: () => void;
     currentTheme?: string;
@@ -20,6 +22,7 @@ const YACHT_PRICE = 300000; // Target Price for the Yacht
 
 export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     projects,
+    standaloneInvoices = [],
     currency = 'CHF',
     onClick,
     currentTheme,
@@ -310,7 +313,9 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     const now = new Date();
     const currentYear = now.getFullYear();
 
-    const allInvoices = projects.flatMap(p => p.invoices);
+    // Exclure les factures annulées/archivées (Voided/Archived) des KPIs
+    const allInvoices = [...standaloneInvoices, ...projects.flatMap(p => p.invoices)]
+        .filter(i => i.status !== 'Voided' && i.status !== 'Archived');
     
     // Revenue (Paid this year)
     const totalRevenue = allInvoices

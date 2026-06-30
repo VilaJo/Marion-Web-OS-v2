@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Project, Invoice, Expense } from '../types';
 import { Card, Badge, Modal } from './Shared';
 import { EmailWidget as EmailClient } from './email/EmailWidget';
@@ -38,13 +38,45 @@ import { exportSimpleCSV } from '../utils/exportUtils';
 import { printElementAsPdf } from '../utils/pdfExport';
 import { useUIStore } from '../stores';
 import { applyRelanceTemplate } from '../utils/relanceTemplates';
+import { upsertStandaloneInvoice, removeStandaloneInvoice } from '../utils/standaloneInvoicesStorage';
 import { RelanceTemplateFields } from './RelanceTemplateFields';
+import { voidInvoice, canHardDelete, restoreInvoice, isArchivedStatus, buildCreditNote } from '../utils/invoiceEngine';
+import { requestNextInvoiceNumber } from '../services/invoiceNumbering';
+import {
+    computeDso,
+    computeOverdueRatio,
+    computeForecast12Months,
+    computeVatPayable,
+    computeOverdueAlerts,
+    checkCompliance,
+} from '../utils/financeKpis';
+import { Archive, RotateCcw, FileMinus, Shield, ShieldAlert, AlertTriangle } from 'lucide-react';
 
 declare const confetti: any;
 
+type InvoiceWithProject = Invoice & { project: Project | null };
+
+function invoiceRowClientLabel(inv: InvoiceWithProject): string {
+    if (inv.project) return inv.project.clientName;
+    return inv.clientDisplayName?.trim() || 'Sans dossier';
+}
+
+function invoiceRowInitials(inv: InvoiceWithProject): string {
+    if (inv.project?.avatarInitials) return inv.project.avatarInitials;
+    const name = inv.clientDisplayName?.trim();
+    if (!name) return '?';
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+}
+
 interface FinanceDashboardProps {
     projects: Project[];
-    onOpenInvoice: (invoice: Invoice, project: Project) => void;
+    /** Factures sans dossier client (localStorage). */
+    standaloneInvoices?: Invoice[];
+    /** Appelé après modification d'une facture autonome (ex. marquer payé). */
+    onStandaloneInvoicesChanged?: () => void;
+    onOpenInvoice: (invoice: Invoice, project?: Project | null) => void;
     onUpdateProject: (p: Project) => void;
     currency?: string;
     currentTheme?: string;
@@ -53,10 +85,25 @@ interface FinanceDashboardProps {
     onCreateEstimate?: () => void;
 }
 
-const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOpenInvoice, onUpdateProject, currency = 'CHF', currentTheme, onClose, onCreateInvoice, onCreateEstimate }) => {
+const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
+    projects,
+    standaloneInvoices = [],
+    onStandaloneInvoicesChanged,
+    onOpenInvoice,
+    onUpdateProject,
+    currency = 'CHF',
+    currentTheme,
+    onClose,
+    onCreateInvoice,
+    onCreateEstimate,
+}) => {
     const relanceTemplatePolite = useUIStore((s) => s.relanceTemplatePolite);
     const relanceTemplateFirm = useUIStore((s) => s.relanceTemplateFirm);
-    const [activeTab, setActiveTab] = useState<'revenus' | 'depenses' | 'analytics' | 'temps' | 'tresorerie' | 'export'>('revenus');
+    const relanceTemplateFinal = useUIStore((s) => s.relanceTemplateFinal);
+    const reminderFees = useUIStore((s) => s.agencyReminderFees);
+    const agencyIde = useUIStore((s) => s.agencyIde);
+    const agencyVatNumber = useUIStore((s) => s.agencyVatNumber);
+    const [activeTab, setActiveTab] = useState<'revenus' | 'depenses' | 'analytics' | 'temps' | 'tresorerie' | 'export' | 'archives'>('revenus');
     const [period, setPeriod] = useState<'all' | 'year' | 'month'>('year');
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
     const [showPeriodMenu, setShowPeriodMenu] = useState(false);
@@ -169,26 +216,114 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
         deleteExpenseMutation.mutate(id);
     };
 
-    const handleMarkAsPaid = (e: React.MouseEvent, invoice: Invoice, project: Project) => {
+    const handleMarkAsPaid = (e: React.MouseEvent, invoice: Invoice, project: Project | null) => {
         e.stopPropagation();
         const updatedInvoice = { ...invoice, status: 'Paid' as const };
+        if (!project) {
+            upsertStandaloneInvoice(updatedInvoice);
+            onStandaloneInvoicesChanged?.();
+            confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 }, colors: ['#10B981', '#34D399'] });
+            return;
+        }
         const updatedInvoices = project.invoices.map(i => i.id === invoice.id ? updatedInvoice : i);
         onUpdateProject({ ...project, invoices: updatedInvoices });
         confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 }, colors: ['#10B981', '#34D399'] });
     };
 
-    const handleRemind = async (e: React.MouseEvent, invoice: Invoice, project: Project) => {
+    /**
+     * Suppression/annulation conforme CO art. 958f :
+     *   - Brouillon → hard delete (confirmation).
+     *   - Facture émise → soft delete (Voided + voidedAt + reason).
+     */
+    const handleVoidOrDelete = (e: React.MouseEvent, invoice: Invoice, project: Project | null) => {
         e.stopPropagation();
+        if (canHardDelete(invoice)) {
+            const ok = window.confirm(
+                `Supprimer définitivement le brouillon ${invoice.number} ? Cette action est irréversible.`
+            );
+            if (!ok) return;
+            if (!project) {
+                removeStandaloneInvoice(invoice.id);
+                onStandaloneInvoicesChanged?.();
+                return;
+            }
+            const updated = project.invoices.filter(i => i.id !== invoice.id);
+            onUpdateProject({ ...project, invoices: updated });
+            return;
+        }
+        const reason = window.prompt(
+            `La facture ${invoice.number} a été émise — elle ne peut pas être supprimée (CO art. 958f).\n\nElle sera annulée et archivée (conservée 10 ans, exclue des KPIs).\n\nMotif d'annulation (optionnel) :`,
+            ''
+        );
+        if (reason === null) return;
+        const voided = voidInvoice(invoice, reason || undefined);
+        if (!project) {
+            upsertStandaloneInvoice(voided);
+            onStandaloneInvoicesChanged?.();
+            return;
+        }
+        const updated = project.invoices.map(i => i.id === invoice.id ? voided : i);
+        onUpdateProject({ ...project, invoices: updated });
+    };
+
+    /**
+     * Crée une note de crédit liée à une facture payée — règle CO/LTVA :
+     * on n'efface pas l'historique, on émet un document d'avoir.
+     */
+    const handleCreateCreditNote = async (e: React.MouseEvent, invoice: Invoice, project: Project | null) => {
+        e.stopPropagation();
+        const ok = window.confirm(
+            `Émettre une note de crédit (avoir) pour la facture ${invoice.number} ?\n\nUn nouveau document type "Note de crédit" sera créé avec des montants négatifs.`
+        );
+        if (!ok) return;
+        const number = await requestNextInvoiceNumber();
+        const creditNote = { ...buildCreditNote(invoice), number };
+        if (!project) {
+            upsertStandaloneInvoice(creditNote as Invoice);
+            onStandaloneInvoicesChanged?.();
+            return;
+        }
+        const updated = [...project.invoices, creditNote as Invoice];
+        onUpdateProject({ ...project, invoices: updated });
+    };
+
+    /** Restauration depuis l'onglet Archives. */
+    const handleRestore = (e: React.MouseEvent, invoice: Invoice, project: Project | null) => {
+        e.stopPropagation();
+        const restored = restoreInvoice(invoice);
+        if (!project) {
+            upsertStandaloneInvoice(restored);
+            onStandaloneInvoicesChanged?.();
+            return;
+        }
+        const updated = project.invoices.map(i => i.id === invoice.id ? restored : i);
+        onUpdateProject({ ...project, invoices: updated });
+    };
+
+    const handleRemind = async (e: React.MouseEvent, invoice: Invoice, project: Project | null) => {
+        e.stopPropagation();
+        if (!project) return;
         setIsReminding(invoice.id);
+
+        // Détermine le niveau de relance (1, 2 ou 3) selon l'historique de relances déjà envoyées.
+        const sentCount = invoice.reminders?.length || 0;
+        const nextLevel: 1 | 2 | 3 = Math.min(3, sentCount + 1) as 1 | 2 | 3;
+        const feeChf = reminderFees[nextLevel - 1] || 0;
 
         const vars: Record<string, string> = {
             client: project.clientName,
             numero: invoice.number,
             montant: formatCurrency(invoiceEffectiveAmount(invoice), 2),
             echeance: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fr-CH') : '—',
+            frais: formatCurrency(feeChf, 2),
         };
-        let subject = `Relance facture ${invoice.number}`;
-        let body = applyRelanceTemplate(relanceTemplatePolite, vars);
+        const template =
+            nextLevel === 1 ? relanceTemplatePolite
+            : nextLevel === 2 ? relanceTemplateFirm
+            : relanceTemplateFinal;
+        const subjectPrefix = nextLevel === 1 ? 'Relance' : nextLevel === 2 ? '2ème relance' : 'Mise en demeure';
+        let subject = `${subjectPrefix} — facture ${invoice.number}`;
+        let body = applyRelanceTemplate(template, vars);
 
         try {
             const res = await fetch('/api/v1/invoices/remind', {
@@ -198,20 +333,34 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                     clientName: project.clientName,
                     number: invoice.number,
                     amount: invoiceEffectiveAmount(invoice),
-                    dueDate: invoice.dueDate
+                    dueDate: invoice.dueDate,
+                    level: nextLevel,
+                    feeChf,
                 })
             });
             const data = await res.json();
-            
+
             if (data.subject && data.body) {
                 subject = data.subject;
                 body = data.body;
                 confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 }, colors: ['#a855f7', '#ec4899'] });
             }
         } catch (err) {
-            console.warn("AI generation failed, using firm template.");
-            body = applyRelanceTemplate(relanceTemplateFirm, vars);
+            console.warn("AI generation failed, using local template.");
         } finally {
+            // Enregistre l'envoi de la relance + frais sur la facture (persistant)
+            const reminderEntry = { level: nextLevel, sentAt: new Date().toISOString(), feeChf: feeChf || undefined };
+            const updatedInvoice: Invoice = {
+                ...invoice,
+                reminders: [...(invoice.reminders || []), reminderEntry],
+                history: [
+                    ...(invoice.history || []),
+                    { at: new Date().toISOString(), actor: 'Marion', action: 'remind', note: `Relance niv. ${nextLevel}${feeChf ? ` (+${feeChf} CHF)` : ''}` },
+                ],
+            };
+            const updatedInvoices = project.invoices.map(i => i.id === invoice.id ? updatedInvoice : i);
+            onUpdateProject({ ...project, invoices: updatedInvoices });
+
             setReminderData({
                 to: project.profile.email || '',
                 subject: subject,
@@ -222,9 +371,55 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
         }
     };
 
-    // Aggregation Logic
-    const allInvoices = projects.flatMap(p => p.invoices.map(i => ({ ...i, project: p })));
-    
+    // --- KPIs Phase 6 (Santé financière v2) ---
+    // Calculés sur l'ensemble des factures non archivées + récurrentes incluses.
+    const flatInvoicesForKpis = useMemo(
+        () => [
+            ...standaloneInvoices,
+            ...projects.flatMap(p => p.invoices),
+        ].filter(i => !isArchivedStatus(i.status)),
+        [projects, standaloneInvoices],
+    );
+    const dso = useMemo(() => computeDso(flatInvoicesForKpis), [flatInvoicesForKpis]);
+    const overdueRatio = useMemo(() => computeOverdueRatio(flatInvoicesForKpis), [flatInvoicesForKpis]);
+    const forecast12 = useMemo(() => computeForecast12Months(flatInvoicesForKpis), [flatInvoicesForKpis]);
+    const vatPayable = useMemo(() => computeVatPayable(flatInvoicesForKpis), [flatInvoicesForKpis]);
+    const overdueAlerts = useMemo(() => computeOverdueAlerts(projects, standaloneInvoices), [projects, standaloneInvoices]);
+    const issuedNumbersThisYear = useMemo(() => {
+        const y = new Date().getFullYear();
+        return flatInvoicesForKpis
+            .filter(i => i.type === 'Invoice' && new Date(i.date).getFullYear() === y && i.status !== 'Draft')
+            .map(i => i.number);
+    }, [flatInvoicesForKpis]);
+    // IBAN principal : on prend "main" comme défaut (Marion Web OS hardcoded ailleurs).
+    const compliance = useMemo(() => checkCompliance({
+        agencyIde,
+        agencyVatNumber,
+        iban: 'CH91 0020 6206 7850 8040 G',
+        issuedNumbers: issuedNumbersThisYear,
+    }), [agencyIde, agencyVatNumber, issuedNumbersThisYear]);
+
+    // Aggregation Logic — inclut les factures sans dossier (localStorage)
+    const allInvoicesRaw: InvoiceWithProject[] = useMemo(
+        () => [
+            ...standaloneInvoices.map(i => ({ ...i, project: null })),
+            ...projects.flatMap(p => p.invoices.map(i => ({ ...i, project: p }))),
+        ],
+        [projects, standaloneInvoices],
+    );
+
+    // Exclus du dashboard principal : Voided + Archived (conservées 10 ans mais cachées)
+    const allInvoices = useMemo(
+        () => allInvoicesRaw.filter(i => !isArchivedStatus(i.status)),
+        [allInvoicesRaw],
+    );
+
+    // Factures annulées/archivées (onglet "Archives")
+    const archivedInvoices = useMemo(
+        () => allInvoicesRaw.filter(i => isArchivedStatus(i.status)),
+        [allInvoicesRaw],
+    );
+
     // Filter Invoices
     const filteredInvoices = allInvoices.filter(inv => {
         const date = new Date(inv.date);
@@ -284,23 +479,27 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
     let snapEncaisse = 0;
     let snapAttente = 0;
     let snapRetard = 0;
-    for (const p of projects) {
-        for (const inv of p.invoices) {
-            if (inv.type !== 'Invoice') continue;
-            if (inv.status === 'Paid') {
-                snapEncaisse += invoiceEffectiveAmount(inv);
-                continue;
-            }
-            const paid =
-                inv.status === 'Partial' && inv.payments
-                    ? inv.payments.reduce((s, x) => s + x.amount, 0)
-                    : 0;
-            const remaining = Math.max(0, invoiceEffectiveAmount(inv) - paid);
-            if (remaining <= 0) continue;
-            const due = inv.dueDate ? new Date(inv.dueDate) : null;
-            if (due && due < todayStart) snapRetard += remaining;
-            else snapAttente += remaining;
+    const bumpTreasurySnap = (inv: Invoice) => {
+        if (inv.type !== 'Invoice') return;
+        // Exclure les factures annulées/archivées des KPIs trésorerie
+        if (isArchivedStatus(inv.status)) return;
+        if (inv.status === 'Paid') {
+            snapEncaisse += invoiceEffectiveAmount(inv);
+            return;
         }
+        const paid =
+            inv.status === 'Partial' && inv.payments
+                ? inv.payments.reduce((s, x) => s + x.amount, 0)
+                : 0;
+        const remaining = Math.max(0, invoiceEffectiveAmount(inv) - paid);
+        if (remaining <= 0) return;
+        const due = inv.dueDate ? new Date(inv.dueDate) : null;
+        if (due && due < todayStart) snapRetard += remaining;
+        else snapAttente += remaining;
+    };
+    for (const inv of standaloneInvoices) bumpTreasurySnap(inv);
+    for (const p of projects) {
+        for (const inv of p.invoices) bumpTreasurySnap(inv);
     }
 
     return (
@@ -453,6 +652,96 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                 </div>
             </div>
 
+            {/* --- Santé Financière v2 — KPIs Swiss-grade --- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* DSO */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">DSO (12 mois)</p>
+                    <p className="text-3xl font-serif font-bold text-slate-800 dark:text-white tabular-nums">
+                        {dso.days !== null ? dso.days : '—'}
+                        {dso.days !== null && <span className="text-base text-slate-400 ml-1">j</span>}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                        Délai moyen de paiement
+                        {dso.sampleSize > 0 ? ` (${dso.sampleSize} factures)` : ''}
+                    </p>
+                </div>
+
+                {/* Ratio impayés */}
+                <div className={`rounded-2xl border p-5 ${overdueRatio.ratio > 0.2
+                    ? 'bg-red-50/60 dark:bg-red-950/30 border-red-200 dark:border-red-900/40'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ratio impayés</p>
+                    <p className="text-3xl font-serif font-bold text-slate-800 dark:text-white tabular-nums">
+                        {(overdueRatio.ratio * 100).toFixed(0)}<span className="text-base text-slate-400">%</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1 tabular-nums">
+                        {formatCurrency(overdueRatio.overdue)} / {formatCurrency(overdueRatio.issued)} {currency}
+                    </p>
+                </div>
+
+                {/* TVA à reverser (trimestre courant) */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        TVA à reverser ({vatPayable.quarter} {vatPayable.year})
+                    </p>
+                    <p className="text-3xl font-serif font-bold text-slate-800 dark:text-white tabular-nums">
+                        {formatCurrency(vatPayable.total)} <span className="text-base text-slate-400">CHF</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                        {vatPayable.breakdown.length === 0
+                            ? 'Aucune TVA encaissée ce trimestre'
+                            : vatPayable.breakdown.map(b => `${b.rate}%: ${formatCurrency(b.vat)}`).join(' · ')}
+                    </p>
+                </div>
+
+                {/* Conformité */}
+                <div className={`rounded-2xl border p-5 ${compliance.every(c => c.ok)
+                    ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40'
+                    : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'}`}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
+                        {compliance.every(c => c.ok) ? <Shield size={12} /> : <ShieldAlert size={12} />} Conformité CH
+                    </p>
+                    <ul className="space-y-0.5 mt-1">
+                        {compliance.map(c => (
+                            <li key={c.id} className="flex items-center gap-2 text-[11px]">
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.ok ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                <span className={c.ok ? 'text-slate-700 dark:text-slate-300' : 'text-amber-700 dark:text-amber-400'}>
+                                    {c.label}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+
+            {/* Alertes overdue (visibles uniquement s'il y en a) */}
+            {overdueAlerts.length > 0 && (
+                <div className="bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-2xl p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                        <AlertTriangle className="text-rose-600" size={18} />
+                        <h3 className="font-bold text-rose-900 dark:text-rose-300">
+                            {overdueAlerts.length} facture{overdueAlerts.length > 1 ? 's' : ''} en retard
+                        </h3>
+                    </div>
+                    <div className="space-y-1">
+                        {overdueAlerts.slice(0, 5).map(a => (
+                            <div key={a.id} className="flex items-center justify-between text-sm">
+                                <span className="text-slate-700 dark:text-slate-300">
+                                    <strong>{a.number}</strong> — {a.clientName}
+                                </span>
+                                <span className="tabular-nums text-rose-700 dark:text-rose-400 font-bold">
+                                    {formatCurrency(a.amountDue)} {a.currency} · {a.daysLate}j
+                                </span>
+                            </div>
+                        ))}
+                        {overdueAlerts.length > 5 && (
+                            <p className="text-xs text-slate-500 italic mt-1">… et {overdueAlerts.length - 5} autres</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Tab Switcher */}
             <div className="flex gap-6 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
                 <button 
@@ -490,6 +779,18 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                     className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'export' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                     <FileSpreadsheet size={16} /> Export
+                </button>
+                <button
+                    onClick={() => setActiveTab('archives')}
+                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'archives' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Factures annulées / archivées (conservées 10 ans, exclues des KPIs)"
+                >
+                    <Archive size={16} /> Archives
+                    {archivedInvoices.length > 0 && (
+                        <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full text-slate-600 dark:text-slate-300">
+                            {archivedInvoices.length}
+                        </span>
+                    )}
                 </button>
             </div>
 
@@ -549,7 +850,10 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                         <tr 
                                             key={inv.id} 
                                             className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
-                                            onClick={() => onOpenInvoice(inv, inv.project)}
+                                            onClick={() => {
+                                                const { project: openProj, ...invClean } = inv;
+                                                onOpenInvoice(invClean as Invoice, openProj);
+                                            }}
                                         >
                                             <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
                                                 {inv.number}
@@ -558,9 +862,9 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold">
-                                                        {inv.project.avatarInitials}
+                                                        {invoiceRowInitials(inv)}
                                                     </div>
-                                                    <span className="text-slate-900 dark:text-white font-bold">{inv.project.clientName}</span>
+                                                    <span className="text-slate-900 dark:text-white font-bold">{invoiceRowClientLabel(inv)}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-slate-900 dark:text-slate-200">{new Date(inv.date).toLocaleDateString()}</td>
@@ -585,7 +889,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                                 )}
                                                 
                                                 {/* Remind (Only if NOT paid AND NOT Estimate) */}
-                                                {inv.status !== 'Paid' && inv.type === 'Invoice' && (
+                                                {inv.status !== 'Paid' && inv.type === 'Invoice' && inv.project && (
                                                     <button 
                                                         onClick={(e) => handleRemind(e, inv, inv.project)}
                                                         disabled={isReminding === inv.id}
@@ -598,6 +902,26 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
 
                                                 <button className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-brand-orange transition-colors">
                                                     <Download size={16} />
+                                                </button>
+
+                                                {/* Note de crédit (uniquement sur facture émise & type Invoice) */}
+                                                {inv.type === 'Invoice' && inv.status !== 'Draft' && !inv.parentInvoiceId && (
+                                                    <button
+                                                        onClick={(e) => handleCreateCreditNote(e, inv, inv.project)}
+                                                        className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-full transition-colors"
+                                                        title="Émettre une note de crédit"
+                                                    >
+                                                        <FileMinus size={16} />
+                                                    </button>
+                                                )}
+
+                                                {/* Supprimer (brouillon) / Annuler (facture émise) */}
+                                                <button
+                                                    onClick={(e) => handleVoidOrDelete(e, inv, inv.project)}
+                                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-slate-400 hover:text-red-500 transition-colors"
+                                                    title={canHardDelete(inv) ? 'Supprimer le brouillon' : 'Annuler la facture (conservée 10 ans)'}
+                                                >
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -823,12 +1147,25 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                             ) : (
                                 <div className="space-y-3">
                                     {(() => {
-                                        const revenueByClient = projects.map(p => ({
-                                            name: p.clientName,
-                                            initials: p.avatarInitials,
-                                            revenue: p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0),
-                                            pending: p.invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0)
-                                        })).filter(c => c.revenue > 0 || c.pending > 0).sort((a, b) => b.revenue - a.revenue);
+                                        const revenueByClient = (() => {
+                                            let rows = projects.map(p => ({
+                                                name: p.clientName,
+                                                initials: p.avatarInitials,
+                                                revenue: p.invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0),
+                                                pending: p.invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0),
+                                            }));
+                                            const orphanRev = standaloneInvoices.filter(i => i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
+                                            const orphanPend = standaloneInvoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
+                                            if (orphanRev > 0 || orphanPend > 0) {
+                                                rows = [...rows, {
+                                                    name: 'Sans dossier Marion',
+                                                    initials: '···',
+                                                    revenue: orphanRev,
+                                                    pending: orphanPend,
+                                                }];
+                                            }
+                                            return rows.filter(c => c.revenue > 0 || c.pending > 0).sort((a, b) => b.revenue - a.revenue);
+                                        })();
                                         const maxRevenue = Math.max(...revenueByClient.map(c => c.revenue + c.pending), 1);
                                         return revenueByClient.slice(0, 10).map((client, idx) => (
                                             <div key={idx} className="flex items-center gap-4">
@@ -1101,6 +1438,46 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                             </h3>
                         </div>
 
+                        {/* Prévisionnel 12 mois v2 — récurrentes + moyenne mobile (Phase 6) */}
+                        <Card className="p-5">
+                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">
+                                Prévisionnel 12 mois — récurrentes + tendance
+                            </h4>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead className="text-slate-400 uppercase tracking-wider">
+                                        <tr>
+                                            <th className="text-left py-1.5 pr-3">Mois</th>
+                                            <th className="text-right py-1.5 pr-3">Récurrentes</th>
+                                            <th className="text-right py-1.5 pr-3">Moyenne mobile</th>
+                                            <th className="text-right py-1.5">Total prévu</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                        {forecast12.map((m) => (
+                                            <tr key={m.month}>
+                                                <td className="py-1.5 pr-3 font-medium text-slate-600 dark:text-slate-300">{m.label}</td>
+                                                <td className="py-1.5 pr-3 text-right tabular-nums text-indigo-600">{m.recurring > 0 ? `+${formatCurrency(m.recurring)}` : '—'}</td>
+                                                <td className="py-1.5 pr-3 text-right tabular-nums text-slate-500">{formatCurrency(m.average)}</td>
+                                                <td className="py-1.5 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(m.total)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr className="border-t-2 border-slate-200 dark:border-slate-700">
+                                            <td className="py-2 pr-3 font-bold text-slate-700 dark:text-slate-200">Total 12 mois</td>
+                                            <td className="py-2 pr-3 text-right tabular-nums text-indigo-600">{formatCurrency(forecast12.reduce((s, m) => s + m.recurring, 0))}</td>
+                                            <td className="py-2 pr-3 text-right tabular-nums text-slate-500">{formatCurrency(forecast12.reduce((s, m) => s + m.average, 0))}</td>
+                                            <td className="py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(forecast12.reduce((s, m) => s + m.total, 0))}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-2 italic">
+                                Récurrentes : projections depuis les templates actifs · Moyenne mobile : CA moyen des 6 derniers mois.
+                            </p>
+                        </Card>
+
                         {(() => {
                             // Calculate treasury forecast
                             const now = new Date();
@@ -1109,7 +1486,10 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
 
                             // Calculate current balance from paid invoices minus expenses
                             const currentYear = now.getFullYear();
-                            const allPaidInvoices = projects.flatMap(p => p.invoices.filter(i => i.status === 'Paid'));
+                            const allPaidInvoices = [
+                                ...standaloneInvoices.filter(i => i.status === 'Paid'),
+                                ...projects.flatMap(p => p.invoices.filter(i => i.status === 'Paid')),
+                            ];
                             const totalPaid = allPaidInvoices.reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                             const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
                             runningBalance = totalPaid - totalExpenses;
@@ -1120,14 +1500,21 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                 const monthName = forecastDate.toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
 
                                 // Expected income: pending invoices due this month
-                                const pendingInvoices = projects.flatMap(p => 
-                                    p.invoices.filter(inv => {
+                                const pendingInvoices = [
+                                    ...standaloneInvoices.filter(inv => {
+                                        if (inv.status !== 'Pending') return false;
+                                        const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(inv.date);
+                                        return dueDate.getMonth() === forecastDate.getMonth() &&
+                                               dueDate.getFullYear() === forecastDate.getFullYear();
+                                    }),
+                                    ...projects.flatMap(p =>
+                                        p.invoices.filter(inv => {
                                         if (inv.status !== 'Pending') return false;
                                         const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(inv.date);
                                         return dueDate.getMonth() === forecastDate.getMonth() && 
                                                dueDate.getFullYear() === forecastDate.getFullYear();
-                                    })
-                                );
+                                    })),
+                                ];
                                 const expectedIncome = pendingInvoices.reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
 
                                 // Estimated expenses (average of past expenses or fixed estimate)
@@ -1160,7 +1547,9 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                         <Card className="p-4">
                                             <div className="text-sm text-slate-500 uppercase font-bold mb-1">Factures en Attente</div>
                                             <div className="text-2xl font-bold text-amber-600" style={{ fontFamily: 'Raleway, sans-serif' }}>
-                                                {formatCurrency(projects.flatMap(p => p.invoices.filter(i => i.status === 'Pending' || i.status === 'Draft')).reduce((s, i) => s + invoiceEffectiveAmount(i), 0), currency)}
+                                                {formatCurrency(
+                                                    [...standaloneInvoices, ...projects.flatMap(p => p.invoices)].filter(i => i.status === 'Pending' || i.status === 'Draft').reduce((s, i) => s + invoiceEffectiveAmount(i), 0),
+                                                    currency)}
                                             </div>
                                         </Card>
                                         <Card className="p-4">
@@ -1307,7 +1696,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             return [
                                             inv.date,
                                             inv.number,
-                                            projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || '',
+                                            invoiceRowClientLabel(inv),
                                             eff.toFixed(2),
                                             '0.00', // TVA
                                             eff.toFixed(2),
@@ -1342,7 +1731,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             return [
                                             inv.date,
                                             inv.number,
-                                            `Facture ${projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || ''}`,
+                                            `Facture ${invoiceRowClientLabel(inv)}`,
                                             inv.status === 'Paid' ? '' : eff.toFixed(2),
                                             inv.status === 'Paid' ? eff.toFixed(2) : '',
                                             inv.status === 'Paid' ? '1020' : '1100' // Bank or Accounts Receivable
@@ -1375,7 +1764,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             const eff = invoiceEffectiveAmount(inv);
                                             return [
                                             inv.date.split('-').reverse().join('.'), // DD.MM.YYYY format
-                                            `Fact. ${inv.number} - ${projects.find(p => p.invoices.some(i => i.id === inv.id))?.clientName || ''}`,
+                                            `Fact. ${inv.number} - ${invoiceRowClientLabel(inv)}`,
                                             inv.status === 'Pending' ? eff.toFixed(2) : '',
                                             inv.status === 'Paid' ? eff.toFixed(2) : '',
                                             inv.number
@@ -1406,6 +1795,73 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                             </div>
                         </Card>
                     </div>
+                )}
+
+                {/* ARCHIVES TAB - Factures annulées / archivées (CO art. 958f) */}
+                {activeTab === 'archives' && (
+                    <>
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Archive className="text-slate-400" size={20} />
+                                Archives & Annulations
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Factures conservées 10 ans conformément au CO art. 958f. Exclues des KPIs et de la trésorerie.
+                            </p>
+                        </div>
+                        {archivedInvoices.length === 0 ? (
+                            <div className="p-16 text-center text-slate-400 italic">Aucune facture annulée ou archivée.</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-bold text-xs">
+                                        <tr>
+                                            <th className="px-6 py-4">Numéro</th>
+                                            <th className="px-6 py-4">Client</th>
+                                            <th className="px-6 py-4">Date émission</th>
+                                            <th className="px-6 py-4">Annulée le</th>
+                                            <th className="px-6 py-4 text-right">Montant TTC</th>
+                                            <th className="px-6 py-4">Motif</th>
+                                            <th className="px-6 py-4 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                        {archivedInvoices
+                                            .sort((a, b) => (b.voidedAt || b.date).localeCompare(a.voidedAt || a.date))
+                                            .map(inv => (
+                                            <tr key={inv.id} className="opacity-70 hover:opacity-100 transition-opacity">
+                                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-300 line-through">
+                                                    {inv.number}
+                                                </td>
+                                                <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
+                                                    {invoiceRowClientLabel(inv)}
+                                                </td>
+                                                <td className="px-6 py-4 text-slate-500">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
+                                                <td className="px-6 py-4 text-slate-500">
+                                                    {inv.voidedAt ? new Date(inv.voidedAt).toLocaleDateString('fr-CH') : '—'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right tabular-nums text-slate-500">
+                                                    {formatCurrency(invoiceEffectiveAmount(inv))} {inv.currency || currency}
+                                                </td>
+                                                <td className="px-6 py-4 text-xs text-slate-500 max-w-[220px] truncate" title={inv.voidReason || ''}>
+                                                    {inv.voidReason || <span className="italic">—</span>}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={(e) => handleRestore(e, inv, inv.project)}
+                                                        className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full transition-colors"
+                                                        title="Restaurer la facture"
+                                                    >
+                                                        <RotateCcw size={14} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </>
                 )}
             </Card>
 
@@ -1554,7 +2010,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                                         {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map((inv, idx) => (
                                                             <tr key={inv.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-emerald-50/30'}>
                                                                 <td className="px-4 py-3 text-slate-600">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
-                                                                <td className="px-4 py-3 font-medium text-slate-900">{inv.project.clientName}</td>
+                                                                <td className="px-4 py-3 font-medium text-slate-900">{invoiceRowClientLabel(inv)}</td>
                                                                 <td className="px-4 py-3 text-slate-600">{inv.number}</td>
                                                                 <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-700">{formatCurrency(invoiceEffectiveAmount(inv))}</td>
                                                             </tr>
@@ -1679,7 +2135,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({ projects, onOp
                                             return (
                                             <tr key={inv.id}>
                                                 <td className="p-2 font-bold text-black dark:text-white">{inv.number}</td>
-                                                <td className="p-2 text-black dark:text-white">{inv.project.clientName}</td>
+                                                <td className="p-2 text-black dark:text-white">{invoiceRowClientLabel(inv)}</td>
                                                 <td className="p-2 text-black dark:text-white">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
                                                 <td className="p-2 text-right font-bold text-black dark:text-white">{formatCurrency(eff / 1.081)}</td>
                                                 <td className="p-2 text-right text-black dark:text-white">{formatCurrency(eff - (eff / 1.081))}</td>

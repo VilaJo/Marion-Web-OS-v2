@@ -30,11 +30,25 @@ export enum ProjectStatus {
     sortOrder?: number;
   }
   
+  /**
+   * Swiss VAT rates (LTVA) valid from 2024-01-01:
+   *   8.1  — taux normal
+   *   3.8  — taux spécial hébergement
+   *   2.6  — taux réduit (alimentation, presse, médicaments)
+   *   0    — exonéré / non-applicable
+   * Stored as numbers (not strings) so they participate directly in math.
+   */
+  export type SwissVatRate = 0 | 2.6 | 3.8 | 8.1;
+
   export interface InvoiceItem {
     id: string;
     desc: string;
     quantity: number;
-    price: number; // Unit price
+    price: number; // Unit price (HT if vatRate is set, else gross — see invoiceEngine)
+    /** Taux TVA suisse appliqué à cette ligne. Absent ⇒ legacy (TVA inclusive 0). */
+    vatRate?: SwissVatRate;
+    /** Ligne exonérée (art. 21 LTVA) — affichage spécial dans le PDF. */
+    vatExempt?: boolean;
   }
 
   export interface InvoicePayment {
@@ -45,21 +59,144 @@ export enum ProjectStatus {
     note?: string;
   }
 
+  /** Ventilation TVA par taux, persistée pour audit. */
+  export interface VatBreakdownEntry {
+    rate: SwissVatRate;
+    netHt: number;
+    vat: number;
+  }
+
+  /** Informations créancier (Marion) — utilisées pour QR-bill et footer légal. */
+  export interface CreditorInfo {
+    name: string;
+    address: string;
+    zip: string;
+    city: string;
+    country: string; // ISO 3166-1 alpha-2 (CH, FR, …)
+    iban: string;     // IBAN ou QR-IBAN (IID 30000-31999), avec ou sans espaces
+    /** Numéro TVA suisse au format CHE-xxx.xxx.xxx TVA */
+    vatNumber?: string;
+    /** Numéro IDE/UID au format CHE-xxx.xxx.xxx */
+    ide?: string;
+  }
+
+  /** Référence QR-bill : QRR (27 digits, QR-IBAN), SCOR (Creditor Reference RF…), NON (sans réf.). */
+  export type QrReferenceType = 'QRR' | 'SCOR' | 'NON';
+
+  export interface InvoiceQr {
+    referenceType: QrReferenceType;
+    /** Pour QRR : 27 chiffres avec checksum modulo 10 récursif. Pour SCOR : "RFxx…" max 25. */
+    reference?: string;
+    /** Message libre (max 140 chars en QR-bill v2.0). */
+    message?: string;
+    /** Information supplémentaire structurée (max 140 chars). */
+    additionalInfo?: string;
+  }
+
+  /** Entrée du journal d'audit immuable d'une facture. */
+  export interface InvoiceAuditEntry {
+    at: string;        // ISO 8601
+    actor: string;     // utilisateur (Marion par défaut)
+    action:
+      | 'create' | 'edit' | 'send' | 'pay' | 'partial-pay'
+      | 'remind' | 'void' | 'archive' | 'restore' | 'issue'
+      | 'credit-note' | 'recurrence-tick';
+    note?: string;
+  }
+
+  /** Configuration récurrence (génération automatique). */
+  export interface InvoiceRecurrence {
+    frequency: 'monthly' | 'quarterly' | 'yearly';
+    nextRunAt: string;        // ISO date du prochain run
+    until?: string;           // ISO date de fin (optionnel)
+    /** id de la facture qui sert de template — autoclone lors du tick. */
+    templateInvoiceId?: string;
+  }
+
+  /** Relance enregistrée. */
+  export interface InvoiceReminder {
+    level: 1 | 2 | 3;
+    sentAt: string;
+    feeChf?: number; // frais de rappel ajoutés (param. dans Settings)
+  }
+
+  /**
+   * Statuts de facture (étendus pour conformité CO art. 958f) :
+   *   Draft     — brouillon non émis, modifiable & supprimable
+   *   Sent      — émise (numéro verrouillé) en attente de paiement
+   *   Pending   — alias historique de Sent (compat existant)
+   *   Partial   — partiellement payée
+   *   Paid      — soldée
+   *   Overdue   — calculé : Sent/Pending/Partial + dueDate < aujourd'hui
+   *   Voided    — annulée (conservée 10 ans, exclue des KPIs)
+   *   Archived  — archivée manuellement (idem Voided pour KPI)
+   */
+  export type InvoiceStatus =
+    | 'Draft' | 'Sent' | 'Pending' | 'Partial' | 'Paid'
+    | 'Overdue' | 'Voided' | 'Archived';
+
+  export type InvoiceType = 'Invoice' | 'Estimate' | 'CreditNote';
+
   export interface Invoice {
     id: string;
     number: string;
+    /** Verrouillé dès le passage Draft → Sent/Pending. */
+    numberLocked?: boolean;
     date: string;
     dueDate?: string;
+    /** Délai de paiement en jours (Swiss standard = 30). */
+    paymentTermsDays?: number;
     clientAddress?: string;
     clientDisplayName?: string;
+
+    /** Total brut (legacy ou TTC quand TVA présente). Conservé pour KPIs & compat. */
     amount: number;
+    /** Sous-total HT (somme nette des lignes après TVA breakdown). Optionnel = legacy. */
+    subtotalHt?: number;
+    /** Total TVA (somme vatBreakdown). */
+    totalVat?: number;
+    /** Total TTC (= subtotalHt + totalVat). En général ≈ amount. */
+    totalTtc?: number;
+    /** Ventilation TVA par taux. */
+    vatBreakdown?: VatBreakdownEntry[];
+
     currency?: string;
-    status: 'Paid' | 'Pending' | 'Draft' | 'Partial';
-    type: 'Invoice' | 'Estimate';
+    /** Taux CHF figé à l'émission (multi-devise). */
+    fxRateChf?: number;
+
+    status: InvoiceStatus;
+    type: InvoiceType;
+    /** Facture d'origine pour une note de crédit. */
+    parentInvoiceId?: string;
+
     items: InvoiceItem[];
     payments?: InvoicePayment[];
     paymentLink?: string;
     footerNote?: string;
+
+    /** Créancier (Marion). Si absent : fallback sur valeurs du template/Settings. */
+    creditor?: CreditorInfo;
+    /** Bloc QR-bill structuré (Phase 3). */
+    qr?: InvoiceQr;
+
+    /** Timestamps de cycle de vie. */
+    issuedAt?: string;
+    sentAt?: string;
+    paidAt?: string;
+    voidedAt?: string;
+    archivedAt?: string;
+    voidReason?: string;
+
+    /** Récurrence (Phase 4). */
+    recurrence?: InvoiceRecurrence;
+    /** Relances (Phase 4). */
+    reminders?: InvoiceReminder[];
+
+    /** Journal d'audit (append-only). */
+    history?: InvoiceAuditEntry[];
+
+    /** Marqueur de migration : true pour anciennes factures pré-v2. */
+    legacy?: boolean;
   }
 
   export interface InvoiceTemplate {
@@ -72,6 +209,12 @@ export enum ProjectStatus {
     bankId: string;
     footerNote?: string;
     createdAt: string;
+    /** Données créancier suisse (mentions légales). */
+    creditor?: CreditorInfo;
+    /** Délai de paiement par défaut. */
+    paymentTermsDays?: number;
+    /** Frais de relance par niveau (CHF). [niveau 1, 2, 3]. */
+    reminderFees?: [number, number, number];
   }
   
   export interface ClientProfile {

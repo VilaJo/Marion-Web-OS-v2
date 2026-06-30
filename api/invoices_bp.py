@@ -1,11 +1,14 @@
 """
-Invoices & Finance Blueprint - Expenses, notes, time tracking.
-Handles: expenses CRUD + AI scan, notes CRUD, time tracking CRUD.
+Invoices & Finance Blueprint - Expenses, notes, time tracking, invoice numbering.
+Handles: expenses CRUD + AI scan, notes CRUD, time tracking CRUD,
+         Swiss-grade atomic sequential invoice numbering.
 """
 
 import os
 import json
 import time
+import tempfile
+from datetime import datetime
 from pathlib import Path
 from flask import Blueprint, request, jsonify
 
@@ -15,6 +18,143 @@ from api.shared import DESKTOP_PATH, get_safe_path, load_project_data, save_proj
 logger = get_logger('api.invoices')
 
 invoices_bp = Blueprint('invoices', __name__, url_prefix='/api/v1')
+
+
+# ============================================================================
+# INVOICE NUMBERING — Swiss-grade sequential, no-gap, year-scoped, atomic
+# ============================================================================
+#
+# Stockage : ~/Marion Web OS/.invoice_counters.json (à la racine de DESKTOP_PATH)
+#   {
+#     "2026": { "next": 42 },
+#     "2025": { "next": 117 },
+#     "format": "F{YYYY}-{NNNN}",   # configurable, défaut F{YYYY}-{NNNN}
+#     "padding": 4                    # nombre de digits pour NNNN
+#   }
+#
+# Concurrence : verrou via fichier temporaire + os.replace (atomique sur POSIX).
+# Si une autre requête arrive entre-temps elle relit et incrémente.
+# ============================================================================
+
+COUNTERS_FILE = DESKTOP_PATH / ".invoice_counters.json"
+DEFAULT_FORMAT = "F{YYYY}-{NNNN}"
+DEFAULT_PADDING = 4
+
+
+def _load_counters() -> dict:
+    """Charge le fichier de compteurs, retourne dict vide si inexistant."""
+    if not COUNTERS_FILE.exists():
+        return {"format": DEFAULT_FORMAT, "padding": DEFAULT_PADDING}
+    try:
+        with open(COUNTERS_FILE, "r") as f:
+            data = json.load(f)
+            if not isinstance(data, dict):
+                return {"format": DEFAULT_FORMAT, "padding": DEFAULT_PADDING}
+            data.setdefault("format", DEFAULT_FORMAT)
+            data.setdefault("padding", DEFAULT_PADDING)
+            return data
+    except Exception as e:
+        logger.warning("Failed to read invoice counters file: %s", e)
+        return {"format": DEFAULT_FORMAT, "padding": DEFAULT_PADDING}
+
+
+def _save_counters_atomic(data: dict) -> None:
+    """Écrit le fichier compteurs de manière atomique (tmpfile + rename)."""
+    COUNTERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_fd, tmp_path = tempfile.mkstemp(
+        prefix=".invoice_counters_", suffix=".json", dir=str(COUNTERS_FILE.parent)
+    )
+    try:
+        with os.fdopen(tmp_fd, "w") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp_path, COUNTERS_FILE)  # atomic on POSIX
+    except Exception:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        raise
+
+
+def _format_number(fmt: str, year: int, seq: int, padding: int) -> str:
+    """Applique le format. Supporte {YYYY}, {YY}, {NNNN}, {N}."""
+    return (
+        fmt.replace("{YYYY}", f"{year:04d}")
+        .replace("{YY}", f"{year % 100:02d}")
+        .replace("{NNNN}", f"{seq:0{padding}d}")
+        .replace("{N}", str(seq))
+    )
+
+
+@invoices_bp.route('/invoices/next-number', methods=['POST'])
+def invoice_next_number():
+    """
+    Retourne le prochain numéro de facture séquentiel pour une année donnée.
+
+    Body JSON (tous optionnels) :
+      - year     : int — année cible (défaut = année courante)
+      - preview  : bool — si true, ne pas incrémenter (juste lire)
+      - format   : str — surcharge ponctuelle du format
+
+    Réponse :
+      { "number": "F2026-0042", "year": 2026, "sequence": 42, "format": "F{YYYY}-{NNNN}" }
+
+    Comportement : si le compteur n'existe pas pour l'année, il démarre à 1.
+    Atomique vis-à-vis des écritures concurrentes (lock-free, swap-based).
+    """
+    body = request.get_json(silent=True) or {}
+    try:
+        year = int(body.get("year") or datetime.now().year)
+    except (TypeError, ValueError):
+        return jsonify({"error": "year must be an integer"}), 400
+    preview = bool(body.get("preview", False))
+
+    data = _load_counters()
+    fmt = str(body.get("format") or data.get("format") or DEFAULT_FORMAT)
+    padding = int(data.get("padding") or DEFAULT_PADDING)
+
+    year_key = str(year)
+    entry = data.get(year_key)
+    if not isinstance(entry, dict):
+        entry = {"next": 1}
+        data[year_key] = entry
+
+    seq = int(entry.get("next") or 1)
+    number = _format_number(fmt, year, seq, padding)
+
+    if not preview:
+        entry["next"] = seq + 1
+        data[year_key] = entry
+        try:
+            _save_counters_atomic(data)
+        except Exception as e:
+            logger.error("Failed to persist invoice counters: %s", e, exc_info=True)
+            return jsonify({"error": "Could not persist counter"}), 500
+
+    return jsonify({
+        "number": number,
+        "year": year,
+        "sequence": seq,
+        "format": fmt,
+    })
+
+
+@invoices_bp.route('/invoices/counters', methods=['GET'])
+def invoice_counters_state():
+    """Inspect read-only state of all year counters — used by 'Conformité' KPI."""
+    data = _load_counters()
+    out = {}
+    for k, v in data.items():
+        if k in ("format", "padding"):
+            continue
+        if isinstance(v, dict) and "next" in v:
+            out[k] = {"next": v["next"], "issued": max(0, int(v["next"]) - 1)}
+    return jsonify({
+        "format": data.get("format", DEFAULT_FORMAT),
+        "padding": data.get("padding", DEFAULT_PADDING),
+        "years": out,
+    })
 
 
 # ============================================================================

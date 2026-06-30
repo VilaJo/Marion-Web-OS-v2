@@ -805,6 +805,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [localAgencyWebsite, setLocalAgencyWebsite] = useState(agencyWebsite);
     const [localTjh, setLocalTjh] = useState(tjh);
     const [localCurrency, setLocalCurrency] = useState(currency);
+    // Mentions légales suisses (CO, LTVA) — persistées via useUIStore.
+    const agencyIde = useUIStore(s => s.agencyIde);
+    const agencyVatNumber = useUIStore(s => s.agencyVatNumber);
+    const agencyReminderFees = useUIStore(s => s.agencyReminderFees);
+    const defaultVatRate = useUIStore(s => s.defaultVatRate);
+    const setAgencyIde = useUIStore(s => s.setAgencyIde);
+    const setAgencyVatNumber = useUIStore(s => s.setAgencyVatNumber);
+    const setAgencyReminderFees = useUIStore(s => s.setAgencyReminderFees);
+    const setDefaultVatRate = useUIStore(s => s.setDefaultVatRate);
+    const [localIde, setLocalIde] = useState(agencyIde);
+    const [localVatNumber, setLocalVatNumber] = useState(agencyVatNumber);
+    const [localReminderFees, setLocalReminderFees] = useState<[number, number, number]>(agencyReminderFees);
+    const [localDefaultVat, setLocalDefaultVat] = useState<0 | 2.6 | 3.8 | 8.1>(defaultVatRate);
     const [localAiTone, setLocalAiTone] = useState(aiTone);
     const [localBriefingVocal, setLocalBriefingVocal] = useState(briefingVocal);
     const [localAiMode, setLocalAiMode] = useState(aiMode);
@@ -820,6 +833,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             setLocalAgencyWebsite(agencyWebsite);
             setLocalTjh(tjh);
             setLocalCurrency(currency);
+            setLocalIde(agencyIde);
+            setLocalVatNumber(agencyVatNumber);
+            setLocalReminderFees(agencyReminderFees);
+            setLocalDefaultVat(defaultVatRate);
             setLocalAiTone(aiTone);
             setLocalBriefingVocal(briefingVocal);
             setLocalAiMode(aiMode);
@@ -828,7 +845,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             setLocalSignature(signatureSettings);
             setLocalNotifications(notificationSettings);
         }
-    }, [isOpen, agencyName, agencyWebsite, tjh, currency, aiTone, briefingVocal, aiMode, localModelName, aiFallbackEnabled, signatureSettings, notificationSettings]);
+    }, [isOpen, agencyName, agencyWebsite, tjh, currency, agencyIde, agencyVatNumber, agencyReminderFees, defaultVatRate, aiTone, briefingVocal, aiMode, localModelName, aiFallbackEnabled, signatureSettings, notificationSettings]);
     
     // Helper for signature updates
     const updateLocalSignature = (key: string, value: string) => {
@@ -842,6 +859,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setAgencyWebsite(localAgencyWebsite);
         setTjh(localTjh);
         onCurrencyChange(localCurrency);
+        setAgencyIde(localIde.trim());
+        setAgencyVatNumber(localVatNumber.trim());
+        setAgencyReminderFees(localReminderFees);
+        setDefaultVatRate(localDefaultVat);
         setAiTone(localAiTone);
         setBriefingVocal(localBriefingVocal);
         setAiMode(localAiMode);
@@ -1041,6 +1062,76 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <option value="$">USD (Dollar)</option>
                                         <option value="£">GBP (Livre Sterling)</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            {/* --- Mentions légales suisses --- */}
+                            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">
+                                    Mentions légales suisses
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase">N° IDE / UID</label>
+                                        <input
+                                            value={localIde}
+                                            onChange={(e) => setLocalIde(e.target.value)}
+                                            placeholder="CHE-265.310.079"
+                                            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-brand-orange transition-colors font-mono text-sm"
+                                        />
+                                        <p className="text-[10px] text-slate-400">Affiché en pied de facture (obligatoire pour entité enregistrée au RC).</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase">N° TVA</label>
+                                        <input
+                                            value={localVatNumber}
+                                            onChange={(e) => setLocalVatNumber(e.target.value)}
+                                            placeholder="CHE-265.310.079 TVA"
+                                            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-brand-orange transition-colors font-mono text-sm"
+                                        />
+                                        <p className="text-[10px] text-slate-400">Obligatoire si CA &gt; 100'000 CHF. Laisser vide si non-assujettie.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase">Taux TVA par défaut</label>
+                                        <select
+                                            value={String(localDefaultVat)}
+                                            onChange={(e) => setLocalDefaultVat(Number(e.target.value) as 0 | 2.6 | 3.8 | 8.1)}
+                                            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-brand-orange transition-colors cursor-pointer"
+                                        >
+                                            <option value="0">0 % — Pas de TVA / Exonérée</option>
+                                            <option value="2.6">2.6 % — Taux réduit</option>
+                                            <option value="3.8">3.8 % — Hébergement</option>
+                                            <option value="8.1">8.1 % — Taux normal</option>
+                                        </select>
+                                        <p className="text-[10px] text-slate-400">Appliqué aux nouvelles lignes de facture.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* --- Frais de relance --- */}
+                            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                    Frais de relance (CHF)
+                                </h4>
+                                <p className="text-[11px] text-slate-400 mb-4">Ajoutés à la facture lors de l'envoi de la relance correspondante.</p>
+                                <div className="grid grid-cols-3 gap-4">
+                                    {(['1', '2', '3'] as const).map((lvl, idx) => (
+                                        <div key={lvl} className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-400 uppercase">Relance n° {lvl}</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="5"
+                                                value={localReminderFees[idx]}
+                                                onChange={(e) => {
+                                                    const next = [...localReminderFees] as [number, number, number];
+                                                    next[idx] = Number(e.target.value) || 0;
+                                                    setLocalReminderFees(next);
+                                                }}
+                                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-brand-orange transition-colors tabular-nums"
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
