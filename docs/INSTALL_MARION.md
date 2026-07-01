@@ -64,14 +64,16 @@ Contenu minimum pour l'agenda :
 
 ## 5. Google Calendar — connexion
 
-**Important** : Johan doit avoir ajouté **ton adresse Gmail** dans Google Cloud Console → OAuth → **Test users**. Sinon Google bloque la connexion.
+**Important** : Johan doit avoir ajouté **`marion.kindynis@gmail.com`** dans Google Cloud Console → OAuth → **Test users**. Sinon Google bloque la connexion.
+
+Voir aussi : [`docs/GOOGLE_OAUTH_MARION.md`](./GOOGLE_OAUTH_MARION.md)
 
 Dans Marion Web OS :
 
 1. Lance **Marion Web OS.app** (ou `LANCER_MARION.command`)
 2. Va dans **Paramètres** (icône engrenage)
 3. Clique **Connecter Google Calendar**
-4. Choisis le compte Google à synchroniser
+4. Choisis le compte **`marion.kindynis@gmail.com`**
 5. Autorise l'accès au calendrier
 
 Si ça échoue : envoie à Johan une capture de l'écran d'erreur Google.
