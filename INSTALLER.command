@@ -155,9 +155,9 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
     <key>CFBundleDisplayName</key>
     <string>Marion Web OS</string>
     <key>CFBundleVersion</key>
-    <string>2.7.0</string>
+    <string>2.7.2</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.7.0</string>
+    <string>2.7.2</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleIconFile</key>

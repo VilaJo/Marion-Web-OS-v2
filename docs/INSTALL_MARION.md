@@ -1,12 +1,12 @@
 # Installation Marion Web OS — Guide Marion (Mac)
 
-Version stable **v2.7.0** — facturation + agenda.
+Version stable **v2.7.2** — facturation + agenda.
 
 ---
 
 ## 1. Télécharger (méthode recommandée — fichier .dmg)
 
-Johan t'envoie le fichier **`MarionWebOS-2.7.0.dmg`** (ou version plus récente).
+Johan t'envoie le fichier **`MarionWebOS-2.7.2.dmg`** (ou version plus récente).
 
 1. Double-clique sur le `.dmg`
 2. **Glisse** l'icône **Marion Web OS** sur le dossier **Applications**
