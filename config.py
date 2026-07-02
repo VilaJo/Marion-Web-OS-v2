@@ -21,13 +21,30 @@ from dotenv import load_dotenv
 # ---------------------------------------------------------------------------
 # Load .env files (order matters: .env.local wins over .env)
 # ---------------------------------------------------------------------------
-load_dotenv('.env.local')
-load_dotenv('.env')
+def get_marion_support_dir() -> Path:
+    """User-writable config for the installed .app (outside /Applications)."""
+    return Path.home() / "Library" / "Application Support" / "Marion Web OS"
+
+
+def get_env_local_path() -> Path:
+    """Path to .env.local — Application Support when installed via .dmg."""
+    if os.getenv("MARION_INSTALLED_APP"):
+        return get_marion_support_dir() / ".env.local"
+    return get_application_root() / ".env.local"
 
 
 def get_application_root() -> Path:
     """Directory containing this file: Marion project root (next to ``franck_server.py``)."""
     return Path(__file__).resolve().parent
+
+
+if os.getenv("MARION_INSTALLED_APP"):
+    _support = get_marion_support_dir()
+    load_dotenv(_support / ".env.local")
+    load_dotenv(_support / ".env")
+
+load_dotenv(".env.local")
+load_dotenv(".env")
 
 
 # ---------------------------------------------------------------------------

@@ -66,4 +66,16 @@ Les assets sont générés dans `.dist/`. Le serveur Flask sert ce dossier en mo
 
 ## Application macOS (.app)
 
-Le projet inclut `Marion Web OS.app` — une application macOS packagée qui lance le serveur et ouvre le navigateur.
+### Distribution officielle (.dmg)
+
+Pour créer le fichier d'installation à envoyer à Marion :
+
+```bash
+./BUILD_RELEASE.command
+```
+
+Produit : `release/MarionWebOS-<version>.dmg` (glisser vers Applications).
+
+### Développement local
+
+Le projet inclut aussi `INSTALLER.command` et `Marion Web OS.app` sur le Bureau — utiles pour le développement, pas pour la distribution.

@@ -4,9 +4,25 @@ Version stable **v2.7.0** — facturation + agenda.
 
 ---
 
-## 1. Télécharger
+## 1. Télécharger (méthode recommandée — fichier .dmg)
 
-**Option A (recommandée)** — Release GitHub :
+Johan t'envoie le fichier **`MarionWebOS-2.7.0.dmg`** (ou version plus récente).
+
+1. Double-clique sur le `.dmg`
+2. **Glisse** l'icône **Marion Web OS** sur le dossier **Applications**
+3. Éjecte le disque « Marion Web OS »
+4. Ouvre **Marion Web OS** depuis le Launchpad ou le dossier Applications
+
+Au **premier lancement**, Marion installe automatiquement ses composants (2–3 minutes, une seule fois).  
+Ensuite, un double-clic suffit — le navigateur s'ouvre sur Marion.
+
+**Prérequis sur le Mac :** Python 3 (souvent déjà présent). Si besoin : `brew install python@3.12`
+
+---
+
+## 1 bis. Ancienne méthode (développeur / ZIP GitHub)
+
+**Option A** — Release GitHub :
 
 https://github.com/VilaJo/Marion-Web-OS-v2/releases/tag/v2.7.0
 
@@ -20,7 +36,7 @@ https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip
 
 ---
 
-## 2. Prérequis (une seule fois sur le Mac)
+## 2. Prérequis (méthode ZIP uniquement)
 
 Si l'installateur dit que Python ou Node manque :
 
@@ -31,7 +47,7 @@ brew install python@3.12 node
 
 ---
 
-## 3. Installer l'application
+## 3. Installer l'application (méthode ZIP)
 
 1. Dézippe le dossier téléchargé
 2. Ouvre le dossier (ex. `Marion-Web-OS-v2-2.7.0`)
@@ -44,7 +60,13 @@ brew install python@3.12 node
 
 Johan t'envoie un fichier **`.env`** par message sécurisé (pas par email public).
 
-1. Place ce fichier **à la racine** du dossier projet (à côté de `INSTALLER.command`)
+**Si tu as installé via le .dmg**, place le fichier ici :
+
+```
+~/Bibliothèque/Application Support/Marion Web OS/.env.local
+```
+
+**Si tu as installé via le ZIP**, place-le à la racine du dossier projet (à côté de `INSTALLER.command`).
 2. Vérifie dans le Terminal :
 
 ```bash

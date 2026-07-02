@@ -232,9 +232,9 @@ LAUNCHER
 
 chmod +x "$APP_BUNDLE/Contents/MacOS/launcher"
 
-# Copier l'icône si elle existe
-if [ -f "$APP_DIR/public/logo-marion.png" ]; then
-    cp "$APP_DIR/public/logo-marion.png" "$APP_BUNDLE/Contents/Resources/AppIcon.png"
+# Icône .app + dossier projet (logo actuel)
+if [ -f "$APP_DIR/refresh_desktop_app_icon.sh" ]; then
+    bash "$APP_DIR/refresh_desktop_app_icon.sh"
 fi
 
 echo "   ✅ Application créée sur le Bureau !"

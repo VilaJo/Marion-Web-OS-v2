@@ -14,7 +14,7 @@ from services.env_local_data_path import (
     set_or_remove_data_path_in_env_file,
     validate_client_data_path,
 )
-from config import get_application_root
+from config import get_env_local_path
 from api.shared import error_response, DESKTOP_PATH
 
 logger = get_logger("api.settings")
@@ -23,7 +23,7 @@ settings_bp = Blueprint("settings", __name__, url_prefix="/api/v1/settings")
 
 
 def _env_local_path() -> Path:
-    return get_application_root() / ".env.local"
+    return get_env_local_path()
 
 
 def _resolved_saved_path_hint(raw: str | None) -> str | None:

@@ -131,6 +131,14 @@ else
 fi
 
 echo ""
+echo "🖥️  Icônes Bureau (dossier projet + Marion Web OS.app)…"
+if [ -f "refresh_desktop_app_icon.sh" ]; then
+    bash refresh_desktop_app_icon.sh || echo "⚠️  Icône Bureau non mise à jour (voir message ci-dessus)."
+else
+    echo "⚠️  refresh_desktop_app_icon.sh introuvable."
+fi
+
+echo ""
 echo "────────────────────────────────────────────────────────────────────"
 echo "✨ Mise à jour terminée."
 echo ""
