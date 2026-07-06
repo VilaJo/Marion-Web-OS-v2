@@ -68,6 +68,25 @@ load_dotenv(".env.local")
 load_dotenv(".env")
 
 
+def _default_data_path() -> Path:
+    """Default client data directory for dev vs installed .app."""
+    home = Path.home()
+    if os.getenv("MARION_INSTALLED_APP"):
+        return home / "Library" / "Application Support" / "Marion Web OS" / "Data"
+    return home / "Desktop" / "Marion Web OS Database"
+
+
+def _resolve_data_path() -> Path:
+    return Path(os.getenv("DATA_PATH", str(_default_data_path()))).expanduser().resolve()
+
+
+def _resolve_database_url(data_path: Path) -> str:
+    explicit = os.getenv("DATABASE_URL", "").strip()
+    if explicit:
+        return explicit
+    return f"sqlite:///{data_path / 'marion.db'}"
+
+
 # ---------------------------------------------------------------------------
 # Base configuration
 # ---------------------------------------------------------------------------
@@ -77,7 +96,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.7.6'
+    APP_VERSION = '2.7.7'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -94,21 +113,10 @@ class Config:
     MAX_LOGIN_ATTEMPTS = int(os.getenv('MAX_LOGIN_ATTEMPTS', '10'))
     RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('RATE_LIMIT_WINDOW_SECONDS', '60'))
 
-    # -- Database -----------------------------------------------------------
-    DATABASE_URL = os.getenv('DATABASE_URL', '')
-    if not DATABASE_URL:
-        _db_folder = Path.home() / "Desktop" / "Marion Web OS Database"
-        DATABASE_URL = f"sqlite:///{_db_folder / 'marion.db'}"
-
-    # -- Paths --------------------------------------------------------------
+    # -- Database & paths (DATA_PATH first — DB must live alongside data) -----
     USER_HOME = Path.home()
-    # Défaut : ~/Desktop/Marion Web OS Database pour l'utilisateur macOS qui lance Marion
-    # (toujours $HOME du compte local — pas besoin de .env.local si le dossier est au bon endroit).
-    _data_path_env = Path(
-        os.getenv('DATA_PATH', str(USER_HOME / "Desktop" / "Marion Web OS Database"))
-    ).expanduser()
-    DATA_PATH = _data_path_env.resolve()
-    # Toujours résolu en absolu (évite une ambiguïté si le serveur est lancé depuis un autre cwd).
+    DATA_PATH = _resolve_data_path()
+    DATABASE_URL = _resolve_database_url(DATA_PATH)
 
     STATIC_FOLDER = os.getenv('STATIC_FOLDER', '.dist')
 

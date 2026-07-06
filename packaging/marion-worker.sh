@@ -103,7 +103,7 @@ ensure_venv() {
         notify "Première installation en cours (2 à 3 min)…"
         log "Creating venv at $VENV"
         "$python_bin" -m venv "$VENV"
-    elif ! "$VENV/bin/python" -c "import cryptography" >/dev/null 2>&1; then
+    elif ! "$VENV/bin/python" -c "import flask, cryptography" >/dev/null 2>&1; then
         needs_install=1
         notify "Mise à jour des composants Python…"
         log "Repairing venv — missing Python dependencies"
@@ -140,6 +140,7 @@ ensure_env_file
 ensure_venv
 
 export DATA_PATH="$DATA_DIR"
+export DATABASE_URL="sqlite:///${DATA_DIR}/marion.db"
 export STATIC_FOLDER="$APP_CODE/.dist"
 export PORT="$PORT"
 export MARION_INSTALLED_APP=1
