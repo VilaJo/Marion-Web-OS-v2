@@ -60,11 +60,13 @@ brew install python@3.12 node
 
 Johan t'envoie un fichier **`.env`** par message sécurisé (pas par email public).
 
-**Si tu as installé via le .dmg**, place le fichier ici :
+**Si tu as installé via le .dmg**, place le fichier **`MARION-env.local`** ici (sans le renommer) :
 
 ```
-~/Bibliothèque/Application Support/Marion Web OS/.env.local
+~/Bibliothèque/Application Support/Marion Web OS/MARION-env.local
 ```
+
+Le Finder refuse souvent les noms commençant par un point — **pas besoin** de renommer en `.env.local`.
 
 **Si tu as installé via le ZIP**, place-le à la racine du dossier projet (à côté de `INSTALLER.command`).
 2. Vérifie dans le Terminal :

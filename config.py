@@ -26,9 +26,30 @@ def get_marion_support_dir() -> Path:
     return Path.home() / "Library" / "Application Support" / "Marion Web OS"
 
 
+_INSTALLED_ENV_CANDIDATES = (
+    ".env.local",
+    "MARION-env.local",
+    "env.local",
+    ".env",
+)
+
+
+def resolve_installed_env_file() -> Path | None:
+    """First existing config file in Application Support (Finder-friendly names OK)."""
+    support = get_marion_support_dir()
+    for name in _INSTALLED_ENV_CANDIDATES:
+        path = support / name
+        if path.is_file():
+            return path
+    return None
+
+
 def get_env_local_path() -> Path:
-    """Path to .env.local — Application Support when installed via .dmg."""
+    """Path to env config — Application Support when installed via .dmg."""
     if os.getenv("MARION_INSTALLED_APP"):
+        found = resolve_installed_env_file()
+        if found:
+            return found
         return get_marion_support_dir() / ".env.local"
     return get_application_root() / ".env.local"
 
@@ -40,8 +61,8 @@ def get_application_root() -> Path:
 
 if os.getenv("MARION_INSTALLED_APP"):
     _support = get_marion_support_dir()
-    load_dotenv(_support / ".env.local")
-    load_dotenv(_support / ".env")
+    for name in reversed(_INSTALLED_ENV_CANDIDATES):
+        load_dotenv(_support / name)
 
 load_dotenv(".env.local")
 load_dotenv(".env")
@@ -56,7 +77,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.7.3'
+    APP_VERSION = '2.7.4'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()

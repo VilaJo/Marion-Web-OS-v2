@@ -70,13 +70,13 @@ ensure_data_dir() {
 }
 
 ensure_env_file() {
-    if [ -f "$ENV_FILE" ] || [ -f "$SUPPORT/.env" ]; then
+    if [ -f "$SUPPORT/.env.local" ] || [ -f "$SUPPORT/MARION-env.local" ] || [ -f "$SUPPORT/env.local" ] || [ -f "$SUPPORT/.env" ]; then
         return 0
     fi
     if [ -f "$APP_CODE/.env.example" ]; then
         cp "$APP_CODE/.env.example" "$ENV_FILE"
         osascript <<EOF 2>/dev/null || true
-display dialog "Première installation de Marion Web OS.\n\nPlace le fichier de configuration (.env) que Johan t'a envoyé ici :\n\n${SUPPORT}\n\n(Renomme-le .env.local si besoin, puis relance Marion.)" buttons {"OK"} default button 1 with title "Marion Web OS"
+display dialog "Première installation de Marion Web OS.\n\nPlace le fichier de configuration que Johan t'a envoyé ici :\n\n${SUPPORT}\n\nNom du fichier : MARION-env.local (pas besoin de le renommer)." buttons {"OK"} default button 1 with title "Marion Web OS"
 EOF
     fi
 }
