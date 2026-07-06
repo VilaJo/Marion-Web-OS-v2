@@ -63,6 +63,11 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <string>12.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>LSArchitecturePriority</key>
+    <array>
+        <string>arm64</string>
+        <string>x86_64</string>
+    </array>
     <key>LSUIElement</key>
     <false/>
 </dict>

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Marion Web OS — worker (démarrage en arrière-plan, peut prendre quelques minutes)
+# Marion Web OS — worker (démarrage en arrière-plan)
 set -euo pipefail
 
 BUNDLE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,6 +16,7 @@ DATA_DIR="$SUPPORT/Data"
 ENV_FILE="$SUPPORT/.env.local"
 PORT="${MARION_PORT:-5003}"
 URL="http://127.0.0.1:${PORT}"
+HOST_ARCH="$(uname -m)"
 
 mkdir -p "$LOG_DIR"
 trap 'rm -f "$STARTUP_LOCK"' EXIT
@@ -33,11 +34,39 @@ notify() {
 }
 
 pick_python() {
+    local py arch
+    local candidates=(
+        "/opt/homebrew/bin/python3"
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3"
+        "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3"
+        "/usr/local/bin/python3"
+        "/usr/bin/python3"
+    )
+    for py in "${candidates[@]}"; do
+        [ -x "$py" ] || continue
+        arch="$("$py" -c "import platform; print(platform.machine())" 2>/dev/null || echo "")"
+        if [ "$arch" = "$HOST_ARCH" ]; then
+            echo "$py"
+            return 0
+        fi
+    done
     if command -v python3 >/dev/null 2>&1; then
         command -v python3
         return 0
     fi
     return 1
+}
+
+python_runs_deps() {
+    "$1" -c "import flask; from cryptography.fernet import Fernet" >/dev/null 2>&1
+}
+
+venv_arch() {
+    if [ ! -x "$VENV/bin/python" ]; then
+        echo "missing"
+        return 0
+    fi
+    "$VENV/bin/python" -c "import platform; print(platform.machine())" 2>/dev/null || echo "unknown"
 }
 
 is_server_running() {
@@ -92,46 +121,61 @@ ensure_venv() {
     local python_bin
     local req_file="$APP_CODE/.requirements.txt"
     local needs_install=0
+    local current_venv_arch
 
     python_bin="$(pick_python)" || {
         alert "Python 3 est requis.\n\nInstalle-le avec : brew install python@3.12"
         exit 1
     }
 
-    if [ ! -x "$VENV/bin/python" ]; then
+    log "Host arch=$HOST_ARCH python=$python_bin python_arch=$("$python_bin" -c "import platform; print(platform.machine())" 2>/dev/null || echo unknown)"
+
+    current_venv_arch="$(venv_arch)"
+    if [ "$current_venv_arch" != "missing" ] && [ "$current_venv_arch" != "$HOST_ARCH" ]; then
+        log "Removing venv — arch mismatch (venv=$current_venv_arch, host=$HOST_ARCH)"
+        rm -rf "$VENV"
+        current_venv_arch="missing"
+    fi
+
+    if [ "$current_venv_arch" = "missing" ]; then
         needs_install=1
-        notify "Première installation en cours (2 à 3 min)…"
-        log "Creating venv at $VENV"
+        notify "Installation Marion (2 à 3 min, une seule fois)…"
+        log "Creating venv at $VENV with $python_bin"
         "$python_bin" -m venv "$VENV"
-    elif ! "$VENV/bin/python" -c "import flask, cryptography" >/dev/null 2>&1; then
+    elif ! python_runs_deps "$VENV/bin/python"; then
         needs_install=1
-        notify "Mise à jour des composants Python…"
-        log "Repairing venv — missing Python dependencies"
+        notify "Réparation des composants Python…"
+        log "Repairing venv — broken or incomplete Python dependencies"
+        rm -rf "$VENV"
+        "$python_bin" -m venv "$VENV"
     fi
 
     if [ "$needs_install" -eq 1 ]; then
         if [ ! -f "$req_file" ]; then
-            alert "Fichier des dépendances introuvable dans l'application.\n\nRéinstalle Marion Web OS depuis le .dmg."
+            alert "Fichier des dépendances introuvable.\n\nRéinstalle Marion Web OS depuis le .dmg."
             exit 1
         fi
         if ! "$VENV/bin/pip" install --upgrade pip >> "$LOG_FILE" 2>&1; then
-            alert "Échec de l'installation Python (pip).\n\nConsulte les logs :\n$LOG_FILE"
+            alert "Échec pip.\n\nLogs : $LOG_FILE"
             exit 1
         fi
-        if ! "$VENV/bin/pip" install -r "$req_file" >> "$LOG_FILE" 2>&1; then
-            alert "Échec de l'installation des dépendances Marion.\n\nConsulte les logs :\n$LOG_FILE"
+        if ! "$VENV/bin/pip" install --no-cache-dir -r "$req_file" >> "$LOG_FILE" 2>&1; then
+            alert "Échec installation dépendances.\n\nLogs : $LOG_FILE"
             exit 1
         fi
-        log "Python dependencies installed"
+        if ! python_runs_deps "$VENV/bin/python"; then
+            alert "Python installé mais invalide (architecture ?).\n\nLance REPARER_MARION.command depuis le .dmg.\n\nLogs : $LOG_FILE"
+            exit 1
+        fi
+        log "Python dependencies installed (arch=$(venv_arch))"
     fi
 }
 
 if [ ! -d "$APP_CODE" ] || [ ! -f "$APP_CODE/franck_server.py" ]; then
-    alert "Fichiers application introuvables dans le bundle.\n\nRéinstalle Marion Web OS depuis le fichier .dmg."
+    alert "Application incomplète.\n\nRéinstalle depuis le .dmg."
     exit 1
 fi
 
-# Retire la quarantaine macOS après téléchargement du .dmg
 xattr -dr com.apple.quarantine "$APP_BUNDLE" 2>/dev/null || true
 
 log "=== Marion Web OS worker start ==="
@@ -154,7 +198,7 @@ if ! is_server_running; then
     echo $! > "$PID_FILE"
 
     if ! wait_for_server; then
-        alert "Le serveur n'a pas pu démarrer.\n\nConsulte les logs :\n$LOG_FILE"
+        alert "Le serveur n'a pas pu démarrer.\n\nLogs : $LOG_FILE"
         exit 1
     fi
 else
