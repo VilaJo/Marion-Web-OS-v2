@@ -69,9 +69,10 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# --- Lanceur ---
+# --- Lanceur (répond vite) + worker (démarrage long en arrière-plan) ---
 cp "$ROOT/packaging/launcher.sh" "$APP_BUNDLE/Contents/MacOS/Marion"
-chmod +x "$APP_BUNDLE/Contents/MacOS/Marion"
+cp "$ROOT/packaging/marion-worker.sh" "$APP_BUNDLE/Contents/MacOS/marion-worker.sh"
+chmod +x "$APP_BUNDLE/Contents/MacOS/Marion" "$APP_BUNDLE/Contents/MacOS/marion-worker.sh"
 
 # --- Icône ---
 if [ -f "$ROOT/build_app_icon.sh" ]; then
