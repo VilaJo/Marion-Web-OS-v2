@@ -201,7 +201,7 @@ is_server_running() {
 
 wait_for_server() {
     for i in {1..45}; do
-        if curl -s http://127.0.0.1:5003/api/version > /dev/null 2>&1; then
+        if curl -s http://127.0.0.1:5003/api/v1/version > /dev/null 2>&1; then
             echo "Server ready after \${i}s" >> "\$LOG_FILE"
             return 0
         fi

@@ -50,7 +50,7 @@ is_server_running() {
 wait_for_server() {
     local i
     for i in $(seq 1 45); do
-        if curl -fsS "$URL/api/version" >/dev/null 2>&1; then
+        if curl -fsS "$URL/api/v1/version" >/dev/null 2>&1; then
             log "Server ready after ${i}s"
             return 0
         fi
