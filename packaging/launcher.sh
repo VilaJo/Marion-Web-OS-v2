@@ -83,24 +83,41 @@ EOF
 
 ensure_venv() {
     local python_bin
-    if [ -x "$VENV/bin/python" ]; then
-        return 0
-    fi
+    local req_file="$APP_CODE/.requirements.txt"
+    local needs_install=0
 
     python_bin="$(pick_python)" || {
         alert "Python 3 est requis.\n\nInstalle-le avec : brew install python@3.12"
         exit 1
     }
 
-    osascript <<EOF 2>/dev/null || true
+    if [ ! -x "$VENV/bin/python" ]; then
+        needs_install=1
+        osascript <<EOF 2>/dev/null || true
 display dialog "Marion Web OS prépare le premier lancement (2 à 3 minutes, une seule fois)…" buttons {"OK"} giving up after 4 with title "Marion Web OS"
 EOF
+        log "Creating venv at $VENV"
+        "$python_bin" -m venv "$VENV"
+    elif ! "$VENV/bin/python" -c "import cryptography" >/dev/null 2>&1; then
+        needs_install=1
+        log "Repairing venv — missing Python dependencies"
+    fi
 
-    log "Creating venv at $VENV"
-    "$python_bin" -m venv "$VENV"
-    "$VENV/bin/pip" install --upgrade pip -q
-    "$VENV/bin/pip" install -r "$APP_CODE/.requirements.txt" -q
-    log "Venv ready"
+    if [ "$needs_install" -eq 1 ]; then
+        if [ ! -f "$req_file" ]; then
+            alert "Fichier des dépendances introuvable dans l'application.\n\nRéinstalle Marion Web OS depuis le .dmg."
+            exit 1
+        fi
+        if ! "$VENV/bin/pip" install --upgrade pip >> "$LOG_FILE" 2>&1; then
+            alert "Échec de l'installation Python (pip).\n\nConsulte les logs :\n$LOG_FILE"
+            exit 1
+        fi
+        if ! "$VENV/bin/pip" install -r "$req_file" >> "$LOG_FILE" 2>&1; then
+            alert "Échec de l'installation des dépendances Marion.\n\nConsulte les logs :\n$LOG_FILE"
+            exit 1
+        fi
+        log "Python dependencies installed"
+    fi
 }
 
 if [ ! -d "$APP_CODE" ] || [ ! -f "$APP_CODE/franck_server.py" ]; then
