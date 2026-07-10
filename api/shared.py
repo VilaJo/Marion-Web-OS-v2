@@ -134,6 +134,25 @@ def init_db_structure():
 SENSITIVE_PROJECT_FIELDS = ['credentials', 'privateNotes']
 
 
+def _normalize_project_list_fields(data: dict) -> dict:
+    """Ensure list-shaped project fields are arrays (encrypted placeholders are strings)."""
+    creds = data.get('credentials')
+    if isinstance(creds, list):
+        data['credentials'] = creds
+    else:
+        data['credentials'] = []
+        if creds == '[CHIFFRE]' or data.get('_encrypted_credentials'):
+            data['credentialsLocked'] = True
+
+    moodboard = data.get('moodboard')
+    if not isinstance(moodboard, list):
+        data['moodboard'] = []
+
+    data.pop('_encrypted_credentials', None)
+    data.pop('_encrypted_privateNotes', None)
+    return data
+
+
 def load_project_data(project_path):
     """Load project data from .99_Admin/project.json and decrypt sensitive fields."""
     from crypto_utils import decrypt_sensitive_fields
@@ -155,7 +174,7 @@ def load_project_data(project_path):
                 except Exception as e:
                     logger.warning("Could not decrypt sensitive fields: %s", e)
 
-            return data
+            return _normalize_project_list_fields(data)
         except Exception as e:
             logger.error("Error loading project data: %s", e, exc_info=True)
     return {}

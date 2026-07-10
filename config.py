@@ -68,16 +68,64 @@ load_dotenv(".env.local")
 load_dotenv(".env")
 
 
+def _legacy_desktop_data_candidates() -> list[Path]:
+    """Known locations for the pre-installed « Marion Web OS Database » folder."""
+    home = Path.home()
+    return [
+        home / "Desktop" / "Marion Web OS Database",
+        home / "Bureau" / "Marion Web OS Database",
+        home
+        / "Library"
+        / "Mobile Documents"
+        / "com~apple~CloudDocs"
+        / "Desktop"
+        / "Marion Web OS Database",
+        home
+        / "Library"
+        / "Mobile Documents"
+        / "com~apple~CloudDocs"
+        / "Bureau"
+        / "Marion Web OS Database",
+    ]
+
+
+def _folder_has_client_data(path: Path) -> bool:
+    """True if folder looks like an existing Marion client database."""
+    if not path.is_dir():
+        return False
+    if (path / "marion.db").is_file():
+        return True
+    for name in ("1. En cours", "4. Prospects", "2. Archives", "3. Terminés", "5. Archivés", "backups"):
+        if (path / name).is_dir():
+            return True
+    try:
+        return any(path.iterdir())
+    except OSError:
+        return False
+
+
+def _find_legacy_desktop_data() -> Path | None:
+    for candidate in _legacy_desktop_data_candidates():
+        if _folder_has_client_data(candidate):
+            return candidate.resolve()
+    return None
+
+
 def _default_data_path() -> Path:
     """Default client data directory for dev vs installed .app."""
-    home = Path.home()
     if os.getenv("MARION_INSTALLED_APP"):
-        return home / "Library" / "Application Support" / "Marion Web OS" / "Data"
-    return home / "Desktop" / "Marion Web OS Database"
+        legacy = _find_legacy_desktop_data()
+        if legacy is not None:
+            return legacy
+        return get_marion_support_dir() / "Data"
+    return Path.home() / "Desktop" / "Marion Web OS Database"
 
 
 def _resolve_data_path() -> Path:
-    return Path(os.getenv("DATA_PATH", str(_default_data_path()))).expanduser().resolve()
+    explicit = os.getenv("DATA_PATH", "").strip()
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    return _default_data_path()
 
 
 def _resolve_database_url(data_path: Path) -> str:
@@ -96,7 +144,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
-    APP_VERSION = '2.7.8'
+    APP_VERSION = '2.7.9'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()

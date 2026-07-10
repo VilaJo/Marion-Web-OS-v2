@@ -68,6 +68,11 @@ Johan t'envoie un fichier **`.env`** par message sécurisé (pas par email publi
 
 Le Finder refuse souvent les noms commençant par un point — **pas besoin** de renommer en `.env.local`.
 
+**Contenu minimum** (Johan t'envoie le fichier complet) :
+
+- `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` — obligatoires pour Google Calendar
+- `GEMINI_API_KEY` — pour Franck (optionnel mais utile)
+
 **Si tu as installé via le ZIP**, place-le à la racine du dossier projet (à côté de `INSTALLER.command`).
 2. Vérifie dans le Terminal :
 
@@ -139,10 +144,21 @@ Tout est stocké **localement** sur ton Mac :
 
 ## 8. Mises à jour plus tard
 
-Dans le dossier projet :
+**Depuis l'application (recommandé pour Marion) :**
 
-- **`METTRE_A_JOUR.command`** — télécharge la dernière version GitHub et rebuild
-- Ou **`git pull`** si tu as lancé `ACTIVER_GIT.command` une fois
+1. Ouvre **Paramètres** (icône engrenage)
+2. Onglet **Mises à jour**
+3. Clique **Synchroniser depuis GitHub**
+4. Un terminal s'ouvre — attends la fin, puis **STOPPER_MARION.command** et **LANCER_MARION.command**
+5. Dans le navigateur : **Cmd + Shift + R** (rechargement forcé)
+
+**Manuellement** (double-clic dans le dossier Marion Web OS) :
+
+- **`METTRE_A_JOUR.command`** — télécharge la dernière version depuis GitHub (branche main), sans `git` ni `npm` requis
+
+**Si tu développes avec Git :**
+
+- **`git pull`** après avoir lancé `ACTIVER_GIT.command` une fois
 
 ---
 

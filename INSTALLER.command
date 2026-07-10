@@ -1,7 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🦄 MARION WEB OS - INSTALLATEUR
 # ═══════════════════════════════════════════════════════════════════════════════
+if [ -z "${MARION_CLEAN_SHELL:-}" ]; then
+  export MARION_CLEAN_SHELL=1
+  exec /bin/bash --noprofile --norc "$0" "$@"
+fi
+set -euo pipefail
 
 cd "$(dirname "$0")"
 APP_DIR="$(pwd)"

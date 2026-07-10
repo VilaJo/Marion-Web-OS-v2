@@ -38,7 +38,7 @@ const snapOverlayToCursor: Modifier = ({ activatorEvent, draggingNodeRect, trans
     return transform;
 };
 import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential, MeetingReport } from '../types';
-import { formatCurrency, invoiceEffectiveAmount } from '../utils';
+import { formatCurrency, invoiceEffectiveAmount, normalizeCredentials } from '../utils';
 import { MaintenanceWidget } from './MaintenanceWidget';
 import { Badge, Card, Modal, Tooltip, EmptyState } from './Shared';
 import { Loader2 } from 'lucide-react';
@@ -291,6 +291,9 @@ interface ClientViewProps {
 }
 
 const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateProject, onNotify, onDelete, currentTheme }) => {
+    const projectCredentials = useMemo(() => normalizeCredentials(project.credentials), [project.credentials]);
+    const credentialsLocked = project.credentialsLocked === true;
+
     // Undo support
     const pushUndo = useUndoStore((s) => s.pushUndo);
 
@@ -1153,7 +1156,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
 
     // --- CREDENTIALS LOGIC ---
     const handleAddCredential = (newCred: Credential) => {
-        onUpdateProject({ ...project, credentials: [...(project.credentials || []), newCred] });
+        onUpdateProject({ ...project, credentials: [...projectCredentials, newCred] });
         onNotify("Identifiant ajouté !", "Le nouvel accès est enregistré.", "success");
         setShowCredentialModal(false);
     };
@@ -1161,16 +1164,16 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     const handleEditCredential = (updatedCred: Credential) => {
         onUpdateProject({ 
             ...project, 
-            credentials: (project.credentials || []).map(cred => cred.id === updatedCred.id ? updatedCred : cred) 
+            credentials: projectCredentials.map(cred => cred.id === updatedCred.id ? updatedCred : cred) 
         });
         onNotify("Identifiant mis à jour !", "Les modifications ont été sauvegardées.", "info");
         setShowCredentialModal(false);
     };
 
     const handleDeleteCredential = (credId: string) => {
-        const cred = (project.credentials || []).find(c => c.id === credId);
+        const cred = projectCredentials.find(c => c.id === credId);
         if (!cred) return;
-        const previousCredentials = [...(project.credentials || [])];
+        const previousCredentials = [...projectCredentials];
         onUpdateProject({ ...project, credentials: previousCredentials.filter(c => c.id !== credId) });
         pushUndo({
             description: `Identifiant "${cred.service}" supprimé`,
@@ -1809,9 +1812,13 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 <Plus size={12} /> Ajouter Identifiant
                             </button>
                         </h3>
-                        {project.credentials && project.credentials.length > 0 ? (
+                        {credentialsLocked ? (
+                            <p className="text-sm text-amber-600 dark:text-amber-400">
+                                Coffre-fort verrouillé. Reconnectez-vous avec le bon mot de passe pour afficher les identifiants.
+                            </p>
+                        ) : projectCredentials.length > 0 ? (
                             <div className="space-y-3">
-                                {project.credentials.map((cred) => (
+                                {projectCredentials.map((cred) => (
                                     <div key={cred.id} className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="font-bold text-sm text-slate-700 dark:text-slate-200">{cred.service}</div>

@@ -35,8 +35,11 @@ APIs activées sur le projet :
 
 ## Côté Marion (sur son Mac)
 
-1. Fichier `.env` présent à la racine du dossier projet (même `GOOGLE_CLIENT_ID` / `SECRET` que Johan)
-2. Lancer Marion Web OS → **Paramètres** → **Connecter Google Calendar**
+1. Fichier **`MARION-env.local`** dans  
+   `~/Bibliothèque/Application Support/Marion Web OS/`  
+   avec au minimum `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `GOOGLE_REDIRECT_URI` (Johan envoie le fichier complet — pas seulement la clé Gemini)
+2. **Relancer Marion** après avoir placé le fichier (quitte et rouvre l'app)
+3. Marion Web OS → **Paramètres** ou **Agenda** → **Connecter Google Calendar**
 3. Choisir le compte **`marion.kindynis@gmail.com`** (pas un autre compte Google)
 4. Accepter les autorisations Calendrier
 

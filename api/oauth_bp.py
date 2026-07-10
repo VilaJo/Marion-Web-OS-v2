@@ -7,6 +7,9 @@ Handles: OAuth login/callback/status/disconnect, Drive list/upload/sync,
 import sys
 import time
 import json
+import base64
+import binascii
+import uuid
 from services.logger import get_logger
 
 logger = get_logger('api.oauth')
@@ -22,6 +25,11 @@ from services.oauth_service import (
     disconnect as oauth_disconnect,
 )
 from api.shared import DESKTOP_PATH, get_safe_path, OAUTH_TOKENS_ENC, OAUTH_TOKENS_JSON, error_response
+
+try:
+    import caldav
+except Exception:  # pragma: no cover - optional dependency at runtime
+    caldav = None
 
 # Optional: dateutil for better date parsing
 try:
@@ -41,6 +49,14 @@ oauth_bp = Blueprint('oauth', __name__, url_prefix='/api/v1')
 @oauth_bp.route('/oauth/google/login')
 def google_oauth_login():
     """Initiate Google OAuth flow."""
+    if not cfg.GOOGLE_CLIENT_ID or not cfg.GOOGLE_CLIENT_SECRET:
+        return jsonify({
+            "error": "Google OAuth non configuré sur ce Mac. "
+                     "Ajoute GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET dans "
+                     "~/Bibliothèque/Application Support/Marion Web OS/MARION-env.local "
+                     "puis relance Marion.",
+        }), 503
+
     auth_url = (
         "https://accounts.google.com/o/oauth2/v2/auth?"
         f"client_id={cfg.GOOGLE_CLIENT_ID}&"
@@ -672,6 +688,292 @@ def gcal_sync_status():
             "email": email,
             "lastSync": datetime.now().isoformat(),
         })
+
+
+# ============================================================================
+# Infomaniak Calendar (CalDAV)
+# ============================================================================
+
+def _decode_infomaniak_event_id(encoded_id: str) -> str:
+    padded = encoded_id + ("=" * (-len(encoded_id) % 4))
+    return base64.urlsafe_b64decode(padded.encode("utf-8")).decode("utf-8")
+
+
+def _encode_infomaniak_event_id(raw_id: str) -> str:
+    return base64.urlsafe_b64encode(raw_id.encode("utf-8")).decode("utf-8").rstrip("=")
+
+
+def _parse_ical_datetime(value):
+    if value is None:
+        return None
+    dt = value.dt if hasattr(value, "dt") else value
+    if isinstance(dt, datetime):
+        return dt
+    if hasattr(dt, "year") and hasattr(dt, "month") and hasattr(dt, "day"):
+        return datetime(dt.year, dt.month, dt.day)
+    return None
+
+
+def _resolve_infomaniak_credentials():
+    user = (request.headers.get("X-Infomaniak-Username") or "").strip()
+    pwd = (request.headers.get("X-Infomaniak-Password") or "").strip()
+    if user and pwd:
+        return user, pwd
+
+    try:
+        from api.email_bp import _get_token, _decrypt_creds
+
+        token = _get_token()
+        username, password = _decrypt_creds(token)
+        if username and password:
+            return username, password
+    except Exception as e:
+        logger.debug("Infomaniak creds fallback failed: %s", e)
+
+    return None, None
+
+
+def _get_infomaniak_calendar():
+    if caldav is None:
+        raise RuntimeError("CalDAV dependency missing")
+
+    username, password = _resolve_infomaniak_credentials()
+    if not username or not password:
+        return None, None, None
+
+    server_url = getattr(cfg, "INFOMANIAK_CALDAV_URL", None) or "https://sync.infomaniak.com/"
+    candidate_usernames = [username]
+    if "@" in username:
+        candidate_usernames.append(username.split("@", 1)[0])
+
+    client = None
+    calendars = None
+    for candidate in candidate_usernames:
+        try:
+            trial_client = caldav.DAVClient(url=server_url, username=candidate, password=password)
+            principal = trial_client.principal()
+            trial_calendars = principal.calendars()
+            client = trial_client
+            username = candidate
+            calendars = trial_calendars
+            break
+        except Exception:
+            continue
+
+    if client is None or calendars is None:
+        raise RuntimeError("Infomaniak CalDAV authentication failed")
+    if not calendars:
+        return client, username, None
+    preferred = getattr(cfg, "INFOMANIAK_CALENDAR_NAME", "").strip().lower()
+    if preferred:
+        for cal in calendars:
+            if (getattr(cal, "name", "") or "").strip().lower() == preferred:
+                return client, username, cal
+    return client, username, calendars[0]
+
+
+def _parse_infomaniak_event(ev):
+    vobj = getattr(ev, "vobject_instance", None)
+    if not vobj or not hasattr(vobj, "vevent"):
+        return None
+    vevent = vobj.vevent
+    start_dt = _parse_ical_datetime(getattr(vevent, "dtstart", None))
+    if not start_dt:
+        return None
+    end_dt = _parse_ical_datetime(getattr(vevent, "dtend", None))
+    if not end_dt and hasattr(vevent, "duration"):
+        try:
+            end_dt = start_dt + vevent.duration.value
+        except Exception:
+            end_dt = None
+
+    if end_dt:
+        duration = max(15, int((end_dt - start_dt).total_seconds() / 60))
+    else:
+        duration = 60
+
+    summary = getattr(getattr(vevent, "summary", None), "value", "(Sans titre)")
+    description = getattr(getattr(vevent, "description", None), "value", "")
+    location = getattr(getattr(vevent, "location", None), "value", "")
+
+    return {
+        "id": _encode_infomaniak_event_id(ev.url),
+        "infomaniakEventId": _encode_infomaniak_event_id(ev.url),
+        "title": summary,
+        "description": description,
+        "location": location,
+        "date": start_dt.strftime("%Y-%m-%d"),
+        "startTime": start_dt.strftime("%H:%M"),
+        "duration": duration,
+        "source": "infomaniak",
+        "originalTimezone": "Europe/Zurich",
+        "originalDateTime": start_dt.isoformat(),
+    }
+
+
+@oauth_bp.route('/ical/sync-status')
+def infomaniak_sync_status():
+    if caldav is None:
+        return jsonify({"connected": False, "error": "CalDAV dependency missing"}), 503
+    try:
+        client, username, calendar = _get_infomaniak_calendar()
+        if not client or not username:
+            return jsonify({"connected": False, "error": "Infomaniak email credentials not connected"}), 200
+        if calendar is None:
+            return jsonify({"connected": False, "username": username, "error": "No calendar found"}), 200
+        return jsonify({"connected": True, "username": username, "calendarName": getattr(calendar, "name", "Infomaniak Calendar")})
+    except Exception as e:
+        return jsonify({"connected": False, "error": str(e)}), 200
+
+
+@oauth_bp.route('/ical/events')
+def infomaniak_list_events():
+    if caldav is None:
+        return jsonify({"events": [], "error": "CalDAV dependency missing"}), 503
+    try:
+        client, username, calendar = _get_infomaniak_calendar()
+        if not client or not username or calendar is None:
+            return jsonify({"events": []})
+
+        now = datetime.utcnow()
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        time_min = request.args.get('time_min', start_of_month.isoformat())
+        time_max = request.args.get('time_max', (now + timedelta(days=90)).isoformat())
+
+        try:
+            dt_start = datetime.fromisoformat(time_min.replace("Z", "+00:00"))
+        except Exception:
+            dt_start = start_of_month
+        try:
+            dt_end = datetime.fromisoformat(time_max.replace("Z", "+00:00"))
+        except Exception:
+            dt_end = now + timedelta(days=90)
+
+        raw_events = calendar.date_search(start=dt_start, end=dt_end)
+        parsed = []
+        for ev in raw_events:
+            item = _parse_infomaniak_event(ev)
+            if item is not None:
+                parsed.append(item)
+        return jsonify({"events": parsed})
+    except Exception as e:
+        logger.error("Error fetching Infomaniak calendar events: %s", e, exc_info=True)
+        return error_response(e)
+
+
+@oauth_bp.route('/ical/events', methods=['POST'])
+def infomaniak_create_event():
+    if caldav is None:
+        return jsonify({"error": "CalDAV dependency missing"}), 503
+    try:
+        client, username, calendar = _get_infomaniak_calendar()
+        if not client or not username or calendar is None:
+            return jsonify({"error": "Infomaniak not connected"}), 401
+
+        data = request.json or {}
+        title = data.get("title", "Evenement")
+        description = data.get("description", "")
+        location = data.get("location", "")
+        event_date = data.get("date")
+        start_time = data.get("startTime", "09:00")
+        duration = int(data.get("duration", 60))
+
+        if not event_date:
+            return jsonify({"error": "Missing date"}), 400
+
+        start_dt = datetime.strptime(f"{event_date} {start_time}", "%Y-%m-%d %H:%M")
+        end_dt = start_dt + timedelta(minutes=max(15, duration))
+        uid = f"marion-{uuid.uuid4()}@infomaniak-sync"
+        ics = (
+            "BEGIN:VCALENDAR\r\n"
+            "VERSION:2.0\r\n"
+            "PRODID:-//Marion Web OS//FR\r\n"
+            "BEGIN:VEVENT\r\n"
+            f"UID:{uid}\r\n"
+            f"DTSTAMP:{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}\r\n"
+            f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%S')}\r\n"
+            f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%S')}\r\n"
+            f"SUMMARY:{title}\r\n"
+            f"DESCRIPTION:{description}\r\n"
+            f"LOCATION:{location}\r\n"
+            "END:VEVENT\r\n"
+            "END:VCALENDAR\r\n"
+        )
+        ev = calendar.save_event(ics)
+        event_id = _encode_infomaniak_event_id(ev.url)
+        return jsonify({"success": True, "event": {"id": event_id, "infomaniakEventId": event_id}})
+    except Exception as e:
+        logger.error("Error creating Infomaniak calendar event: %s", e, exc_info=True)
+        return error_response(e)
+
+
+@oauth_bp.route('/ical/events/<event_id>', methods=['PUT'])
+def infomaniak_update_event(event_id):
+    if caldav is None:
+        return jsonify({"error": "CalDAV dependency missing"}), 503
+    try:
+        client, username, calendar = _get_infomaniak_calendar()
+        if not client or not username or calendar is None:
+            return jsonify({"error": "Infomaniak not connected"}), 401
+
+        try:
+            raw_url = _decode_infomaniak_event_id(event_id)
+        except (ValueError, binascii.Error):
+            return jsonify({"error": "Invalid Infomaniak event id"}), 400
+        ev = calendar.event(raw_url)
+        vobj = ev.vobject_instance
+        if not hasattr(vobj, "vevent"):
+            return jsonify({"error": "Event payload invalid"}), 400
+
+        data = request.json or {}
+        title = data.get("title", "Evenement")
+        description = data.get("description", "")
+        location = data.get("location", "")
+        event_date = data.get("date")
+        start_time = data.get("startTime", "09:00")
+        duration = int(data.get("duration", 60))
+        if not event_date:
+            return jsonify({"error": "Missing date"}), 400
+
+        start_dt = datetime.strptime(f"{event_date} {start_time}", "%Y-%m-%d %H:%M")
+        end_dt = start_dt + timedelta(minutes=max(15, duration))
+        vobj.vevent.summary.value = title
+        if hasattr(vobj.vevent, "description"):
+            vobj.vevent.description.value = description
+        else:
+            vobj.vevent.add("description").value = description
+        if hasattr(vobj.vevent, "location"):
+            vobj.vevent.location.value = location
+        else:
+            vobj.vevent.add("location").value = location
+        vobj.vevent.dtstart.value = start_dt
+        vobj.vevent.dtend.value = end_dt
+        ev.data = vobj.serialize()
+        ev.save()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("Error updating Infomaniak calendar event: %s", e, exc_info=True)
+        return error_response(e)
+
+
+@oauth_bp.route('/ical/events/<event_id>', methods=['DELETE'])
+def infomaniak_delete_event(event_id):
+    if caldav is None:
+        return jsonify({"error": "CalDAV dependency missing"}), 503
+    try:
+        client, username, calendar = _get_infomaniak_calendar()
+        if not client or not username or calendar is None:
+            return jsonify({"error": "Infomaniak not connected"}), 401
+        try:
+            raw_url = _decode_infomaniak_event_id(event_id)
+        except (ValueError, binascii.Error):
+            return jsonify({"error": "Invalid Infomaniak event id"}), 400
+        ev = calendar.event(raw_url)
+        ev.delete()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("Error deleting Infomaniak calendar event: %s", e, exc_info=True)
+        return error_response(e)
 
 
 # ============================================================================

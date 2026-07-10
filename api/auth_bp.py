@@ -33,6 +33,35 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 MAX_LOGIN_ATTEMPTS = cfg.MAX_LOGIN_ATTEMPTS
 
 
+def _read_auth_data():
+    """Return (auth_dict, error_code). error_code: NOT_CONFIGURED | CORRUPT | None."""
+    if not AUTH_FILE.exists():
+        return None, 'NOT_CONFIGURED'
+    try:
+        raw = AUTH_FILE.read_text(encoding='utf-8').strip()
+        if not raw:
+            return None, 'CORRUPT'
+        auth_data = json.loads(raw)
+        if not isinstance(auth_data, dict):
+            return None, 'CORRUPT'
+        if 'salt' not in auth_data or 'password_hash' not in auth_data:
+            return None, 'CORRUPT'
+        return auth_data, None
+    except Exception as exc:
+        logger.warning('auth file unreadable at %s: %s', AUTH_FILE, exc)
+        return None, 'CORRUPT'
+
+
+def _clear_auth_files():
+    """Remove password + OAuth token files (clients data untouched)."""
+    for path in (AUTH_FILE, OAUTH_TOKENS_ENC, OAUTH_TOKENS_JSON):
+        try:
+            if path.exists():
+                path.unlink()
+        except OSError as exc:
+            logger.warning('could not delete %s: %s', path, exc)
+
+
 # ============================================================================
 # Middleware helper
 # ============================================================================
@@ -63,7 +92,8 @@ def require_auth():
 @auth_bp.route('/check')
 def auth_check():
     """Check if auth is configured and if the current session is valid."""
-    is_configured = AUTH_FILE.exists()
+    auth_data, auth_err = _read_auth_data()
+    is_configured = auth_data is not None
 
     token = request.headers.get('X-Marion-Token')
     is_authenticated = False
@@ -73,18 +103,26 @@ def auth_check():
         if session_data:
             is_authenticated = True
 
-    return jsonify({
-        "configured": is_configured,
-        "authenticated": is_authenticated
-    })
+    payload = {
+        'configured': is_configured,
+        'authenticated': is_authenticated,
+    }
+    if auth_err == 'CORRUPT':
+        payload['corrupt'] = True
+        payload['configured'] = False
+    return jsonify(payload)
 
 
 @auth_bp.route('/setup', methods=['POST'])
 def auth_setup():
     """Configure the initial password."""
     try:
-        if AUTH_FILE.exists():
+        auth_data, auth_err = _read_auth_data()
+        if auth_data is not None:
             return jsonify({"error": "Deja configure"}), 400
+        if auth_err == 'CORRUPT':
+            logger.warning('replacing corrupt auth file before setup')
+            _clear_auth_files()
 
         data = request.get_json(silent=True) or {}
         password = data.get('password', '') or ''
@@ -158,20 +196,28 @@ def auth_login():
     if not allowed:
         return jsonify({"error": "Trop de tentatives. Reessayez dans 1 minute."}), 429
 
-    if not AUTH_FILE.exists():
+    auth_data, auth_err = _read_auth_data()
+    if auth_err == 'NOT_CONFIGURED':
         return jsonify({"error": "Non configure", "code": "NOT_CONFIGURED"}), 400
+    if auth_err == 'CORRUPT':
+        _clear_auth_files()
+        return jsonify({
+            "error": "Fichier mot de passe illisible — supprimé. Rafraîchis la page et crée un nouveau mot de passe.",
+            "code": "CORRUPT_AUTH",
+        }), 409
 
     data = request.get_json(silent=True) or {}
     password = data.get('password', '') or ''
 
     try:
-        with open(AUTH_FILE, 'r') as f:
-            auth_data = json.load(f)
+        salt = base64.b64decode(auth_data["salt"])
+        stored_hash = auth_data["password_hash"]
     except Exception:
-        return jsonify({"error": "Erreur de lecture"}), 500
-
-    salt = base64.b64decode(auth_data["salt"])
-    stored_hash = auth_data["password_hash"]
+        _clear_auth_files()
+        return jsonify({
+            "error": "Fichier mot de passe invalide — supprimé. Rafraîchis la page.",
+            "code": "CORRUPT_AUTH",
+        }), 409
 
     if not verify_password(password, salt, stored_hash):
         return jsonify({"error": "Mot de passe incorrect"}), 401
@@ -238,15 +284,7 @@ def auth_reset():
         return jsonify({"error": "Confirmation requise"}), 400
 
     try:
-        # Remove legacy files
-        if AUTH_FILE.exists():
-            AUTH_FILE.unlink()
-        if OAUTH_TOKENS_ENC.exists():
-            OAUTH_TOKENS_ENC.unlink()
-        if OAUTH_TOKENS_JSON.exists():
-            OAUTH_TOKENS_JSON.unlink()
-
-        # Clear SQLite sessions and OAuth tokens
+        _clear_auth_files()
         try:
             from database.db import get_user_by_email as _get_user
             user = _get_user('marion@local')

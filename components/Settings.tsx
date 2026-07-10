@@ -882,6 +882,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         currentVersion: string;
         latestVersion?: string;
         updateAvailable?: boolean;
+        commitsBehind?: boolean;
+        localCommit?: string | null;
+        remoteCommit?: string | null;
         releaseNotes?: string;
         releaseName?: string;
         publishedAt?: string;
@@ -968,6 +971,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             },
         });
     };
+
+    // Vérification automatique à l'ouverture de l'onglet Mises à jour
+    React.useEffect(() => {
+        if (activeTab !== 'updates') return;
+        if (checkUpdatesMutation.isPending || checkUpdatesMutation.isSuccess) return;
+        checkForUpdates();
+    }, [activeTab]);
 
     const tabs = [
         { id: 'agency', label: 'Agence & Profil', icon: Briefcase },
@@ -2573,9 +2583,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         )}
                                     </button>
                                 </div>
+                                {(updateInfo?.localCommit || updateInfo?.remoteCommit) && (
+                                    <p className="text-xs text-slate-500 mt-3 font-mono">
+                                        Code local : {updateInfo.localCommit || '—'}
+                                        {' · '}
+                                        GitHub main : {updateInfo.remoteCommit || '—'}
+                                    </p>
+                                )}
                             </div>
 
-                            {/* Update Available */}
+                            {/* Sync / Update — toujours disponible */}
+                            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+                                <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                                    {updateInfo?.message
+                                        || 'Télécharge la dernière version depuis GitHub (branche main), comme quand Johan pousse ses modifications.'}
+                                </p>
+                                <button
+                                    onClick={applyUpdate}
+                                    disabled={isUpdating}
+                                    className="px-6 py-3 bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg"
+                                >
+                                    {isUpdating ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" /> Synchronisation…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download size={18} />
+                                            {updateInfo?.updateAvailable ? 'Mettre à jour maintenant' : 'Synchroniser depuis GitHub'}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Update Available (détails release) */}
                             {updateInfo?.updateAvailable && (
                                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-2xl p-5 border-2 border-emerald-200 dark:border-emerald-700">
                                     <div className="flex items-start gap-4">
@@ -2613,39 +2654,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                     </p>
                                                 </div>
                                             )}
-                                            <div className="flex gap-3 mt-4">
-                                                <button
-                                                    onClick={applyUpdate}
-                                                    disabled={isUpdating}
-                                                    className="px-6 py-3 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg"
-                                                >
-                                                    {isUpdating ? (
-                                                        <>
-                                                            <Loader2 size={18} className="animate-spin" /> Installation...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Download size={18} /> Mettre à jour maintenant
-                                                        </>
-                                                    )}
-                                                </button>
-                                                {updateInfo.htmlUrl && (
-                                                    <a
-                                                        href={updateInfo.htmlUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="px-4 py-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-all flex items-center gap-2"
-                                                    >
-                                                        <ExternalLink size={16} /> Voir sur GitHub
-                                                    </a>
-                                                )}
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Already up to date */}
+                            {updateInfo?.htmlUrl && (
+                                <a
+                                    href={updateInfo.htmlUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-sm text-brand-orange font-bold hover:underline"
+                                >
+                                    <ExternalLink size={14} /> Voir les releases sur GitHub
+                                </a>
+                            )}
+
+                            {/* Already up to date — hidden duplicate sync CTA */}
                             {updateInfo && !updateInfo.updateAvailable && !updateInfo.error && updateInfo.latestVersion && (
                                 <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-5 border border-emerald-100 dark:border-emerald-800">
                                     <div className="flex items-center gap-4">

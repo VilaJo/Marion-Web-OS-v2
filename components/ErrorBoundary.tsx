@@ -73,8 +73,24 @@ export const RouteErrorFallback: React.FC = () => {
 
     let title = 'Erreur inattendue';
     let message = 'Une erreur est survenue lors du chargement de cette page.';
+    let isStaleBundle = false;
 
-    if (isRouteErrorResponse(error)) {
+    if (error instanceof Error) {
+        const msg = error.message || '';
+        if (
+            msg.includes('Failed to fetch dynamically imported module')
+            || msg.includes('Loading chunk')
+            || msg.includes('Importing a module script failed')
+        ) {
+            isStaleBundle = true;
+            title = 'Interface à jour — rechargement requis';
+            message =
+                'Marion a été mise à jour mais le navigateur utilise encore d’anciens fichiers. '
+                + 'Clique sur « Vider le cache et recharger ».';
+        }
+    }
+
+    if (!isStaleBundle && isRouteErrorResponse(error)) {
         if (error.status === 404) {
             title = 'Page introuvable';
             message = 'Cette page n\'existe pas ou a été déplacée.';
@@ -83,6 +99,22 @@ export const RouteErrorFallback: React.FC = () => {
             message = error.statusText || message;
         }
     }
+
+    const hardReload = async () => {
+        try {
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map((r) => r.unregister()));
+            }
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map((k) => caches.delete(k)));
+            }
+        } catch {
+            /* ignore */
+        }
+        window.location.href = window.location.pathname + window.location.search;
+    };
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-[#0B0F19]">
@@ -95,19 +127,28 @@ export const RouteErrorFallback: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-lg">
                 {message}
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap justify-center">
                 <button
                     onClick={() => navigate('/')}
                     className="flex items-center gap-2 px-6 py-2.5 bg-brand-orange text-white rounded-full font-bold hover:scale-105 transition-transform"
                 >
                     <Home size={16} /> Retour au dashboard
                 </button>
-                <button
-                    onClick={() => window.location.reload()}
-                    className="flex items-center gap-2 px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                    <RefreshCw size={16} /> Recharger
-                </button>
+                {isStaleBundle ? (
+                    <button
+                        onClick={() => void hardReload()}
+                        className="flex items-center gap-2 px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        <RefreshCw size={16} /> Vider le cache et recharger
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="flex items-center gap-2 px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        <RefreshCw size={16} /> Recharger
+                    </button>
+                )}
             </div>
         </div>
     );

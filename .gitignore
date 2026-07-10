@@ -18,6 +18,7 @@ dist-ssr/
 .build/
 release/
 *.local
+.marion_installed.json
 
 # Media files
 *.mp3

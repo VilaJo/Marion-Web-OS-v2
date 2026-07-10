@@ -5,7 +5,17 @@
  * Example: formatCurrency(20000, 0) -> "20'000"
  */
 
-import type { Invoice } from './types';
+import type { Credential, Invoice } from './types';
+
+/** Coffre-fort : credentials doit toujours être un tableau (legacy = "[CHIFFRE]" chiffré). */
+export function normalizeCredentials(value: unknown): Credential[] {
+    return Array.isArray(value) ? value : [];
+}
+
+export function isCredentialsLocked(value: unknown, lockedFlag?: boolean): boolean {
+    if (lockedFlag) return true;
+    return value === '[CHIFFRE]';
+}
 export function formatCurrency(amount: number | string, decimalsOrCurrency: number | string = 2): string {
     const num = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
     

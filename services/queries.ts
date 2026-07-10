@@ -552,6 +552,8 @@ export function useEmailFolders(enabled: boolean) {
 // HELPER - Transform raw API folder data into a Project
 // ============================================================================
 
+import { normalizeCredentials, isCredentialsLocked } from '../utils';
+
 function mapFolderToProject(folder: any): Project {
     return {
         id: folder.id,
@@ -565,8 +567,9 @@ function mapFolderToProject(folder: any): Project {
         tasks: folder.tasks || [],
         invoices: folder.invoices || [],
         brandKit: folder.brandKit || { colors: [], fonts: [] },
-        credentials: folder.credentials || [],
-        moodboard: folder.moodboard || [],
+        credentials: normalizeCredentials(folder.credentials),
+        credentialsLocked: isCredentialsLocked(folder.credentials, folder.credentialsLocked),
+        moodboard: Array.isArray(folder.moodboard) ? folder.moodboard : [],
         unreadEmailCount: 0,
         archiveCategory: folder.archiveCategory,
         maintenance: folder.maintenance,
@@ -1004,6 +1007,123 @@ export function useDeleteGoogleEvent() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.events });
+        },
+    });
+}
+
+/**
+ * Check Infomaniak CalDAV sync status.
+ */
+export function useInfomaniakCalendarSync() {
+    return useQuery({
+        queryKey: ['calendar', 'infomaniak', 'sync'],
+        queryFn: async () => {
+            const res = await apiFetch('/api/v1/ical/sync-status');
+            if (!res.ok) return { connected: false };
+            return res.json();
+        },
+        staleTime: 5 * 60 * 1000,
+        refetchInterval: 3 * 60 * 1000,
+    });
+}
+
+/**
+ * Fetch Infomaniak calendar events (CalDAV).
+ */
+export function useInfomaniakCalendarEvents(enabled: boolean = true) {
+    return useQuery({
+        queryKey: ['events', 'infomaniak'],
+        queryFn: async () => {
+            const now = new Date();
+            const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const endRange = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+            const timeMin = startOfPrevMonth.toISOString();
+            const timeMax = endRange.toISOString();
+            const res = await apiFetch(`/api/v1/ical/events?time_min=${timeMin}&time_max=${timeMax}`);
+            if (!res.ok) return [];
+            const data = await res.json();
+            return (data.events || []) as CalendarEvent[];
+        },
+        enabled,
+        staleTime: 60 * 1000,
+        refetchInterval: 3 * 60 * 1000,
+    });
+}
+
+/**
+ * Create an event in Infomaniak calendar.
+ */
+export function useCreateInfomaniakEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (event: {
+            title: string;
+            description?: string;
+            date: string;
+            startTime: string;
+            duration: number;
+            location?: string;
+        }) => {
+            const res = await apiFetch('/api/v1/ical/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(event),
+            });
+            if (!res.ok) throw new Error('Impossible de créer l\'événement Infomaniak');
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['events', 'infomaniak'] });
+        },
+    });
+}
+
+/**
+ * Update an event in Infomaniak calendar.
+ */
+export function useUpdateInfomaniakEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ infomaniakEventId, event }: {
+            infomaniakEventId: string;
+            event: {
+                title: string;
+                description?: string;
+                date: string;
+                startTime: string;
+                duration: number;
+                location?: string;
+            };
+        }) => {
+            const res = await apiFetch(`/api/v1/ical/events/${encodeURIComponent(infomaniakEventId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(event),
+            });
+            if (!res.ok) throw new Error('Impossible de mettre à jour l\'événement Infomaniak');
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['events', 'infomaniak'] });
+        },
+    });
+}
+
+/**
+ * Delete an event in Infomaniak calendar.
+ */
+export function useDeleteInfomaniakEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (infomaniakEventId: string) => {
+            const res = await apiFetch(`/api/v1/ical/events/${encodeURIComponent(infomaniakEventId)}`, {
+                method: 'DELETE',
+            });
+            if (!res.ok) throw new Error('Impossible de supprimer l\'événement Infomaniak');
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['events', 'infomaniak'] });
         },
     });
 }

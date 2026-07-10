@@ -1,12 +1,30 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🦄 MARION WEB OS - LANCEMENT
 # ═══════════════════════════════════════════════════════════════════════════════
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 
-cd "$(dirname "$0")"
+marion_pause() {
+    read -r -p "Appuie sur Entrée pour fermer..."
+}
+
+marion_fail() {
+    echo ""
+    echo "❌ $1"
+    marion_pause
+    exit 1
+}
+
+if [ -z "${MARION_CLEAN_SHELL:-}" ]; then
+    export MARION_CLEAN_SHELL=1
+    exec /bin/bash --noprofile --norc "$SCRIPT_PATH" "$@"
+fi
+
+cd "$SCRIPT_DIR"
 APP_DIR="$(pwd)"
 
-clear
+command -v clear >/dev/null 2>&1 && clear || true
 echo "╔═══════════════════════════════════════════════════════════════╗"
 echo "║        🦄  MARION WEB OS                                      ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
@@ -14,93 +32,58 @@ echo ""
 
 PID_FILE=".marion.pid"
 LOG_FILE=".marion.log"
+PYTHON_BIN="$APP_DIR/.venv/bin/python"
 
-# Fonction pour vérifier si le serveur tourne
 is_server_running() {
     if [ -f "$PID_FILE" ]; then
-        PID=$(cat "$PID_FILE")
-        if ps -p $PID > /dev/null 2>&1; then
+        local pid
+        pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+        if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
             return 0
         fi
     fi
-    # Vérifier aussi si le port est utilisé
     if lsof -i :5003 > /dev/null 2>&1; then
         return 0
     fi
     return 1
 }
 
-# Vérifier si déjà en cours
 if is_server_running; then
     echo "✅ Marion est déjà en cours d'exécution !"
-    echo ""
-    echo "🌐 Ouverture du navigateur..."
     open "http://127.0.0.1:5003"
-    echo ""
-    echo "💡 Pour arrêter Marion, utilise STOPPER_MARION.command"
     sleep 3
     exit 0
 fi
 
-# Vérifier l'environnement virtuel
-if [ ! -d ".venv" ]; then
-    echo "❌ Environnement non installé !"
-    echo ""
-    echo "👉 Lance d'abord INSTALLER.command"
-    read -p "Appuie sur Entrée..."
-    exit 1
+if [ ! -x "$PYTHON_BIN" ]; then
+    marion_fail "Environnement non installé. Lance d'abord INSTALLER.command"
 fi
 
-# Démarrer le serveur
 echo "🚀 Démarrage du serveur..."
-echo ""
-
-source .venv/bin/activate
-python franck_server.py > "$LOG_FILE" 2>&1 &
+"$PYTHON_BIN" "$APP_DIR/franck_server.py" > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!
-echo $SERVER_PID > "$PID_FILE"
+echo "$SERVER_PID" > "$PID_FILE"
 
-echo "   PID: $SERVER_PID"
-
-# Attendre que le serveur soit prêt
-echo ""
 echo "⏳ Initialisation..."
-for i in {1..30}; do
-    if curl -s http://127.0.0.1:5003/api/v1/version > /dev/null 2>&1; then
-        echo ""
-        echo "✅ Serveur prêt !"
+READY=0
+for _ in $(seq 1 60); do
+    if curl -fsS --max-time 2 http://127.0.0.1:5003/api/v1/version > /dev/null 2>&1; then
+        READY=1
         break
     fi
-    echo -n "."
     sleep 1
 done
 
-# Ouvrir le navigateur
-echo ""
-echo "🌐 Ouverture du navigateur..."
-sleep 1
+if [ "$READY" -ne 1 ]; then
+    tail -20 "$LOG_FILE" 2>/dev/null || true
+    marion_fail "Serveur non prêt. Vérifie .marion.log"
+fi
+
+echo "✅ Serveur prêt !"
 open "http://127.0.0.1:5003"
+echo "🦄 Marion tourne sur http://127.0.0.1:5003"
 
-echo ""
-echo "───────────────────────────────────────────────────────────────────"
-echo ""
-echo "🦄 Marion Web OS est en cours d'exécution !"
-echo ""
-echo "   📍 URL: http://127.0.0.1:5003"
-echo "   📋 Logs: $APP_DIR/.marion.log"
-echo ""
-echo "💡 Pour arrêter: Lance STOPPER_MARION.command"
-echo "   ou ferme cette fenêtre (Ctrl+C)"
-echo ""
-echo "───────────────────────────────────────────────────────────────────"
-echo ""
-
-# Garder le terminal ouvert et surveiller le serveur
-trap "kill $SERVER_PID 2>/dev/null; rm -f $PID_FILE; echo ''; echo '👋 Marion arrêté !'; exit 0" INT TERM
-
-# Attendre que le serveur se termine
-wait $SERVER_PID
+trap 'kill "$SERVER_PID" 2>/dev/null; rm -f "$PID_FILE"; exit 0' INT TERM
+wait "$SERVER_PID" || true
 rm -f "$PID_FILE"
-echo ""
-echo "⚠️  Le serveur s'est arrêté. Vérifie les logs: $LOG_FILE"
-read -p "Appuie sur Entrée..."
+marion_pause

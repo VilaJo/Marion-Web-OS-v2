@@ -648,19 +648,19 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
     return (
         <div className="fixed inset-0 z-50 bg-slate-100 dark:bg-slate-900 flex flex-col items-center">
             
-            {/* Top Toolbar (Floating) */}
-            <div className="w-full bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex justify-between items-center shadow-sm z-50">
-                <div className="flex items-center gap-4">
+            {/* Top Toolbar */}
+            <div className="w-full bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 flex items-center gap-3 shadow-sm z-50 min-w-0">
+                <div className="flex items-center gap-3 shrink-0">
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} className="text-slate-500" /></button>
-                    <h2 className="font-serif font-bold text-lg dark:text-white">{currentInvoice.type === 'Invoice' ? t.editorInvoice : t.editorEstimate}</h2>
+                    <h2 className="font-serif font-bold text-lg dark:text-white whitespace-nowrap">{currentInvoice.type === 'Invoice' ? t.editorInvoice : t.editorEstimate}</h2>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 overflow-x-auto min-w-0 flex-1 justify-end pb-0.5 [scrollbar-width:thin]">
                     {/* Template Dropdown */}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <button 
                             onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-                            className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"
                         >
                             <BookmarkPlus size={14} /> {t.template} <ChevronDown size={12} />
                         </button>
@@ -690,12 +690,12 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                             </div>
                         )}
                     </div>
-                    {templateSaved && <span className="text-xs text-green-600 font-bold flex items-center gap-1"><Check size={12} /> {t.saved}</span>}
+                    {templateSaved && <span className="text-xs text-green-600 font-bold flex items-center gap-1 shrink-0 whitespace-nowrap"><Check size={12} /> {t.saved}</span>}
 
                     <select 
                         value={selectedBankId} 
                         onChange={(e) => setSelectedBankId(e.target.value)} 
-                        className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold"
+                        className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold shrink-0 max-w-[200px]"
                     >
                         {BANK_ACCOUNTS.map(acc => <option key={acc.id} value={acc.id}>{acc.label} - {acc.currency}</option>)}
                     </select>
@@ -703,7 +703,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     <select 
                         value={currentInvoice.currency || 'CHF'}
                         onChange={e => updateField('currency', e.target.value)}
-                        className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold"
+                        className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold shrink-0"
                     >
                         <option value="CHF">CHF</option>
                         <option value="EUR">EUR</option>
@@ -714,7 +714,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                         <select
                             value={selectedProjectId}
                             onChange={e => setSelectedProjectId(e.target.value)}
-                            className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold max-w-[220px]"
+                            className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold max-w-[220px] shrink-0"
                             title={t.chooseProjectFolder}
                         >
                             <option value="">{t.chooseProjectFolder}</option>
@@ -728,7 +728,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     <select
                         value={lang}
                         onChange={e => setLang(e.target.value as Language)}
-                        className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold"
+                        className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold shrink-0"
                     >
                         {LANGUAGE_OPTIONS.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.flag} {opt.label}</option>
@@ -736,24 +736,24 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     </select>
                     
                     {pendingLogs.length > 0 && (
-                        <button onClick={handleImportTime} className="flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-600 rounded-lg text-xs font-bold hover:bg-purple-200 transition-colors">
+                        <button onClick={handleImportTime} className="flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-600 rounded-lg text-xs font-bold hover:bg-purple-200 transition-colors shrink-0 whitespace-nowrap">
                             <Clock size={14} /> {t.importTime}
                         </button>
                     )}
 
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0"></div>
 
                     {/* Payment Link Button */}
                     <button 
                         onClick={generatePaymentLink}
-                        className="flex items-center gap-2 px-3 py-2 bg-emerald-100 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 bg-emerald-100 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors shrink-0 whitespace-nowrap"
                         title={t.generatePaymentLink}
                     >
                         <CreditCard size={14} /> {t.paymentLink}
                     </button>
 
                     {/* Récurrence */}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <select
                             value={currentInvoice.recurrence?.frequency || ''}
                             onChange={(e) => {
@@ -771,7 +771,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                     recurrence: { frequency: freq, nextRunAt: next.toISOString().split('T')[0] },
                                 }));
                             }}
-                            className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${currentInvoice.recurrence ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}
+                            className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 whitespace-nowrap ${currentInvoice.recurrence ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}
                             title="Configurer la récurrence (génère automatiquement un brouillon à chaque échéance)"
                         >
                             <option value="">↺ Une fois</option>
@@ -785,16 +785,16 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     <button
                         onClick={() => setShowHistory(true)}
                         disabled={!(currentInvoice.history && currentInvoice.history.length > 0)}
-                        className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-white rounded-lg font-bold text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-white rounded-lg font-bold text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
                         title="Voir le journal d'audit de cette facture"
                     >
                         <History size={14} /> Historique
                     </button>
 
-                    <button onClick={handleDownloadPDF} disabled={isGenerating} className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-white rounded-lg font-bold text-xs transition-colors">
+                    <button onClick={handleDownloadPDF} disabled={isGenerating} className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-white rounded-lg font-bold text-xs transition-colors shrink-0 whitespace-nowrap">
                         {isGenerating ? <RefreshCw className="animate-spin" size={14}/> : <Download size={14} />} PDF
                     </button>
-                    <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2 bg-brand-orange text-white rounded-lg font-bold text-xs shadow-md hover:shadow-lg transition-all">
+                    <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2 bg-brand-orange text-white rounded-lg font-bold text-xs shadow-md hover:shadow-lg transition-all shrink-0 whitespace-nowrap mr-1">
                         {isSaving ? <RefreshCw className="animate-spin" size={14}/> : <Save size={14} />} {t.save}
                     </button>
                 </div>

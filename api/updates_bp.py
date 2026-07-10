@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import json
 import threading
 from services.logger import get_logger
 
@@ -29,6 +30,68 @@ updates_bp = Blueprint('updates', __name__, url_prefix='/api/v1')
 _APP_ROOT = Path(__file__).resolve().parent.parent
 APP_VERSION = cfg.APP_VERSION
 GITHUB_REPO_API = "https://api.github.com/repos/VilaJo/Marion-Web-OS-v2"
+BUILD_STAMP_FILE = _APP_ROOT / "BUILD_STAMP.json"
+INSTALLED_STAMP_FILE = _APP_ROOT / ".marion_installed.json"
+
+
+def _read_json_file(path: Path) -> dict | None:
+    try:
+        if not path.is_file():
+            return None
+        data = json.loads(path.read_text(encoding='utf-8'))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _local_install_commit() -> str:
+    """Best-effort local commit id (stamp file, install record, or git)."""
+    for candidate in (BUILD_STAMP_FILE, INSTALLED_STAMP_FILE):
+        data = _read_json_file(candidate)
+        if data and isinstance(data.get('commit'), str) and data['commit'].strip():
+            return data['commit'].strip()
+
+    git_dir = _APP_ROOT / '.git'
+    if git_dir.is_dir():
+        import subprocess
+        try:
+            out = subprocess.check_output(
+                ['git', 'rev-parse', 'HEAD'],
+                cwd=str(_APP_ROOT),
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).strip()
+            if out:
+                return out
+        except Exception:
+            pass
+    return ''
+
+
+def _fetch_remote_main_commit() -> tuple[str, str]:
+    """Return (full_sha, short_sha) for latest commit on main."""
+    response = http_requests.get(
+        f"{GITHUB_REPO_API}/commits/main",
+        headers={"Accept": "application/vnd.github.v3+json"},
+        timeout=10,
+    )
+    if response.status_code != 200:
+        return '', ''
+    data = response.json()
+    sha = (data.get('sha') or '').strip()
+    return sha, sha[:7] if sha else ''
+
+
+def _commits_differ(local_commit: str, remote_commit: str) -> bool:
+    if not remote_commit:
+        return False
+    if not local_commit:
+        return True
+    return not (
+        local_commit == remote_commit
+        or local_commit.startswith(remote_commit)
+        or remote_commit.startswith(local_commit)
+    )
 
 
 def _resolved_static_folder() -> str:
@@ -95,63 +158,85 @@ def get_version():
 
 @updates_bp.route('/updates/check')
 def check_updates():
-    """Check GitHub for new releases."""
+    """Check GitHub main branch + latest release for updates."""
     try:
-        response = http_requests.get(
-            f"{GITHUB_REPO_API}/releases/latest",
-            headers={"Accept": "application/vnd.github.v3+json"},
-            timeout=10,
-        )
+        local_commit = _local_install_commit()
+        local_short = local_commit[:7] if local_commit else ''
+        remote_commit, remote_short = _fetch_remote_main_commit()
+        commits_behind = _commits_differ(local_commit, remote_commit)
 
-        if response.status_code == 200:
-            data = response.json()
-            latest_version = data.get("tag_name", "").lstrip("v")
+        latest_version = APP_VERSION
+        release_notes = ''
+        release_name = ''
+        published_at = ''
+        html_url = ''
+        download_url = ''
+        version_newer = False
 
-            def version_tuple(v):
-                return tuple(map(int, v.split(".")))
-
-            try:
-                is_newer = version_tuple(latest_version) > version_tuple(APP_VERSION)
-            except Exception:
-                is_newer = latest_version != APP_VERSION
-
-            return jsonify({
-                "currentVersion": APP_VERSION,
-                "latestVersion": latest_version,
-                "updateAvailable": is_newer,
-                "releaseNotes": data.get("body", ""),
-                "releaseName": data.get("name", ""),
-                "publishedAt": data.get("published_at", ""),
-                "downloadUrl": data.get("zipball_url", ""),
-                "htmlUrl": data.get("html_url", ""),
-            })
-        elif response.status_code == 404:
-            commits_response = http_requests.get(
-                f"{GITHUB_REPO_API}/commits?per_page=1",
+        try:
+            response = http_requests.get(
+                f"{GITHUB_REPO_API}/releases/latest",
                 headers={"Accept": "application/vnd.github.v3+json"},
                 timeout=10,
             )
-            if commits_response.status_code == 200:
-                commits = commits_response.json()
-                if commits:
-                    return jsonify({
-                        "currentVersion": APP_VERSION,
-                        "latestVersion": APP_VERSION,
-                        "updateAvailable": False,
-                        "message": "Vous utilisez la derniere version.",
-                        "lastCommit": commits[0].get("sha", "")[:7] if commits else None,
-                    })
-            return jsonify({
-                "currentVersion": APP_VERSION,
-                "latestVersion": APP_VERSION,
-                "updateAvailable": False,
-                "message": "Aucune release trouvee sur GitHub.",
-            })
+            if response.status_code == 200:
+                data = response.json()
+                latest_version = (data.get("tag_name") or APP_VERSION).lstrip("v")
+                release_notes = data.get("body", "") or ""
+                release_name = data.get("name", "") or ""
+                published_at = data.get("published_at", "") or ""
+                html_url = data.get("html_url", "") or ""
+                download_url = data.get("zipball_url", "") or ""
+
+                def version_tuple(v: str):
+                    return tuple(int(x) for x in v.split(".") if x.isdigit())
+
+                try:
+                    version_newer = version_tuple(latest_version) > version_tuple(APP_VERSION)
+                except Exception:
+                    version_newer = latest_version != APP_VERSION
+        except Exception as exc:
+            logger.warning("release check failed: %s", exc)
+
+        # Stamp version on main may be ahead of release tag
+        stamp = _read_json_file(BUILD_STAMP_FILE)
+        if stamp and isinstance(stamp.get('version'), str):
+            try:
+                sv = stamp['version']
+                def version_tuple(v: str):
+                    return tuple(int(x) for x in v.split(".") if x.isdigit())
+                if version_tuple(sv) > version_tuple(APP_VERSION):
+                    latest_version = sv
+                    version_newer = True
+            except Exception:
+                pass
+
+        update_available = commits_behind or version_newer
+
+        if update_available:
+            message = (
+                f"Nouveau code sur GitHub (main {remote_short or '?'})"
+                if commits_behind
+                else f"Version {latest_version} disponible"
+            )
         else:
-            return jsonify({
-                "error": f"GitHub API error: {response.status_code}",
-                "currentVersion": APP_VERSION,
-            }), 500
+            message = "Vous êtes synchronisé avec GitHub (branche main)."
+
+        return jsonify({
+            "currentVersion": APP_VERSION,
+            "latestVersion": latest_version,
+            "updateAvailable": update_available,
+            "commitsBehind": commits_behind,
+            "localCommit": local_short or None,
+            "remoteCommit": remote_short or None,
+            "releaseNotes": release_notes,
+            "releaseName": release_name,
+            "publishedAt": published_at,
+            "downloadUrl": download_url,
+            "htmlUrl": html_url,
+            "message": message,
+            "syncSource": "github-main",
+        })
 
     except http_requests.exceptions.Timeout:
         return jsonify({

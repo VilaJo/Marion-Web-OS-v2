@@ -1,148 +1,157 @@
-#!/bin/bash
-cd "$(dirname "$0")"
+#!/usr/bin/env bash
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🦄 MARION WEB OS — Mise à jour (GitHub main)
+# ═══════════════════════════════════════════════════════════════════════════════
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 
+if [ -z "${MARION_CLEAN_SHELL:-}" ]; then
+  export MARION_CLEAN_SHELL=1
+  exec /bin/bash --noprofile --norc "$SCRIPT_PATH" "$@"
+fi
+
+cd "$SCRIPT_DIR"
+APP_DIR="$(pwd)"
+
+command -v clear >/dev/null 2>&1 && clear || true
 echo "🦄 Mise à jour Marion Web OS"
 echo "────────────────────────────────────────────────────────────────────"
+echo "📁 $APP_DIR"
+echo ""
 
 UPDATED_VIA_GIT=0
 
-# ──────────────────────────────────────────────────────────────────────────
-# 0. Si c'est un clone Git → pull depuis le remote (évite « rien ne change » avec seulement ZIP)
-# ──────────────────────────────────────────────────────────────────────────
-if [ -d ".git" ]; then
-    echo ""
-    echo "📂 Clone Git détecté."
-    if ! command -v git >/dev/null 2>&1; then
-        echo "⚠️  git absent du PATH → on passe au téléchargement ZIP."
-    else
-        BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
-        echo "    Branche : $BRANCH"
-        REMOTE="$(git remote get-url origin 2>/dev/null || true)"
-        if [ -z "$REMOTE" ]; then
-            echo "⚠️  Pas de remote « origin » → impossible de tirer depuis GitHub."
-            echo "    Configure : git remote add origin <url-du-depot>"
-        else
-            echo "    Origin   : $REMOTE"
-            git fetch origin 2>/dev/null || true
-            if git pull --ff-only 2>/dev/null || git pull 2>/dev/null; then
-                echo "✅ git pull terminé."
-                UPDATED_VIA_GIT=1
-            else
-                echo "⚠️  git pull a échoué (conflits, hors ligne…) → téléchargement ZIP ci-dessous."
-            fi
+write_installed_stamp() {
+    if [ -f BUILD_STAMP.json ]; then
+        cp BUILD_STAMP.json .marion_installed.json
+        echo "✅ Empreinte install : $(grep -o '"commit": *"[^"]*"' BUILD_STAMP.json | head -1)"
+        return
+    fi
+    if command -v git >/dev/null 2>&1 && [ -d .git ]; then
+        COMMIT="$(git rev-parse HEAD 2>/dev/null || true)"
+        if [ -n "$COMMIT" ]; then
+            printf '{\n  "commit": "%s",\n  "updatedAt": "%s"\n}\n' "$COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .marion_installed.json
+            echo "✅ Empreinte install : ${COMMIT:0:7}"
         fi
     fi
-fi
+}
 
-if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
+select_python() {
+    for candidate in /usr/bin/python3 python3.12 python3.11 python3; do
+        command -v "$candidate" >/dev/null 2>&1 || continue
+        echo "$candidate"
+        return 0
+    done
+    return 1
+}
 
-    if [ ! -d .git ]; then
-        echo ""
-        echo "💡 Pas de dépôt Git (souvent après un ZIP). Pour activer « git pull » : lance une fois ACTIVER_GIT.command."
-    fi
-
-# 1. Sauvegarde de la config locale
-if [ -f .env.local ]; then
-    echo "🔒 Sauvegarde de votre fichier local..."
-    cp .env.local .env.local.bak
-fi
-
-# 2. Téléchargement (ZIP) — même logique que l’historique Marion
-echo ""
-echo "⬇️  Téléchargement de la version GitHub (branche main)…"
-
-URLS=(
-    "https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip"
-    "https://github.com/VilaJo/Marion-Web-OS-v2/archive/main.zip"
-)
-
-SUCCESS=0
-
-for URL in "${URLS[@]}"; do
-    echo "    Essai : $URL"
-    curl -L -o update.zip "$URL"
-
-    if unzip -t update.zip >/dev/null 2>&1; then
-        echo "✅ ZIP valide."
-        SUCCESS=1
-        break
+# ── 0. Git pull si dépôt présent ─────────────────────────────────────────────
+if [ -d .git ] && command -v git >/dev/null 2>&1; then
+    echo "📂 Clone Git — synchronisation origin/main…"
+    git fetch origin 2>/dev/null || true
+    if git pull --ff-only origin main 2>/dev/null || git pull --ff-only 2>/dev/null || git pull 2>/dev/null; then
+        echo "✅ git pull terminé."
+        UPDATED_VIA_GIT=1
     else
-        echo "⚠️  ZIP invalide, autre URL…"
+        echo "⚠️  git pull échoué → téléchargement ZIP GitHub."
     fi
-done
-
-if [ $SUCCESS -eq 0 ]; then
-    echo "❌ Impossible de télécharger une mise à jour (ZIP)."
-    head -n 5 update.zip 2>/dev/null || true
-    rm -f update.zip
-    exit 1
 fi
 
-echo "📦 Décompression…"
-unzip -q -o update.zip
+# ── 1. ZIP GitHub main (installs sans .git, ex. Marion) ───────────────────
+if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
+    if [ ! -d .git ]; then
+        echo "💡 Pas de .git — mise à jour via ZIP GitHub (branche main)."
+    fi
 
-EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "Marion-Web-OS-v2-*" | head -n 1)
+    if [ -f .env.local ]; then
+        echo "🔒 Sauvegarde .env.local…"
+        cp .env.local .env.local.bak
+    fi
 
-if [ -z "$EXTRACTED_DIR" ]; then
-    echo "❌ Dossier décompressé introuvable."
-    rm -f update.zip
-    exit 1
+    echo ""
+    echo "⬇️  Téléchargement GitHub (main)…"
+    URLS=(
+        "https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip"
+        "https://github.com/VilaJo/Marion-Web-OS-v2/archive/main.zip"
+    )
+    SUCCESS=0
+    for URL in "${URLS[@]}"; do
+        echo "    $URL"
+        if curl -fsSL -o update.zip "$URL" && unzip -t update.zip >/dev/null 2>&1; then
+            SUCCESS=1
+            break
+        fi
+        echo "    ⚠️  échec, essai suivant…"
+    done
+
+    if [ "$SUCCESS" -eq 0 ]; then
+        echo "❌ Impossible de télécharger la mise à jour."
+        rm -f update.zip
+        read -r -p "Appuie sur Entrée…"
+        exit 1
+    fi
+
+    echo "📦 Décompression…"
+    unzip -q -o update.zip
+    EXTRACTED_DIR="$(find . -maxdepth 1 -type d -name 'Marion-Web-OS-v2-*' | head -n 1)"
+    if [ -z "$EXTRACTED_DIR" ]; then
+        echo "❌ Dossier extrait introuvable."
+        rm -f update.zip
+        exit 1
+    fi
+
+    echo "📂 Fusion (code + .dist) depuis $EXTRACTED_DIR"
+    rsync -a --delete \
+        --exclude '.env.local' --exclude '.venv' --exclude '.marion.log' --exclude '.marion.pid' \
+        --exclude 'Marion Web OS Database' --exclude '.marion_installed.json' \
+        "$EXTRACTED_DIR"/ ./
+    rm -rf "$EXTRACTED_DIR" update.zip
+
+    if [ -f .env.local.bak ]; then
+        mv .env.local.bak .env.local
+        echo "✅ .env.local restauré."
+    fi
 fi
 
-echo "📂 Fusion dans le dossier actuel depuis : $EXTRACTED_DIR"
-cp -R "$EXTRACTED_DIR"/* .
-rm -rf "$EXTRACTED_DIR"
-rm -f update.zip
-
-if [ -f .env.local.bak ]; then
-    mv .env.local.bak .env.local
-    echo "✅ .env.local restauré."
-fi
-
-fi # fin branche ZIP
-
-# ──────────────────────────────────────────────────────────────────────────
-# Toujours faire : deps + build UI (sans ça « git pull » ne change pas l’écran !)
-# ──────────────────────────────────────────────────────────────────────────
-
-chmod +x *.command 2>/dev/null || true
+# ── 2. Dépendances Python ───────────────────────────────────────────────────
+chmod +x "$APP_DIR"/*.command 2>/dev/null || true
 
 echo ""
 echo "🧠 Dépendances Python…"
-if [ -d ".venv" ]; then
-    # shellcheck source=/dev/null
-    source .venv/bin/activate
-    pip install -r .requirements.txt
+PYTHON_CMD="$(select_python || true)"
+if [ -n "$PYTHON_CMD" ] && [ -x ".venv/bin/pip" ]; then
+    .venv/bin/pip install -q -r .requirements.txt || echo "⚠️  pip install partiel"
+elif [ -n "$PYTHON_CMD" ]; then
+    echo "⚠️  Pas de .venv — lance INSTALLER.command si besoin."
 else
-    echo "⚠️  Pas de .venv — lance INSTALLER.command une fois."
-    pip3 install -r .requirements.txt 2>/dev/null || true
+    echo "⚠️  Python introuvable."
 fi
 
+# ── 3. Interface — rebuild seulement si npm dispo ET .dist absent ───────────
 echo ""
-echo "🎨 Interface (obligatoire pour voir les changements après pull) …"
-if command -v npm >/dev/null 2>&1; then
-    npm install
+if [ -f .dist/index.html ]; then
+    echo "🎨 Interface : .dist déjà inclus depuis GitHub."
+elif command -v npm >/dev/null 2>&1; then
+    echo "🎨 Build interface (npm)…"
+    npm install --silent 2>/dev/null || npm install
     npm run build
-    if [ ! -f ".dist/index.html" ]; then
-        echo "❌ Pas de .dist/index.html après le build — l’interface ne pourra pas s’afficher."
-    fi
 else
-    echo "❌ npm introuvable — installe Node.js puis relance ce script."
+    echo "❌ Pas de .dist et pas de npm — l'interface ne pourra pas s'afficher."
 fi
 
-echo ""
-echo "🖥️  Icônes Bureau (dossier projet + Marion Web OS.app)…"
-if [ -f "refresh_desktop_app_icon.sh" ]; then
-    bash refresh_desktop_app_icon.sh || echo "⚠️  Icône Bureau non mise à jour (voir message ci-dessus)."
-else
-    echo "⚠️  refresh_desktop_app_icon.sh introuvable."
+# ── 4. Icônes Bureau (optionnel) ───────────────────────────────────────────
+if [ -f refresh_desktop_app_icon.sh ]; then
+    echo ""
+    bash refresh_desktop_app_icon.sh 2>/dev/null || true
 fi
+
+write_installed_stamp
 
 echo ""
 echo "────────────────────────────────────────────────────────────────────"
 echo "✨ Mise à jour terminée."
 echo ""
-echo "👉 IMPORTANT : si Marion tournait déjà, STOPPER puis LANCER (ou fermer puis rouvrir l’app),"
-echo "   puis dans Safari/Chrome : rechargement forcé (Cmd + Shift + R)."
+echo "👉 STOPPER_MARION.command puis LANCER_MARION.command"
+echo "👉 Navigateur : Cmd + Shift + R"
 echo "────────────────────────────────────────────────────────────────────"
-read -p "Appuie sur Entrée pour fermer…"
+read -r -p "Appuie sur Entrée pour fermer…"

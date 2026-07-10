@@ -6,7 +6,20 @@ import { Calendar as CalIcon, ChevronLeft, ChevronRight, Plus, Clock, Video, Cop
 import { toZonedTime, format, formatInTimeZone } from 'date-fns-tz';
 import { fr } from 'date-fns/locale';
 import { addMinutes, differenceInMinutes, parse, isBefore, startOfDay, parseISO } from 'date-fns';
-import { useCalendarSync, useGoogleCalendarEvents, useCreateGoogleEvent, useUpdateGoogleEvent, useDeleteGoogleEvent, useConnectGoogle, queryKeys } from '../services/queries';
+import {
+    useCalendarSync,
+    useGoogleCalendarEvents,
+    useCreateGoogleEvent,
+    useUpdateGoogleEvent,
+    useDeleteGoogleEvent,
+    useConnectGoogle,
+    useInfomaniakCalendarSync,
+    useInfomaniakCalendarEvents,
+    useCreateInfomaniakEvent,
+    useUpdateInfomaniakEvent,
+    useDeleteInfomaniakEvent,
+    queryKeys,
+} from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface AgendaProps {
@@ -113,10 +126,15 @@ const COMMON_CITIES = [
 const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
     // === React Query hooks for external calendar data ===
     const { data: syncStatus } = useCalendarSync();
+    const { data: infomaniakSyncStatus } = useInfomaniakCalendarSync();
     const { data: gcalEvents = [], isFetching: isSyncingGcal } = useGoogleCalendarEvents();
+    const { data: infomaniakEvents = [], isFetching: isSyncingInfomaniak } = useInfomaniakCalendarEvents();
     const createGoogleEventMutation = useCreateGoogleEvent();
     const updateGoogleEventMutation = useUpdateGoogleEvent();
     const deleteGoogleEventMutation = useDeleteGoogleEvent();
+    const createInfomaniakEventMutation = useCreateInfomaniakEvent();
+    const updateInfomaniakEventMutation = useUpdateInfomaniakEvent();
+    const deleteInfomaniakEventMutation = useDeleteInfomaniakEvent();
     const connectGoogleMutation = useConnectGoogle();
     const queryClient = useQueryClient();
 
@@ -169,6 +187,27 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         };
     }, []);
 
+    const mapInfomaniakEvent = useCallback((e: any): CalendarEvent => {
+        let type: CalendarEvent['type'] = 'To do pro';
+        if (e.colorId && GCAL_COLORID_MAP[e.colorId]) {
+            type = GCAL_COLORID_MAP[e.colorId] as CalendarEvent['type'];
+        }
+        return {
+            id: `ical-${e.infomaniakEventId || e.id}`,
+            title: e.title,
+            date: e.date,
+            startTime: e.startTime,
+            duration: e.duration || 60,
+            type,
+            colorId: e.colorId,
+            description: e.description,
+            source: 'infomaniak' as const,
+            infomaniakEventId: e.infomaniakEventId || e.id,
+            originalTimezone: e.originalTimezone,
+            originalDateTime: e.originalDateTime,
+        };
+    }, []);
+
     // Compute external events from React Query data
     const externalEvents = useMemo(() => {
         const allEvents: CalendarEvent[] = [];
@@ -177,12 +216,20 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         if (gcalEvents.length > 0) {
             allEvents.push(...gcalEvents.map(mapGoogleEvent));
         }
+        // Add Infomaniak Calendar events
+        if (infomaniakEvents.length > 0) {
+            allEvents.push(...infomaniakEvents.map(mapInfomaniakEvent));
+        }
         
         return allEvents;
-    }, [gcalEvents, mapGoogleEvent]);
+    }, [gcalEvents, infomaniakEvents, mapGoogleEvent, mapInfomaniakEvent]);
     
     // Calendar source visibility filters
-    const [visibleSources, setVisibleSources] = useState<{ local: boolean, google: boolean }>({ local: true, google: true });
+    const [visibleSources, setVisibleSources] = useState<{ local: boolean, google: boolean, infomaniak: boolean }>({
+        local: true,
+        google: true,
+        infomaniak: true,
+    });
 
     // Merge local and external events for display (avoiding duplicates)
     const allMergedEvents = useMemo(() => {
@@ -198,6 +245,9 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
             if (e.source === 'google' && e.googleEventId) {
                 return !syncedGoogleIds.has(e.googleEventId);
             }
+            if (e.source === 'infomaniak' && e.infomaniakEventId) {
+                return !localEvents.some((le) => le.infomaniakEventId === e.infomaniakEventId);
+            }
             return true;
         });
         
@@ -208,6 +258,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     const events = useMemo(() => {
         return allMergedEvents.filter(e => {
             if (e.source === 'google') return visibleSources.google;
+            if (e.source === 'infomaniak') return visibleSources.infomaniak;
             return visibleSources.local; // local or undefined source
         });
     }, [allMergedEvents, visibleSources]);
@@ -225,7 +276,9 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     // Google Calendar sync state (derived from React Query)
     const googleCalendarConnected = syncStatus?.connected ?? localStorage.getItem('marion_gcal_connected') === 'true';
     const googleCalendarEmail = syncStatus?.email ?? localStorage.getItem('marion_gcal_email');
-    const isSyncing = isSyncingGcal;
+    const infomaniakCalendarConnected = Boolean(infomaniakSyncStatus?.connected);
+    const infomaniakCalendarLabel = infomaniakSyncStatus?.username || 'Infomaniak';
+    const isSyncing = isSyncingGcal || isSyncingInfomaniak;
     const lastGoogleSync = gcalEvents.length > 0 ? new Date() : null;
 
     // Persist Google connection status to localStorage for instant UI on next load
@@ -654,6 +707,17 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         colorId: TYPE_TO_COLORID[finalEvent.type] || '',
                     },
                 });
+            } else if (finalEvent.source === 'infomaniak' && finalEvent.infomaniakEventId) {
+                updateInfomaniakEventMutation.mutate({
+                    infomaniakEventId: finalEvent.infomaniakEventId,
+                    event: {
+                        title: finalEvent.title,
+                        description: finalEvent.description,
+                        date: finalEvent.date,
+                        startTime: finalEvent.startTime,
+                        duration: finalEvent.duration || 60,
+                    },
+                });
             }
         } else {
             onAddEvent(finalEvent);
@@ -693,6 +757,26 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         }
                     );
                 }
+            }
+
+            // Sync to Infomaniak calendar when connected (except Personal events)
+            if (infomaniakCalendarConnected && finalEvent.type !== 'Perso') {
+                createInfomaniakEventMutation.mutate(
+                    {
+                        title: finalEvent.title,
+                        description: finalEvent.description || '',
+                        date: finalEvent.date,
+                        startTime: finalEvent.startTime,
+                        duration: finalEvent.duration || 60,
+                    },
+                    {
+                        onSuccess: (data) => {
+                            if (data.success && data.event?.infomaniakEventId) {
+                                onUpdateEvent({ ...finalEvent, infomaniakEventId: data.event.infomaniakEventId });
+                            }
+                        },
+                    }
+                );
             }
             
             // Navigate to the event's date and scroll to its time
@@ -741,7 +825,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                 },
             }
         );
-    }, [googleCalendarConnected, eventForm.title, eventForm.date, eventForm.startTime, eventForm.duration, currentDate, createGoogleEventMutation]);
+    }, [googleCalendarConnected, eventForm.title, eventForm.date, eventForm.startTime, eventForm.duration, currentDate, createGoogleEventMutation, eventForm.type]);
 
     const handleGridClick = (date: Date, hour: number) => {
         setFormError('');
@@ -1096,6 +1180,21 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                     <div className="min-w-0">
                                         <div className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Google Calendar</div>
                                         {googleCalendarEmail && <div className="text-[11px] text-slate-400 truncate">{googleCalendarEmail}</div>}
+                                    </div>
+                                </label>
+                            )}
+                            {infomaniakCalendarConnected && (
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={visibleSources.infomaniak}
+                                        onChange={() => setVisibleSources(prev => ({ ...prev, infomaniak: !prev.infomaniak }))}
+                                        className="w-4 h-4 rounded accent-cyan-500 cursor-pointer"
+                                    />
+                                    <span className="w-3 h-3 rounded-sm bg-cyan-500 flex-shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Infomaniak Calendar</div>
+                                        <div className="text-[11px] text-slate-400 truncate">{infomaniakCalendarLabel}</div>
                                     </div>
                                 </label>
                             )}
@@ -1518,6 +1617,10 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             const gid = eventForm.googleEventId;
                             if (gid) {
                                 deleteGoogleEventMutation.mutate(gid);
+                            }
+                            const iid = eventForm.infomaniakEventId;
+                            if (iid) {
+                                deleteInfomaniakEventMutation.mutate(iid);
                             }
                             onDeleteEvent(eventForm.id!);
                             setShowEventModal(false);

@@ -342,6 +342,7 @@ export interface MeetingReport {
         fonts: BrandFont[];
     };
     credentials?: Credential[];
+    credentialsLocked?: boolean;
     moodboard?: MoodboardItem[]; // New: For creative assets
     progress: number; // 0-100
     createdAt: string;
@@ -365,12 +366,14 @@ export interface CalendarEvent {
     colorId?: string;
     meetLink?: string;
     description?: string;
+    location?: string;
     originalTimezone?: string;
     originalDateTime?: string; // ISO string
-    source?: 'local' | 'iCal' | 'google';
+    source?: 'local' | 'iCal' | 'google' | 'infomaniak';
     isAppEvent?: boolean;
     calendarName?: string;
     googleEventId?: string;
+    infomaniakEventId?: string;
 }
   
   export interface FinderItem {

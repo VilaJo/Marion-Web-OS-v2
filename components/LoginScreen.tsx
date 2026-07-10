@@ -52,6 +52,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             const data = await parseMarionAuthResponse(response);
 
             setIsConfigured(data.configured === true);
+            if (data.corrupt === true) {
+                setError('Ancien mot de passe illisible. Utilise REINITIALISER_MOT_DE_PASSE.command puis rafraîchis (Cmd+R).');
+                setIsConfigured(false);
+            }
             
             // If already authenticated, skip login
             if (data.configured && data.authenticated) {
@@ -61,9 +65,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                 }
             }
         } catch (err) {
-            // Backend might not be ready yet - default to setup mode
             console.error('Auth check failed:', err);
-            setIsConfigured(false);
+            setError('Impossible de joindre Marion. Lance LANCER_MARION.command puis rafraîchis la page (Cmd+R).');
+            setIsConfigured(null);
         } finally {
             setIsCheckingAuth(false);
         }
@@ -95,7 +99,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             const data = await parseMarionAuthResponse(response);
 
             if (!response.ok) {
-                throw new Error(typeof data.error === 'string' ? data.error : `Erreur ${response.status}`);
+                const msg = typeof data.error === 'string' ? data.error : `Erreur ${response.status}`;
+                if (/deja configure|déjà configur/i.test(msg)) {
+                    setIsConfigured(true);
+                    setError('Un mot de passe existe déjà. Connecte-toi ou clique « Mot de passe oublié ».');
+                    return;
+                }
+                throw new Error(msg);
             }
 
             const token = data.token;
@@ -130,6 +140,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             const data = await parseMarionAuthResponse(response);
 
             if (!response.ok) {
+                if (data.code === 'CORRUPT_AUTH') {
+                    sessionStorage.removeItem('marion_token');
+                    setIsConfigured(false);
+                    setPassword('');
+                    setError(typeof data.error === 'string' ? data.error : 'Mot de passe réinitialisé — rafraîchis la page.');
+                    window.location.reload();
+                    return;
+                }
                 throw new Error(typeof data.error === 'string' ? data.error : 'Mot de passe incorrect');
             }
 
@@ -175,7 +193,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             setShowResetConfirm(false);
             setIsConfigured(false);
             setPassword('');
+            setConfirmPassword('');
             setResetConfirmText('');
+            setError('');
+            window.location.reload();
         } catch (err: any) {
             setError(err.message || 'Erreur de réinitialisation');
         } finally {
@@ -207,6 +228,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                             Chargement...
                         </p>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (isConfigured === null) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white/80 rounded-3xl p-8 text-center shadow-xl">
+                    <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                    <h1 className="text-xl font-semibold text-slate-800 mb-2">Marion ne répond pas</h1>
+                    <p className="text-slate-600 text-sm mb-6">{error}</p>
+                    <button
+                        type="button"
+                        onClick={() => { setIsCheckingAuth(true); setError(''); checkAuthStatus(); }}
+                        className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white font-semibold py-3 rounded-2xl"
+                    >
+                        Réessayer
+                    </button>
                 </div>
             </div>
         );
@@ -337,6 +377,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                         </div>
                     </form>
 
+                    <button
+                        type="button"
+                        onClick={() => setShowResetConfirm(true)}
+                        className="mt-5 w-full text-slate-400 text-sm hover:text-[#FF7E5F] transition-colors"
+                        style={{ fontFamily: 'Raleway, sans-serif' }}
+                    >
+                        Mot de passe oublié ? Réinitialiser
+                    </button>
+
+                    {showResetConfirm && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+                            <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl">
+                                <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                                    Tape <strong>RESET</strong> puis valide. Tes dossiers clients restent intacts.
+                                </p>
+                                <input
+                                    type="text"
+                                    value={resetConfirmText}
+                                    onChange={(e) => setResetConfirmText(e.target.value.toUpperCase())}
+                                    placeholder="RESET"
+                                    className="w-full border rounded-2xl py-3 px-4 mb-4 tabular-nums"
+                                />
+                                {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={() => { setShowResetConfirm(false); setResetConfirmText(''); setError(''); }} className="flex-1 py-3 rounded-2xl bg-slate-100">Annuler</button>
+                                    <button type="button" onClick={handleResetAuth} disabled={isResetting || resetConfirmText !== 'RESET'} className="flex-1 py-3 rounded-2xl bg-red-500 text-white disabled:opacity-50">Réinitialiser</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Skip Button (optional, for development) */}
                     {onSkip && (
                         <button
@@ -465,7 +536,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
             {/* Reset Confirmation Modal */}
             {showResetConfirm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
                     <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl">
                         <div className="flex items-center gap-4 mb-5">
                             <div className="w-14 h-14 bg-red-100 dark:bg-red-500/20 rounded-2xl flex items-center justify-center">

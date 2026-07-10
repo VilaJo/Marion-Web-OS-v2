@@ -95,14 +95,83 @@ wait_for_server() {
     return 1
 }
 
+LEGACY_CANDIDATES=(
+    "$HOME/Desktop/Marion Web OS Database"
+    "$HOME/Bureau/Marion Web OS Database"
+    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Desktop/Marion Web OS Database"
+    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Bureau/Marion Web OS Database"
+)
+
+folder_has_client_data() {
+    local dir="$1"
+    [ -d "$dir" ] || return 1
+    [ -f "$dir/marion.db" ] && return 0
+    [ -d "$dir/1. En cours" ] && return 0
+    [ -d "$dir/4. Prospects" ] && return 0
+    [ -d "$dir/2. Archives" ] && return 0
+    [ -d "$dir/3. Terminés" ] && return 0
+    [ -d "$dir/5. Archivés" ] && return 0
+    [ -d "$dir/backups" ] && return 0
+    local first
+    first="$(find "$dir" -mindepth 1 -maxdepth 1 ! -name '.*' -print -quit 2>/dev/null || true)"
+    [ -n "$first" ]
+}
+
+read_data_path_from_config() {
+    local f line key val
+    for f in "$SUPPORT/MARION-env.local" "$SUPPORT/.env.local" "$SUPPORT/.env"; do
+        [ -f "$f" ] || continue
+        while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in
+                ''|\#*) continue ;;
+                DATA_PATH=*)
+                    val="${line#DATA_PATH=}"
+                    val="${val%\"}"
+                    val="${val#\"}"
+                    val="${val%\'}"
+                    val="${val#\'}"
+                    if [ -n "$val" ]; then
+                        echo "$val"
+                        return 0
+                    fi
+                    ;;
+            esac
+        done < "$f"
+    done
+    return 1
+}
+
+find_legacy_desktop_data() {
+    local candidate
+    for candidate in "${LEGACY_CANDIDATES[@]}"; do
+        if folder_has_client_data "$candidate"; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 ensure_data_dir() {
-    if [ -d "$LEGACY_DATA" ] && [ -n "$(ls -A "$LEGACY_DATA" 2>/dev/null || true)" ]; then
-        DATA_DIR="$LEGACY_DATA"
-        log "Using legacy data folder: $DATA_DIR"
+    local configured legacy
+
+    configured="$(read_data_path_from_config 2>/dev/null || true)"
+    if [ -n "$configured" ]; then
+        DATA_DIR="$configured"
+        mkdir -p "$DATA_DIR"
+        log "Using DATA_PATH from config file: $DATA_DIR"
         return 0
     fi
+
+    legacy="$(find_legacy_desktop_data 2>/dev/null || true)"
+    if [ -n "$legacy" ]; then
+        DATA_DIR="$legacy"
+        log "Using legacy Desktop database folder: $DATA_DIR"
+        return 0
+    fi
+
     mkdir -p "$DATA_DIR"
-    log "Using data folder: $DATA_DIR"
+    log "Using Application Support data folder: $DATA_DIR"
 }
 
 ensure_env_file() {
