@@ -158,7 +158,7 @@ echo "🖥️  Création de l'application Bureau..."
 echo ""
 
 DESKTOP_PATH="$HOME/Desktop"
-APP_BUNDLE="$DESKTOP_PATH/Marion Web OS.app"
+APP_BUNDLE="$DESKTOP_PATH/Eonora Tech OS.app"
 
 # Supprimer l'ancienne version si elle existe
 if [ -d "$APP_BUNDLE" ]; then
@@ -182,9 +182,9 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
     <key>CFBundleIdentifier</key>
     <string>ch.jvautomation.marion-web-os</string>
     <key>CFBundleName</key>
-    <string>Marion Web OS</string>
+    <string>Eonora Tech OS</string>
     <key>CFBundleDisplayName</key>
-    <string>Marion Web OS</string>
+    <string>Eonora Tech OS</string>
     <key>CFBundleVersion</key>
     <string>2.7.2</string>
     <key>CFBundleShortVersionString</key>
@@ -206,7 +206,7 @@ PLIST
 # Script de lancement (utilise le chemin complet vers python)
 cat > "$APP_BUNDLE/Contents/MacOS/launcher" << LAUNCHER
 #!/bin/bash
-# Marion Web OS Launcher - Fixed for double-click
+# Eonora Tech OS Launcher - Fixed for double-click
 
 APP_PATH="$APP_DIR"
 LOG_FILE="\$APP_PATH/.marion.log"
@@ -215,7 +215,7 @@ PYTHON_PATH="\$APP_PATH/.venv/bin/python"
 
 cd "\$APP_PATH" || exit 1
 
-echo "=== Marion Web OS Launch - \$(date) ===" >> "\$LOG_FILE"
+echo "=== Eonora Tech OS Launch - \$(date) ===" >> "\$LOG_FILE"
 
 is_server_running() {
     if [ -f "\$PID_FILE" ]; then
@@ -245,7 +245,7 @@ if ! is_server_running; then
     echo "Starting server..." >> "\$LOG_FILE"
     
     if [ ! -f "\$PYTHON_PATH" ]; then
-        osascript -e 'display alert "Marion Web OS" message "L'\''environnement Python n'\''est pas installé.\n\nLancez INSTALLER.command d'\''abord." as critical'
+        osascript -e 'display alert "Eonora Tech OS" message "L'\''environnement Python n'\''est pas installé.\n\nLancez INSTALLER.command d'\''abord." as critical'
         exit 1
     fi
     
@@ -253,7 +253,7 @@ if ! is_server_running; then
     echo \$! > "\$PID_FILE"
     
     if ! wait_for_server; then
-        osascript -e 'display alert "Marion Web OS" message "Le serveur n'\''a pas pu démarrer.\n\nVérifiez les logs: .marion.log" as critical'
+        osascript -e 'display alert "Eonora Tech OS" message "Le serveur n'\''a pas pu démarrer.\n\nVérifiez les logs: .marion.log" as critical'
         exit 1
     fi
 fi
@@ -279,7 +279,7 @@ echo "────────────────────────�
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
 echo "💾 Dossiers clients + SQLite : emplacement PAR DÉFAUT sur ce Mac :"
-DATA_ROOT="$HOME/Desktop/Marion Web OS Database"
+DATA_ROOT="$HOME/Desktop/Eonora Tech OS Database"
 echo "    $DATA_ROOT"
 if mkdir -p "$DATA_ROOT" 2>/dev/null; then
     echo "   ✅ Ce dossier sur le Bureau est prêt — garde-le seul lors d'une réinstallation."
@@ -321,7 +321,7 @@ echo "║        ✨  INSTALLATION TERMINÉE !                            ║"
 echo "║                                                               ║"
 echo "╠═══════════════════════════════════════════════════════════════╣"
 echo "║                                                               ║"
-echo "║   🖥️  Une icône 'Marion Web OS' a été créée sur ton Bureau    ║"
+echo "║   🖥️  Une icône 'Eonora Tech OS' a été créée sur ton Bureau    ║"
 echo "║                                                               ║"
 echo "║   👉 Double-clique dessus pour lancer l'application !         ║"
 echo "║                                                               ║"
@@ -329,8 +329,8 @@ echo "║   📥 Mise à jour : git pull — ou METTRE_A_JOUR.command        ║
 echo "║      ACTIVER_GIT.command si pas de dossier .git              ║"
 echo "║                                                               ║"
 echo "║   🗂️  Réinstall : garde seul sur le Bureau le dossier         ║"
-echo "║      « Marion Web OS Database » ; supprime le dossier code   ║"
-echo "║      et Marion Web OS.app puis retélécharge. Lire alors       ║"
+echo "║      « Eonora Tech OS Database » ; supprime le dossier code   ║"
+echo "║      et Eonora Tech OS.app puis retélécharge. Lire alors       ║"
 echo "║      REINSTALLATION_PROPURE.txt dans le projet.               ║"
 echo "║                                                               ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"

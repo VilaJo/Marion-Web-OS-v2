@@ -19,8 +19,8 @@ const MarionLogo = ({ size = 80, spinning = false, success = false }: { size?: n
             </div>
         ) : (
             <img 
-                src="/logo-marion.png" 
-                alt="Marion Web OS" 
+                src="/logo-eonora.png" 
+                alt="Eonora Tech OS" 
                 className="drop-shadow-xl"
                 style={{ width: size, height: size, objectFit: 'contain' }}
             />

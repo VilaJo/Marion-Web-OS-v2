@@ -4,11 +4,11 @@
 
 ```mermaid
 C4Container
-    title Containers - Marion Web OS
+    title Containers - Eonora Tech OS
     
     Person(marion, "Marion")
     
-    Container_Boundary(mwos, "Marion Web OS") {
+    Container_Boundary(mwos, "Eonora Tech OS") {
         Container(spa, "SPA React", "Vite, TypeScript, Tailwind, React Query")
         Container(flask, "Flask API", "Python 3.12+, Blueprints, Auth")
         Container(sqldb, "SQLite", "Auth, OAuth, projets, portail, email")

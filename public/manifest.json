@@ -1,6 +1,6 @@
 {
-  "name": "Marion Web OS",
-  "short_name": "Marion",
+  "name": "Eonora Tech OS",
+  "short_name": "Eonora",
   "description": "Votre espace de travail personnel - Gestion clients, facturation, agenda et plus",
   "start_url": "/",
   "display": "standalone",
@@ -66,14 +66,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Marion Web OS - Dashboard"
+      "label": "Eonora Tech OS - Dashboard"
     },
     {
       "src": "/screenshots/mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Marion Web OS - Mobile"
+      "label": "Eonora Tech OS - Mobile"
     }
   ],
   "shortcuts": [

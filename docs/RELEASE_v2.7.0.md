@@ -50,7 +50,7 @@ Release ciblée pour Marion (nouveau MacBook Air M5) : facturation professionnel
 1. Télécharger la release **v2.7.0** ou le ZIP `main` depuis GitHub
 2. Double-clic **`INSTALLER.command`**
 3. Copier le fichier **`.env`** fourni par Johan (ne pas le publier sur GitHub)
-4. Lancer **`Marion Web OS.app`** sur le Bureau
+4. Lancer **`Eonora Tech OS.app`** sur le Bureau
 5. Paramètres → Connecter Google Calendar + renseigner IDE/TVA/IBAN
 
 Guide détaillé : [`docs/INSTALL_MARION.md`](./INSTALL_MARION.md)

@@ -168,18 +168,18 @@ export function useEmailWidget(props: EmailWidgetProps) {
         setSelectedIds(new Set());
     }, [currentFolder, isConnected]);
 
-    // ------ Signature Marion Web ------
+    // ------ Signature Eonora Tech ------
     // The HTML signature uses cid:marionweb_logo for the logo image.
     // The backend attaches the actual logo PNG as an inline CID attachment.
     const SIGNATURE_HTML = `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Helvetica,Arial,sans-serif;color:#334155;font-size:14px;line-height:1.6">
   <tr>
     <td style="padding-bottom:10px">
-      <img src="cid:marionweb_logo" alt="Marion Web" width="22" height="20" style="vertical-align:middle;margin-right:6px" />
-      <span style="font-size:18px;font-weight:700;color:#334155">Marion Web</span>
+      <img src="cid:marionweb_logo" alt="Eonora Tech" width="22" height="20" style="vertical-align:middle;margin-right:6px" />
+      <span style="font-size:18px;font-weight:700;color:#334155">Eonora Tech</span>
     </td>
   </tr>
   <tr><td style="padding-bottom:4px"><a href="tel:+41799404847" style="color:#334155;text-decoration:none">+41 79 940 48 47</a></td></tr>
-  <tr><td style="padding-bottom:16px"><a href="https://marionweb.ch/" style="color:#334155;text-decoration:none">https://marionweb.ch/</a></td></tr>
+  <tr><td style="padding-bottom:16px"><a href="https://eonoratech.ch/" style="color:#334155;text-decoration:none">https://eonoratech.ch/</a></td></tr>
   <tr>
     <td style="font-size:11px;color:#94a3b8;line-height:1.5;max-width:600px">
       CONFIDENTIALITY NOTICE : This email and any documents or files attached to it may contain confidential information that is legally privileged. In particular, please note that our e-mail messages may originate or be delivered in Switzerland. Article 50 of the Swiss Law on Telecommunications provides that the dissemination or use of non-public information received in error is punishable by up to one year imprisonment. Do not read this e-mail if you are not the intended recipient. If you have received this transmission in error, please immediately notify us by reply e-mail and confirm that you have destroyed the transmission and its attachments. Thank you.
@@ -187,7 +187,7 @@ export function useEmailWidget(props: EmailWidgetProps) {
   </tr>
 </table>`;
 
-    const SIGNATURE_PLAIN = `\n\n--\nMarion Web\n+41 79 940 48 47\nhttps://marionweb.ch/`;
+    const SIGNATURE_PLAIN = `\n\n--\nEonora Tech\n+41 79 940 48 47\nhttps://eonoratech.ch/`;
 
     const getSignatureText = useCallback((): string => {
         return SIGNATURE_PLAIN;

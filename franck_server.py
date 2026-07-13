@@ -1,5 +1,5 @@
 """
-Marion Web OS - Main Flask Application
+Eonora Tech OS - Main Flask Application
 =======================================
 Thin entry-point that:
   1. Creates the Flask app and applies configuration
@@ -283,7 +283,7 @@ if __name__ == '__main__':
         client = get_client()
         logger.info("Client Status: %s", 'Configured' if client else 'Not Configured')
 
-        logger.info("Starting Marion Web OS on %s:%s...", cfg.HOST, cfg.PORT)
+        logger.info("Starting Eonora Tech OS on %s:%s...", cfg.HOST, cfg.PORT)
         app.run(host=cfg.HOST, port=cfg.PORT, debug=cfg.DEBUG, use_reloader=False)
     except Exception as e:
         logger.critical("CRITICAL STARTUP ERROR: %s", e, exc_info=True)

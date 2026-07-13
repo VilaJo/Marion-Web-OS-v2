@@ -12,7 +12,7 @@ const meta: Meta<typeof Card> = {
     docs: {
       description: {
         component:
-          'Carte glassmorphisme — composant fondamental de Marion Web OS. Utilise la classe `.glass` avec `rounded-4xl` (32px) et un flou d\'arrière-plan.',
+          'Carte glassmorphisme — composant fondamental de Eonora Tech OS. Utilise la classe `.glass` avec `rounded-4xl` (32px) et un flou d\'arrière-plan.',
       },
     },
   },
@@ -33,7 +33,7 @@ export const Default: Story = {
           Titre de la carte
         </h3>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Contenu de la carte avec le style glassmorphisme signature de Marion Web OS.
+          Contenu de la carte avec le style glassmorphisme signature de Eonora Tech OS.
         </p>
       </div>
     ),

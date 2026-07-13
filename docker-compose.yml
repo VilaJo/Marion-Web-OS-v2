@@ -1,4 +1,4 @@
-# Marion Web OS - Docker Compose
+# Eonora Tech OS - Docker Compose
 # Usage:
 #   docker compose up -d          # Start in background
 #   docker compose logs -f        # Follow logs
@@ -41,7 +41,7 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
-      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Marion Web OS}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Eonora Tech OS}
       # CORS
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5003}
     restart: unless-stopped

@@ -6,7 +6,7 @@ Accepté
 
 ## Contexte
 
-Marion Web OS doit stocker des données structurées (utilisateurs, sessions, projets, tâches) tout en restant local-first et simple à déployer.
+Eonora Tech OS doit stocker des données structurées (utilisateurs, sessions, projets, tâches) tout en restant local-first et simple à déployer.
 
 ## Décision
 

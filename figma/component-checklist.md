@@ -1,4 +1,4 @@
-# Marion Web OS - Figma Component Checklist
+# Eonora Tech OS - Figma Component Checklist
 
 > Checklist of every component, screen, and state to build in Figma.
 > Each item should exist in Light, Dark (Space), and Unicorn themes.

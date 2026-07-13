@@ -66,7 +66,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             }
         } catch (err) {
             console.error('Auth check failed:', err);
-            setError('Impossible de joindre Marion. Lance LANCER_MARION.command puis rafraîchis la page (Cmd+R).');
+            setError('Impossible de joindre Marion. Lance LANCER_EONORA.command puis rafraîchis la page (Cmd+R).');
             setIsConfigured(null);
         } finally {
             setIsCheckingAuth(false);
@@ -111,7 +111,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
             const token = data.token;
             if (typeof token !== 'string' || !token) {
                 throw new Error(
-                    'Session non créée. Vérifie que le dossier « Marion Web OS Database » est accessible et redémarre Marion.'
+                    'Session non créée. Vérifie que le dossier « Eonora Tech OS Database » est accessible et redémarre Marion.'
                 );
             }
 
@@ -208,8 +208,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     const MarionLogo = ({ size = 80 }: { size?: number }) => (
         <div className="relative">
             <img 
-                src="/logo-marion.png" 
-                alt="Marion Web OS" 
+                src="/logo-eonora.png" 
+                alt="Eonora Tech OS" 
                 className="drop-shadow-xl"
                 style={{ width: size, height: size, objectFit: 'contain' }}
             />
@@ -440,7 +440,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                         className="text-3xl font-semibold text-slate-800 dark:text-white mb-3 drop-shadow-sm dark:drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
                         style={{ fontFamily: 'Montserrat, sans-serif' }}
                     >
-                        Marion Web OS
+                        Eonora Tech OS
                     </h1>
                     <p 
                         className="text-slate-500 dark:text-slate-300"

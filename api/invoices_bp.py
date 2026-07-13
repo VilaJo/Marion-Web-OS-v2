@@ -24,7 +24,7 @@ invoices_bp = Blueprint('invoices', __name__, url_prefix='/api/v1')
 # INVOICE NUMBERING — Swiss-grade sequential, no-gap, year-scoped, atomic
 # ============================================================================
 #
-# Stockage : ~/Marion Web OS/.invoice_counters.json (à la racine de DESKTOP_PATH)
+# Stockage : ~/Eonora Tech OS/.invoice_counters.json (à la racine de DESKTOP_PATH)
 #   {
 #     "2026": { "next": 42 },
 #     "2025": { "next": 117 },

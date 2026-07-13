@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate PWA icons for Marion Web OS
+Generate PWA icons for Eonora Tech OS
 Creates icons in various sizes from an SVG template
 """
 
@@ -53,7 +53,7 @@ SPLASH_SVG = '''<svg width="{width}" height="{height}" viewBox="0 0 {width} {hei
     <circle cx="0" cy="0" r="80" fill="url(#logoGrad)"/>
     <text x="0" y="28" font-family="Georgia, serif" font-size="90" font-style="italic" fill="white" text-anchor="middle">M</text>
   </g>
-  <text x="{cx}" y="{texty}" font-family="Montserrat, sans-serif" font-size="32" font-weight="600" fill="#1e293b" text-anchor="middle">Marion Web OS</text>
+  <text x="{cx}" y="{texty}" font-family="Montserrat, sans-serif" font-size="32" font-weight="600" fill="#1e293b" text-anchor="middle">Eonora Tech OS</text>
 </svg>'''
 
 def create_icon_svg(size: int, output_path: Path):
@@ -79,7 +79,7 @@ def main():
     icons_path.mkdir(parents=True, exist_ok=True)
     splash_path.mkdir(parents=True, exist_ok=True)
     
-    print("🎨 Generating PWA icons for Marion Web OS...")
+    print("🎨 Generating PWA icons for Eonora Tech OS...")
     print()
     
     # Generate icons

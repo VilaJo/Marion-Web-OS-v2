@@ -1,5 +1,5 @@
 """
-Marion Web OS - Structured Logger
+Eonora Tech OS - Structured Logger
 =================================
 Provides a configured logger with:
   - Console handler (stdout) — always active
@@ -58,7 +58,7 @@ def init_logging(
 
     # Resolve log directory
     if data_path is None:
-        data_path = os.getenv('DATA_PATH', str(Path.home() / 'Desktop' / 'Marion Web OS Database'))
+        data_path = os.getenv('DATA_PATH', str(Path.home() / 'Desktop' / 'Eonora Tech OS Database'))
     _log_dir = Path(data_path) / 'logs'
     _log_dir.mkdir(parents=True, exist_ok=True)
 

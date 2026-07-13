@@ -1,11 +1,11 @@
 #!/bin/bash
-# Regenerate AppIcon.icns, update ~/Desktop/Marion Web OS.app, and set this folder's icon
+# Regenerate AppIcon.icns, update ~/Desktop/Eonora Tech OS.app, and set this folder's icon
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
-DESKTOP_APP="$HOME/Desktop/Marion Web OS.app"
+DESKTOP_APP="$HOME/Desktop/Eonora Tech OS.app"
 ICNS_SRC="$APP_DIR/public/icons/AppIcon.icns"
-LOGO_SRC="$APP_DIR/public/logo-marion.png"
+LOGO_SRC="$APP_DIR/public/logo-eonora.png"
 
 set_macos_folder_icon() {
     local folder="$1"

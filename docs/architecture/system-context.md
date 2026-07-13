@@ -4,12 +4,12 @@
 
 ```mermaid
 C4Context
-    title Contexte Système - Marion Web OS
+    title Contexte Système - Eonora Tech OS
     
     Person(marion, "Marion", "Freelance créative utilisatrice")
     Person(client, "Client", "Utilisateur du portail client")
     
-    System(mwos, "Marion Web OS", "Business OS local-first : CRM, projets, finances, IA")
+    System(mwos, "Eonora Tech OS", "Business OS local-first : CRM, projets, finances, IA")
     
     System_Ext(infomaniak, "Infomaniak Mail", "IMAP/SMTP — emails")
     System_Ext(google, "Google APIs", "Calendar, Drive, Gemini")

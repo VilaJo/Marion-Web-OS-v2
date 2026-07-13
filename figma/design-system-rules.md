@@ -1,4 +1,4 @@
-# Marion Web OS - Design System Rules
+# Eonora Tech OS - Design System Rules
 
 > Rules for translating Figma designs into code and maintaining consistency.
 
@@ -196,7 +196,7 @@ className="rounded-t-3xl md:rounded-4xl"  // Bottom sheet → centered modal
 ## 9. Project Structure
 
 ```
-Marion Web OS/
+Eonora Tech OS/
 ├── components/         # All React components
 │   ├── Shared.tsx      # Badge, Card, Modal, Tooltip, EmptyState, Toast
 │   ├── AppHeader.tsx   # Main navigation header

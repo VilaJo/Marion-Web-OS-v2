@@ -587,7 +587,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                 >
                     <h1 className="text-2xl font-bold mb-1">Brand Kit – {project.clientName}</h1>
                     <p className="text-xs text-slate-500 mb-6">
-                        Généré depuis Marion Web OS – section Brand Center.
+                        Généré depuis Eonora Tech OS – section Brand Center.
                     </p>
 
                     <section className="mb-8">

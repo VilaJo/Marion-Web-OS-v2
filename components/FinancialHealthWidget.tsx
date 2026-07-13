@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizza, Ship, Mic, ListTodo, RefreshCw } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizza, Ship, Mic, ListTodo, RefreshCw, Pencil, Trash2, Check, X } from 'lucide-react';
 import { Project, Expense, Invoice } from '../types';
 import { Card } from './Shared';
 import { formatCurrency, invoiceEffectiveAmount } from '../utils';
@@ -37,8 +37,10 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     // Persist view preference in localStorage
     const [showTodo, setShowTodo] = useState(() => {
         try {
-            return localStorage.getItem('marion_dashboard_view') === 'todo';
-        } catch { return false; }
+            const saved = localStorage.getItem('marion_dashboard_view');
+            if (saved === 'finance') return false;
+            return true;
+        } catch { return true; }
     });
     const [isSwitchingView, setIsSwitchingView] = useState(false);
 
@@ -102,6 +104,11 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
             ));
         }
         setEditingTodoId(null);
+    };
+
+    const deleteTodo = (id: string) => {
+        setTodos(prev => prev.filter(t => t.id !== id));
+        if (editingTodoId === id) setEditingTodoId(null);
     };
 
     const formatTimeLabel = (remindAt: string) => {
@@ -485,8 +492,8 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                             {/* Logo */}
                             <div className="w-14 h-14 relative z-10 animate-pulse">
                                 <img 
-                                    src="/logo-marion.png" 
-                                    alt="Marion" 
+                                    src="/logo-eonora.png" 
+                                    alt="Eonora" 
                                     className="w-full h-full object-contain drop-shadow-lg" 
                                 />
                             </div>
@@ -628,8 +635,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                                     return (
                                         <div
                                             key={todo.id}
-                                            className={`flex items-start gap-3 rounded-xl px-3 py-2.5 bg-gradient-to-r ${set} border shadow-sm cursor-pointer`}
-                                            onClick={() => editingTodoId !== todo.id && setEditingTodoId(todo.id)}
+                                            className={`flex items-start gap-3 rounded-xl px-3 py-2.5 bg-gradient-to-r ${set} border shadow-sm`}
                                         >
                                             <input
                                                 type="checkbox"
@@ -645,15 +651,14 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                                                 onClick={(e) => e.stopPropagation()}
                                                 className="mt-1.5 w-4 h-4 rounded border-2 border-slate-300 text-pink-500 focus:ring-pink-400 shrink-0"
                                             />
-                                            <div className="flex-1 min-w-0" onClick={(e) => { if (editingTodoId === todo.id) e.stopPropagation(); }}>
+                                            <div className="flex-1 min-w-0">
                                                 {editingTodoId === todo.id ? (
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                                                         <input
                                                             ref={editInputRef}
                                                             type="text"
                                                             value={editingTodoText}
                                                             onChange={(e) => setEditingTodoText(e.target.value)}
-                                                            onBlur={() => saveTodoEdit(todo.id)}
                                                             onKeyDown={(e) => {
                                                                 if (e.key === 'Enter') saveTodoEdit(todo.id);
                                                                 if (e.key === 'Escape') {
@@ -679,6 +684,22 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                                                             />
                                                             <span className="text-[10px] text-slate-500">(rappel 30 min avant)</span>
                                                         </div>
+                                                        <div className="flex items-center gap-2 pt-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => saveTodoEdit(todo.id)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-brand-orange text-white hover:bg-orange-600"
+                                                            >
+                                                                <Check size={12} /> Enregistrer
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingTodoId(null)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/80 dark:bg-slate-700 text-slate-600 dark:text-slate-200"
+                                                            >
+                                                                <X size={12} /> Annuler
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-2 flex-wrap">
@@ -692,6 +713,28 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                                                     <div className={`text-[10px] font-semibold mt-1 flex items-center gap-1 ${accent}`}>
                                                         <Clock size={10} /> Vers {formatTimeLabel(todo.remindAt)} · rappel 30 min avant
                                                     </div>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                {editingTodoId !== todo.id && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingTodoId(todo.id)}
+                                                            className="p-1.5 rounded-lg bg-white/70 dark:bg-slate-800/70 text-slate-500 hover:text-brand-orange transition-colors"
+                                                            title="Modifier"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => deleteTodo(todo.id)}
+                                                            className="p-1.5 rounded-lg bg-white/70 dark:bg-slate-800/70 text-slate-500 hover:text-red-500 transition-colors"
+                                                            title="Supprimer"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>

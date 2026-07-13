@@ -1166,7 +1166,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                     className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
                                 />
                                 <span className="w-3 h-3 rounded-sm bg-brand-orange flex-shrink-0" />
-                                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Marion Web OS</span>
+                                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Eonora Tech OS</span>
                             </label>
                             {googleCalendarConnected && (
                                 <label className="flex items-center gap-3 cursor-pointer group">

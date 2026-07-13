@@ -1,17 +1,20 @@
 #!/bin/bash
-# Marion Web OS — worker (démarrage en arrière-plan)
+# Eonora Tech OS — worker (démarrage en arrière-plan)
 set -euo pipefail
 
 BUNDLE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_BUNDLE="$(cd "$(dirname "$0")/../.." && pwd)"
 APP_CODE="$BUNDLE_ROOT/Resources/app"
-SUPPORT="$HOME/Library/Application Support/Marion Web OS"
+SUPPORT="$HOME/Library/Application Support/Eonora Tech OS"
+if [ ! -d "$SUPPORT" ] && [ -d "$HOME/Library/Application Support/Marion Web OS" ]; then
+    SUPPORT="$HOME/Library/Application Support/Marion Web OS"
+fi
 VENV="$SUPPORT/venv"
 LOG_DIR="$SUPPORT/logs"
 LOG_FILE="$LOG_DIR/marion.log"
 PID_FILE="$SUPPORT/marion.pid"
 STARTUP_LOCK="$SUPPORT/startup.lock"
-LEGACY_DATA="$HOME/Desktop/Marion Web OS Database"
+LEGACY_DATA="$HOME/Desktop/Eonora Tech OS Database"
 DATA_DIR="$SUPPORT/Data"
 ENV_FILE="$SUPPORT/.env.local"
 PORT="${MARION_PORT:-5003}"
@@ -26,11 +29,11 @@ log() {
 }
 
 alert() {
-    osascript -e "display alert \"Marion Web OS\" message \"$1\" as critical" 2>/dev/null || true
+    osascript -e "display alert \"Eonora Tech OS\" message \"$1\" as critical" 2>/dev/null || true
 }
 
 notify() {
-    osascript -e "display notification \"$1\" with title \"Marion Web OS\"" 2>/dev/null || true
+    osascript -e "display notification \"$1\" with title \"Eonora Tech OS\"" 2>/dev/null || true
 }
 
 pick_python() {
@@ -96,8 +99,12 @@ wait_for_server() {
 }
 
 LEGACY_CANDIDATES=(
+    "$HOME/Desktop/Eonora Tech OS Database"
+    "$HOME/Bureau/Eonora Tech OS Database"
     "$HOME/Desktop/Marion Web OS Database"
     "$HOME/Bureau/Marion Web OS Database"
+    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Desktop/Eonora Tech OS Database"
+    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Bureau/Eonora Tech OS Database"
     "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Desktop/Marion Web OS Database"
     "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Bureau/Marion Web OS Database"
 )
@@ -181,7 +188,7 @@ ensure_env_file() {
     if [ -f "$APP_CODE/.env.example" ]; then
         cp "$APP_CODE/.env.example" "$ENV_FILE"
         osascript <<EOF 2>/dev/null || true
-display dialog "Première installation de Marion Web OS.\n\nPlace le fichier de configuration que Johan t'a envoyé ici :\n\n${SUPPORT}\n\nNom du fichier : MARION-env.local (pas besoin de le renommer)." buttons {"OK"} default button 1 with title "Marion Web OS"
+display dialog "Première installation de Eonora Tech OS.\n\nPlace le fichier de configuration que Johan t'a envoyé ici :\n\n${SUPPORT}\n\nNom du fichier : MARION-env.local (pas besoin de le renommer)." buttons {"OK"} default button 1 with title "Eonora Tech OS"
 EOF
     fi
 }
@@ -221,7 +228,7 @@ ensure_venv() {
 
     if [ "$needs_install" -eq 1 ]; then
         if [ ! -f "$req_file" ]; then
-            alert "Fichier des dépendances introuvable.\n\nRéinstalle Marion Web OS depuis le .dmg."
+            alert "Fichier des dépendances introuvable.\n\nRéinstalle Eonora Tech OS depuis le .dmg."
             exit 1
         fi
         if ! "$VENV/bin/pip" install --upgrade pip >> "$LOG_FILE" 2>&1; then
@@ -233,7 +240,7 @@ ensure_venv() {
             exit 1
         fi
         if ! python_runs_deps "$VENV/bin/python"; then
-            alert "Python installé mais invalide (architecture ?).\n\nLance REPARER_MARION.command depuis le .dmg.\n\nLogs : $LOG_FILE"
+            alert "Python installé mais invalide (architecture ?).\n\nLance REPARER_EONORA.command depuis le .dmg.\n\nLogs : $LOG_FILE"
             exit 1
         fi
         log "Python dependencies installed (arch=$(venv_arch))"
@@ -247,7 +254,7 @@ fi
 
 xattr -dr com.apple.quarantine "$APP_BUNDLE" 2>/dev/null || true
 
-log "=== Marion Web OS worker start ==="
+log "=== Eonora Tech OS worker start ==="
 ensure_data_dir
 ensure_env_file
 ensure_venv

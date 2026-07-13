@@ -2,7 +2,7 @@
 
 ## Démarrage rapide
 
-1. **Lancer** : `./LANCER_MARION.command` ou ouvrir l'app Marion Web OS
+1. **Lancer** : `./LANCER_EONORA.command` ou ouvrir l'app Eonora Tech OS
 2. **Première connexion** : Si c'est la première fois, définir un mot de passe
 3. **Tableau de bord** : Vue d'ensemble — agenda, santé financière, projets
 

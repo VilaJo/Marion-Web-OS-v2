@@ -271,7 +271,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
         try {
             await apiFetch('/api/v1/portal/comment', {
                 method: 'POST',
-                body: JSON.stringify({ projectId: project.id, text: replyText, author: 'Marion Web' }),
+                body: JSON.stringify({ projectId: project.id, text: replyText, author: 'Eonora Tech' }),
             });
             setReplyText('');
             await loadPortalData();
@@ -508,7 +508,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                     <div className="bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                         {/* Simulated header */}
                         <div className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-5 py-3 flex items-center gap-3">
-                            <img src="/logo-marion.png" alt="Marion" className="w-8 h-8 rounded-lg shadow-sm object-contain" />
+                            <img src="/logo-eonora.png" alt="Eonora Tech OS" className="w-8 h-8 rounded-lg shadow-sm object-contain" />
                             <div>
                                 <h4 className="font-serif font-bold text-slate-800 dark:text-white text-sm leading-tight">
                                     {portalSettings.clientName || project.clientName}
@@ -615,7 +615,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                     {/* Contact */}
                                     <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
                                         <Mail size={12} className="text-orange-500" />
-                                        <span className="text-xs text-orange-700 dark:text-orange-300 font-medium">marion@marionweb.ch</span>
+                                        <span className="text-xs text-orange-700 dark:text-orange-300 font-medium">marion@eonoratech.ch</span>
                                     </div>
                                 </div>
                             )}
@@ -767,7 +767,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                         {/* Simulated footer */}
                         <div className="border-t border-slate-100 dark:border-slate-700 py-3 text-center">
                             <p className="text-[9px] text-slate-400">
-                                {t.poweredBy} <span className="text-orange-500 font-medium">Marion Web</span>
+                                {t.poweredBy} <span className="text-orange-500 font-medium">Eonora Tech</span>
                             </p>
                         </div>
                     </div>

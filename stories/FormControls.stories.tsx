@@ -4,7 +4,7 @@ import { ThemeDecorator } from '../.storybook/ThemeDecorator';
 import { Search, Mail, Lock, User, Eye, EyeOff, Mic, Send } from 'lucide-react';
 
 /**
- * Inputs, toggles et contrôles de formulaire utilisés dans Marion Web OS.
+ * Inputs, toggles et contrôles de formulaire utilisés dans Eonora Tech OS.
  */
 const meta: Meta = {
   title: 'Components/FormControls',

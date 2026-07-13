@@ -10,7 +10,7 @@
 | **X-Marion-Token** | Header HTTP contenant le token de session pour les requêtes authentifiées. |
 | **shareToken** | Token partagé pour le portail client. Permet aux clients d'accéder à leur projet via une URL. |
 | **PIN** | Code à 4 chiffres pour authentifier un client sur le portail public. |
-| **DATA_PATH** | Dossier racine des données (défaut : `~/Desktop/Marion Web OS Database`). |
+| **DATA_PATH** | Dossier racine des données (défaut : `~/Desktop/Eonora Tech OS Database`). |
 | **DESKTOP_PATH** | Alias de `DATA_PATH` dans le code. |
 | **livrable** | Élément publié par Marion sur le portail client (lien, image, fichier). |
 | **portal_deliverables** | Table SQLite des livrables du portail. |

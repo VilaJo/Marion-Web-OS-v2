@@ -1,4 +1,4 @@
-# Marion Web OS — dépendances runtime (app installée via .dmg)
+# Eonora Tech OS — dépendances runtime (app installée via .dmg)
 flask>=3.0.0
 flask-cors>=4.0.0
 python-dotenv>=1.0.0

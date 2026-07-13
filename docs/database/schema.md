@@ -2,7 +2,7 @@
 
 ## Technologie
 
-**SQLite** — fichier unique (ex. `marion_data.db` ou `Marion Web OS Database/marion.db`).
+**SQLite** — fichier unique (ex. `marion_data.db` ou `Eonora Tech OS Database/marion.db`).
 
 ---
 

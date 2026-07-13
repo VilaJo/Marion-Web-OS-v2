@@ -4,7 +4,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # Double-clique ce fichier dans le dossier du projet (à côté de INSTALLER.command).
 # Effet : crée .git, lie origin → GitHub, aligne le code sur main, puis « git pull » marchera.
-# Ne supprime pas .env.local (ignoré par Git) ni ton dossier « Marion Web OS Database ».
+# Ne supprime pas .env.local (ignoré par Git) ni ton dossier « Eonora Tech OS Database ».
 
 cd "$(dirname "$0")" || exit 1
 

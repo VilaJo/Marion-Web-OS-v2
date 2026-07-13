@@ -391,7 +391,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
             .filter(i => i.type === 'Invoice' && new Date(i.date).getFullYear() === y && i.status !== 'Draft')
             .map(i => i.number);
     }, [flatInvoicesForKpis]);
-    // IBAN principal : on prend "main" comme défaut (Marion Web OS hardcoded ailleurs).
+    // IBAN principal : on prend "main" comme défaut (Eonora Tech OS hardcoded ailleurs).
     const compliance = useMemo(() => checkCompliance({
         agencyIde,
         agencyVatNumber,
@@ -2111,7 +2111,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                     {/* Footer */}
                                     <div className="mt-10 pt-6 border-t border-slate-200 text-center" style={{ pageBreakInside: 'avoid' }}>
                                         <p className="text-xs text-slate-400">
-                                            Document généré automatiquement par Marion Web OS • {new Date().toLocaleDateString('fr-CH')} à {new Date().toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}
+                                            Document généré automatiquement par Eonora Tech OS • {new Date().toLocaleDateString('fr-CH')} à {new Date().toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
                                 </>

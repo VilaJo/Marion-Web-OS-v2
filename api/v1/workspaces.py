@@ -60,7 +60,7 @@ def _parse_workspace_json(workspace: dict) -> dict:
 
 # Default branding values
 DEFAULT_BRANDING = {
-    'appName': 'Marion Web OS',
+    'appName': 'Eonora Tech OS',
     'primaryColor': '#f97316',
     'logoUrl': '',
     'faviconUrl': '',

@@ -735,7 +735,7 @@ def admin_reply_comment():
     if pid is None:
         return jsonify({"error": "Projet introuvable."}), 404
     new_id = create_portal_comment(pid, {
-        'author': data.get('author', 'Marion Web'),
+        'author': data.get('author', 'Eonora Tech'),
         'text': data.get('text', ''),
         'phaseRef': data.get('phaseRef'),
         'isAdmin': True,

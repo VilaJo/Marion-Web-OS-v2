@@ -2,10 +2,10 @@
 # Corrige le lanceur Marion installé (mauvaise URL de santé serveur)
 set -euo pipefail
 
-LAUNCHER="/Applications/Marion Web OS.app/Contents/MacOS/Marion"
+LAUNCHER="/Applications/Eonora Tech OS.app/Contents/MacOS/Marion"
 
 if [ ! -f "$LAUNCHER" ]; then
-    echo "❌ Marion Web OS.app introuvable dans /Applications"
+    echo "❌ Eonora Tech OS.app introuvable dans /Applications"
     exit 1
 fi
 
@@ -16,4 +16,4 @@ fi
 
 cp "$LAUNCHER" "${LAUNCHER}.bak"
 sed -i '' 's|/api/version|/api/v1/version|g' "$LAUNCHER"
-echo "✅ Lanceur corrigé. Relance Marion Web OS depuis Applications."
+echo "✅ Lanceur corrigé. Relance Eonora Tech OS depuis Applications."

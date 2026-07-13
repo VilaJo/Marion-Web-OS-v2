@@ -3,7 +3,7 @@ import { ThemeDecorator } from '../.storybook/ThemeDecorator';
 import { Plus, Send, Settings, Trash2, Download, RefreshCw, Sparkles, ArrowRight } from 'lucide-react';
 
 /**
- * Les boutons de Marion Web OS suivent un système cohérent :
+ * Les boutons de Eonora Tech OS suivent un système cohérent :
  * - **Primary** : gradient orange→pink, text-white, rounded-full
  * - **Secondary** : bg-white, border, rounded-full
  * - **Icon** : p-2, rounded-full, icône seule
@@ -18,7 +18,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Système de boutons Marion Web OS. Tous les boutons utilisent `rounded-full` (pill shape), `font-bold`, et des transitions fluides.',
+          'Système de boutons Eonora Tech OS. Tous les boutons utilisent `rounded-full` (pill shape), `font-bold`, et des transitions fluides.',
       },
     },
   },

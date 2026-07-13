@@ -1,1 +1,1 @@
-# Marion Web OS - Service Layer
+# Eonora Tech OS - Service Layer

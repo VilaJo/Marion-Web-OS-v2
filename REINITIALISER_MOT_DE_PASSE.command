@@ -7,7 +7,7 @@ if [ -z "${MARION_CLEAN_SHELL:-}" ]; then
   exec /bin/bash --noprofile --norc "$SCRIPT_PATH" "$@"
 fi
 
-DATA_DIR="$HOME/Desktop/Marion Web OS Database"
+DATA_DIR="$HOME/Desktop/Eonora Tech OS Database"
 AUTH_FILE="$DATA_DIR/.marion_auth.json"
 OAUTH_ENC="$DATA_DIR/.oauth_tokens.enc"
 OAUTH_JSON="$DATA_DIR/.oauth_tokens.json"

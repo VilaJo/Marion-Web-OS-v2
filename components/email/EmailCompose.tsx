@@ -226,13 +226,13 @@ export const EmailCompose: React.FC<Props> = ({ state }) => {
                                     height={20}
                                     style={{ display: 'inline-block' }}
                                 />
-                                <span style={{ fontSize: 16, fontWeight: 700, color: '#334155' }}>Marion Web</span>
+                                <span style={{ fontSize: 16, fontWeight: 700, color: '#334155' }}>Eonora Tech</span>
                             </div>
                             <div style={{ paddingBottom: 2 }}>
                                 <a href="tel:+41799404847" style={{ color: '#334155', textDecoration: 'none' }}>+41 79 940 48 47</a>
                             </div>
                             <div style={{ paddingBottom: 10 }}>
-                                <a href="https://marionweb.ch/" style={{ color: '#334155', textDecoration: 'none' }}>https://marionweb.ch/</a>
+                                <a href="https://eonoratech.ch/" style={{ color: '#334155', textDecoration: 'none' }}>https://eonoratech.ch/</a>
                             </div>
                             <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.5, maxWidth: 540 }}>
                                 CONFIDENTIALITY NOTICE : This email and any documents or files attached to it may contain confidential information that is legally privileged. In particular, please note that our e-mail messages may originate or be delivered in Switzerland. Article 50 of the Swiss Law on Telecommunications provides that the dissemination or use of non-public information received in error is punishable by up to one year imprisonment. Do not read this e-mail if you are not the intended recipient. If you have received this transmission in error, please immediately notify us by reply e-mail and confirm that you have destroyed the transmission and its attachments. Thank you.

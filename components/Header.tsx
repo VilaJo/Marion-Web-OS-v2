@@ -72,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div className="flex items-center" id="header-title">
                         <div>
-                            <h1 className="font-serif text-4xl text-slate-800 dark:text-white tracking-tight">Marion Web OS</h1>
+                            <h1 className="font-serif text-4xl text-slate-800 dark:text-white tracking-tight">Eonora Tech OS</h1>
                             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Bon retour, Marion.</p>
                         </div>
                     </div>

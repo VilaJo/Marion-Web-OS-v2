@@ -17,7 +17,7 @@ APP_DIR="$(pwd)"
 source "$APP_DIR/packaging/verify_dist.sh"
 
 command -v clear >/dev/null 2>&1 && clear || true
-echo "🦄 Mise à jour Marion Web OS"
+echo "🦄 Mise à jour Eonora Tech OS"
 echo "────────────────────────────────────────────────────────────────────"
 echo "📁 $APP_DIR"
 echo ""
@@ -106,7 +106,7 @@ if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
     echo "📂 Fusion (code + .dist) depuis $EXTRACTED_DIR"
     rsync -a --delete \
         --exclude '.env.local' --exclude '.venv' --exclude '.marion.log' --exclude '.marion.pid' \
-        --exclude 'Marion Web OS Database' --exclude '.marion_installed.json' \
+        --exclude 'Eonora Tech OS Database' --exclude '.marion_installed.json' \
         --exclude 'node_modules' \
         "$EXTRACTED_DIR"/ ./
     rm -rf "$EXTRACTED_DIR" update.zip
@@ -165,7 +165,7 @@ echo ""
 echo "────────────────────────────────────────────────────────────────────"
 echo "✨ Mise à jour terminée."
 echo ""
-echo "👉 STOPPER_MARION.command puis LANCER_MARION.command"
+echo "👉 STOPPER_EONORA.command puis LANCER_EONORA.command"
 echo "👉 Navigateur : Cmd + Shift + R (obligatoire)"
 echo "   Si écran blanc : REPARER_INTERFACE.command"
 echo "────────────────────────────────────────────────────────────────────"

@@ -27,7 +27,7 @@ cd Marion-Web-OS-v2
 ## Lancement
 
 ```bash
-./LANCER_MARION.command
+./LANCER_EONORA.command
 ```
 
 Ce script :
@@ -46,7 +46,7 @@ Ce script :
 | `GEMINI_API_KEY` | Clé API Google Gemini | — |
 | `GOOGLE_CLIENT_ID` | OAuth Google | — |
 | `GOOGLE_CLIENT_SECRET` | OAuth Google | — |
-| `DATA_PATH` | Dossier données | `~/Desktop/Marion Web OS Database` |
+| `DATA_PATH` | Dossier données | `~/Desktop/Eonora Tech OS Database` |
 | `IMAP_HOST` | Serveur IMAP | `mail.infomaniak.com` |
 | `SMTP_HOST` | Serveur SMTP | `mail.infomaniak.com` |
 
@@ -78,4 +78,4 @@ Produit : `release/MarionWebOS-<version>.dmg` (glisser vers Applications).
 
 ### Développement local
 
-Le projet inclut aussi `INSTALLER.command` et `Marion Web OS.app` sur le Bureau — utiles pour le développement, pas pour la distribution.
+Le projet inclut aussi `INSTALLER.command` et `Eonora Tech OS.app` sur le Bureau — utiles pour le développement, pas pour la distribution.

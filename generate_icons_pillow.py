@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate PWA icons for Marion Web OS using Pillow
+Generate PWA icons for Eonora Tech OS using Pillow
 """
 
 from PIL import Image, ImageDraw, ImageFont
@@ -173,7 +173,7 @@ def create_splash(width, height, output_path):
     except:
         name_font = ImageFont.load_default()
     
-    name = "Marion Web OS"
+    name = "Eonora Tech OS"
     bbox = draw.textbbox((0, 0), name, font=name_font)
     name_width = bbox[2] - bbox[0]
     
@@ -192,7 +192,7 @@ def main():
     icons_path.mkdir(parents=True, exist_ok=True)
     splash_path.mkdir(parents=True, exist_ok=True)
     
-    print("🎨 Generating PWA icons for Marion Web OS...")
+    print("🎨 Generating PWA icons for Eonora Tech OS...")
     print()
     
     # Generate icons

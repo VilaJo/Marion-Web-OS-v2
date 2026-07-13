@@ -124,7 +124,7 @@ def _run_pagespeed(url: str, strategy: str = "mobile") -> dict:
 def _probe_html(url: str) -> dict:
     """Fetch the HTML and extract WP markers, meta tags, plugins, etc."""
     headers = {
-        "User-Agent": "Mozilla/5.0 (Marion Web OS Audit/1.0)",
+        "User-Agent": "Mozilla/5.0 (Eonora Tech OS Audit/1.0)",
         "Accept": "text/html,application/xhtml+xml",
     }
     try:

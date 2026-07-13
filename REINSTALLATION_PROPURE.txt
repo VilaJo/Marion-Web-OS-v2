@@ -1,4 +1,4 @@
-Marion Web OS — Réinstallation propre sur un Mac (garder ses clients)
+Eonora Tech OS — Réinstallation propre sur un Mac (garder ses clients)
 ================================================================
 
 Objectif : tout remettre à neuf SAUF le dossier qui contient tes projets.
@@ -6,12 +6,12 @@ Objectif : tout remettre à neuf SAUF le dossier qui contient tes projets.
 1) Quitter Marion (fermer le navigateur + arrêter le serveur si besoin).
 
 2) Sur le Bureau, NE PAS TOUCHER à ce dossier :
-      Marion Web OS Database
+      Eonora Tech OS Database
    Il contient les dossiers « 1. En cours », « 4. Prospects », marion.db, etc.
 
 3) Tu peux supprimer le reste « Marion » hors de ce dossier, par exemple :
    • le dossier du code téléchargé (ex. Marion-Web-OS-v2-main),
-   • l’icône « Marion Web OS.app » sur le Bureau (elle sera recréée par l’installateur).
+   • l’icône « Eonora Tech OS.app » sur le Bureau (elle sera recréée par l’installateur).
 
 4) Dans le dossier projet (avant suppression), récupère si besoin uniquement ta clé API :
       .env.local  → lignes GEMINI_API_KEY ou autres secrets (PAS de DATA_PATH
@@ -21,9 +21,9 @@ Objectif : tout remettre à neuf SAUF le dossier qui contient tes projets.
    double-cliquer INSTALLER.command dans CE nouveau dossier.
 
 6) Lance l’app. Sans DATA_PATH dans .env.local, Marion utilise toujours :
-      ~/Desktop/Marion Web OS Database
+      ~/Desktop/Eonora Tech OS Database
    soit sur ton compte quelque chose comme :
-      /Users/TON_PRENOM/Desktop/Marion Web OS Database
+      /Users/TON_PRENOM/Desktop/Eonora Tech OS Database
 
 7) Si tes données ont été rangées AILLEURS (autre nom, autre disque), ajoute alors
    dans .env.local à la racine du dossier projet (une ligne) :

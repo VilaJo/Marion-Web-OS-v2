@@ -22,7 +22,7 @@ const preview: Preview = {
   },
   globalTypes: {
     theme: {
-      description: 'Marion Web OS theme',
+      description: 'Eonora Tech OS theme',
       toolbar: {
         title: 'Theme',
         icon: 'paintbrush',

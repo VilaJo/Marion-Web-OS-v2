@@ -32,7 +32,7 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=http://127.0.0.1:5003/api/v1/oauth/google/callback
 
 # Données
-DATA_PATH=~/Desktop/Marion Web OS Database
+DATA_PATH=~/Desktop/Eonora Tech OS Database
 
 # Debug
 DEBUG=true
@@ -44,7 +44,7 @@ DEBUG=true
 
 ```bash
 # 1. Démarrer le backend
-./LANCER_MARION.command
+./LANCER_EONORA.command
 # ou
 python franck_server.py
 

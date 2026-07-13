@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Marion Web OS API
+  title: Eonora Tech OS API
   description: API REST du Business OS Local-First pour freelances créatifs
   version: 2.6.0
 

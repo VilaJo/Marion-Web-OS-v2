@@ -1,4 +1,4 @@
-# Marion Web OS - API Blueprints (v1)
+# Eonora Tech OS - API Blueprints (v1)
 #
 # All routes are versioned under /api/v1/ to allow future evolution
 # without breaking existing clients.

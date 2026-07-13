@@ -148,8 +148,8 @@ export const useUIStore = create<UIState>((set, get) => ({
     theme: (localStorage.getItem('marion_theme') as Theme) || 'light',
     accentColor: localStorage.getItem('marion_accent') || 'orange',
     currency: localStorage.getItem('marion_currency') || 'CHF',
-    agencyName: localStorage.getItem('marion_agency_name') || 'Marion Web',
-    agencyWebsite: localStorage.getItem('marion_agency_website') || 'marionweb.ch',
+    agencyName: localStorage.getItem('marion_agency_name') || 'Eonora Tech',
+    agencyWebsite: localStorage.getItem('marion_agency_website') || 'eonoratech.ch',
     agencyIde: localStorage.getItem('marion_agency_ide') || 'CHE-265.310.079',
     agencyVatNumber: localStorage.getItem('marion_agency_vat_number') || '',
     agencyReminderFees: (() => {

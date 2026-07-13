@@ -143,7 +143,7 @@ def get_version():
         pass
     return jsonify({
         "version": APP_VERSION,
-        "name": "Marion Web OS",
+        "name": "Eonora Tech OS",
         "buildDate": datetime.now().strftime("%Y-%m-%d"),
         "clientDataPath": str(root),
         "clientDataPathExists": root.is_dir(),

@@ -830,7 +830,7 @@ def briefing():
         return jsonify({"error": "Server not configured"}), 503
     try:
         prompt = f"""
-            Tu es le Redacteur en Chef de "Marion Web OS News", l'assistant personnel de Marion.
+            Tu es le Redacteur en Chef de "Eonora Tech OS News", l'assistant personnel de Marion.
             Ton objectif : Rediger un briefing hebdomadaire structure, elegant et ultra-motivant.
 
             CONTEXTE ACTUEL :

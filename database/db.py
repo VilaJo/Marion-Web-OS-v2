@@ -1,5 +1,5 @@
 """
-Marion Web OS - Database Access Layer
+Eonora Tech OS - Database Access Layer
 SQLite database with connection pooling and helper methods
 """
 
@@ -1202,7 +1202,7 @@ def get_portal_activity(project_id: int, limit: int = 50) -> List[Dict]:
             'title': u['title'],
             'content': u.get('content'),
             'phase': u.get('phase'),
-            'author': 'Marion Web',
+            'author': 'Eonora Tech',
             'createdAt': u['created_at'],
         })
     for c in get_portal_comments(project_id):

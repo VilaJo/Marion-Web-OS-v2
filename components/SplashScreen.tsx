@@ -27,7 +27,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ visible, loadingText
                     {/* 4. Logo */}
                     <div className="w-24 h-24 relative z-10 animate-pulse">
                         <img 
-                            src="/logo-marion.png" 
+                            src="/logo-eonora.png" 
                             alt="Loading..." 
                             className="w-full h-full object-contain drop-shadow-xl" 
                         />
@@ -36,7 +36,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ visible, loadingText
 
                 {/* Typography */}
                 <h1 className="font-sans font-semibold text-3xl text-slate-800 dark:text-white mb-4 tracking-tight">
-                    Marion Web OS
+                    Eonora Tech OS
                 </h1>
 
                 {/* Message */}

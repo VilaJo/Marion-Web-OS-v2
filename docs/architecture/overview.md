@@ -2,7 +2,7 @@
 
 ## 1. Principes architecturaux
 
-Marion Web OS repose sur une **architecture hybride** combinant :
+Eonora Tech OS repose sur une **architecture hybride** combinant :
 
 - **SPA React** : Interface réactive, lazy loading, offline-ready
 - **API Flask** : Passerelle système (OS Bridge) pour accès fichiers, base de données, services externes
@@ -12,7 +12,7 @@ Marion Web OS repose sur une **architecture hybride** combinant :
 
 Les données sensibles restent sur la machine de l'utilisateur :
 
-- Dossier `Marion Web OS Database` (ou `DATA_PATH`) : SQLite, credentials chiffrés
+- Dossier `Eonora Tech OS Database` (ou `DATA_PATH`) : SQLite, credentials chiffrés
 - Dossier `Desktop` ou chemins configurés : `project.json` par client, fichiers, factures
 - Aucune donnée métier n'est envoyée vers un cloud tiers (sauf OAuth Google, emails IMAP/SMTP)
 

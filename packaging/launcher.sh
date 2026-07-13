@@ -1,10 +1,10 @@
 #!/bin/bash
-# Marion Web OS — point d'entrée .app (répond immédiatement à macOS)
+# Eonora Tech OS — point d'entrée .app (répond immédiatement à macOS)
 set -uo pipefail
 
 BUNDLE_MACOS="$(cd "$(dirname "$0")" && pwd)"
 WORKER="$BUNDLE_MACOS/marion-worker.sh"
-SUPPORT="$HOME/Library/Application Support/Marion Web OS"
+SUPPORT="$HOME/Library/Application Support/Eonora Tech OS"
 LOG_FILE="$SUPPORT/logs/marion.log"
 PID_FILE="$SUPPORT/marion.pid"
 STARTUP_LOCK="$SUPPORT/startup.lock"
@@ -33,7 +33,7 @@ if is_server_running && curl -fsS "$URL/api/v1/version" >/dev/null 2>&1; then
 fi
 
 if [ -f "$STARTUP_LOCK" ]; then
-    osascript -e 'display notification "Marion démarre déjà en arrière-plan…" with title "Marion Web OS"' 2>/dev/null || true
+    osascript -e 'display notification "Marion démarre déjà en arrière-plan…" with title "Eonora Tech OS"' 2>/dev/null || true
     exit 0
 fi
 

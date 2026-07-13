@@ -1,5 +1,5 @@
 /**
- * Marion Web OS - Main Application Layout
+ * Eonora Tech OS - Main Application Layout
  *
  * This component provides:
  * - Authentication gate (login, onboarding, backend-down)
@@ -27,6 +27,7 @@ import { useFocusStore } from './stores/useFocusStore';
 // Extracted components
 import { AppHeader } from './components/AppHeader';
 import { GlobalOverlays } from './components/GlobalOverlays';
+import { GlobalDashboardModals } from './components/GlobalDashboardModals';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useUpdateChecker } from './hooks/useUpdateChecker';
 import { useEmailNotifications } from './hooks/useEmailNotifications';
@@ -440,6 +441,7 @@ const App: React.FC = () => {
 
             {/* Global Overlays */}
             <GlobalOverlays projects={projects} events={events} />
+            <GlobalDashboardModals />
 
             {/* Global Search (Cmd+K) */}
             <GlobalSearch />

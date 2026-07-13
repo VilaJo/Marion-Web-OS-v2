@@ -1,5 +1,5 @@
 """
-API v1 - Marion Web OS API version 1
+API v1 - Eonora Tech OS API version 1
 All new routes should be added here.
 Legacy routes in franck_server.py will gradually migrate to v1.
 """

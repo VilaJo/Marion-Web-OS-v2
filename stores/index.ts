@@ -1,5 +1,5 @@
 /**
- * Marion Web OS - Zustand Stores
+ * Eonora Tech OS - Zustand Stores
  * Central export for all state stores
  */
 

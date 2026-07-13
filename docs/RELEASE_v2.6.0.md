@@ -7,7 +7,7 @@ Theme : **De WordPress à Cursor** — l'atelier complet pour aider Marion dans 
 
 ## 🎯 Vision
 
-Marion a passé 10 ans sur WordPress. Aujourd'hui elle réinvente sa pratique avec Cursor, Tailwind et React. Cette release transforme Marion Web OS en **véritable atelier de transition** : 12 nouveaux outils, 5 vagues, zero infra externe (pas de Playwright, pas de scraping). Tout repose sur des screenshots uploadés + Gemini multimodal + Claude Opus 4.7 pour le code review + PageSpeed Insights pour les vrais Lighthouse scores.
+Marion a passé 10 ans sur WordPress. Aujourd'hui elle réinvente sa pratique avec Cursor, Tailwind et React. Cette release transforme Eonora Tech OS en **véritable atelier de transition** : 12 nouveaux outils, 5 vagues, zero infra externe (pas de Playwright, pas de scraping). Tout repose sur des screenshots uploadés + Gemini multimodal + Claude Opus 4.7 pour le code review + PageSpeed Insights pour les vrais Lighthouse scores.
 
 ---
 

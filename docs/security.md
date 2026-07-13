@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Marion Web OS privilégie une approche **local-first** : les données sensibles restent sur la machine de l'utilisateur. Les échanges avec des services externes (Google, Infomaniak) sont limités aux fonctionnalités nécessaires.
+Eonora Tech OS privilégie une approche **local-first** : les données sensibles restent sur la machine de l'utilisateur. Les échanges avec des services externes (Google, Infomaniak) sont limités aux fonctionnalités nécessaires.
 
 ---
 
@@ -77,4 +77,4 @@ Marion Web OS privilégie une approche **local-first** : les données sensibles 
 1. **Ne pas commiter** `.env`, `.env.local` ou tout fichier contenant des clés API
 2. **SECRET_KEY** : utiliser une valeur aléatoire en production
 3. **HTTPS** : en déploiement externe, utiliser TLS
-4. **Backup** : le dossier `Marion Web OS Database` contient des données sensibles — à sauvegarder de façon sécurisée
+4. **Backup** : le dossier `Eonora Tech OS Database` contient des données sensibles — à sauvegarder de façon sécurisée

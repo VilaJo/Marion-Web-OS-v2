@@ -53,7 +53,7 @@ def google_oauth_login():
         return jsonify({
             "error": "Google OAuth non configuré sur ce Mac. "
                      "Ajoute GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET dans "
-                     "~/Bibliothèque/Application Support/Marion Web OS/MARION-env.local "
+                     "~/Bibliothèque/Application Support/Eonora Tech OS/MARION-env.local "
                      "puis relance Marion.",
         }), 503
 
@@ -887,7 +887,7 @@ def infomaniak_create_event():
         ics = (
             "BEGIN:VCALENDAR\r\n"
             "VERSION:2.0\r\n"
-            "PRODID:-//Marion Web OS//FR\r\n"
+            "PRODID:-//Eonora Tech OS//FR\r\n"
             "BEGIN:VEVENT\r\n"
             f"UID:{uid}\r\n"
             f"DTSTAMP:{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}\r\n"

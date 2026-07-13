@@ -39,28 +39,28 @@ cat > "$OUT/LIRE EN PREMIER.txt" <<'TXT'
 ÉTAPE 1 — Installer l'application
 ──────────────────────────────────
 1. Double-clique sur MarionWebOS-2.7.9.dmg (ou version dans ce dossier)
-2. Glisse « Marion Web OS » dans le dossier « Applications »
-3. Éjecte le disque Marion Web OS
+2. Glisse « Eonora Tech OS » dans le dossier « Applications »
+3. Éjecte le disque Eonora Tech OS
 
 ÉTAPE 2 — Fichier de configuration (obligatoire)
 ────────────────────────────────────────────────
 1. Ouvre le Finder
 2. Menu Aller → Aller au dossier… (Cmd+Shift+G)
 3. Colle exactement :
-   ~/Library/Application Support/Marion Web OS
+   ~/Library/Application Support/Eonora Tech OS
 4. Copie le fichier MARION-env.local (de ce dossier) DANS ce dossier
    (remplace l'ancien s'il existe déjà)
 
 ÉTAPE 3 — Lancer Marion
 ───────────────────────
-1. Ouvre Marion Web OS depuis Applications ou le Launchpad
+1. Ouvre Eonora Tech OS depuis Applications ou le Launchpad
 2. Au premier lancement : attends 2 à 3 minutes (une seule fois)
 3. Si macOS demande l'accès au Bureau → Autoriser
 
 ÉTAPE 4 — Tes dossiers clients
 ──────────────────────────────
 Tes clients sont dans le dossier sur ton Bureau :
-   Marion Web OS Database
+   Eonora Tech OS Database
 
 L'application le détecte automatiquement. Tu n'as rien à copier.
 
@@ -70,8 +70,8 @@ Si tu ne vois pas tes clients :
 
 En cas de problème
 ──────────────────
-Dans le .dmg : double-clique REPARER_MARION.command
-Logs : ~/Library/Application Support/Marion Web OS/logs/marion.log
+Dans le .dmg : double-clique REPARER_EONORA.command
+Logs : ~/Library/Application Support/Eonora Tech OS/logs/marion.log
 
 Johan peut t'aider en lisant ce fichier log.
 TXT

@@ -3,7 +3,7 @@ import React from 'react';
 import { ThemeDecorator } from '../.storybook/ThemeDecorator';
 
 /**
- * Référence visuelle de tous les tokens de design de Marion Web OS.
+ * Référence visuelle de tous les tokens de design de Eonora Tech OS.
  * Couleurs, typographie, espacements, rayons de bordure et ombres.
  */
 const meta: Meta = {
@@ -13,7 +13,7 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Tokens de design fondamentaux de Marion Web OS. Utilisez cette page comme référence pour la conception de nouveaux composants.',
+        component: 'Tokens de design fondamentaux de Eonora Tech OS. Utilisez cette page comme référence pour la conception de nouveaux composants.',
       },
     },
   },

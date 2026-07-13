@@ -1,10 +1,10 @@
 #!/bin/bash
-# Build Marion Web OS.app for distribution (payload inside bundle)
+# Build Eonora Tech OS.app for distribution (payload inside bundle)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STAGING="$ROOT/release/staging"
-APP_NAME="Marion Web OS"
+APP_NAME="Eonora Tech OS"
 APP_BUNDLE="$STAGING/${APP_NAME}.app"
 PAYLOAD="$APP_BUNDLE/Contents/Resources/app"
 VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo "2.7.0")"

@@ -436,7 +436,7 @@ def download_backup_bundle():
             zf.write(Path(snap_path), arcname="marion.db")
             manifest = {
                 "exportedAt": datetime.now().isoformat(),
-                "app": "Marion Web OS",
+                "app": "Eonora Tech OS",
                 "databaseFile": "marion.db",
                 "dbPathHint": str(db_path),
                 "snapshotSource": snap_path,

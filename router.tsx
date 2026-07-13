@@ -1,5 +1,5 @@
 /**
- * Marion Web OS - Router Configuration
+ * Eonora Tech OS - Router Configuration
  * 
  * Route structure:
  *   /                    → Dashboard (main view)
@@ -80,20 +80,20 @@ const router = createBrowserRouter([
                 ),
             },
             {
-                path: 'client/*',
-                errorElement: <RouteErrorFallback />,
-                element: (
-                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement du client..." />}>
-                        <ClientPage />
-                    </Suspense>
-                ),
-            },
-            {
                 path: 'client/:id/invoice',
                 errorElement: <RouteErrorFallback />,
                 element: (
                     <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de la facture..." />}>
                         <InvoicePage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: 'client/*',
+                errorElement: <RouteErrorFallback />,
+                element: (
+                    <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement du client..." />}>
+                        <ClientPage />
                     </Suspense>
                 ),
             },

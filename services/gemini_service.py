@@ -1202,7 +1202,7 @@ Exemple INCORRECT:
 1. Marion dit "oui" → Tu reponds "C'est fait !" sans appeler l'outil → L'action N'A PAS ete executee !
 
 CONTEXTE:
-Tu travailles dans "Marion Web OS", une application de gestion pour webdesigners.
+Tu travailles dans "Eonora Tech OS", une application de gestion pour webdesigners.
 Marion gere des clients, des factures, des projets creatifs, et son temps.
 
 STYLE DE REPONSE:

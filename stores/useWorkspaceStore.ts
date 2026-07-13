@@ -51,7 +51,7 @@ export interface Workspace {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_BRANDING: WorkspaceBranding = {
-    appName: 'Marion Web OS',
+    appName: 'Eonora Tech OS',
     primaryColor: '#f97316',
     logoUrl: '',
     faviconUrl: '',

@@ -1,5 +1,5 @@
 """
-Marion Web OS - Module de chiffrement
+Eonora Tech OS - Module de chiffrement
 Utilise Fernet (AES-128-CBC) avec derivation de cle PBKDF2
 """
 

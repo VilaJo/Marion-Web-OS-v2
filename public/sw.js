@@ -1,11 +1,11 @@
-// Marion Web OS - Service Worker
-const CACHE_NAME = 'marion-web-os-v7';
+// Eonora Tech OS - Service Worker
+const CACHE_NAME = 'eonora-tech-os-v8';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_RESOURCES = [
   '/offline.html',
   '/manifest.json',
-  '/logo-marion.png',
+  '/logo-eonora.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
 ];
@@ -72,7 +72,7 @@ self.addEventListener('push', (event) => {
   if (!event.data) return;
   const data = event.data.json();
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Marion Web OS', {
+    self.registration.showNotification(data.title || 'Eonora Tech OS', {
       body: data.body || 'Nouvelle notification',
       icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-72x72.png',

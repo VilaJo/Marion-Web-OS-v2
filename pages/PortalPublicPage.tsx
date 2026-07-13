@@ -297,7 +297,7 @@ const PortalPublicPage: React.FC = () => {
                             {t.accessPortal}
                         </button>
                     </div>
-                    <p className="text-center text-xs text-gray-400 mt-6">{t.poweredBy} Marion Web</p>
+                    <p className="text-center text-xs text-gray-400 mt-6">{t.poweredBy} Eonora Tech</p>
                 </div>
             </div>
         );
@@ -322,8 +322,8 @@ const PortalPublicPage: React.FC = () => {
             <header className="bg-white border-b border-gray-100 sticky top-0 z-30">
                 <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                        <img src="/logo-marion.png" alt="Marion Web OS" className="w-9 h-9 rounded-lg shadow-sm object-contain" />
-                        <span className="font-serif font-bold text-gray-800 text-base tracking-tight">Marion Web OS</span>
+                        <img src="/logo-eonora.png" alt="Eonora Tech OS" className="w-9 h-9 rounded-lg shadow-sm object-contain" />
+                        <span className="font-serif font-bold text-gray-800 text-base tracking-tight">Eonora Tech OS</span>
                     </div>
                     <nav className="hidden sm:flex items-center gap-1 bg-gray-100 rounded-xl p-1 text-sm">
                         {[
@@ -525,10 +525,10 @@ const PortalPublicPage: React.FC = () => {
                                     </p>
                                     <div className="flex flex-wrap gap-3">
                                         <a
-                                            href="mailto:marion@marionweb.ch"
+                                            href="mailto:marion@eonoratech.ch"
                                             className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-sm font-semibold rounded-xl hover:shadow-lg transition-all"
                                         >
-                                            <Mail size={14} /> marion@marionweb.ch
+                                            <Mail size={14} /> marion@eonoratech.ch
                                         </a>
                                         {settings.allowComments && (
                                             <button
@@ -717,7 +717,7 @@ const PortalPublicPage: React.FC = () => {
                                                      <MessageSquare size={14} className="text-gray-500" />}
                                                 </div>
                                                 <span className="text-sm font-bold text-gray-700">
-                                                    {item._type === 'update' ? 'Marion Web' :
+                                                    {item._type === 'update' ? 'Eonora Tech' :
                                                      item._type === 'file' ? (item.authorName || 'Client') :
                                                      item.author}
                                                 </span>
@@ -766,7 +766,7 @@ const PortalPublicPage: React.FC = () => {
                                             {c.author?.charAt(0)?.toUpperCase() || '?'}
                                         </div>
                                         <span className="text-sm font-bold text-gray-700">{c.author}</span>
-                                        {c.isAdmin && <span className="text-[9px] font-bold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">Marion Web</span>}
+                                        {c.isAdmin && <span className="text-[9px] font-bold text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded">Eonora Tech</span>}
                                         <span className="text-[10px] text-gray-400 ml-auto">{formatDate(c.createdAt, dateLocale)}</span>
                                     </div>
                                     <p className="text-sm text-gray-600 pl-8">{c.text}</p>
@@ -949,9 +949,9 @@ const PortalPublicPage: React.FC = () => {
             <footer className="border-t border-gray-100 mt-12 py-6 text-center">
                 <p className="text-xs text-gray-400">
                     {t.poweredBy}{' '}
-                    <a href="https://marionweb.ch" target="_blank" rel="noopener noreferrer"
+                    <a href="https://eonoratech.ch" target="_blank" rel="noopener noreferrer"
                        className="text-orange-500 hover:underline font-medium">
-                        Marion Web
+                        Eonora Tech
                     </a>
                 </p>
             </footer>

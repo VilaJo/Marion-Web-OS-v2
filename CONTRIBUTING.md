@@ -1,6 +1,6 @@
 # Guide de contribution
 
-Merci de votre intérêt pour Marion Web OS. Ce document décrit comment contribuer au projet.
+Merci de votre intérêt pour Eonora Tech OS. Ce document décrit comment contribuer au projet.
 
 ---
 

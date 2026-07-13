@@ -162,7 +162,7 @@ export const GlobalOverlays: React.FC<GlobalOverlaysProps> = ({ projects, events
             )}
 
             {/* Guide Modal */}
-            <Modal isOpen={showGuide} onClose={() => setShowGuide(false)} title="Guide Marion Web OS" width="max-w-6xl">
+            <Modal isOpen={showGuide} onClose={() => setShowGuide(false)} title="Guide Eonora Tech OS" width="max-w-6xl">
                 <div className="p-4">
                     <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-2xl font-sans">
                         Découvrez comment cet outil a été conçu pour libérer votre créativité en automatisant le chaos.

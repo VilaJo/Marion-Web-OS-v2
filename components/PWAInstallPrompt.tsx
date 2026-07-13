@@ -112,7 +112,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
                 {/* Content */}
                 <div className="p-4">
                     <p className="text-sm text-slate-600 dark:text-slate-300 mb-4" style={{ fontFamily: 'Raleway, sans-serif' }}>
-                        Installez Marion Web OS sur votre appareil pour un accès rapide et une meilleure expérience.
+                        Installez Eonora Tech OS sur votre appareil pour un accès rapide et une meilleure expérience.
                     </p>
 
                     {/* Benefits */}

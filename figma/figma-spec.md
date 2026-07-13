@@ -1,4 +1,4 @@
-# Marion Web OS - Figma Specification
+# Eonora Tech OS - Figma Specification
 
 > This document provides complete specifications for building the Figma design file.
 > Import `tokens.json` via Tokens Studio plugin for all design tokens.
@@ -9,8 +9,8 @@
 
 ### Cover Frame (1440x900)
 - Background: `marion-gradient` (linear-gradient 135deg, #FF7E5F → #FEB47B)
-- Logo: Marion Web OS logo centered, white, 120px
-- Title: "Marion Web OS" — Montserrat 800, 64px, white
+- Logo: Eonora Tech OS logo centered, white, 120px
+- Title: "Eonora Tech OS" — Montserrat 800, 64px, white
 - Subtitle: "Design System & UI Kit" — Raleway 400, 24px, white/80
 - Version: "v1.0" — Raleway 500, 16px, white/60
 - Date: "Fevrier 2026" — Raleway 400, 14px, white/60
@@ -388,7 +388,7 @@ Events use these colors as:
 
 **Left side**:
 - Logo: 56px (w-14 h-14), rounded
-- Text: "Marion Web OS" — Montserrat 700, text-lg, gradient text (brand-orange → brand-pink)
+- Text: "Eonora Tech OS" — Montserrat 700, text-lg, gradient text (brand-orange → brand-pink)
   - Fades out on scroll (opacity transition)
 
 **Right side - Toolbar pill**:
@@ -418,7 +418,7 @@ Events use these colors as:
 **Container**: sticky, bg-white/70 | slate-900/40, backdrop-blur-md, border-b
 
 **Layout**: 
-- Left: Logo 36px, "Marion Web OS" text
+- Left: Logo 36px, "Eonora Tech OS" text
 - Right: Notifications bell (orange), Franck status pill, Hamburger menu
 
 **MobileDrawer**: Slide-in from right, full-height panel with all toolbar items listed vertically
@@ -680,7 +680,7 @@ Events use these colors as:
 
 ### 6.11 PWA Install Prompt
 - **Banner**: Bottom fixed, glass bg
-- **Content**: App icon + "Installer Marion Web OS" + Install/Dismiss buttons
+- **Content**: App icon + "Installer Eonora Tech OS" + Install/Dismiss buttons
 
 ### 6.12 Tour Guide
 - **Overlay**: Step-by-step tooltips pointing to UI elements
@@ -763,7 +763,7 @@ Events use these colors as:
 ## Figma File Organization
 
 ```
-Marion Web OS.fig
+Eonora Tech OS.fig
 ├── Page 1: Cover & Documentation
 │   ├── Cover (1440x900)
 │   ├── Table of Contents

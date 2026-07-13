@@ -4,8 +4,8 @@
 
 | Élément | Chemin par défaut |
 |---------|-------------------|
-| Base SQLite | `~/Desktop/Marion Web OS Database/marion.db` |
-| Fichier auth | `~/Desktop/Marion Web OS Database/.marion_auth.json` |
+| Base SQLite | `~/Desktop/Eonora Tech OS Database/marion.db` |
+| Fichier auth | `~/Desktop/Eonora Tech OS Database/.marion_auth.json` |
 | Tokens OAuth | Table `oauth_tokens` + `.oauth_tokens.enc` (legacy) |
 | Comptes email | Table `email_accounts` |
 | Projets (JSON) | Sous-dossiers de `DATA_PATH` / Desktop |
@@ -47,7 +47,7 @@ cp -r ~/Desktop/Marion\ Web\ OS\ Database ~/Backups/marion_backup_$(date +%Y%m%d
 
 1. Arrêter le serveur Marion
 2. Remplacer `marion.db` par le fichier de backup
-3. Ou restaurer tout le dossier `Marion Web OS Database`
+3. Ou restaurer tout le dossier `Eonora Tech OS Database`
 4. Redémarrer le serveur
 
 ```bash

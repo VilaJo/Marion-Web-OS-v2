@@ -1,4 +1,4 @@
-# Marion Web OS — Notes de release v2.4.7
+# Eonora Tech OS — Notes de release v2.4.7
 
 Descriptif complet des changements livrés dans cette version.
 

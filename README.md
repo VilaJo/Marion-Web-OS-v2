@@ -1,4 +1,4 @@
-# Marion Web OS 🚀
+# Eonora Tech OS 🚀
 
 ### Le "Business OS" Local-First pour Freelances Créatifs.
 
@@ -13,7 +13,7 @@
 
 Les freelances jonglent entre Notion, Trello, Drive et Excel. C'est fragmenté et les données sont éparpillées dans le Cloud.
 
-**Marion Web OS** propose une nouvelle approche :
+**Eonora Tech OS** propose une nouvelle approche :
 1.  **Local-First & Sécurité :** Toutes les données (clients, fichiers, factures) sont stockées en JSON et dossiers sur la machine de l'utilisateur. **Zéro dépendance Cloud**, souveraineté totale des données.
 2.  **Design "Métier" :** L'interface n'est pas générique. Elle intègre des outils spécifiques aux designers (Moodboards, palettes couleurs, gestion de fichiers lourds).
 3.  **Intelligence Embarquée :** L'assistant IA "Franck" (Google Gemini) est câblé directement sur le système de fichiers pour automatiser le tri et l'analyse.
@@ -60,7 +60,7 @@ git clone https://github.com/VilaJo/Marion-CRM-v1.0.git
 ./INSTALLER.command
 
 # 3. Démarrer le système
-./LANCER_MARION.command
+./LANCER_EONORA.command
 ```
 
 ### Développement local (tests & build)

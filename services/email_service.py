@@ -537,7 +537,7 @@ def delete_email(username: str, password: str, msg_id: str, folder: str = 'inbox
 # ============================================================================
 
 def _get_logo_path():
-    """Return the path to the Marion Web logo for email signatures."""
+    """Return the path to the Eonora Tech logo for email signatures."""
     from pathlib import Path
     # Try multiple locations
     candidates = [

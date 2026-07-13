@@ -356,7 +356,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
 
     // Generate Stripe-like payment link (simulated)
     const generatePaymentLink = () => {
-        const baseUrl = 'https://pay.marion-web.app';
+        const baseUrl = 'https://pay.eonoratech.app';
         const params = new URLSearchParams({
             inv: currentInvoice.number,
             amount: formatCurrency(calculateTotal(), 2),
@@ -366,6 +366,10 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
         const link = `${baseUrl}/invoice?${params.toString()}`;
         setCurrentInvoice(prev => ({ ...prev, paymentLink: link }));
         navigator.clipboard.writeText(link);
+    };
+
+    const removePaymentLink = () => {
+        setCurrentInvoice(prev => ({ ...prev, paymentLink: undefined }));
     };
 
     // --- QR Code Fetching ---
@@ -744,13 +748,32 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                     <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0"></div>
 
                     {/* Payment Link Button */}
-                    <button 
-                        onClick={generatePaymentLink}
-                        className="flex items-center gap-2 px-3 py-2 bg-emerald-100 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors shrink-0 whitespace-nowrap"
-                        title={t.generatePaymentLink}
-                    >
-                        <CreditCard size={14} /> {t.paymentLink}
-                    </button>
+                    {currentInvoice.paymentLink ? (
+                        <div className="flex items-center gap-1 shrink-0">
+                            <button
+                                onClick={() => navigator.clipboard.writeText(currentInvoice.paymentLink || '')}
+                                className="flex items-center gap-2 px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition-colors whitespace-nowrap"
+                                title="Copier le lien de paiement"
+                            >
+                                <Link2 size={14} /> Lien actif
+                            </button>
+                            <button
+                                onClick={removePaymentLink}
+                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                title="Retirer le lien de paiement"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={generatePaymentLink}
+                            className="flex items-center gap-2 px-3 py-2 bg-emerald-100 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors shrink-0 whitespace-nowrap"
+                            title={t.generatePaymentLink}
+                        >
+                            <CreditCard size={14} /> {t.paymentLink}
+                        </button>
+                    )}
 
                     {/* Récurrence */}
                     <div className="relative shrink-0">
@@ -1105,8 +1128,16 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ invoice, project
                                     <button 
                                         onClick={() => navigator.clipboard.writeText(currentInvoice.paymentLink || '')}
                                         className="text-slate-400 hover:text-emerald-600 print:hidden"
+                                        title="Copier le lien"
                                     >
                                         <Link2 size={10} />
+                                    </button>
+                                    <button
+                                        onClick={removePaymentLink}
+                                        className="text-slate-400 hover:text-red-500 print:hidden"
+                                        title="Retirer le lien de paiement"
+                                    >
+                                        <X size={10} />
                                     </button>
                                 </div>
                             </div>

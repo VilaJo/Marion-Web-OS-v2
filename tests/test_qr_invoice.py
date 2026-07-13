@@ -1,7 +1,7 @@
 """
 Tests for the Swiss QR-bill generator.
 
-Locks the v2.6.x fix where the creditor name was hardcoded to 'Marion Web'
+Locks the v2.6.x fix where the creditor name was hardcoded to 'Eonora Tech'
 instead of using the payload (Marion Kindynis or whatever the user sends).
 """
 
@@ -39,7 +39,7 @@ class TestSwissQrCreditor:
 
     def test_creditor_name_is_not_hardcoded_to_marion_web(self, client, auth_headers):
         """Regression test: payload {'creditor': {'name': 'Marion Kindynis'}}
-        must end up in the QR data, not 'Marion Web'.
+        must end up in the QR data, not 'Eonora Tech'.
         """
         captured = {}
 
@@ -75,7 +75,7 @@ class TestSwissQrCreditor:
         # [0] SPC, [1] 0200, [2] 1, [3] IBAN
         # [4] addr type, [5] creditor name, [6] street, [7] zip+city, ...
         assert lines[5] == 'Marion Kindynis', \
-            f"REGRESSION: creditor name is {lines[5]!r}, must be 'Marion Kindynis' (was 'Marion Web')"
+            f"REGRESSION: creditor name is {lines[5]!r}, must be 'Marion Kindynis' (was 'Eonora Tech')"
         assert lines[6] == '4A chemin du Port', f"Street wrong: {lines[6]!r}"
         assert lines[7] == '1246 Corsier', f"Zip+city wrong: {lines[7]!r}"
         assert lines[10] == 'CH', f"Country wrong: {lines[10]!r}"

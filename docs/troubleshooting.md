@@ -52,7 +52,7 @@
 
 **Solution** :
 - Vérifier que toutes les requêtes utilisent `apiFetch` (et non `fetch` brut)
-- Vérifier `DATA_PATH` dans la config (défaut : `~/Desktop/Marion Web OS Database`)
+- Vérifier `DATA_PATH` dans la config (défaut : `~/Desktop/Eonora Tech OS Database`)
 
 ---
 
@@ -104,4 +104,4 @@
 
 - **Backend** : Les logs Flask s'affichent dans le terminal où `franck_server.py` est lancé
 - **Frontend** : Console navigateur (F12) pour les erreurs JavaScript
-- **Database** : `marion_data.db` ou `Marion Web OS Database/marion.db`
+- **Database** : `marion_data.db` ou `Eonora Tech OS Database/marion.db`

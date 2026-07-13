@@ -91,7 +91,7 @@ function ServerInstallDiagnostic({ payload }: { payload: unknown }) {
                 <span className="font-mono">git pull</span> et{' '}
                 <span className="font-mono">npm run build</span>. S’ils ne sont{' '}
                 <strong>pas identiques</strong>, tu ouvres une <strong>ancienne copie</strong> pendant que tu modifies une
-                autre (souvent l’icône <strong>Bureau « Marion Web OS »</strong> pointait vers un chemin lors de{' '}
+                autre (souvent l’icône <strong>Bureau « Eonora Tech OS »</strong> pointait vers un chemin lors de{' '}
                 <span className="font-mono">INSTALLER.command</span> — il faut relancer l’app depuis{' '}
                 <strong>le bon dossier</strong> ou revoir cet installateur.)
             </p>
@@ -149,7 +149,7 @@ function LocalClientFoldersCard({
                 Marion lit vos projets dans les sous-dossiers de ce répertoire (
                 <span className="font-medium">1. En cours</span>, <span className="font-medium">4. Prospects</span>,
                 etc.). Si le tableau de bord ne liste pas vos clients, ouvre ce dossier dans le Finder et vérifie
-                que tes projets s’y trouvent (pas une ancienne copie du dossier « Marion Web OS Database »). Tu peux aussi
+                que tes projets s’y trouvent (pas une ancienne copie du dossier « Eonora Tech OS Database »). Tu peux aussi
                 fixer le chemin via <span className="font-mono text-xs">DATA_PATH</span> dans{' '}
                 <span className="font-mono text-xs">.env.local</span> (ou via le formulaire ci-dessous),
                 puis redémarrer l’application.
@@ -206,7 +206,7 @@ function LocalClientFoldersCard({
                             Emplacement habituel sur Mac (si tu n’as rien changé)
                         </div>
                         <code className="font-mono text-xs text-slate-800 dark:text-slate-100 break-all block">
-                            ~/Desktop/Marion Web OS Database
+                            ~/Desktop/Eonora Tech OS Database
                         </code>
                         <p className="text-xs text-slate-500 mt-2">
                             Dans le Finder :{' '}
@@ -278,7 +278,7 @@ function ClientDataPathSettingCard({ isOpen }: { isOpen: boolean }) {
                 Dossier données (prochain démarrage)
             </h4>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-                Indique le chemin absolu du dossier « Marion Web OS Database » (ou équivalent). Marion écrit la ligne{' '}
+                Indique le chemin absolu du dossier « Eonora Tech OS Database » (ou équivalent). Marion écrit la ligne{' '}
                 <span className="font-mono text-xs">DATA_PATH</span> dans le fichier{' '}
                 <span className="font-mono text-xs">.env.local</span> à la racine du code Python — pas besoin d’ouvrir ce
                 fichier à la main.
@@ -301,7 +301,7 @@ function ClientDataPathSettingCard({ isOpen }: { isOpen: boolean }) {
                     setDirty(true);
                     setDraft(e.target.value);
                 }}
-                placeholder={data?.effectiveNow ?? '/Users/…/Marion Web OS Database'}
+                placeholder={data?.effectiveNow ?? '/Users/…/Eonora Tech OS Database'}
                 disabled={busy}
                 className="w-full px-4 py-2.5 mb-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:border-emerald-500 text-sm font-mono text-slate-800 dark:text-slate-100"
             />
@@ -922,7 +922,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
 
     const handleCopyDefaultDataPathHint = () => {
-        void navigator.clipboard.writeText('~/Desktop/Marion Web OS Database').then(() => {
+        void navigator.clipboard.writeText('~/Desktop/Eonora Tech OS Database').then(() => {
             setPathCopied(true);
             window.setTimeout(() => setPathCopied(false), 2000);
         });
@@ -2184,7 +2184,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 type="text"
                                                 value={cloudConfig.googleDrive.folder}
                                                 onChange={(e) => handleCloudConfigChange('googleDrive', 'folder', e.target.value)}
-                                                placeholder="/Marion Web OS/Clients"
+                                                placeholder="/Eonora Tech OS/Clients"
                                                 className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:border-brand-orange"
                                             />
                                         </div>
@@ -2316,7 +2316,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 type="text"
                                                 value={cloudConfig.dropbox.folder}
                                                 onChange={(e) => handleCloudConfigChange('dropbox', 'folder', e.target.value)}
-                                                placeholder="/Marion Web OS/Clients"
+                                                placeholder="/Eonora Tech OS/Clients"
                                                 className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:border-brand-orange"
                                             />
                                         </div>
@@ -2474,7 +2474,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </div>
 
                                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                                    Un mot de passe protège l'accès à Marion Web OS. Vos tokens OAuth et données sensibles 
+                                    Un mot de passe protège l'accès à Eonora Tech OS. Vos tokens OAuth et données sensibles 
                                     (coffre-fort, notes privées) sont chiffrés avec ce mot de passe.
                                 </p>
 
@@ -2549,7 +2549,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold">Mises à jour</h3>
-                                    <p className="text-sm text-white/80">Gardez Marion Web OS à jour avec les dernières fonctionnalités</p>
+                                    <p className="text-sm text-white/80">Gardez Eonora Tech OS à jour avec les dernières fonctionnalités</p>
                                 </div>
                             </div>
 
@@ -2680,7 +2680,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <div>
                                             <h4 className="font-bold text-emerald-700 dark:text-emerald-300">Vous êtes à jour !</h4>
                                             <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                                                {updateInfo.message || `Marion Web OS v${updateInfo.currentVersion} est la dernière version.`}
+                                                {updateInfo.message || `Eonora Tech OS v${updateInfo.currentVersion} est la dernière version.`}
                                             </p>
                                         </div>
                                     </div>
@@ -2763,7 +2763,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     METTRE_A_JOUR.command
                                 </code>
                                 <p className="text-xs text-slate-400 mt-2">
-                                    Ce fichier se trouve dans le dossier Marion Web OS sur votre Bureau.
+                                    Ce fichier se trouve dans le dossier Eonora Tech OS sur votre Bureau.
                                 </p>
                             </div>
                         </div>

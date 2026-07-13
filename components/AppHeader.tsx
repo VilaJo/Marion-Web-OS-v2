@@ -225,7 +225,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
 
     const franckIsDown = isBackendDown || isConfigured === false;
 
-    // Scroll: text "Marion Web OS Assistant Intelligent" disappears behind logo
+    // Scroll: text "Eonora Tech OS Assistant Intelligent" disappears behind logo
     const [scrollY, setScrollY] = useState(0);
     useEffect(() => {
         const onScroll = () => setScrollY(window.scrollY);
@@ -241,7 +241,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             <div onClick={() => navigate('/')} className="group flex items-center cursor-pointer relative overflow-hidden">
                 <div className="relative z-10 flex-shrink-0">
                     <img 
-                        src="/logo-marion.png" 
+                        src="/logo-eonora.png" 
                         alt="Home" 
                         className={`w-9 h-9 sm:w-10 sm:h-10 md:w-14 md:h-14 object-contain transition-all duration-300 group-hover:scale-110 ${
                             theme === 'dark' 
@@ -258,7 +258,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                     }}
                 >
                     <h1 className="font-sans text-base sm:text-lg md:text-[26px] font-semibold text-slate-800 dark:text-white leading-tight whitespace-nowrap">
-                        Marion Web <span className="text-slate-400 font-normal hidden md:inline">OS</span>
+                        Eonora Tech <span className="text-slate-400 font-normal hidden md:inline">OS</span>
                     </h1>
                     <p className="text-[10px] md:text-xs text-slate-400 hidden md:block">Assistant Intelligent</p>
                 </div>

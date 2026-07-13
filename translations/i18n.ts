@@ -1,5 +1,5 @@
 /**
- * Lightweight i18n module for Marion Web OS.
+ * Lightweight i18n module for Eonora Tech OS.
  *
  * Supported languages: French (fr), English (en), Spanish (es).
  * Used in: InvoiceBuilder, ClientPortal, PortalPublicPage.

@@ -1,9 +1,9 @@
 #!/bin/bash
-# Generate macOS AppIcon.icns from public/logo-marion.png
+# Generate macOS AppIcon.icns from public/logo-eonora.png
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOGO="$APP_DIR/public/logo-marion.png"
+LOGO="$APP_DIR/public/logo-eonora.png"
 ICONSET="$APP_DIR/.build/AppIcon.iconset"
 ICNS_OUT="$APP_DIR/public/icons/AppIcon.icns"
 

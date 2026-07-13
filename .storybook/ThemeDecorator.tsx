@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 
 /**
- * Storybook decorator that applies the Marion Web OS theme
+ * Storybook decorator that applies the Eonora Tech OS theme
  * (light / dark / unicorn) based on the global toolbar selector.
  */
 export const ThemeDecorator = (Story: React.FC, context: any) => {

@@ -613,7 +613,7 @@ describe('useWorkspaceStore', () => {
         const state = useWorkspaceStore.getState();
         expect(state.currentWorkspace).toBeNull();
         expect(state.workspaces).toEqual([]);
-        expect(state.branding.appName).toBe('Marion Web OS');
+        expect(state.branding.appName).toBe('Eonora Tech OS');
     });
 
     it('loadWorkspace: loads and applies branding', async () => {

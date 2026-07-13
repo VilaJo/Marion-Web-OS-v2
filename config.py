@@ -1,5 +1,5 @@
 """
-Marion Web OS - Configuration
+Eonora Tech OS - Configuration
 Multi-environment configuration management.
 
 All application settings are centralised here. Modules should import
@@ -23,7 +23,13 @@ from dotenv import load_dotenv
 # ---------------------------------------------------------------------------
 def get_marion_support_dir() -> Path:
     """User-writable config for the installed .app (outside /Applications)."""
-    return Path.home() / "Library" / "Application Support" / "Marion Web OS"
+    home = Path.home()
+    support_root = home / "Library" / "Application Support"
+    for name in ("Eonora Tech OS", "Marion Web OS"):
+        path = support_root / name
+        if path.is_dir():
+            return path
+    return support_root / "Eonora Tech OS"
 
 
 _INSTALLED_ENV_CANDIDATES = (
@@ -69,24 +75,16 @@ load_dotenv(".env")
 
 
 def _legacy_desktop_data_candidates() -> list[Path]:
-    """Known locations for the pre-installed « Marion Web OS Database » folder."""
+    """Known locations for client data (new name + legacy Marion installs)."""
     home = Path.home()
-    return [
-        home / "Desktop" / "Marion Web OS Database",
-        home / "Bureau" / "Marion Web OS Database",
-        home
-        / "Library"
-        / "Mobile Documents"
-        / "com~apple~CloudDocs"
-        / "Desktop"
-        / "Marion Web OS Database",
-        home
-        / "Library"
-        / "Mobile Documents"
-        / "com~apple~CloudDocs"
-        / "Bureau"
-        / "Marion Web OS Database",
-    ]
+    folder_names = ("Eonora Tech OS Database", "Marion Web OS Database")
+    bases = (
+        home / "Desktop",
+        home / "Bureau",
+        home / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Desktop",
+        home / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Bureau",
+    )
+    return [base / name for base in bases for name in folder_names]
 
 
 def _folder_has_client_data(path: Path) -> bool:
@@ -118,7 +116,7 @@ def _default_data_path() -> Path:
         if legacy is not None:
             return legacy
         return get_marion_support_dir() / "Data"
-    return Path.home() / "Desktop" / "Marion Web OS Database"
+    return Path.home() / "Desktop" / "Eonora Tech OS Database"
 
 
 def _resolve_data_path() -> Path:
@@ -143,7 +141,7 @@ class Config:
     """Base configuration shared by all environments."""
 
     # -- Application --------------------------------------------------------
-    APP_NAME = os.getenv('APP_NAME', 'Marion Web OS')
+    APP_NAME = os.getenv('APP_NAME', 'Eonora Tech OS')
     APP_VERSION = '2.7.9'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
@@ -209,7 +207,7 @@ class Config:
     SMTP_USER = os.getenv('SMTP_USER', '')
     SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
     SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', '')
-    SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', 'Marion Web OS')
+    SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', 'Eonora Tech OS')
 
     # -- Server -------------------------------------------------------------
     HOST = os.getenv('HOST', '127.0.0.1')

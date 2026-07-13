@@ -177,7 +177,7 @@ def auth_setup():
         return jsonify({
             "error": (
                 "Impossible de finaliser la protection. "
-                "Vérifie que le dossier « Marion Web OS Database » sur le Bureau existe "
+                "Vérifie que le dossier « Eonora Tech OS Database » sur le Bureau existe "
                 "et que Marion peut y écrire, puis redémarre l’application."
             ),
         }), 500

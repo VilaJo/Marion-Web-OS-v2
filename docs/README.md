@@ -1,4 +1,4 @@
-# Marion Web OS — Documentation Technique
+# Eonora Tech OS — Documentation Technique
 
 > Documentation complète de l'architecture, des APIs et du déploiement du Business OS Local-First pour freelances créatifs.
 

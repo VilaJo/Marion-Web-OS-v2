@@ -1,5 +1,5 @@
 """
-Test fixtures for Marion Web OS
+Test fixtures for Eonora Tech OS
 """
 
 import os
