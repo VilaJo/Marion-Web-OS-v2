@@ -156,6 +156,12 @@ fi
 write_installed_stamp
 
 echo ""
+echo "📋 Scripts dans ce dossier :"
+for f in "$APP_DIR"/*.command; do
+    [ -f "$f" ] && basename "$f"
+done
+
+echo ""
 echo "────────────────────────────────────────────────────────────────────"
 echo "✨ Mise à jour terminée."
 echo ""
