@@ -87,7 +87,7 @@ def _gemini_multimodal_json(parts: list[dict[str, Any]], prompt: str) -> dict:
     content_parts.append(genai_types.Part.from_text(text=prompt))
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         contents=[genai_types.Content(role="user", parts=content_parts)],
         config=genai_types.GenerateContentConfig(
             temperature=0.3,

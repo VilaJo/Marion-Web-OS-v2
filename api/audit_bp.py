@@ -302,7 +302,7 @@ JSON strict :
             gemini_client=gemini_client,
             prompt=prompt,
             prefs=prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
     except Exception as e:
         logger.error("WP audit AI synthesis failed: %s", e)

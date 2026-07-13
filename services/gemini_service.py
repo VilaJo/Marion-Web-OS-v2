@@ -166,6 +166,55 @@ def get_client():
     return _client
 
 
+def get_flash_model() -> str:
+    return getattr(cfg, 'GEMINI_FLASH_MODEL', 'gemini-2.5-flash')
+
+
+def get_pro_model() -> str:
+    return getattr(cfg, 'GEMINI_PRO_MODEL', 'gemini-2.5-pro')
+
+
+def parse_json_from_model_text(raw_text: str) -> Any:
+    """Extract JSON object or array from a model response (strips markdown fences)."""
+    raw = (raw_text or '').strip().replace('```json', '').replace('```', '').strip()
+    for opener, closer in (('{', '}'), ('[', ']')):
+        start = raw.find(opener)
+        end = raw.rfind(closer) + 1
+        if start != -1 and end > start:
+            return json.loads(raw[start:end])
+    raise ValueError('No JSON found in model response')
+
+
+def generate_grounded_json(prompt: str, *, temperature: float = 0.4) -> Any:
+    """Generate JSON via Gemini + Google Search, with plain-JSON fallback."""
+    client = get_client()
+    if not client:
+        raise RuntimeError('Gemini not configured')
+
+    from google.genai import types as genai_types
+    from services.ai_provider_service import generate_json_with_fallback
+
+    model = get_flash_model()
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
+                temperature=temperature,
+            ),
+        )
+        return parse_json_from_model_text(response.text or '')
+    except Exception as e:
+        logger.warning('Grounded Gemini generation failed (%s), using plain fallback', e)
+        return generate_json_with_fallback(
+            gemini_client=client,
+            prompt=prompt,
+            prefs={'ai_mode': 'cloud'},
+            cloud_model=model,
+        )
+
+
 def set_api_key(key: str):
     """Persist a new Gemini API key durably and reinitialise the client.
 
@@ -298,7 +347,7 @@ def ai_status_payload(prefs: Optional[dict] = None) -> dict[str, Any]:
         "localAvailable": local_available,
         "localLatencyMs": local_latency_ms,
         "fallbackEnabled": prefs["fallback_enabled"],
-        "model": "gemini-2.0-flash" if cloud_available else None,
+        "model": get_flash_model() if cloud_available else None,
         "localModel": requested_local_model,
         "localModelAvailable": local_model_available,
         "availableLocalModels": local_models[:20],

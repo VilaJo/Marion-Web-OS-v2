@@ -28,6 +28,7 @@ import services.claude_service as claude_svc
 from services.gemini_service import (
     get_client, init_client, set_api_key, remove_api_key, is_configured,
     ai_status_payload, resolve_ai_prefs, is_local_available, get_default_ai_mode,
+    generate_grounded_json, get_flash_model, get_pro_model,
     FRANCK_SYSTEM_PROMPT, COACH_FRANCK_SYSTEM_PROMPT,
     load_franck_memory, save_franck_memory, get_time_greeting,
     set_context, get_context,
@@ -405,7 +406,7 @@ def setup():
     try:
         from google import genai
         test_client = genai.Client(api_key=api_key)
-        test_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro"]
+        test_models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-pro"]
         test_success = False
         for model_name in test_models:
             try:
@@ -596,7 +597,7 @@ SUGGESTIONS POSSIBLES:
                         gemini_client=client,
                         prompt=local_prompt,
                         prefs=ai_prefs,
-                        cloud_model="gemini-2.0-flash",
+                        cloud_model="gemini-2.5-flash",
                         task="chat",
                     )
                 except Exception as e:
@@ -651,7 +652,7 @@ SUGGESTIONS POSSIBLES:
                     raise RuntimeError("Local mode did not return a response")
 
             chat_session = client.chats.create(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 history=history_contents[:-1],
                 config=types.GenerateContentConfig(tools=TOOLS_LIST),
             )
@@ -749,7 +750,7 @@ def chat_zen():
                     gemini_client=client,
                     contents=contents,
                     prefs=ai_prefs,
-                    cloud_model="gemini-2.0-flash",
+                    cloud_model="gemini-2.5-flash",
                     task="chat",
                     system_prompt=COACH_FRANCK_SYSTEM_PROMPT,
                     temperature=0.8,
@@ -1114,7 +1115,7 @@ TRANSCRIPTION:
 
         # Use a more capable model for longer meetings (>=15 min)
         duration_for_model = duration_seconds if isinstance(duration_seconds, (int, float)) else 0
-        analyze_model = "gemini-2.5-pro" if duration_for_model >= 900 else "gemini-2.0-flash"
+        analyze_model = "gemini-2.5-pro" if duration_for_model >= 900 else "gemini-2.5-flash"
 
         payload = generate_json_with_fallback(
             gemini_client=client,
@@ -1214,7 +1215,7 @@ TRANSCRIPT (fenetre recente):
             gemini_client=client,
             prompt=prompt,
             prefs=ai_prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
             task="chat",
         )
 
@@ -1614,7 +1615,7 @@ CONSIGNES:
             gemini_client=client,
             prompt=prompt,
             prefs=ai_prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
             task="chat",
         )
         return jsonify({"success": True, "reply": reply})
@@ -1655,7 +1656,7 @@ CONSIGNES :
             gemini_client=client,
             prompt=prompt,
             prefs=ai_prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
             task="chat",
         )
         return jsonify({"success": True, "summary": summary})
@@ -1887,7 +1888,7 @@ Retourne en JSON strict :
     try:
         from google.genai import types as genai_types
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
@@ -1945,7 +1946,7 @@ Retourne en JSON strict :
     try:
         from google.genai import types as genai_types
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
@@ -2016,7 +2017,7 @@ Valeurs possibles pour health : "on_track", "at_risk", "delayed", "completed".""
             gemini_client=gemini_client,
             prompt=prompt,
             prefs=prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         return jsonify(result)
     except Exception as e:
@@ -2078,7 +2079,7 @@ Retourne en JSON strict :
             gemini_client=gemini_client,
             prompt=prompt,
             prefs=prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         return jsonify(result)
     except Exception as e:
@@ -2123,19 +2124,7 @@ Valeurs impact : "high", "medium", "low"."""
 
     gemini_client = get_client()
     try:
-        from google.genai import types as genai_types
-        response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
-                temperature=0.4,
-            ),
-        )
-        raw = (response.text or "").strip().replace("```json", "").replace("```", "").strip()
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
-        result = json.loads(raw[start:end])
+        result = generate_grounded_json(prompt, temperature=0.4)
         return jsonify(result)
     except Exception as e:
         logger.error("Market watch failed: %s", e)
@@ -2229,7 +2218,7 @@ Retourne en JSON :
             gemini_client=gemini_client,
             prompt=meta_prompt,
             prefs=prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         return jsonify(result)
     except Exception as e:
@@ -2392,7 +2381,7 @@ JSON strict :
             gemini_client=gemini_client,
             prompt=prompt,
             prefs=prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         return jsonify(result)
     except Exception as e:
@@ -2445,7 +2434,7 @@ JSON strict :
             gemini_client=gemini_client,
             prompt=prompt,
             prefs=prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         return jsonify(result)
     except Exception as e:
@@ -2509,7 +2498,7 @@ JSON strict :
             gemini_client=gemini_client,
             prompt=prompt,
             prefs=prefs,
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         return jsonify(result)
     except Exception as e:

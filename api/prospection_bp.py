@@ -340,7 +340,7 @@ Génère exactement 10 objets avec des données les plus réelles possible."""
         try:
             from google.genai import types as genai_types
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=grounded_prompt,
                 config=genai_types.GenerateContentConfig(
                     tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
@@ -384,7 +384,7 @@ JSON uniquement, 10 objets :
         gemini_client=client,
         prompt=fallback_prompt,
         prefs={"ai_mode": "cloud"},
-        cloud_model="gemini-2.0-flash",
+        cloud_model="gemini-2.5-flash",
     )
     results = []
     if isinstance(raw, list):
@@ -637,7 +637,7 @@ Réponds en JSON valide uniquement :
             gemini_client=client,
             prompt=prompt,
             prefs={"ai_mode": "cloud"},
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         if isinstance(result, dict) and "subject" in result and "body" in result:
             return jsonify(result)
@@ -679,7 +679,7 @@ Réponds en JSON uniquement :
     try:
         from google.genai import types as genai_types
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())],
@@ -702,7 +702,7 @@ Réponds en JSON uniquement :
             gemini_client=client,
             prompt=prompt,
             prefs={"ai_mode": "cloud"},
-            cloud_model="gemini-2.0-flash",
+            cloud_model="gemini-2.5-flash",
         )
         if isinstance(result, dict) and "what" in result:
             return jsonify(result)

@@ -111,10 +111,10 @@ def _find_legacy_desktop_data() -> Path | None:
 
 def _default_data_path() -> Path:
     """Default client data directory for dev vs installed .app."""
+    legacy = _find_legacy_desktop_data()
+    if legacy is not None:
+        return legacy
     if os.getenv("MARION_INSTALLED_APP"):
-        legacy = _find_legacy_desktop_data()
-        if legacy is not None:
-            return legacy
         return get_marion_support_dir() / "Data"
     return Path.home() / "Desktop" / "Eonora Tech OS Database"
 
@@ -168,6 +168,8 @@ class Config:
 
     # -- API Keys -----------------------------------------------------------
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+    GEMINI_FLASH_MODEL = os.getenv('GEMINI_FLASH_MODEL', 'gemini-2.5-flash')
+    GEMINI_PRO_MODEL = os.getenv('GEMINI_PRO_MODEL', 'gemini-2.5-pro')
     GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
     APOLLO_API_KEY = os.getenv('APOLLO_API_KEY', '')
 

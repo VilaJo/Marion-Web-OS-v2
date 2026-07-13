@@ -167,7 +167,10 @@ const MarketWatchPage: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),
             });
-            if (!res.ok) throw new Error(`Erreur ${res.status}`);
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}));
+                throw new Error(typeof errBody.error === 'string' ? errBody.error : `Erreur ${res.status}`);
+            }
             const data: WatchResult = await res.json();
             saveCache(data);
             setResult(data);
