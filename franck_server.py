@@ -234,11 +234,13 @@ _load_oauth()
 
 @app.after_request
 def add_cache_headers(response):
-    """Ensure browsers never serve stale JS/CSS from disk cache."""
-    if response.content_type and ('javascript' in response.content_type or 'css' in response.content_type):
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+    """Ensure browsers never serve stale JS/CSS/HTML from disk cache."""
+    if response.content_type:
+        ct = response.content_type
+        if 'javascript' in ct or 'css' in ct or 'html' in ct:
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
     # Service worker must never be cached
     if request.path == '/sw.js':
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'

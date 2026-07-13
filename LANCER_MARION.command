@@ -59,6 +59,14 @@ if [ ! -x "$PYTHON_BIN" ]; then
     marion_fail "Environnement non installé. Lance d'abord INSTALLER.command"
 fi
 
+# shellcheck source=packaging/verify_dist.sh
+source "$APP_DIR/packaging/verify_dist.sh" 2>/dev/null || true
+if declare -F verify_dist_integrity >/dev/null 2>&1; then
+    if ! verify_dist_integrity "$APP_DIR"; then
+        echo "⚠️  Interface (.dist) incomplète — lance REPARER_INTERFACE.command"
+    fi
+fi
+
 echo "🚀 Démarrage du serveur..."
 "$PYTHON_BIN" "$APP_DIR/franck_server.py" > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!

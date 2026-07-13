@@ -1,5 +1,5 @@
 // Marion Web OS - Service Worker
-const CACHE_NAME = 'marion-web-os-v6';
+const CACHE_NAME = 'marion-web-os-v7';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_RESOURCES = [

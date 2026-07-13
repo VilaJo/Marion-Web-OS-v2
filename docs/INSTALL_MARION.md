@@ -166,6 +166,7 @@ Tout est stocké **localement** sur ton Mac :
 
 | Problème | Solution |
 |----------|----------|
+| Page blanche / 404 `index-*.js` | **REPARER_INTERFACE.command** puis Cmd+Shift+R |
 | Page blanche | Relance `INSTALLER.command` |
 | « Non connecté » agenda | Vérifier `.env` + test user Google + reconnecter dans Paramètres |
 | Port 5003 occupé | Ferme une autre instance ou lance `STOPPER_MARION.command` |

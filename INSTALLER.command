@@ -39,16 +39,32 @@ else
     exit 1
 fi
 
-# Node.js
+# Node.js — optionnel si .dist est déjà inclus (install Marion sans dev)
+NEEDS_NPM_BUILD=1
+# shellcheck source=packaging/verify_dist.sh
+if [ -f "$APP_DIR/packaging/verify_dist.sh" ]; then
+    # shellcheck disable=SC1091
+    source "$APP_DIR/packaging/verify_dist.sh"
+    if verify_dist_integrity "$APP_DIR" 2>/dev/null; then
+        NEEDS_NPM_BUILD=0
+    fi
+fi
+
 echo -n "   📦 Node.js... "
 if command -v npm &> /dev/null; then
     NODE_VERSION=$(node --version 2>&1)
-    echo "✅ Node $NODE_VERSION"
+    if [ "$NEEDS_NPM_BUILD" -eq 0 ]; then
+        echo "✅ Node $NODE_VERSION (optionnel — .dist déjà prêt)"
+    else
+        echo "✅ Node $NODE_VERSION"
+    fi
+elif [ "$NEEDS_NPM_BUILD" -eq 0 ]; then
+    echo "⚪ absent (OK — interface pré-compilée)"
 else
     echo "❌ Non trouvé"
     echo ""
     echo "   👉 Installe Node.js avec: brew install node"
-    echo "   👉 Ou télécharge depuis: https://nodejs.org/"
+    echo "   👉 Ou lance METTRE_A_JOUR.command pour récupérer .dist depuis GitHub"
     read -p "   Appuie sur Entrée pour quitter..."
     exit 1
 fi
@@ -104,22 +120,32 @@ echo ""
 echo "🎨 Installation de l'Interface (React)..."
 echo ""
 
-echo "   📥 Installation des paquets npm..."
-npm install --silent 2>/dev/null
+if [ "$NEEDS_NPM_BUILD" -eq 0 ]; then
+    echo "   ✅ .dist déjà inclus — pas de build npm (évite écran blanc après mise à jour)"
+elif command -v npm &> /dev/null; then
+    echo "   📥 Installation des paquets npm..."
+    npm install --silent 2>/dev/null
 
-if [ $? -ne 0 ]; then
-    echo "   ❌ Erreur lors de l'installation npm"
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Erreur lors de l'installation npm"
+        read -p "   Appuie sur Entrée..."
+        exit 1
+    fi
+
+    echo "   🏗️  Construction de l'application..."
+    npm run build --silent 2>/dev/null
+
+    if ! verify_dist_integrity "$APP_DIR" 2>/dev/null; then
+        echo "   ⚠️  Build npm incomplet — restauration .dist depuis GitHub…"
+        download_dist_from_github "$APP_DIR" || true
+    fi
+    echo "   ✅ Interface installée !"
+else
+    echo "   ❌ Pas de .dist valide et pas de npm."
+    echo "   👉 Lance METTRE_A_JOUR.command ou REPARER_INTERFACE.command"
     read -p "   Appuie sur Entrée..."
     exit 1
 fi
-
-echo "   🏗️  Construction de l'application..."
-npm run build --silent 2>/dev/null
-
-if [ $? -ne 0 ]; then
-    echo "   ⚠️  Build avec warnings (normal)"
-fi
-echo "   ✅ Interface installée !"
 
 echo ""
 echo "───────────────────────────────────────────────────────────────────"

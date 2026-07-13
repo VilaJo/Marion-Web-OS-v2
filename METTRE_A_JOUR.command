@@ -13,6 +13,9 @@ fi
 cd "$SCRIPT_DIR"
 APP_DIR="$(pwd)"
 
+# shellcheck source=packaging/verify_dist.sh
+source "$APP_DIR/packaging/verify_dist.sh"
+
 command -v clear >/dev/null 2>&1 && clear || true
 echo "🦄 Mise à jour Marion Web OS"
 echo "────────────────────────────────────────────────────────────────────"
@@ -104,6 +107,7 @@ if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
     rsync -a --delete \
         --exclude '.env.local' --exclude '.venv' --exclude '.marion.log' --exclude '.marion.pid' \
         --exclude 'Marion Web OS Database' --exclude '.marion_installed.json' \
+        --exclude 'node_modules' \
         "$EXTRACTED_DIR"/ ./
     rm -rf "$EXTRACTED_DIR" update.zip
 
@@ -113,7 +117,19 @@ if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
     fi
 fi
 
-# ── 2. Dépendances Python ───────────────────────────────────────────────────
+# ── 2. Vérifier / réparer l'interface (.dist) ───────────────────────────────
+echo ""
+echo "🎨 Vérification interface…"
+if ! verify_dist_integrity "$APP_DIR"; then
+    echo "⚠️  Interface incohérente — restauration .dist depuis GitHub…"
+    if ! download_dist_from_github "$APP_DIR"; then
+        echo "❌ Impossible de réparer .dist"
+        read -r -p "Appuie sur Entrée…"
+        exit 1
+    fi
+fi
+
+# ── 3. Dépendances Python ───────────────────────────────────────────────────
 chmod +x "$APP_DIR"/*.command 2>/dev/null || true
 
 echo ""
@@ -127,19 +143,11 @@ else
     echo "⚠️  Python introuvable."
 fi
 
-# ── 3. Interface — rebuild seulement si npm dispo ET .dist absent ───────────
+# ── 4. Ne jamais rebuild npm si .dist est valide (évite écran blanc) ────────
 echo ""
-if [ -f .dist/index.html ]; then
-    echo "🎨 Interface : .dist déjà inclus depuis GitHub."
-elif command -v npm >/dev/null 2>&1; then
-    echo "🎨 Build interface (npm)…"
-    npm install --silent 2>/dev/null || npm install
-    npm run build
-else
-    echo "❌ Pas de .dist et pas de npm — l'interface ne pourra pas s'afficher."
-fi
+echo "🎨 Interface : .dist prêt (pas de npm build — utilise GitHub)"
 
-# ── 4. Icônes Bureau (optionnel) ───────────────────────────────────────────
+# ── 5. Icônes Bureau (optionnel) ───────────────────────────────────────────
 if [ -f refresh_desktop_app_icon.sh ]; then
     echo ""
     bash refresh_desktop_app_icon.sh 2>/dev/null || true
@@ -152,6 +160,7 @@ echo "────────────────────────�
 echo "✨ Mise à jour terminée."
 echo ""
 echo "👉 STOPPER_MARION.command puis LANCER_MARION.command"
-echo "👉 Navigateur : Cmd + Shift + R"
+echo "👉 Navigateur : Cmd + Shift + R (obligatoire)"
+echo "   Si écran blanc : REPARER_INTERFACE.command"
 echo "────────────────────────────────────────────────────────────────────"
 read -r -p "Appuie sur Entrée pour fermer…"
