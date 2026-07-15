@@ -250,7 +250,7 @@ def generate_text_with_fallback(
                 error=str(e),
                 fallback=(mode == "hybrid" and p["fallback_enabled"]),
             )
-            if mode == "local" or not p["fallback_enabled"]:
+            if not p["fallback_enabled"]:
                 raise
 
     # cloud or fallback path
@@ -341,7 +341,7 @@ def generate_multimodal_with_fallback(
                 error=str(e),
                 fallback=(mode == "hybrid" and p["fallback_enabled"]),
             )
-            if mode == "local" or not p["fallback_enabled"]:
+            if not p["fallback_enabled"]:
                 raise
 
     if not gemini_client:
@@ -422,7 +422,7 @@ def stream_text_with_fallback(
                 error=str(e),
                 fallback=(mode == "hybrid" and p["fallback_enabled"]),
             )
-            if mode == "local" or not p["fallback_enabled"]:
+            if not p["fallback_enabled"]:
                 raise
 
     if not gemini_client:

@@ -29,6 +29,7 @@ from services.gemini_service import (
     get_client, init_client, set_api_key, remove_api_key, is_configured,
     ai_status_payload, resolve_ai_prefs, is_local_available, get_default_ai_mode,
     generate_grounded_json, get_flash_model, get_pro_model,
+    format_gemini_error,
     FRANCK_SYSTEM_PROMPT, COACH_FRANCK_SYSTEM_PROMPT,
     load_franck_memory, save_franck_memory, get_time_greeting,
     set_context, get_context,
@@ -408,21 +409,71 @@ def setup():
         test_client = genai.Client(api_key=api_key)
         test_models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-pro"]
         test_success = False
+        last_error: Optional[Exception] = None
         for model_name in test_models:
             try:
                 test_client.models.generate_content(model=model_name, contents="Hello")
                 test_success = True
                 break
-            except Exception:
+            except Exception as e:
+                last_error = e
                 continue
 
-        if not test_success and not api_key.startswith("AIza"):
-            return jsonify({"error": "Invalid API key format"}), 400
+        if not test_success:
+            return jsonify({"error": format_gemini_error(last_error)}), 400
 
         set_api_key(api_key)
-        return jsonify({"success": True})
+        return jsonify({"success": True, "recommended_ai_mode": "cloud"})
     except Exception as e:
         return error_response(e, 400, "Requête invalide.")
+
+
+@ai_bp.route('/ai/transcribe', methods=['POST'])
+def transcribe_voice():
+    """Transcribe a short voice note for Franck (MediaRecorder blob)."""
+    init_client()
+    client = get_client()
+    if not client:
+        return jsonify({"error": "Gemini non configuré — ajoute ta clé API dans Paramètres → IA."}), 503
+
+    audio = request.files.get('audio')
+    if not audio:
+        return jsonify({"error": "Fichier audio manquant"}), 400
+
+    audio_bytes = audio.read()
+    if not audio_bytes or len(audio_bytes) < 64:
+        return jsonify({"error": "Audio trop court — reparle un peu plus longtemps."}), 400
+
+    mime_type = (audio.mimetype or request.form.get('mime_type') or 'audio/webm').split(';')[0].strip()
+    if mime_type not in ('audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/x-m4a', 'audio/mp3'):
+        mime_type = 'audio/webm'
+
+    ai_prefs = resolve_ai_prefs(request.form.to_dict() if request.form else {})
+    if ai_prefs["ai_mode"] == "local" and not is_local_available() and client:
+        ai_prefs = {**ai_prefs, "ai_mode": "cloud"}
+
+    prompt = (
+        "Transcris fidèlement cet message vocal en français.\n"
+        "Retourne uniquement le texte dit, sans markdown, sans guillemets, sans commentaire.\n"
+        "Si l'audio est inaudible, réponds exactement : (inaudible)"
+    )
+    try:
+        text = generate_multimodal_with_fallback(
+            gemini_client=client,
+            file_bytes=audio_bytes,
+            prompt=prompt,
+            prefs=ai_prefs,
+            cloud_model=get_flash_model(),
+            mime_type=mime_type,
+            response_mime_type="text/plain",
+        )
+        cleaned = (text or "").strip().strip('"').strip("'")
+        if not cleaned or cleaned.lower() in ("(inaudible)", "inaudible"):
+            return jsonify({"error": "Rien entendu clairement — réessaie en parlant plus près du micro."}), 422
+        return jsonify({"text": cleaned})
+    except Exception as e:
+        logger.error("Voice transcription failed: %s", e, exc_info=True)
+        return jsonify({"error": format_gemini_error(e)}), 500
 
 
 @ai_bp.route('/ai/status', methods=['GET'])
@@ -439,14 +490,84 @@ def ai_status():
 # Franck Chat
 # ============================================================================
 
+def _response_text(response) -> str:
+    """Extract text from a Gemini response without assuming tool-call shape."""
+    text = getattr(response, "text", None)
+    if text:
+        return text
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        return ""
+    content = getattr(candidates[0], "content", None)
+    parts = getattr(content, "parts", None) or []
+    chunks: list[str] = []
+    for part in parts:
+        part_text = getattr(part, "text", None)
+        if part_text:
+            chunks.append(part_text)
+    return "".join(chunks)
+
+
+def _cloud_chat_plain(client, model: str, history_contents, user_text: str) -> str:
+    """Fallback chat without function-calling (more compatible across Gemini keys/SDKs)."""
+    from google.genai import types
+
+    contents = list(history_contents)
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_text)]))
+    response = client.models.generate_content(model=model, contents=contents)
+    reply = _response_text(response)
+    if not reply.strip():
+        raise RuntimeError("Gemini n'a renvoyé aucune réponse.")
+    return reply
+
+
+def _cloud_chat_with_tools(client, model: str, history_contents, user_text: str, max_rounds: int = 5) -> str:
+    """Primary Franck path: Gemini chat session with tool calling."""
+    from google.genai import types
+
+    chat_session = client.chats.create(
+        model=model,
+        history=history_contents[:-1],
+        config=types.GenerateContentConfig(tools=TOOLS_LIST),
+    )
+    response = chat_session.send_message(user_text)
+
+    for _round in range(max_rounds):
+        candidates = getattr(response, "candidates", None) or []
+        if not candidates:
+            break
+        parts = getattr(candidates[0].content, "parts", None) or []
+        if not parts:
+            break
+        part = parts[0]
+        if not (hasattr(part, "function_call") and part.function_call):
+            reply = _response_text(response)
+            logger.info("Franck final text (round %d, no tool call): %.200s", _round, reply or "(empty)")
+            return reply or "Je n'ai pas de réponse pour l'instant, ma belle."
+        func_name = part.function_call.name
+        func_args = dict(part.function_call.args) if part.function_call.args else {}
+        logger.info("Franck EXECUTING tool [round %d]: %s(%s)", _round + 1, func_name, func_args)
+        res = execute_tool(func_name, func_args)
+        logger.info("Franck tool result [%s]: %.300s", func_name, str(res))
+        response = chat_session.send_message(
+            types.Part.from_function_response(name=func_name, response={"result": res})
+        )
+
+    return _response_text(response) or "Je n'ai pas de réponse pour l'instant, ma belle."
+
+
 @ai_bp.route('/chat', methods=['POST'])
 def chat():
     """Main Franck chat endpoint with function-calling."""
+    init_client()
     client = get_client()
     data = request.json or {}
     ai_prefs = resolve_ai_prefs(data)
+    # If Ollama is down but Gemini is configured, use cloud instead of failing silently.
+    if ai_prefs["ai_mode"] == "local" and not is_local_available() and client:
+        ai_prefs = {**ai_prefs, "ai_mode": "cloud"}
     if ai_prefs["ai_mode"] == "cloud" and not client:
-        return jsonify({"error": "Server not configured"}), 503
+        return jsonify({"error": "Gemini non configuré — ajoute ta clé API dans Paramètres → IA."}), 503
 
     from google.genai import types
 
@@ -602,7 +723,7 @@ SUGGESTIONS POSSIBLES:
                     )
                 except Exception as e:
                     logger.warning("Local chat failed prior to fallback: %s", e)
-                    if ai_prefs["ai_mode"] == "local":
+                    if ai_prefs["ai_mode"] == "local" and not ai_prefs.get("fallback_enabled"):
                         raise
 
                 if local_raw:
@@ -648,38 +769,32 @@ SUGGESTIONS POSSIBLES:
                             return
 
                 # Local/hybrid fallback to cloud function-calling path
-                if ai_prefs["ai_mode"] == "local" and not local_raw:
+                if ai_prefs["ai_mode"] == "local" and not local_raw and not client:
                     raise RuntimeError("Local mode did not return a response")
 
-            chat_session = client.chats.create(
-                model="gemini-2.5-flash",
-                history=history_contents[:-1],
-                config=types.GenerateContentConfig(tools=TOOLS_LIST),
-            )
-            response = chat_session.send_message(history_contents[-1].parts[0].text)
+            if not client:
+                yield "Gemini n'est pas configure — ajoute ta cle API dans Parametres → IA & Assistant."
+                return
 
-            for _round in range(MAX_TOOL_ROUNDS):
-                part = response.candidates[0].content.parts[0]
-                if not (hasattr(part, 'function_call') and part.function_call):
-                    logger.info("Franck final text (round %d, no tool call): %.200s", _round, response.text or "(empty)")
-                    yield response.text
-                    break
-                func_name = part.function_call.name
-                func_args = dict(part.function_call.args) if part.function_call.args else {}
-                logger.info("Franck EXECUTING tool [round %d]: %s(%s)", _round + 1, func_name, func_args)
-                res = execute_tool(func_name, func_args)
-                logger.info("Franck tool result [%s]: %.300s", func_name, str(res))
-                response = chat_session.send_message(
-                    types.Part.from_function_response(name=func_name, response={"result": res})
-                )
-            else:
-                yield response.text
+            flash_model = get_flash_model()
+            user_text = history_contents[-1].parts[0].text
+            try:
+                reply = _cloud_chat_with_tools(client, flash_model, history_contents, user_text, MAX_TOOL_ROUNDS)
+            except Exception as tool_err:
+                logger.warning("Tool chat failed, plain fallback: %s", tool_err, exc_info=True)
+                try:
+                    reply = _cloud_chat_plain(client, flash_model, history_contents[:-1], user_text)
+                except Exception as plain_err:
+                    logger.error("Plain chat failed: %s", plain_err, exc_info=True)
+                    yield format_gemini_error(plain_err)
+                    return
+            yield reply
 
             memory['last_seen'] = time.strftime('%Y-%m-%d %H:%M')
             save_franck_memory(memory)
         except Exception as e:
             logger.error("Chat error: %s", e, exc_info=True)
-            yield "Aie, mes circuits grincent un peu... Erreur technique, ma belle. Reessaie dans quelques secondes."
+            yield format_gemini_error(e)
 
     return Response(generate(), mimetype='text/plain')
 

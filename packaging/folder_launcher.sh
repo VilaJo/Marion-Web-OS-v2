@@ -1,24 +1,30 @@
 #!/bin/bash
-# Eonora Tech OS — point d'entrée .app (répond immédiatement à macOS)
+# Eonora Tech OS — lanceur .app pour dossier projet (répond vite, sans Terminal)
 set -uo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 BUNDLE_MACOS="$(cd "$(dirname "$0")" && pwd)"
-WORKER="$BUNDLE_MACOS/marion-worker.sh"
-SUPPORT="$HOME/Library/Application Support/Eonora Tech OS"
-LOG_FILE="$SUPPORT/logs/marion.log"
-PID_FILE="$SUPPORT/marion.pid"
-STARTUP_LOCK="$SUPPORT/startup.lock"
+WORKER="$BUNDLE_MACOS/folder-worker.sh"
+BUNDLE_ROOT="$(dirname "$(dirname "$BUNDLE_MACOS")")"
+PROJECT_PATH_FILE="$BUNDLE_ROOT/Resources/project_path"
+
+read_project_dir() {
+    if [ -f "$PROJECT_PATH_FILE" ]; then
+        tr -d '\r' < "$PROJECT_PATH_FILE" | head -1
+    fi
+}
+
+PROJECT_DIR="$(read_project_dir)"
+LOG_FILE="${PROJECT_DIR:-$HOME}/.marion.log"
+STARTUP_LOCK="${PROJECT_DIR:-$HOME}/.marion.startup.lock"
 PORT="${MARION_PORT:-5003}"
 URL="http://127.0.0.1:${PORT}"
 
-mkdir -p "$SUPPORT/logs"
-
 is_server_running() {
-    if [ -f "$PID_FILE" ]; then
+    if [ -n "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/.marion.pid" ]; then
         local pid
-        pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+        pid="$(cat "$PROJECT_DIR/.marion.pid" 2>/dev/null || true)"
         if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1; then
             return 0
         fi

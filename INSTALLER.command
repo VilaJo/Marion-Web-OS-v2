@@ -151,122 +151,13 @@ echo ""
 echo "───────────────────────────────────────────────────────────────────"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. Création de l'application .app pour le Bureau
+# 4. Création de l'application .app pour le Bureau (sans Terminal)
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "🖥️  Création de l'application Bureau..."
+echo "🖥️  Création de l'application Bureau (double-clic, sans console)..."
 echo ""
 
-DESKTOP_PATH="$HOME/Desktop"
-APP_BUNDLE="$DESKTOP_PATH/Eonora Tech OS.app"
-
-# Supprimer l'ancienne version si elle existe
-if [ -d "$APP_BUNDLE" ]; then
-    echo "   🧹 Suppression de l'ancienne version..."
-    rm -rf "$APP_BUNDLE"
-fi
-
-# Créer la structure du bundle
-echo "   📁 Création du bundle .app..."
-mkdir -p "$APP_BUNDLE/Contents/MacOS"
-mkdir -p "$APP_BUNDLE/Contents/Resources"
-
-# Info.plist
-cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>launcher</string>
-    <key>CFBundleIdentifier</key>
-    <string>ch.jvautomation.marion-web-os</string>
-    <key>CFBundleName</key>
-    <string>Eonora Tech OS</string>
-    <key>CFBundleDisplayName</key>
-    <string>Eonora Tech OS</string>
-    <key>CFBundleVersion</key>
-    <string>2.7.2</string>
-    <key>CFBundleShortVersionString</key>
-    <string>2.7.2</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.13</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>LSUIElement</key>
-    <false/>
-</dict>
-</plist>
-PLIST
-
-# Script de lancement (utilise le chemin complet vers python)
-cat > "$APP_BUNDLE/Contents/MacOS/launcher" << LAUNCHER
-#!/bin/bash
-# Eonora Tech OS Launcher - Fixed for double-click
-
-APP_PATH="$APP_DIR"
-LOG_FILE="\$APP_PATH/.marion.log"
-PID_FILE="\$APP_PATH/.marion.pid"
-PYTHON_PATH="\$APP_PATH/.venv/bin/python"
-
-cd "\$APP_PATH" || exit 1
-
-echo "=== Eonora Tech OS Launch - \$(date) ===" >> "\$LOG_FILE"
-
-is_server_running() {
-    if [ -f "\$PID_FILE" ]; then
-        PID=\$(cat "\$PID_FILE")
-        if ps -p "\$PID" > /dev/null 2>&1; then
-            return 0
-        fi
-    fi
-    if lsof -i :5003 > /dev/null 2>&1; then
-        return 0
-    fi
-    return 1
-}
-
-wait_for_server() {
-    for i in {1..45}; do
-        if curl -s http://127.0.0.1:5003/api/v1/version > /dev/null 2>&1; then
-            echo "Server ready after \${i}s" >> "\$LOG_FILE"
-            return 0
-        fi
-        sleep 1
-    done
-    return 1
-}
-
-if ! is_server_running; then
-    echo "Starting server..." >> "\$LOG_FILE"
-    
-    if [ ! -f "\$PYTHON_PATH" ]; then
-        osascript -e 'display alert "Eonora Tech OS" message "L'\''environnement Python n'\''est pas installé.\n\nLancez INSTALLER.command d'\''abord." as critical'
-        exit 1
-    fi
-    
-    "\$PYTHON_PATH" "\$APP_PATH/franck_server.py" >> "\$LOG_FILE" 2>&1 &
-    echo \$! > "\$PID_FILE"
-    
-    if ! wait_for_server; then
-        osascript -e 'display alert "Eonora Tech OS" message "Le serveur n'\''a pas pu démarrer.\n\nVérifiez les logs: .marion.log" as critical'
-        exit 1
-    fi
-fi
-
-open "http://127.0.0.1:5003"
-LAUNCHER
-
-chmod +x "$APP_BUNDLE/Contents/MacOS/launcher"
-
-# Icône .app + dossier projet (logo actuel)
-if [ -f "$APP_DIR/refresh_desktop_app_icon.sh" ]; then
-    bash "$APP_DIR/refresh_desktop_app_icon.sh"
-fi
+bash "$APP_DIR/packaging/install_desktop_app.sh" "$APP_DIR"
 
 echo "   ✅ Application créée sur le Bureau !"
 

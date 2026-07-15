@@ -7,7 +7,7 @@ import { QueryClient } from '@tanstack/react-query';
 
 import { ChatMessage, Project, CalendarEvent } from '../types';
 
-import { createChatSession, fetchFranckData, clearFranckData, fetchFranckSuggestions } from '../services/geminiService';
+import { createChatSession, fetchFranckData, clearFranckData, fetchFranckSuggestions, transcribeAudioBlob } from '../services/geminiService';
 import { useFranckGreeting } from '../services/queries';
 import { wpGlossaryLookup } from './WpGlossary';
 import { CodeReviewPanel } from './CodeReviewPanel';
@@ -175,10 +175,17 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
     const [showQuickActions, setShowQuickActions] = useState(true);
     
     const [isListening, setIsListening] = useState(false);
-    
+    const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
     const [isSpeaking, setIsSpeaking] = useState(false);
-    
-    const recognitionRef = useRef<any>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const micStreamRef = useRef<MediaStream | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const silenceTimerRef = useRef<number | null>(null);
+    const voiceMonitorRef = useRef<number | null>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const recordingStartedAtRef = useRef(0);
+    const sendMessageRef = useRef<(text: string, history: ChatMessage[]) => Promise<void>>(async () => {});
+    const stoppingVoiceRef = useRef(false);
 
     
     const [dynamicSuggestions, setDynamicSuggestions] = useState<Array<{
@@ -242,65 +249,237 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         activeClient: routeClientContext,
     });
 
-    // Initialize Speech Recognition
-    useEffect(() => {
-        // @ts-ignore
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = false;
-            recognitionRef.current.interimResults = false;
-            recognitionRef.current.lang = 'fr-FR';
-            
-            recognitionRef.current.onresult = (event: any) => {
-                const transcript = event.results[0][0].transcript;
-                setInput(transcript);
-                setIsListening(false);
-            };
-            
-            recognitionRef.current.onerror = (event: any) => {
-                console.error('Speech recognition error:', event.error);
-                setIsListening(false);
-            };
-            
-            recognitionRef.current.onend = () => {
-                setIsListening(false);
-            };
+    const stopMicStream = () => {
+        if (micStreamRef.current) {
+            micStreamRef.current.getTracks().forEach((t) => t.stop());
+            micStreamRef.current = null;
         }
+        if (voiceMonitorRef.current != null) {
+            window.clearInterval(voiceMonitorRef.current);
+            voiceMonitorRef.current = null;
+        }
+        if (silenceTimerRef.current != null) {
+            window.clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+        }
+        if (audioContextRef.current) {
+            void audioContextRef.current.close().catch(() => {});
+            audioContextRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            try {
+                if (mediaRecorderRef.current?.state === 'recording') {
+                    mediaRecorderRef.current.stop();
+                }
+            } catch {
+                // ignore
+            }
+            stopMicStream();
+        };
     }, []);
-    
+
     // Text-to-Speech function
     const speak = (text: string) => {
         if ('speechSynthesis' in window) {
-            // Cancel any ongoing speech
             window.speechSynthesis.cancel();
-            
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'fr-FR';
             utterance.rate = 0.95;
-            utterance.pitch = 0.9; // Slightly lower pitch for Franck's older voice
-            
+            utterance.pitch = 0.9;
+
             utterance.onstart = () => setIsSpeaking(true);
             utterance.onend = () => setIsSpeaking(false);
             utterance.onerror = () => setIsSpeaking(false);
-            
+
             window.speechSynthesis.speak(utterance);
         }
     };
-    
-    // Toggle voice recognition
-    const toggleVoiceRecognition = () => {
-        if (!recognitionRef.current) {
-            alert('La reconnaissance vocale n\'est pas supportée par votre navigateur.');
+
+    const submitVoiceText = (cleaned: string) => {
+        setShowQuickActions(false);
+        setInput('');
+        const userMsg: ChatMessage = { role: 'user', text: cleaned, timestamp: new Date() };
+        setMessages((prev) => {
+            const next = [...prev, userMsg];
+            queueMicrotask(() => {
+                void sendMessageRef.current(cleaned, next);
+            });
+            return next;
+        });
+    };
+
+    const processVoiceBlob = async (blob: Blob, mimeType: string) => {
+        setIsListening(false);
+        setVoiceStatus('Je transcris ta voix…');
+        try {
+            if (blob.size < 400) {
+                setVoiceStatus('Trop court — maintiens le micro et parle 1–2 secondes.');
+                return;
+            }
+            const text = await transcribeAudioBlob(blob, mimeType);
+            setVoiceStatus(null);
+            setInput(text);
+            submitVoiceText(text);
+        } catch (err: any) {
+            console.error('Voice transcription failed:', err);
+            setVoiceStatus(err?.message || 'Transcription impossible — réessaie.');
+        } finally {
+            stopMicStream();
+            mediaRecorderRef.current = null;
+            stoppingVoiceRef.current = false;
+        }
+    };
+
+    const stopVoiceRecording = () => {
+        if (stoppingVoiceRef.current) return;
+        const recorder = mediaRecorderRef.current;
+        if (!recorder || recorder.state === 'inactive') {
+            setIsListening(false);
+            stopMicStream();
             return;
         }
-        
-        if (isListening) {
-            recognitionRef.current.stop();
+        stoppingVoiceRef.current = true;
+        setVoiceStatus('Je transcris ta voix…');
+        try {
+            recorder.stop();
+        } catch (err) {
+            console.error(err);
+            stoppingVoiceRef.current = false;
             setIsListening(false);
-        } else {
+            stopMicStream();
+            setVoiceStatus('Erreur micro — réessaie.');
+        }
+    };
+
+    const pickRecorderMime = (): string => {
+        const candidates = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/mp4',
+            'audio/ogg;codecs=opus',
+        ];
+        for (const type of candidates) {
+            if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+        return '';
+    };
+
+    const startSilenceMonitor = (stream: MediaStream) => {
+        try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            audioContextRef.current = ctx;
+            const source = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 2048;
+            source.connect(analyser);
+            const data = new Uint8Array(analyser.fftSize);
+            let heardSpeech = false;
+
+            voiceMonitorRef.current = window.setInterval(() => {
+                analyser.getByteTimeDomainData(data);
+                let sum = 0;
+                for (let i = 0; i < data.length; i++) {
+                    const v = (data[i] - 128) / 128;
+                    sum += v * v;
+                }
+                const rms = Math.sqrt(sum / data.length);
+                const elapsed = Date.now() - recordingStartedAtRef.current;
+
+                if (rms > 0.045) {
+                    heardSpeech = true;
+                    if (silenceTimerRef.current != null) {
+                        window.clearTimeout(silenceTimerRef.current);
+                        silenceTimerRef.current = null;
+                    }
+                    setVoiceStatus('Je t’écoute… (reclique le micro pour envoyer)');
+                } else if (heardSpeech && elapsed > 900 && silenceTimerRef.current == null) {
+                    // Auto-stop ~1.2s after silence once speech was detected
+                    silenceTimerRef.current = window.setTimeout(() => {
+                        stopVoiceRecording();
+                    }, 1200);
+                } else if (!heardSpeech && elapsed > 10000) {
+                    stopVoiceRecording();
+                }
+            }, 120);
+        } catch (err) {
+            console.warn('Silence monitor unavailable:', err);
+        }
+    };
+
+    const toggleVoiceRecognition = async () => {
+        if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+            setVoiceStatus('Dictée non supportée ici — ouvre Marion dans Chrome.');
+            return;
+        }
+
+        if (isListening || mediaRecorderRef.current?.state === 'recording') {
+            stopVoiceRecording();
+            return;
+        }
+
+        setVoiceStatus('Autorisation micro…');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            });
+            micStreamRef.current = stream;
+
+            const mimeType = pickRecorderMime();
+            const recorder = mimeType
+                ? new MediaRecorder(stream, { mimeType })
+                : new MediaRecorder(stream);
+            mediaRecorderRef.current = recorder;
+            audioChunksRef.current = [];
+            stoppingVoiceRef.current = false;
+            recordingStartedAtRef.current = Date.now();
+
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            recorder.onerror = () => {
+                setIsListening(false);
+                stopMicStream();
+                setVoiceStatus('Erreur d’enregistrement micro.');
+                mediaRecorderRef.current = null;
+                stoppingVoiceRef.current = false;
+            };
+
+            recorder.onstop = () => {
+                const usedType = recorder.mimeType || mimeType || 'audio/webm';
+                const blob = new Blob(audioChunksRef.current, { type: usedType });
+                audioChunksRef.current = [];
+                void processVoiceBlob(blob, usedType);
+            };
+
+            recorder.start(250);
             setIsListening(true);
-            recognitionRef.current.start();
+            setVoiceStatus('Écoute… parle maintenant');
+            startSilenceMonitor(stream);
+        } catch (err: any) {
+            const name = String(err?.name || err?.message || 'not-allowed');
+            stopMicStream();
+            if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                setVoiceStatus('Micro bloqué — autorise le micro pour ce site (127.0.0.1).');
+            } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+                setVoiceStatus('Aucun micro détecté sur ce Mac.');
+            } else {
+                setVoiceStatus('Impossible d’accéder au micro.');
+            }
         }
     };
     
@@ -428,6 +607,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
             await syncFranckData();
         }
     };
+    sendMessageRef.current = sendMessage;
 
 
 
@@ -717,13 +897,14 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                     <div className={`absolute right-2 flex gap-1 ${codeMode ? 'bottom-2' : 'top-2'}`}>
                         {!codeMode && (
                             <button
-                                onClick={toggleVoiceRecognition}
+                                onClick={() => { void toggleVoiceRecognition(); }}
+                                disabled={isThinking}
                                 className={`p-1.5 rounded-lg transition-all ${
                                     isListening
                                         ? 'bg-red-500 text-white animate-pulse'
                                         : 'bg-purple-500 text-white hover:bg-purple-600'
-                                }`}
-                                title={isListening ? "Arrêter l'écoute" : 'Parler à Franck'}
+                                } disabled:opacity-50`}
+                                title={isListening ? 'Arrêter et envoyer' : 'Parler à Franck (enregistre ta voix)'}
                             >
                                 {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                             </button>
@@ -736,6 +917,13 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                         </button>
                     </div>
                 </div>
+                {voiceStatus && !codeMode && (
+                    <p className={`text-[11px] text-center font-medium ${
+                        isListening ? 'text-purple-600 dark:text-purple-300' : 'text-amber-600 dark:text-amber-400'
+                    }`}>
+                        {voiceStatus}
+                    </p>
+                )}
                 {codeMode && (
                     <p className="text-[10px] text-slate-400 text-center">Mode Code Review actif · Ctrl+Entrée pour envoyer</p>
                 )}

@@ -53,9 +53,13 @@ cat > "$OUT/LIRE EN PREMIER.txt" <<'TXT'
 
 ÉTAPE 3 — Lancer Marion
 ───────────────────────
-1. Ouvre Eonora Tech OS depuis Applications ou le Launchpad
-2. Au premier lancement : attends 2 à 3 minutes (une seule fois)
-3. Si macOS demande l'accès au Bureau → Autoriser
+1. Double-clique sur « Eonora Tech OS » sur ton Bureau
+   (ou ouvre l'app depuis Applications si installée via .dmg)
+2. Aucune fenêtre Terminal ne s'ouvre — tout tourne en arrière-plan
+3. Au premier lancement : attends 2 à 3 minutes (une seule fois)
+4. Si macOS demande l'accès au Bureau → Autoriser
+
+Pour arrêter : double-clique STOPPER_EONORA.command dans le dossier projet
 
 ÉTAPE 4 — Tes dossiers clients
 ──────────────────────────────

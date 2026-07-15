@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowRight, Check, Key, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { activateCloudAiMode } from '../services/geminiService';
 
 declare const confetti: any;
 
@@ -66,6 +67,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
             }
 
             if (response.ok && data.success) {
+                activateCloudAiMode();
                 setTimeout(() => {
                     setStep('success');
                     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });

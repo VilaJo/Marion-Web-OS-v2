@@ -147,8 +147,11 @@ fi
 echo ""
 echo "🎨 Interface : .dist prêt (pas de npm build — utilise GitHub)"
 
-# ── 5. Icônes Bureau (optionnel) ───────────────────────────────────────────
-if [ -f refresh_desktop_app_icon.sh ]; then
+# ── 5. Icône + app Bureau sans Terminal ─────────────────────────────────────
+if [ -f packaging/install_desktop_app.sh ]; then
+    echo ""
+    bash packaging/install_desktop_app.sh "$APP_DIR" 2>/dev/null || true
+elif [ -f refresh_desktop_app_icon.sh ]; then
     echo ""
     bash refresh_desktop_app_icon.sh 2>/dev/null || true
 fi
@@ -165,7 +168,7 @@ echo ""
 echo "────────────────────────────────────────────────────────────────────"
 echo "✨ Mise à jour terminée."
 echo ""
-echo "👉 STOPPER_EONORA.command puis LANCER_EONORA.command"
+echo "👉 Double-clique sur « Eonora Tech OS » sur le Bureau (pas LANCER_EONORA.command)"
 echo "👉 Navigateur : Cmd + Shift + R (obligatoire)"
 echo "   Si écran blanc : REPARER_INTERFACE.command"
 echo "────────────────────────────────────────────────────────────────────"

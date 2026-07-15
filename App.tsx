@@ -219,7 +219,7 @@ const App: React.FC = () => {
 
             // If the user's preferred mode is unavailable but cloud works,
             // transparently fall back to cloud so the app stays usable.
-            if (!data?.configured && data?.cloudAvailable && preferredMode === 'local') {
+            if (!data?.configured && data?.cloudAvailable && (preferredMode === 'local' || preferredMode === 'hybrid')) {
                 try { localStorage.setItem('marion_ai_mode', 'cloud'); } catch {}
                 addNotification(
                     'Mode Cloud activé',

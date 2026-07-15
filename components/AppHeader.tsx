@@ -14,6 +14,7 @@ import { Project } from '../types';
 import { useOfflineStore } from '../stores/useOfflineStore';
 import { useEmailStatus, useEmailUnseen } from '../services/queries';
 import { apiFetch } from '../services/api';
+import { activateCloudAiMode } from '../services/geminiService';
 
 import {
     LayoutGrid, Bell, Settings, Sun, Moon,
@@ -51,6 +52,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         setDroppedFiles, setShowImporter,
         isMobileMenuOpen, setIsMobileMenuOpen,
         isToolbarCollapsed, toggleToolbarCollapsed,
+        setAiMode, setAiFallbackEnabled,
     } = useUIStore();
 
     const {
@@ -154,6 +156,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             });
             const data = await res.json();
             if (res.ok && data.success) {
+                activateCloudAiMode();
+                setAiMode('cloud');
+                setAiFallbackEnabled(true);
+                setFranckProvider('cloud');
                 setFranckSetupSuccess(true);
                 setIsConfigured(true);
                 setTimeout(() => {

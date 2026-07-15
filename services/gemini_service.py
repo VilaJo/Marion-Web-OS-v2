@@ -25,7 +25,51 @@ cfg = get_current_config()
 # ---------------------------------------------------------------------------
 _client = None
 _api_key_cache: Optional[str] = None
-_ENV_LOCAL_PATH = '.env.local'
+
+def _env_local_path() -> str:
+    """Writable env file — Application Support when installed via .dmg."""
+    try:
+        from config import get_env_local_path
+        return str(get_env_local_path())
+    except Exception:
+        return '.env.local'
+
+
+
+def get_primary_workspace_id() -> int:
+    """Return the first workspace id in the DB (Marion installs may not use id=1)."""
+    try:
+        from database.db import get_db
+        with get_db() as conn:
+            row = conn.execute("SELECT id FROM workspaces ORDER BY id ASC LIMIT 1").fetchone()
+            if row:
+                return int(row[0])
+    except Exception:
+        pass
+    return 1
+
+
+def format_gemini_error(exc: Optional[Exception]) -> str:
+    """Turn Gemini SDK / API errors into a short French message for Marion."""
+    if exc is None:
+        return "Clé API invalide ou API Gemini non activée."
+    raw = str(exc)
+    lower = raw.lower()
+    if "api key not valid" in lower or "invalid api key" in lower or "invalid_argument" in lower:
+        return (
+            "Ta clé Gemini est refusée par Google. "
+            "Vérifie-la sur https://aistudio.google.com/apikey "
+            "et assure-toi que l'API Generative Language est activée."
+        )
+    if "permission" in lower or "forbidden" in lower:
+        return "Accès Gemini refusé pour cette clé. Vérifie les restrictions du projet Google Cloud."
+    if "quota" in lower or "resource_exhausted" in lower or "rate limit" in lower:
+        return "Quota Gemini dépassé. Réessaie dans quelques minutes ou vérifie la facturation Google."
+    if "billing" in lower:
+        return "La facturation Google Cloud doit être activée pour utiliser Gemini."
+    if len(raw) > 220:
+        return raw[:220] + "…"
+    return raw or "Erreur Gemini inconnue."
 
 
 def _read_key_from_db() -> Optional[str]:
@@ -39,7 +83,7 @@ def _read_key_from_db() -> Optional[str]:
     try:
         # Local import to avoid circular import / cold-start ordering issues
         from database.db import get_workspace_settings
-        settings = get_workspace_settings(1) or {}
+        settings = get_workspace_settings(get_primary_workspace_id()) or {}
         key = (settings.get('geminiApiKey') or '').strip()
         return key or None
     except Exception:
@@ -50,12 +94,13 @@ def _save_key_to_db(key: Optional[str]) -> None:
     """Persist (or remove) the Gemini API key in workspace_settings."""
     try:
         from database.db import get_workspace_settings, update_workspace_settings
-        settings = get_workspace_settings(1) or {}
+        ws_id = get_primary_workspace_id()
+        settings = get_workspace_settings(ws_id) or {}
         if key:
             settings['geminiApiKey'] = key
         else:
             settings.pop('geminiApiKey', None)
-        update_workspace_settings(1, settings)
+        update_workspace_settings(ws_id, settings)
     except Exception as e:
         logger.warning("Could not persist Gemini API key to DB: %s", e)
 
@@ -69,8 +114,9 @@ def _write_env_local(key: str) -> None:
     """
     try:
         existing_lines: list[str] = []
-        if os.path.exists(_ENV_LOCAL_PATH):
-            with open(_ENV_LOCAL_PATH, 'r', encoding='utf-8') as f:
+        env_path = _env_local_path()
+        if os.path.exists(env_path):
+            with open(env_path, 'r', encoding='utf-8') as f:
                 existing_lines = f.read().splitlines()
 
         new_lines: list[str] = []
@@ -89,7 +135,8 @@ def _write_env_local(key: str) -> None:
         while new_lines and new_lines[-1].strip() == '':
             new_lines.pop()
 
-        with open(_ENV_LOCAL_PATH, 'w', encoding='utf-8') as f:
+        os.makedirs(os.path.dirname(env_path) or '.', exist_ok=True)
+        with open(env_path, 'w', encoding='utf-8') as f:
             f.write("\n".join(new_lines) + "\n")
     except Exception as e:
         logger.warning("Could not write GEMINI_API_KEY to .env.local: %s", e)
@@ -238,8 +285,9 @@ def remove_api_key() -> None:
     """Remove the persisted Gemini API key from DB and `.env.local`."""
     _save_key_to_db(None)
     try:
-        if os.path.exists(_ENV_LOCAL_PATH):
-            with open(_ENV_LOCAL_PATH, 'r', encoding='utf-8') as f:
+        env_path = _env_local_path()
+        if os.path.exists(env_path):
+            with open(env_path, 'r', encoding='utf-8') as f:
                 lines = f.read().splitlines()
             new_lines = [
                 ln for ln in lines
@@ -248,7 +296,7 @@ def remove_api_key() -> None:
             ]
             while new_lines and new_lines[-1].strip() == '':
                 new_lines.pop()
-            with open(_ENV_LOCAL_PATH, 'w', encoding='utf-8') as f:
+            with open(env_path, 'w', encoding='utf-8') as f:
                 if new_lines:
                     f.write("\n".join(new_lines) + "\n")
                 else:

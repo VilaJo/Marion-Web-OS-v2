@@ -2,6 +2,8 @@
 # Eonora Tech OS — worker (démarrage en arrière-plan)
 set -euo pipefail
 
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 BUNDLE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_BUNDLE="$(cd "$(dirname "$0")/../.." && pwd)"
 APP_CODE="$BUNDLE_ROOT/Resources/app"

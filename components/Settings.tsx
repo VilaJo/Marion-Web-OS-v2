@@ -70,6 +70,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores';
 import { apiFetch } from '../services/api';
+import { activateCloudAiMode } from '../services/geminiService';
 
 /** Helps spot “git pull dans un dossier, mais Marion lance un autre” (icone Bureau ou vieux dossier). */
 function ServerInstallDiagnostic({ payload }: { payload: unknown }) {
@@ -500,7 +501,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             });
             const data = await res.json();
             if (res.ok && data.success) {
-                setGeminiMessage({ type: 'success', text: 'Clé Gemini enregistrée et validée. Elle est sauvegardée durablement.' });
+                activateCloudAiMode();
+                setAiMode('cloud');
+                setAiFallbackEnabled(true);
+                setGeminiMessage({ type: 'success', text: 'Clé Gemini enregistrée. Mode Cloud activé pour Franck.' });
                 setGeminiConfigured(true);
                 setGeminiKey('');
                 refetchAiHealth();

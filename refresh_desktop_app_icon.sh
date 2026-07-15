@@ -33,13 +33,15 @@ set_macos_folder_icon() {
 bash "$APP_DIR/build_app_icon.sh"
 
 if [ -d "$DESKTOP_APP" ]; then
-    mkdir -p "$DESKTOP_APP/Contents/Resources"
-    cp "$ICNS_SRC" "$DESKTOP_APP/Contents/Resources/AppIcon.icns"
-    rm -f "$DESKTOP_APP/Contents/Resources/AppIcon.png"
-    touch "$DESKTOP_APP"
-    echo "✅ Icône Bureau mise à jour : $DESKTOP_APP"
+    bash "$APP_DIR/packaging/install_desktop_app.sh" "$APP_DIR" 2>/dev/null || {
+        mkdir -p "$DESKTOP_APP/Contents/Resources"
+        cp "$ICNS_SRC" "$DESKTOP_APP/Contents/Resources/AppIcon.icns"
+        rm -f "$DESKTOP_APP/Contents/Resources/AppIcon.png"
+        touch "$DESKTOP_APP"
+    }
+    echo "✅ App Bureau mise à jour : $DESKTOP_APP"
 else
-    echo "ℹ️  Pas d'app sur le Bureau — icône générée dans public/icons/AppIcon.icns"
+    bash "$APP_DIR/packaging/install_desktop_app.sh" "$APP_DIR" 2>/dev/null || true
 fi
 
 set_macos_folder_icon "$APP_DIR" "$LOGO_SRC"
