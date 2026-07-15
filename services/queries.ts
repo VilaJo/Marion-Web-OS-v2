@@ -136,7 +136,10 @@ export function useEmails(folder: string, enabled: boolean) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ folder, limit: 30, offset: 0 }),
             });
-            if (!res.ok) throw new Error('Failed to fetch emails');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData?.error || 'Impossible de charger les emails (connexion IMAP).');
+            }
             const data = await res.json();
             const emails = (data.emails || []) as EmailMessage[];
             // Sort by date descending so newest emails always appear first
@@ -154,6 +157,7 @@ export function useEmails(folder: string, enabled: boolean) {
         enabled,
         staleTime: 30 * 1000,
         refetchInterval: 60 * 1000,
+        retry: 1,
     });
 }
 

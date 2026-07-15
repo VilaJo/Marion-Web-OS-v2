@@ -5,7 +5,7 @@
 import React from 'react';
 import {
     Search, RefreshCw, Mail, Trash2, CheckSquare, Square,
-    Eye, Archive, Star, Paperclip, User, ArrowLeft
+    Eye, Archive, Star, Paperclip, User, ArrowLeft, AlertTriangle
 } from 'lucide-react';
 import type { EmailWidgetState } from './useEmailWidget';
 import type { EmailMessage } from '../../services/queries';
@@ -78,6 +78,24 @@ export const EmailList: React.FC<Props> = ({ state }) => {
                 </div>
 
             </div>
+
+            {/* IMAP error banner */}
+            {state.emailsError && (
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-800/30 text-red-700 dark:text-red-300">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold">Connexion email impossible</p>
+                        <p className="text-[11px] leading-snug text-red-600/90 dark:text-red-300/80">{state.emailsError}</p>
+                    </div>
+                    <button
+                        onClick={() => state.refetchEmails()}
+                        className="shrink-0 p-1 text-red-500 hover:text-red-700 rounded"
+                        title="Réessayer"
+                    >
+                        <RefreshCw size={13} />
+                    </button>
+                </div>
+            )}
 
             {/* Batch actions bar */}
             {hasSelection && (

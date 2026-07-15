@@ -360,14 +360,23 @@ const App: React.FC = () => {
 
     if (isBackendDown) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0B0F19]">
-                <EmptyState
-                    title="Serveur Franck Indisponible"
-                    message="Impossible de joindre le cerveau de Franck. Vérifie que le terminal tourne."
-                    icon={AlertTriangle}
-                    actionLabel="Réessayer la connexion"
-                    onAction={checkStatus}
-                />
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0B0F19] p-4">
+                <div className="flex flex-col items-center">
+                    <EmptyState
+                        title="Marion n'arrive pas à se connecter"
+                        message="Le serveur qui fait tourner Franck et tes données ne répond pas. C'est presque toujours parce que l'application n'est pas encore lancée."
+                        icon={AlertTriangle}
+                        actionLabel="Réessayer la connexion"
+                        onAction={checkStatus}
+                    />
+                    <div className="max-w-md -mt-4 mb-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-5 text-sm text-slate-600 dark:text-slate-300 text-left space-y-2">
+                        <p className="font-bold text-slate-700 dark:text-slate-200">Quoi faire ?</p>
+                        <p>1. Double-clique sur <strong>Eonora Tech OS</strong> sur ton Bureau (ou <strong>LANCER_MARION.command</strong>) et attends 1–2 minutes.</p>
+                        <p>2. Reviens ici et clique sur « Réessayer la connexion ».</p>
+                        <p>3. Toujours bloqué ? Lance <strong>REPARER_INTERFACE.command</strong>, puis <strong>Cmd + Shift + R</strong> dans le navigateur.</p>
+                        <p className="text-slate-400 dark:text-slate-500 text-xs pt-1">Si rien n'y fait, envoie à Johan le fichier <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[11px]">.marion.log</code> à la racine du projet.</p>
+                    </div>
+                </div>
             </div>
         );
     }

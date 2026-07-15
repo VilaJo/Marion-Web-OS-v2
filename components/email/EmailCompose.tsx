@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     X, Send, Save, Paperclip, Mic, FileText, RefreshCw, ArrowLeft,
-    ChevronDown, ChevronUp, Reply, ReplyAll, Forward, Edit
+    ChevronDown, ChevronUp, Reply, ReplyAll, Forward, Edit, Receipt
 } from 'lucide-react';
 import { useNotificationStore } from '../../stores/useNotificationStore';
 import type { EmailWidgetState } from './useEmailWidget';
@@ -32,6 +32,7 @@ export const EmailCompose: React.FC<Props> = ({ state }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [interimText, setInterimText] = useState('');
+    const [showInvoicePicker, setShowInvoicePicker] = useState(false);
     const recognitionRef = useRef<any>(null);
     const draftBodyRef = useRef(state.draft.body);
 
@@ -129,6 +130,25 @@ export const EmailCompose: React.FC<Props> = ({ state }) => {
                     <X size={18} />
                 </button>
             </div>
+
+            {/* Facture liée (via Franck / Ma journée) */}
+            {state.invoiceHint && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800/30 text-amber-800 dark:text-amber-200 text-xs shrink-0">
+                    <Receipt size={14} className="shrink-0" />
+                    <span className="flex-1 truncate">
+                        Facture liée : <strong>{state.invoiceHint.invoiceNumber}</strong>
+                        {state.invoiceHint.clientName ? ` — ${state.invoiceHint.clientName}` : ''}
+                        {state.invoiceHint.amount != null ? ` (${state.invoiceHint.amount} ${state.invoiceHint.currency || 'CHF'})` : ''}
+                    </span>
+                    <button
+                        onClick={state.clearInvoiceHint}
+                        className="text-amber-500 hover:text-amber-700 shrink-0"
+                        title="Retirer la référence facture"
+                    >
+                        <X size={13} />
+                    </button>
+                </div>
+            )}
 
             {/* Form */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
@@ -272,7 +292,7 @@ export const EmailCompose: React.FC<Props> = ({ state }) => {
             <input ref={state.fileInputRef} type="file" multiple className="hidden" onChange={state.handleFileChange} />
 
             {/* Bottom bar */}
-            <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/30">
+            <div className="shrink-0 relative flex items-center gap-2 px-4 py-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/30">
                 <button
                     onClick={state.handleAddFiles}
                     className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
@@ -287,6 +307,36 @@ export const EmailCompose: React.FC<Props> = ({ state }) => {
                 >
                     <Mic size={18} />
                 </button>
+                <button
+                    onClick={() => setShowInvoicePicker((v) => !v)}
+                    disabled={state.openInvoiceOptions.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-2.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg text-xs font-bold transition-all disabled:opacity-40"
+                    title={state.openInvoiceOptions.length === 0 ? 'Aucune facture ouverte' : 'Joindre un résumé de facture'}
+                >
+                    <Receipt size={16} /> Joindre facture… <ChevronDown size={12} className={showInvoicePicker ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                </button>
+
+                {showInvoicePicker && (
+                    <div className="absolute bottom-full left-4 mb-2 w-80 max-h-64 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-20 py-1">
+                        {state.openInvoiceOptions.length === 0 ? (
+                            <p className="px-3 py-3 text-xs text-slate-400">Aucune facture ouverte à joindre.</p>
+                        ) : (
+                            state.openInvoiceOptions.map((row) => (
+                                <button
+                                    key={row.invoiceId}
+                                    onClick={() => { state.attachInvoiceSummary(row); setShowInvoicePicker(false); }}
+                                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                                >
+                                    <span className="truncate">
+                                        <span className="font-bold text-slate-700 dark:text-slate-200">{row.invoiceNumber}</span>
+                                        <span className="text-slate-400"> — {row.clientName}</span>
+                                    </span>
+                                    <span className="shrink-0 text-slate-400">{row.amount} {row.currency}</span>
+                                </button>
+                            ))
+                        )}
+                    </div>
+                )}
 
                 <div className="flex-1" />
 

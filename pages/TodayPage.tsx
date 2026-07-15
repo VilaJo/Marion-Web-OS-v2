@@ -4,11 +4,11 @@
 
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProjectStore } from '../stores';
+import { useProjectStore, useUIStore } from '../stores';
 import { useProjects } from '../services/queries';
 import { Project, CalendarEvent, Task, Invoice } from '../types';
 import { formatCurrency } from '../utils';
-import { Calendar, AlertTriangle, CheckSquare, FileText, ChevronRight, Sun } from 'lucide-react';
+import { Calendar, AlertTriangle, CheckSquare, FileText, ChevronRight, Sun, Bot, Sparkles, Mail, MessageCircle } from 'lucide-react';
 
 function startOfDay(d: Date): Date {
     const x = new Date(d);
@@ -22,10 +22,16 @@ function addDays(d: Date, n: number): Date {
     return x;
 }
 
+function clientEmail(p: Project): string {
+    const profile = (p as any).profile || {};
+    return String(profile.email || profile.contactEmail || (p as any).email || '').trim();
+}
+
 export const TodayPage: React.FC = () => {
     const navigate = useNavigate();
     const { data: projects = [] } = useProjects();
     const { events } = useProjectStore();
+    const { setShowChat, setShowMondayBriefing } = useUIStore();
 
     const today = startOfDay(new Date());
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -62,7 +68,6 @@ export const TodayPage: React.FC = () => {
     const invoiceAlerts = useMemo(() => {
         const rows: InvRow[] = [];
         const limit = addDays(today, 3);
-        const limitStr = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, '0')}-${String(limit.getDate()).padStart(2, '0')}`;
         for (const p of projects) {
             for (const inv of p.invoices) {
                 if (inv.type !== 'Invoice') continue;
@@ -120,50 +125,86 @@ export const TodayPage: React.FC = () => {
             const { task, projectName, projectId } = overdueTasks[0];
             items.push({
                 key: `task-${task.id}`,
-                title: `Tâche en retard : ${task.title}`,
-                subtitle: projectName,
+                title: task.title,
+                subtitle: `Tâche en retard — ${projectName}`,
                 onClick: () => navigate(`/client/${encodeURIComponent(projectId)}`),
                 tone: 'warning',
             });
         }
-        if (todayEvents[0]) {
-            const ev = todayEvents[0];
+        for (const e of todayEvents) {
+            if (items.length >= 3) break;
             items.push({
-                key: `ev-${ev.id}`,
-                title: `Aujourd'hui : ${ev.title}`,
-                subtitle: `${ev.startTime || ''} · ${ev.type || ''}`,
+                key: `ev-${e.id}`,
+                title: e.title,
+                subtitle: `Aujourd'hui · ${e.startTime || ''}`,
                 onClick: () => navigate('/'),
                 tone: 'info',
             });
         }
-        while (items.length < 3) {
+        for (const row of urgentTasks) {
             if (items.length >= 3) break;
-            const ut = urgentTasks.find((u) => !items.some((it) => it.key === `task-${u.task.id}`));
-            if (ut) {
-                items.push({
-                    key: `task-${ut.task.id}`,
-                    title: `Priorité : ${ut.task.title}`,
-                    subtitle: ut.projectName,
-                    onClick: () => navigate(`/client/${encodeURIComponent(ut.projectId)}`),
-                    tone: 'warning',
-                });
-                continue;
-            }
-            const ia = invoiceAlerts.find((row) => !items.some((it) => it.key === `inv-${row.invoice.id}`));
-            if (ia) {
-                items.push({
-                    key: `inv-${ia.invoice.id}`,
-                    title: `Échéance proche : ${ia.invoice.number}`,
-                    subtitle: ia.project.clientName,
-                    onClick: () => navigate(`/client/${encodeURIComponent(ia.project.id)}`),
-                    tone: 'info',
-                });
-                continue;
-            }
-            break;
+            if (items.some((it) => it.key === `task-${row.task.id}`)) continue;
+            items.push({
+                key: `task-${row.task.id}`,
+                title: row.task.title,
+                subtitle: `Priorité haute — ${row.projectName}`,
+                onClick: () => navigate(`/client/${encodeURIComponent(row.projectId)}`),
+                tone: 'warning',
+            });
+        }
+        for (const { invoice: inv, project: p } of invoiceAlerts) {
+            if (items.length >= 3) break;
+            if (items.some((it) => it.key === `inv-${inv.id}`)) continue;
+            items.push({
+                key: `inv-${inv.id}`,
+                title: `Échéance : ${inv.number}`,
+                subtitle: `${p.clientName} · ${inv.dueDate}`,
+                onClick: () => navigate(`/client/${encodeURIComponent(p.id)}/invoice?invoiceId=${encodeURIComponent(inv.id)}`),
+                tone: 'info',
+            });
         }
         return items.slice(0, 3);
     }, [overdueInvoices, overdueTasks, todayEvents, urgentTasks, invoiceAlerts, navigate]);
+
+    const askFranck = (prompt?: string) => {
+        if (prompt) {
+            try {
+                sessionStorage.setItem('franck_seed_prompt', prompt);
+            } catch {
+                // ignore
+            }
+        }
+        setShowChat(true);
+    };
+
+    const openReminderEmail = (p: Project, inv: Invoice) => {
+        const to = clientEmail(p);
+        const amount = formatCurrency(inv.amount, 0);
+        const currency = inv.currency || 'CHF';
+        navigate('/emails', {
+            state: {
+                compose: {
+                    to,
+                    subject: `Relance facture ${inv.number} — ${p.clientName}`,
+                    body:
+                        `Bonjour,\n\n` +
+                        `Sauf erreur de ma part, la facture ${inv.number} (${amount} ${currency}) ` +
+                        `échue le ${inv.dueDate || '—'} est toujours en attente de règlement.\n\n` +
+                        `Merci de me confirmer la réception de ce message ou de procéder au paiement.\n\n` +
+                        `Cordialement,\nMarion`,
+                    invoiceHint: {
+                        projectId: p.id,
+                        invoiceId: inv.id,
+                        invoiceNumber: inv.number,
+                        clientName: p.clientName,
+                        amount: inv.amount,
+                        currency,
+                        dueDate: inv.dueDate,
+                    },
+                },
+            },
+        });
+    };
 
     const toneRing = (t: string) =>
         t === 'danger'
@@ -183,14 +224,61 @@ export const TodayPage: React.FC = () => {
                         {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => navigate('/finances')}
-                    className="text-sm font-semibold text-brand-orange hover:underline self-start sm:self-auto"
-                >
-                    Voir les finances
-                </button>
+                <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+                    <button
+                        type="button"
+                        onClick={() => setShowMondayBriefing(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-orange-50 text-brand-orange border border-orange-200 hover:bg-orange-100 transition-colors"
+                    >
+                        <Sparkles size={14} /> Briefing
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => askFranck('Qu’est-ce que je dois faire en priorité aujourd’hui ?')}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors"
+                    >
+                        <Bot size={14} /> Franck
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/emails')}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                    >
+                        <Mail size={14} /> Emails
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/finances')}
+                        className="text-sm font-semibold text-brand-orange hover:underline px-2"
+                    >
+                        Finances
+                    </button>
+                </div>
             </div>
+
+            <section className="rounded-2xl border border-violet-200/70 dark:border-violet-900/40 bg-violet-50/40 dark:bg-violet-950/20 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-violet-500 mb-2 flex items-center gap-1">
+                    <MessageCircle size={12} /> Demande rapide à Franck
+                </p>
+                <div className="flex flex-wrap gap-2">
+                    {[
+                        'Qu’est-ce que je dois faire en priorité aujourd’hui ?',
+                        'Résume mon agenda et mes factures en retard',
+                        overdueInvoices[0]
+                            ? `Prépare une relance pour ${overdueInvoices[0].project.clientName}`
+                            : 'Aide-moi à planifier ma journée',
+                    ].map((prompt) => (
+                        <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => askFranck(prompt)}
+                            className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-200 hover:border-violet-400 transition-colors"
+                        >
+                            {prompt}
+                        </button>
+                    ))}
+                </div>
+            </section>
 
             <section>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">Trois priorités</h2>
@@ -227,9 +315,15 @@ export const TodayPage: React.FC = () => {
                     ) : (
                         <ul className="space-y-2">
                             {todayEvents.map((e) => (
-                                <li key={e.id} className="text-sm text-slate-700 dark:text-slate-200 flex justify-between gap-2">
-                                    <span>{e.title}</span>
-                                    <span className="text-slate-400 tabular-nums">{e.startTime}</span>
+                                <li key={e.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/')}
+                                        className="w-full text-sm text-slate-700 dark:text-slate-200 flex justify-between gap-2 hover:text-brand-orange text-left"
+                                    >
+                                        <span>{e.title}</span>
+                                        <span className="text-slate-400 tabular-nums">{e.startTime}</span>
+                                    </button>
                                 </li>
                             ))}
                         </ul>
@@ -238,28 +332,40 @@ export const TodayPage: React.FC = () => {
 
                 <section className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 p-5">
                     <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-3">
-                        <FileText size={18} className="text-emerald-500" /> Factures (7 jours)
+                        <FileText size={18} className="text-emerald-500" /> Factures (3 jours)
                     </h3>
                     {invoiceAlerts.length === 0 ? (
                         <p className="text-sm text-slate-500">Aucune échéance dans les 3 prochains jours.</p>
                     ) : (
-                        <ul className="space-y-2 max-h-48 overflow-y-auto">
-                            {invoiceAlerts.slice(0, 12).map(({ invoice: inv, project: p }) => (
-                                <li key={inv.id}>
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate(`/client/${encodeURIComponent(p.id)}/invoice?invoiceId=${encodeURIComponent(inv.id)}`)}
-                                        className="w-full text-left text-sm flex justify-between gap-2 hover:text-brand-orange"
-                                    >
-                                        <span className="truncate">
-                                            {p.clientName} · {inv.number}
-                                        </span>
-                                        <span className="text-slate-400 shrink-0">
-                                            {inv.dueDate} · {formatCurrency(inv.amount, 0)} {inv.currency || 'CHF'}
-                                        </span>
-                                    </button>
-                                </li>
-                            ))}
+                        <ul className="space-y-2 max-h-56 overflow-y-auto">
+                            {invoiceAlerts.slice(0, 12).map(({ invoice: inv, project: p }) => {
+                                const late = !!(inv.dueDate && new Date(inv.dueDate + 'T12:00:00') < today);
+                                return (
+                                    <li key={inv.id} className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(`/client/${encodeURIComponent(p.id)}/invoice?invoiceId=${encodeURIComponent(inv.id)}`)}
+                                            className="flex-1 text-left text-sm flex justify-between gap-2 hover:text-brand-orange min-w-0"
+                                        >
+                                            <span className="truncate">
+                                                {p.clientName} · {inv.number}
+                                                {late ? ' · retard' : ''}
+                                            </span>
+                                            <span className="text-slate-400 shrink-0">
+                                                {inv.dueDate} · {formatCurrency(inv.amount, 0)} {inv.currency || 'CHF'}
+                                            </span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openReminderEmail(p, inv)}
+                                            className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200"
+                                            title="Préparer un email de relance"
+                                        >
+                                            Relancer
+                                        </button>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
                 </section>
@@ -271,16 +377,18 @@ export const TodayPage: React.FC = () => {
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
                     {weekDays.map((d) => (
-                        <div
+                        <button
                             key={d.iso}
-                            className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 p-2 text-center"
+                            type="button"
+                            onClick={() => navigate('/')}
+                            className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 p-2 text-center hover:border-brand-orange/40 transition-colors"
                         >
                             <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">{d.label}</p>
                             <p className="text-xs mt-1 text-slate-600 dark:text-slate-300">
                                 {d.eventCount ? `${d.eventCount} év.` : '—'}
                             </p>
                             <p className="text-[10px] text-amber-600 dark:text-amber-400">{d.invoiceDue ? `${d.invoiceDue} fact.` : ''}</p>
-                        </div>
+                        </button>
                     ))}
                 </div>
             </section>

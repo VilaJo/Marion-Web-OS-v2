@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, Mic, Monitor, RefreshCw, Sparkles, Award } from 'lucide-react';
+import { Bot, ArrowRight, Gift, Mic, Monitor, RefreshCw, Sparkles, Award, Sunrise } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.8.0";
+const CURRENT_VERSION = "2.8.1";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,11 +37,23 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Mise à jour quotidienne • Franck, Bureau & mises à jour plus sûres
+                            Ma journée, Franck en 1 clic & Emails plus pratiques
                         </p>
                     </div>
 
                     <div className="space-y-4">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-50 to-orange-50 dark:from-violet-900/10 dark:to-orange-900/10 border border-violet-200/50 dark:border-violet-800/30">
+                            <div className="w-12 h-12 rounded-full bg-violet-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                                <Sunrise size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Ma journée + Franck + Emails, mieux reliés</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Depuis « Ma journée », relance une facture ou demande à Franck en 1 clic. Les suggestions de Franck ouvrent directement un email de relance pré-rempli, avec un bouton « Joindre facture… ».
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-fuchsia-50 to-pink-50 dark:from-fuchsia-900/10 dark:to-pink-900/10 border border-fuchsia-200/50 dark:border-fuchsia-800/30">
                             <div className="w-12 h-12 rounded-full bg-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
                                 <Mic size={24} />

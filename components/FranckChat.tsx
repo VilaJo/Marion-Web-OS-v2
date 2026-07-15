@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { Bot, Send, X, Sparkles, Calendar, FileText, DollarSign, Clock, Lightbulb, Mic, MicOff, CreditCard, AlertTriangle, Mail, Coffee, CheckSquare, Zap, Code2, ChevronDown, Copy, CheckCircle2, Users } from 'lucide-react';
 import { QueryClient } from '@tanstack/react-query';
 
 import { ChatMessage, Project, CalendarEvent } from '../types';
 
-import { createChatSession, fetchFranckData, clearFranckData, fetchFranckSuggestions, transcribeAudioBlob } from '../services/geminiService';
+import { createChatSession, fetchFranckData, clearFranckData, fetchFranckSuggestions, transcribeAudioBlob, type FranckSuggestion } from '../services/geminiService';
 import { useFranckGreeting } from '../services/queries';
 import { wpGlossaryLookup } from './WpGlossary';
 import { CodeReviewPanel } from './CodeReviewPanel';
@@ -127,6 +127,7 @@ const CODE_COMMANDS = [
 
 export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, projects = [], events = [], todos = [], onAddTodo, onAddEvent, queryClient }) => {
     const location = useLocation();
+    const navigate = useNavigate();
 
     const routeClientContext = useMemo(() => {
         const m = location.pathname.match(/^\/client\/([^/]+)/);
@@ -184,13 +185,10 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
     const voiceMonitorRef = useRef<number | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const recordingStartedAtRef = useRef(0);
-    const sendMessageRef = useRef<(text: string, history: ChatMessage[]) => Promise<void>>(async () => {});
     const stoppingVoiceRef = useRef(false);
 
     
-    const [dynamicSuggestions, setDynamicSuggestions] = useState<Array<{
-        text: string; prompt: string; priority: string; category: string; icon: string;
-    }>>([]);
+    const [dynamicSuggestions, setDynamicSuggestions] = useState<FranckSuggestion[]>([]);
 
     const isMenuCommand = (value: string) => {
         const v = value.trim().toLowerCase();
@@ -306,7 +304,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         setMessages((prev) => {
             const next = [...prev, userMsg];
             queueMicrotask(() => {
-                void sendMessageRef.current(cleaned, next);
+                void sendMessage(cleaned, next);
             });
             return next;
         });
@@ -512,14 +510,51 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         chatSession.current = createChatSession(getAppContext);
     }, [projects, events, todos, location.pathname, location.search, routeClientContext]);
 
-    // Fetch proactive suggestions when chat opens
+    // Fetch proactive suggestions when chat opens (live app context)
     useEffect(() => {
         if (isOpen && messages.length <= 1) {
-            fetchFranckSuggestions().then(data => {
+            fetchFranckSuggestions({
+                projects: projects.map((p) => ({
+                    id: p.id,
+                    clientName: p.clientName,
+                    status: p.status,
+                    phase: p.phase,
+                    invoices: p.invoices,
+                    tasks: p.tasks,
+                    profile: (p as any).profile,
+                    email: (p as any).email,
+                })),
+                events: events.slice(0, 40),
+                todos,
+            }).then((data) => {
                 if (data.suggestions && data.suggestions.length > 0) {
                     setDynamicSuggestions(data.suggestions);
                 }
             });
+        }
+    }, [isOpen, projects, events, todos, messages.length]);
+
+    // Seed prompt from Today page / external CTA
+    useEffect(() => {
+        if (!isOpen) return;
+        try {
+            const seed = sessionStorage.getItem('franck_seed_prompt');
+            if (seed) {
+                sessionStorage.removeItem('franck_seed_prompt');
+                setShowQuickActions(false);
+                setTimeout(() => {
+                    const userMsg: ChatMessage = { role: 'user', text: seed, timestamp: new Date() };
+                    setMessages((prev) => {
+                        const next = [...prev, userMsg];
+                        queueMicrotask(() => {
+                            void sendMessage(seed, next);
+                        });
+                        return next;
+                    });
+                }, 200);
+            }
+        } catch {
+            // ignore
         }
     }, [isOpen]);
     
@@ -557,13 +592,45 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
     const handleQuickAction = (prompt: string) => {
         setInput(prompt);
         setShowQuickActions(false);
-        // Auto-send after a brief delay
         setTimeout(() => {
             setInput('');
             const userMsg: ChatMessage = { role: 'user', text: prompt, timestamp: new Date() };
             setMessages(prev => [...prev, userMsg]);
             sendMessage(prompt, [...messages, userMsg]);
         }, 100);
+    };
+
+    const handleSuggestionClick = (suggestion: FranckSuggestion) => {
+        if (suggestion.action === 'remind') {
+            const amount = suggestion.amount != null ? String(suggestion.amount) : '';
+            const currency = suggestion.currency || 'CHF';
+            navigate('/emails', {
+                state: {
+                    compose: {
+                        to: suggestion.toEmail || '',
+                        subject: `Relance facture ${suggestion.invoiceNumber || ''} — ${suggestion.clientName || ''}`.trim(),
+                        body:
+                            `Bonjour,\n\n` +
+                            `Sauf erreur de ma part, la facture ${suggestion.invoiceNumber || ''} ` +
+                            `(${amount} ${currency}) échue le ${suggestion.dueDate || '—'} ` +
+                            `est toujours en attente de règlement.\n\n` +
+                            `Merci de faire le nécessaire.\n\nCordialement,\nMarion`,
+                        invoiceHint: {
+                            projectId: suggestion.projectId,
+                            invoiceId: suggestion.invoiceId,
+                            invoiceNumber: suggestion.invoiceNumber,
+                            clientName: suggestion.clientName,
+                            amount: suggestion.amount,
+                            currency,
+                            dueDate: suggestion.dueDate,
+                        },
+                    },
+                },
+            });
+            onClose();
+            return;
+        }
+        handleQuickAction(suggestion.prompt);
     };
     
     // Extracted send logic for reuse
@@ -607,9 +674,6 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
             await syncFranckData();
         }
     };
-    sendMessageRef.current = sendMessage;
-
-
 
     useEffect(() => {
 
@@ -777,11 +841,14 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                                         return (
                                             <button
                                                 key={idx}
-                                                onClick={() => handleQuickAction(suggestion.prompt)}
+                                                onClick={() => handleSuggestionClick(suggestion)}
                                                 className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left text-xs leading-tight hover:scale-[1.02] ${colorClass}`}
                                             >
                                                 <SuggIcon size={15} className="shrink-0" />
-                                                <span>{suggestion.text}</span>
+                                                <span className="flex-1">{suggestion.text}</span>
+                                                {suggestion.action === 'remind' && (
+                                                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide opacity-80">Email</span>
+                                                )}
                                             </button>
                                         );
                                     })}

@@ -1086,23 +1086,46 @@ def get_proactive_suggestions(projects: list, events: list, todos: list) -> list
     """Genere des suggestions proactives structurees pour Marion."""
     suggestions = []
     today = time.strftime('%Y-%m-%d')
-    thirty_days_ago = time.strftime('%Y-%m-%d', time.localtime(time.time() - 30 * 24 * 3600))
-    seven_days_ago = time.strftime('%Y-%m-%d', time.localtime(time.time() - 7 * 24 * 3600))
     tomorrow = time.strftime('%Y-%m-%d', time.localtime(time.time() + 24 * 3600))
 
     for p in projects:
         client = p.get('clientName', '?')
+        profile = p.get('profile') or {}
+        to_email = (profile.get('email') or profile.get('contactEmail') or p.get('email') or '').strip()
         for inv in p.get('invoices', []):
-            if inv.get('status') in ['Pending'] and inv.get('date', '') < thirty_days_ago:
-                inv_date = inv.get('date', '')
-                days_late = (datetime.now() - datetime.strptime(inv_date, '%Y-%m-%d')).days if inv_date else 0
-                suggestions.append({
-                    "text": f"Relancer la facture de {client} ({days_late}j de retard)",
-                    "prompt": f"Envoie une relance de facture a {client}",
-                    "priority": "high",
-                    "category": "finance",
-                    "icon": "credit-card",
-                })
+            if inv.get('type') and str(inv.get('type')) not in ('Invoice', 'invoice', ''):
+                # Skip explicit non-invoice docs when type is set
+                if str(inv.get('type')).lower() in ('estimate', 'quote', 'devis'):
+                    continue
+            status = str(inv.get('status') or '')
+            if status in ('Paid', 'paid', 'Annulé', 'Cancelled'):
+                continue
+            due = inv.get('dueDate') or inv.get('date') or ''
+            if not due or due >= today:
+                continue
+            try:
+                days_late = (datetime.now() - datetime.strptime(due[:10], '%Y-%m-%d')).days
+            except Exception:
+                days_late = 0
+            if days_late < 1:
+                continue
+            inv_number = inv.get('number') or inv.get('id') or '?'
+            suggestions.append({
+                "text": f"Relancer {client} — facture {inv_number} ({days_late}j)",
+                "prompt": f"Prépare une relance de facture pour {client} (facture {inv_number})",
+                "priority": "high",
+                "category": "finance",
+                "icon": "credit-card",
+                "action": "remind",
+                "clientName": client,
+                "toEmail": to_email,
+                "invoiceNumber": str(inv_number),
+                "dueDate": due[:10],
+                "amount": inv.get('amount'),
+                "currency": inv.get('currency') or 'CHF',
+                "projectId": p.get('id'),
+                "invoiceId": inv.get('id'),
+            })
 
     for p in projects:
         client = p.get('clientName', '?')

@@ -98,18 +98,34 @@ export const fetchFranckData = async (): Promise<{
     }
 };
 
-// Fetch proactive suggestions from Franck
-export const fetchFranckSuggestions = async (): Promise<{
-    suggestions: Array<{
-        text: string;
-        prompt: string;
-        priority: string;
-        category: string;
-        icon: string;
-    }>;
-}> => {
+export type FranckSuggestion = {
+    text: string;
+    prompt: string;
+    priority: string;
+    category: string;
+    icon: string;
+    action?: 'chat' | 'remind';
+    clientName?: string;
+    toEmail?: string;
+    invoiceNumber?: string;
+    dueDate?: string;
+    amount?: number;
+    currency?: string;
+    projectId?: string;
+    invoiceId?: string;
+};
+
+// Fetch proactive suggestions from Franck (POST live context when available)
+export const fetchFranckSuggestions = async (context?: {
+    projects?: any[];
+    events?: any[];
+    todos?: any[];
+}): Promise<{ suggestions: FranckSuggestion[] }> => {
     try {
-        const response = await apiFetch(`${BACKEND_URL}/api/v1/franck/suggestions`);
+        const response = await apiFetch(`${BACKEND_URL}/api/v1/franck/suggestions`, {
+            method: 'POST',
+            body: JSON.stringify(context || {}),
+        });
         return await response.json();
     } catch (e) {
         console.error('Failed to fetch Franck suggestions:', e);

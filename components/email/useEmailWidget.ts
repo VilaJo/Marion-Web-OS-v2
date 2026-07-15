@@ -4,7 +4,7 @@
  *          multi-select, search, and all mutations.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../services/api';
 import { useNotificationStore } from '../../stores/useNotificationStore';
@@ -12,7 +12,7 @@ import { useUIStore } from '../../stores/useUIStore';
 import {
     useEmailStatus, useEmails, useEmailConnect, useEmailDisconnect,
     useSendEmail, useDeleteEmail, useMarkRead, useSaveDraft,
-    useEmailAIReply, useEmailAISummarize,
+    useEmailAIReply, useEmailAISummarize, useProjects,
     emailKeys,
     type EmailMessage, type EmailAttachment,
 } from '../../services/queries';
@@ -34,9 +34,32 @@ export interface ComposeDraft {
     body: string;
 }
 
+/** Reference to an invoice a compose draft was seeded from (e.g. a relance from Franck / Ma journée). */
+export interface ComposeInvoiceHint {
+    projectId?: string;
+    invoiceId?: string;
+    invoiceNumber?: string;
+    clientName?: string;
+    amount?: number;
+    currency?: string;
+    dueDate?: string;
+}
+
+/** A candidate invoice offered by the "Joindre facture…" picker. */
+export interface InvoicePickerRow {
+    projectId: string;
+    invoiceId: string;
+    invoiceNumber: string;
+    clientName: string;
+    amount: number;
+    currency: string;
+    dueDate?: string;
+    status: string;
+}
+
 export interface EmailWidgetProps {
     clientEmail?: string;
-    initialCompose?: { to: string; subject: string; body: string };
+    initialCompose?: { to: string; subject: string; body: string; invoiceHint?: ComposeInvoiceHint };
     onClose?: () => void;
     /** If true, renders in fullscreen mode (dedicated /emails page) */
     fullscreen?: boolean;
@@ -87,16 +110,67 @@ export function useEmailWidget(props: EmailWidgetProps) {
     const [showCc, setShowCc] = useState(false);
     const [showBcc, setShowBcc] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [invoiceHint, setInvoiceHint] = useState<ComposeInvoiceHint | null>(initialCompose?.invoiceHint ?? null);
+
+    // ------ "Joindre facture…" picker (reads live invoice data, never touches InvoiceBuilder) ------
+    const { data: allProjects = [] } = useProjects();
+    const openInvoiceOptions = useMemo<InvoicePickerRow[]>(() => {
+        const rows: InvoicePickerRow[] = [];
+        for (const p of allProjects) {
+            for (const inv of p.invoices) {
+                if (inv.type !== 'Invoice' || inv.status === 'Paid') continue;
+                rows.push({
+                    projectId: p.id,
+                    invoiceId: inv.id,
+                    invoiceNumber: inv.number,
+                    clientName: p.clientName,
+                    amount: inv.amount,
+                    currency: inv.currency || 'CHF',
+                    dueDate: inv.dueDate,
+                    status: inv.status,
+                });
+            }
+        }
+        return rows.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
+    }, [allProjects]);
+
+    const attachInvoiceSummary = useCallback((row: InvoicePickerRow) => {
+        const summary = [
+            'Résumé de facture — Eonora Tech',
+            `Client : ${row.clientName}`,
+            `Facture : ${row.invoiceNumber}`,
+            `Montant : ${row.amount} ${row.currency}`,
+            row.dueDate ? `Échéance : ${row.dueDate}` : null,
+            `Statut : ${row.status}`,
+        ].filter(Boolean).join('\n');
+        const file = new File([summary], `Facture-${row.invoiceNumber}.txt`, { type: 'text/plain' });
+        setComposeFiles((prev) => [...prev, file]);
+        setInvoiceHint({
+            projectId: row.projectId,
+            invoiceId: row.invoiceId,
+            invoiceNumber: row.invoiceNumber,
+            clientName: row.clientName,
+            amount: row.amount,
+            currency: row.currency,
+            dueDate: row.dueDate,
+        });
+        addNotification('Email', `Résumé de la facture ${row.invoiceNumber} joint à l'email.`, 'success');
+    }, [addNotification]);
+
+    const clearInvoiceHint = useCallback(() => setInvoiceHint(null), []);
 
     // ------ Selection ------
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
 
     // ------ Data ------
-    const { data: emails = [], isLoading, refetch: refetchEmails } = useEmails(
+    const { data: emails = [], isLoading, isError: isEmailsError, error: emailsErrorRaw, refetch: refetchEmails } = useEmails(
         currentFolder === 'starred' ? 'inbox' : currentFolder,
         isConnected
     );
+    const emailsError = isEmailsError
+        ? (emailsErrorRaw instanceof Error ? emailsErrorRaw.message : 'Impossible de charger les emails (IMAP).')
+        : null;
 
     // ------ IMAP Folders (real folders from Infomaniak) ------
     // Using direct fetch instead of React Query to avoid timing/enabled issues
@@ -255,6 +329,7 @@ export function useEmailWidget(props: EmailWidgetProps) {
         setComposeFiles([]);
         setShowCc(false);
         setShowBcc(false);
+        setInvoiceHint(null);
         setView('compose');
     }, [clientEmail]);
 
@@ -272,6 +347,7 @@ export function useEmailWidget(props: EmailWidgetProps) {
         setComposeFiles([]);
         setShowCc(false);
         setShowBcc(false);
+        setInvoiceHint(null);
         setView('compose');
     }, [selectedEmail]);
 
@@ -294,6 +370,7 @@ export function useEmailWidget(props: EmailWidgetProps) {
         setComposeFiles([]);
         setShowCc(ccAddresses.length > 0);
         setShowBcc(false);
+        setInvoiceHint(null);
         setView('compose');
     }, [selectedEmail, connectedUsername]);
 
@@ -311,6 +388,7 @@ export function useEmailWidget(props: EmailWidgetProps) {
         setComposeFiles([]);
         setShowCc(false);
         setShowBcc(false);
+        setInvoiceHint(null);
         setView('compose');
     }, [selectedEmail, emailBody]);
 
@@ -484,6 +562,7 @@ export function useEmailWidget(props: EmailWidgetProps) {
                 body: reply,
             });
             setComposeFiles([]);
+            setInvoiceHint(null);
             setView('compose');
             addNotification('Franck', 'Réponse générée !', 'success');
         } catch {
@@ -604,6 +683,7 @@ export function useEmailWidget(props: EmailWidgetProps) {
         // Data
         emails: filteredEmails,
         isLoading,
+        emailsError,
         refetchEmails,
         // Compose
         composeMode,
@@ -612,6 +692,10 @@ export function useEmailWidget(props: EmailWidgetProps) {
         showCc, setShowCc,
         showBcc, setShowBcc,
         fileInputRef,
+        invoiceHint,
+        clearInvoiceHint,
+        openInvoiceOptions,
+        attachInvoiceSummary,
         // Selection
         selectedIds,
         toggleSelect,

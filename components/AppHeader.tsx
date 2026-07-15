@@ -66,6 +66,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
     const emailConnected = emailStatusData?.connected ?? false;
     const { data: unseenData } = useEmailUnseen(emailConnected);
     const unseenCount = unseenData?.count ?? 0;
+    const emailHasIssue = !emailConnected || !!unseenData?.error;
 
     // Franck connection menu
     const [showFranckMenu, setShowFranckMenu] = useState(false);
@@ -445,7 +446,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Newspaper size={18} className={isActiveRoute('/market-watch') ? '' : 'text-amber-500'} />
                     </button>
                 </Tooltip>
-                <Tooltip content="Emails">
+                <Tooltip content={emailHasIssue ? 'Emails (non connecté)' : 'Emails'}>
                     <button
                         onClick={() => navigate('/emails')}
                         className={`hidden lg:flex p-2 rounded-full transition-colors relative ${
@@ -459,6 +460,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                             <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-sm animate-pulse">
                                 {unseenCount > 99 ? '99+' : unseenCount}
                             </span>
+                        )}
+                        {unseenCount === 0 && emailHasIssue && (
+                            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 ring-2 ring-white dark:ring-slate-900" />
                         )}
                     </button>
                 </Tooltip>

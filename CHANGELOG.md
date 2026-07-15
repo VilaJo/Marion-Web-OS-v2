@@ -2,6 +2,17 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.8.1] - 2026-07-15
+### Ma journée, Franck & Emails
+- « Ma journée » : CTA Briefing / Franck / Emails, prompts rapides pré-remplis pour Franck
+- Franck : les suggestions proactives (relances factures) ouvrent directement un email pré-rempli
+- Correction d'un bug d'envoi de la voix / du prompt de Franck (référence cassée)
+- Emails : réponse « Relancer » depuis Ma journée / Franck arrive déjà en brouillon
+- Emails : bouton « Joindre facture… » pour attacher un résumé de facture ouverte
+- Emails : bannière claire en cas d'erreur de connexion IMAP + icône grise si non connecté
+- Guide : nouvelle section « En cas de souci » (Franck, emails, scripts .command)
+- Écran « Marion ne se connecte pas » : explications plus claires et actionnables
+
 ## [2.8.0] - 2026-07-15
 ### Quotidien Marion
 - Franck vocal + chat Gemini plus fiables

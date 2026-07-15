@@ -19,6 +19,7 @@ import {
     MessageCircle, Wand2,
     ArrowUp, UploadCloud,
     Layers, Calendar, CheckSquare, FolderOpen,
+    LifeBuoy, Mail, RefreshCw, Power,
 } from 'lucide-react';
 
 declare const confetti: any;
@@ -183,6 +184,54 @@ export const GlobalOverlays: React.FC<GlobalOverlaysProps> = ({ projects, events
                             </div>
                         ))}
                     </div>
+                    <div className="mb-12 rounded-[32px] border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 p-8">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-slate-800 text-amber-600 flex items-center justify-center"><LifeBuoy size={24} /></div>
+                            <h3 className="font-serif text-2xl font-bold text-slate-800 dark:text-white">En cas de souci</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-amber-100 dark:border-amber-900/30">
+                                <Bot size={20} className="text-brand-orange shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold text-sm text-slate-700 dark:text-slate-200 mb-1">Franck ne répond pas / bulle rouge</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Vérifie ta clé Gemini dans Paramètres → IA. Si l'app entière est bloquée, c'est le serveur qui est éteint (voir « Marion ne se connecte pas » ci-dessous).
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-amber-100 dark:border-amber-900/30">
+                                <Mail size={20} className="text-blue-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold text-sm text-slate-700 dark:text-slate-200 mb-1">Emails : icône grise / erreur</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Le point gris sur l'icône ✉️ veut dire que la boîte mail n'est pas connectée. Va sur la page Emails et reconnecte-toi avec ton adresse Infomaniak.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-amber-100 dark:border-amber-900/30">
+                                <Power size={20} className="text-slate-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold text-sm text-slate-700 dark:text-slate-200 mb-1">Marion ne se connecte pas</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Lance <strong>LANCER_MARION.command</strong> (ou double-clique « Eonora Tech OS »). Pour tout arrêter proprement : <strong>STOPPER_MARION.command</strong>.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-amber-100 dark:border-amber-900/30">
+                                <RefreshCw size={20} className="text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold text-sm text-slate-700 dark:text-slate-200 mb-1">Écran blanc après une mise à jour</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Fais <strong>Cmd + Shift + R</strong> dans le navigateur. Toujours blanc ? Lance <strong>REPARER_INTERFACE.command</strong>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-5 text-center">
+                            Rien n'y fait ? Envoie à Johan une capture d'écran + le fichier <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px]">.marion.log</code> (jamais le <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px]">.env</code>).
+                        </p>
+                    </div>
+
                     <div className="bg-pink-50/50 dark:bg-slate-800/30 rounded-[40px] p-10 text-center border border-pink-100 dark:border-slate-700">
                         <div className="w-12 h-12 bg-pink-400 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg animate-pulse">
                             <Heart fill="currentColor" size={20} />
