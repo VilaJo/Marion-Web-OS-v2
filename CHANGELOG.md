@@ -1,6 +1,14 @@
 # Journal des Modifications (Changelog)
 
-Toutes les modifications notables de **Marion CRM** seront documentées dans ce fichier.
+Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
+
+## [2.8.0] - 2026-07-15
+### Quotidien Marion
+- Franck vocal + chat Gemini plus fiables
+- App Bureau sans fenêtre Terminal
+- Veille Marché (Gemini) réparée
+- Mises à jour plus sûres (moins d’écrans blancs après MAJ)
+- Fiche instructions Marion + checklist QA release
 
 ## [1.2.0] - 2025-12-06
 ### ✨ Nouveautés (Features)

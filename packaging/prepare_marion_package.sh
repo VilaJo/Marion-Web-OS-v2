@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo "2.7.9")"
+VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo "2.8.0")"
 DESKTOP="$HOME/Desktop"
 OUT="$DESKTOP/Marion - Installation"
 DMG_SRC="$ROOT/release/MarionWebOS-${VERSION}.dmg"
@@ -38,7 +38,7 @@ cat > "$OUT/LIRE EN PREMIER.txt" <<'TXT'
 
 ÉTAPE 1 — Installer l'application
 ──────────────────────────────────
-1. Double-clique sur MarionWebOS-2.7.9.dmg (ou version dans ce dossier)
+1. Double-clique sur MarionWebOS-2.8.0.dmg (ou version dans ce dossier)
 2. Glisse « Eonora Tech OS » dans le dossier « Applications »
 3. Éjecte le disque Eonora Tech OS
 
@@ -81,8 +81,16 @@ Johan peut t'aider en lisant ce fichier log.
 TXT
 
 # Met à jour le numéro de version dans les instructions
-sed -i '' "s/2\\.7\\.9/${VERSION}/g" "$OUT/LIRE EN PREMIER.txt" 2>/dev/null || \
-    sed -i "s/2\\.7\\.9/${VERSION}/g" "$OUT/LIRE EN PREMIER.txt"
+sed -i '' "s/2\\.8\\.0/${VERSION}/g" "$OUT/LIRE EN PREMIER.txt" 2>/dev/null || \
+    sed -i "s/2\\.8\\.0/${VERSION}/g" "$OUT/LIRE EN PREMIER.txt"
+
+# Copie aussi la fiche instructions Marion (si présente)
+if [ -f "$ROOT/LIRE_EN_PREMIER_MARION.md" ]; then
+    cp "$ROOT/LIRE_EN_PREMIER_MARION.md" "$OUT/"
+fi
+if [ -f "$ROOT/docs/INSTRUCTIONS_MARION.md" ]; then
+    cp "$ROOT/docs/INSTRUCTIONS_MARION.md" "$OUT/"
+fi
 
 echo ""
 echo "✅ Package prêt : $OUT"

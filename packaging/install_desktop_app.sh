@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT_DIR="${1:-$ROOT}"
-VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo "2.7.9")"
+VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo "2.8.0")"
 DESKTOP_APP="$HOME/Desktop/Eonora Tech OS.app"
 LEGACY_APP="$HOME/Desktop/Marion Web OS.app"
 ICNS_SRC="$ROOT/public/icons/AppIcon.icns"

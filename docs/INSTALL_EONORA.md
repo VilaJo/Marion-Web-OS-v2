@@ -1,12 +1,15 @@
 # Installation Eonora Tech OS — Guide Marion (Mac)
 
-Version stable **v2.7.2** — facturation + agenda.
+Version stable **v2.8.0** — Franck vocal, app Bureau, mises à jour plus sûres.
+
+Fiche courte du quotidien : [`INSTRUCTIONS_MARION.md`](./INSTRUCTIONS_MARION.md)  
+Checklist QA release : [`QA_RELEASE_v2.8.0.md`](./QA_RELEASE_v2.8.0.md)
 
 ---
 
 ## 1. Télécharger (méthode recommandée — fichier .dmg)
 
-Johan t'envoie le fichier **`MarionWebOS-2.7.2.dmg`** (ou version plus récente).
+Johan t'envoie le fichier **`MarionWebOS-2.8.0.dmg`** (ou version plus récente).
 
 1. Double-clique sur le `.dmg`
 2. **Glisse** l'icône **Eonora Tech OS** sur le dossier **Applications**
@@ -24,11 +27,11 @@ Ensuite, un double-clic suffit — le navigateur s'ouvre sur Marion.
 
 **Option A** — Release GitHub :
 
-https://github.com/VilaJo/Marion-Web-OS-v2/releases/tag/v2.7.0
+https://github.com/VilaJo/Marion-Web-OS-v2/releases/tag/v2.8.0
 
 Télécharge le **Source code (zip)** ou utilise le lien direct :
 
-https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/tags/v2.7.0.zip
+https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/tags/v2.8.0.zip
 
 **Option B** — Branche `main` (dernière version) :
 
@@ -50,7 +53,7 @@ brew install python@3.12 node
 ## 3. Installer l'application (méthode ZIP)
 
 1. Dézippe le dossier téléchargé
-2. Ouvre le dossier (ex. `Marion-Web-OS-v2-2.7.0`)
+2. Ouvre le dossier (ex. `Marion-Web-OS-v2-2.8.0`)
 3. **Double-clic sur `INSTALLER.command`**
 4. Attends la fin (quelques minutes) — une icône **Eonora Tech OS** apparaît sur le Bureau
 
@@ -77,7 +80,7 @@ Le Finder refuse souvent les noms commençant par un point — **pas besoin** de
 2. Vérifie dans le Terminal :
 
 ```bash
-cd ~/Desktop/Marion-Web-OS-v2-2.7.0   # adapte le chemin
+cd ~/Desktop/Marion-Web-OS-v2-2.8.0   # adapte le chemin
 ls -la .env
 ```
 

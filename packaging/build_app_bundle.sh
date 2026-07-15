@@ -7,7 +7,7 @@ STAGING="$ROOT/release/staging"
 APP_NAME="Eonora Tech OS"
 APP_BUNDLE="$STAGING/${APP_NAME}.app"
 PAYLOAD="$APP_BUNDLE/Contents/Resources/app"
-VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo "2.7.0")"
+VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo "2.8.0")"
 
 echo "📦 Construction de ${APP_NAME}.app (v${VERSION})…"
 
