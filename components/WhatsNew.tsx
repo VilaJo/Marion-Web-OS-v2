@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, Mic, Monitor, RefreshCw, Sparkles, Award, Sunrise } from 'lucide-react';
+import { Bot, ArrowRight, Gift, Link2, Monitor, ShieldCheck, Award } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.8.1";
+const CURRENT_VERSION = "2.9.0";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,31 +37,31 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Ma journée, Franck en 1 clic & Emails plus pratiques
+                            Portail client : un vrai lien à partager
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-50 to-orange-50 dark:from-violet-900/10 dark:to-orange-900/10 border border-violet-200/50 dark:border-violet-800/30">
                             <div className="w-12 h-12 rounded-full bg-violet-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <Sunrise size={24} />
+                                <Link2 size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Ma journée + Franck + Emails, mieux reliés</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Portail client partageable</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Depuis « Ma journée », relance une facture ou demande à Franck en 1 clic. Les suggestions de Franck ouvrent directement un email de relance pré-rempli, avec un bouton « Joindre facture… ».
+                                    Double-clic sur <strong>LANCER_PORTAIL_PUBLIC.command</strong> pour activer un vrai lien HTTPS à envoyer à ton client — plus besoin d’être sur le même réseau que lui.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-fuchsia-50 to-pink-50 dark:from-fuchsia-900/10 dark:to-pink-900/10 border border-fuchsia-200/50 dark:border-fuchsia-800/30">
                             <div className="w-12 h-12 rounded-full bg-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <Mic size={24} />
+                                <ShieldCheck size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Franck vocal + chat</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Plus sécurisé</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Franck répond plus fiablement en texte et en vocal (Gemini Cloud). Autorise le micro, parle 1–2 secondes.
+                                    Le code PIN du portail est protégé contre les tentatives répétées (5 essais / 15 min), et les sessions client sont désormais fiabilisées.
                                 </p>
                             </div>
                         </div>
@@ -71,33 +71,9 @@ export const WhatsNew: React.FC = () => {
                                 <Monitor size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">App Bureau sans Terminal</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Aperçu local vs lien public</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Double-clic sur <strong>Eonora Tech OS</strong> — plus besoin d’ouvrir une fenêtre Terminal pour travailler.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-                                <Sparkles size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Veille Marché (Gemini)</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    La Veille Marché utilise un modèle Gemini à jour — plus d’erreur 500 au chargement.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
-                                <RefreshCw size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Mises à jour plus sûres</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Après <strong>METTRE_A_JOUR.command</strong>, fais <strong>Cmd + Shift + R</strong>. En cas d’écran blanc : <strong>REPARER_INTERFACE.command</strong>.
+                                    L’onglet <strong>Portail client</strong> affiche désormais un rappel tant que le tunnel n’est pas actif, pour éviter d’envoyer un lien qui ne fonctionne pas encore.
                                 </p>
                             </div>
                         </div>

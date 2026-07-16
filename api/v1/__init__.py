@@ -13,6 +13,7 @@ api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 # Import route modules to register them with the blueprint
 from . import health
 from . import workspaces
+from . import public_config
 
 
 def init_v1(app):

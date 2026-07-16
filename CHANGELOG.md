@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.9.0] - 2026-07-16
+### Portail client : lien officiel (Cloudflare Tunnel)
+- Nouveau : partage du portail client via un vrai lien HTTPS (Cloudflare Tunnel), sans ouvrir de port
+- Sécurité : sessions du portail client stockées en base (au lieu de la mémoire), limite anti-brute-force sur le code PIN (5 essais / 15 min)
+- Sécurité : les routes admin de documents du portail exigent désormais l'authentification Marion
+- `LANCER_PORTAIL_PUBLIC.command` / `STOPPER_PORTAIL_PUBLIC.command` pour démarrer/arrêter le tunnel
+- Message d'avertissement dans l'onglet Portail client quand le lien n'est encore qu'un aperçu local
+- Nouveau guide : `docs/PORTAIL_PUBLIC.md`
+
 ## [2.8.1] - 2026-07-15
 ### Ma journée, Franck & Emails
 - « Ma journée » : CTA Briefing / Franck / Emails, prompts rapides pré-remplis pour Franck

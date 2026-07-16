@@ -56,6 +56,8 @@ from database.db import (
     create_portal_document, get_portal_documents,
     update_portal_document, delete_portal_document,
     get_invoices,
+    create_portal_session, get_portal_session,
+    delete_portal_session, delete_expired_portal_sessions,
 )
 
 portal_bp = Blueprint('portal', __name__, url_prefix='/api/v1/portal')
@@ -109,9 +111,15 @@ ALLOWED_EXTENSIONS = {
     'zip', 'rar',                                   # archives
 }
 
-# Simple portal session tokens (in-memory, lightweight)
-_portal_sessions: dict = {}  # token -> {project_id, expires}
+# Portal session tokens are persisted in SQLite (see database/db.py) so they
+# survive server restarts and stay valid when the app is exposed via tunnel.
 PORTAL_SESSION_DURATION = 24 * 3600  # 24 hours
+
+# PIN rate limiting (in-memory, per (ip, token) tuple, 15-minute TTL).
+# No external dependency needed — resets automatically once the TTL elapses.
+PIN_MAX_ATTEMPTS = 5
+PIN_LOCKOUT_SECONDS = 15 * 60
+_pin_attempts: dict = {}  # (ip, token) -> {'count': int, 'first_attempt': float}
 
 
 def _get_upload_dir(project_id: int) -> Path:
@@ -122,17 +130,11 @@ def _get_upload_dir(project_id: int) -> Path:
 
 
 def _generate_portal_session(project_id: int) -> str:
-    """Generate a lightweight session token for portal access."""
+    """Generate a lightweight session token for portal access (persisted in SQLite)."""
     token = hashlib.sha256(f"{project_id}-{time.time()}-{uuid.uuid4()}".encode()).hexdigest()[:32]
-    _portal_sessions[token] = {
-        'project_id': project_id,
-        'expires': time.time() + PORTAL_SESSION_DURATION,
-    }
-    # Cleanup expired sessions
-    now = time.time()
-    expired = [k for k, v in _portal_sessions.items() if v['expires'] < now]
-    for k in expired:
-        del _portal_sessions[k]
+    expires_at = int(time.time() + PORTAL_SESSION_DURATION)
+    delete_expired_portal_sessions(int(time.time()))
+    create_portal_session(token, project_id, expires_at)
     return token
 
 
@@ -141,16 +143,55 @@ def _validate_portal_session(share_token: str) -> int | None:
     session_token = request.headers.get('X-Portal-Token')
     if not session_token:
         return None
-    session = _portal_sessions.get(session_token)
-    if not session or session['expires'] < time.time():
-        if session_token in _portal_sessions:
-            del _portal_sessions[session_token]
+    delete_expired_portal_sessions(int(time.time()))
+    session = get_portal_session(session_token)
+    if not session or session['expires_at'] < time.time():
+        if session:
+            delete_portal_session(session_token)
         return None
     # Verify the project still matches and portal is still enabled
     project = get_project_by_portal_token(share_token)
     if not project or project['id'] != session['project_id']:
         return None
     return session['project_id']
+
+
+def _client_ip() -> str:
+    """Best-effort client IP, honouring X-Forwarded-For when behind a tunnel/proxy."""
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+
+def _pin_attempts_key(token: str) -> tuple:
+    return (_client_ip(), token)
+
+
+def _is_pin_rate_limited(token: str) -> bool:
+    """True if this (IP, token) pair exceeded PIN_MAX_ATTEMPTS within the TTL window."""
+    key = _pin_attempts_key(token)
+    entry = _pin_attempts.get(key)
+    if not entry:
+        return False
+    if time.time() - entry['first_attempt'] > PIN_LOCKOUT_SECONDS:
+        del _pin_attempts[key]
+        return False
+    return entry['count'] >= PIN_MAX_ATTEMPTS
+
+
+def _record_failed_pin_attempt(token: str) -> None:
+    key = _pin_attempts_key(token)
+    now = time.time()
+    entry = _pin_attempts.get(key)
+    if not entry or now - entry['first_attempt'] > PIN_LOCKOUT_SECONDS:
+        _pin_attempts[key] = {'count': 1, 'first_attempt': now}
+    else:
+        entry['count'] += 1
+
+
+def _reset_pin_attempts(token: str) -> None:
+    _pin_attempts.pop(_pin_attempts_key(token), None)
 
 
 def _serialize_project_for_portal(project: dict, portal_settings: dict) -> dict:
@@ -281,6 +322,9 @@ def _serialize_project_for_portal(project: dict, portal_settings: dict) -> dict:
 @portal_bp.route('/<token>/auth', methods=['POST'])
 def portal_auth(token: str):
     """Authenticate to a portal with a PIN."""
+    if _is_pin_rate_limited(token):
+        return jsonify({"error": "Trop de tentatives. Réessayez dans 15 minutes."}), 429
+
     project = get_project_by_portal_token(token)
     if not project:
         return jsonify({"error": "Portail introuvable ou désactivé."}), 404
@@ -289,8 +333,10 @@ def portal_auth(token: str):
     pin = data.get('pin', '')
 
     if not verify_portal_pin(project['id'], pin):
+        _record_failed_pin_attempt(token)
         return jsonify({"error": "Code PIN incorrect."}), 401
 
+    _reset_pin_attempts(token)
     session_token = _generate_portal_session(project['id'])
     
     # Parse portal settings for client name

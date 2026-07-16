@@ -142,7 +142,7 @@ class Config:
 
     # -- Application --------------------------------------------------------
     APP_NAME = os.getenv('APP_NAME', 'Eonora Tech OS')
-    APP_VERSION = '2.8.0'
+    APP_VERSION = '2.9.0'
     DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
     ENVIRONMENT = os.getenv('FLASK_ENV', os.getenv('ENV', 'development'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -198,8 +198,17 @@ class Config:
     GITHUB_REPO_OWNER = os.getenv('GITHUB_REPO_OWNER', 'VilaJo')
     GITHUB_REPO_NAME = os.getenv('GITHUB_REPO_NAME', 'Marion-Web-OS-v2')
 
-    # -- CORS ---------------------------------------------------------------
+    # -- CORS -----------------------------------------------------------------
+    # PUBLIC_BASE_URL: the HTTPS URL exposed by the Cloudflare Tunnel (see
+    # packaging/cloudflare_tunnel.sh). When set, it's added to the allowed CORS
+    # origins so the client portal keeps working through the tunnel. The
+    # server itself always keeps binding to 127.0.0.1 — the tunnel connects
+    # locally, it never opens the port to the outside directly.
+    PUBLIC_BASE_URL = os.getenv('PUBLIC_BASE_URL', '').strip()
+
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://127.0.0.1:5003,http://localhost:5003').split(',')
+    if PUBLIC_BASE_URL and PUBLIC_BASE_URL not in CORS_ORIGINS:
+        CORS_ORIGINS.append(PUBLIC_BASE_URL)
 
     # -- Email (IMAP / SMTP) ------------------------------------------------
     IMAP_HOST = os.getenv('IMAP_HOST', 'mail.infomaniak.com')

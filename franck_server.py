@@ -174,10 +174,11 @@ def require_auth():
         parts = request.path[len('/api/v1/portal/'):].strip('/').split('/')
         # Public routes have a token (long alphanumeric string) as first segment
         # Admin routes have known keywords: deliverable, deliverables, update, updates,
-        #   comment, comments, client-files, unseen
+        #   comment, comments, client-files, unseen, document, documents
         admin_keywords = {
             'deliverable', 'deliverables', 'update', 'updates',
             'comment', 'comments', 'client-files', 'unseen',
+            'document', 'documents',
         }
         if parts and parts[0] not in admin_keywords:
             # This is a public portal route (token-based)

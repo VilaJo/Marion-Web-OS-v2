@@ -23,6 +23,7 @@ import { apiFetch } from '../services/api';
 import { WORKFLOW_CONFIG } from '../constants';
 import { WorkflowTimeline } from './WorkflowTimeline';
 import { Language, LANGUAGE_OPTIONS, portalT, DATE_LOCALES } from '../translations/i18n';
+import { useAppConfig } from '../hooks/useAppConfig';
 
 declare const confetti: any;
 
@@ -115,7 +116,12 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
     const [uploadingDoc, setUploadingDoc] = useState(false);
 
     // ---- URL ----
-    const portalUrl = `${window.location.origin}/portal/${portalSettings.shareToken}`;
+    // Prefer the Cloudflare Tunnel public URL when configured so the link Marion
+    // copies actually works for the client outside her own Mac (127.0.0.1).
+    const { publicBaseUrl } = useAppConfig();
+    const portalOrigin = publicBaseUrl || window.location.origin;
+    const portalUrl = `${portalOrigin}/portal/${portalSettings.shareToken}`;
+    const isLocalPreviewOnly = !publicBaseUrl;
 
     // ---- Load data ----
     const loadPortalData = useCallback(async () => {
@@ -415,6 +421,12 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {/* Share link */}
             {portalSettings.enabled && (
                 <Card className="p-4 bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 border-orange-200 dark:border-orange-800">
+                    {isLocalPreviewOnly && (
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-300">
+                            <AlertCircle size={14} className="flex-shrink-0" />
+                            <span className="font-medium">Aperçu local uniquement — activez le tunnel pour partager ce lien</span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-3">
                         <div className="flex-1">
                             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t.shareLink}</label>

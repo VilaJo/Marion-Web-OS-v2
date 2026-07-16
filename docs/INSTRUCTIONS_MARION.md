@@ -1,4 +1,4 @@
-# Eonora Tech OS — Instructions Marion (v2.8.0)
+# Eonora Tech OS — Instructions Marion (v2.9.0)
 
 Une page pour le quotidien. Garde ce fichier à portée de main.
 
@@ -65,7 +65,20 @@ Double-clic sur **`REINITIALISER_MOT_DE_PASSE.command`**, puis suivre les messag
 
 ---
 
-## 8. Où sont tes clients ?
+## 8. Partager le portail client (lien public)
+
+Pour envoyer à un client un vrai lien HTTPS (pas juste un aperçu local) :
+
+1. Onglet **Portail client** → active le portail (bouton **Activé**)
+2. Double-clic sur **`LANCER_PORTAIL_PUBLIC.command`** (garde la fenêtre ouverte)
+3. Copie le lien affiché dans l'onglet **Portail client** et envoie-le au client
+
+Guide complet (PIN, ce que voit le client, arrêt du tunnel) :
+[`PORTAIL_PUBLIC.md`](./PORTAIL_PUBLIC.md)
+
+---
+
+## 9. Où sont tes clients ?
 
 Sur le Bureau, dossier :
 
@@ -79,7 +92,7 @@ Ne le supprime pas. C’est là que vivent clients, tâches et factures.
 
 ---
 
-## 9. Bug ? Qui appeler / quoi envoyer
+## 10. Bug ? Qui appeler / quoi envoyer
 
 Contact : **Johan**
 
@@ -103,6 +116,8 @@ Envoie :
 | Mettre à jour | `METTRE_A_JOUR.command` + Cmd+Shift+R |
 | Réparer écran blanc | `REPARER_INTERFACE.command` |
 | Réinit. mot de passe | `REINITIALISER_MOT_DE_PASSE.command` |
+| Partager le portail client | `LANCER_PORTAIL_PUBLIC.command` / `STOPPER_PORTAIL_PUBLIC.command` |
 
 Guide install complet : [`INSTALL_EONORA.md`](./INSTALL_EONORA.md)  
+Guide portail public (lien client) : [`PORTAIL_PUBLIC.md`](./PORTAIL_PUBLIC.md)  
 Checklist QA v2.8.0 : [`QA_RELEASE_v2.8.0.md`](./QA_RELEASE_v2.8.0.md)

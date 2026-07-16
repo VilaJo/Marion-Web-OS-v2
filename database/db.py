@@ -957,6 +957,36 @@ def verify_portal_pin(project_id: int, pin: str) -> bool:
         return stored == pin
 
 
+# -- Portal Sessions (SQLite-backed, survives server restarts) --
+
+def create_portal_session(token: str, project_id: int, expires_at: int) -> None:
+    """Store a portal session token with its expiry (unix timestamp, seconds)."""
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO portal_sessions (token, project_id, expires_at) VALUES (?, ?, ?)",
+            (token, project_id, expires_at)
+        )
+
+
+def get_portal_session(token: str) -> Optional[Dict]:
+    """Fetch a portal session by token."""
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM portal_sessions WHERE token = ?", (token,)).fetchone()
+        return row_to_dict(row)
+
+
+def delete_portal_session(token: str) -> None:
+    """Delete a single portal session."""
+    with get_db() as conn:
+        conn.execute("DELETE FROM portal_sessions WHERE token = ?", (token,))
+
+
+def delete_expired_portal_sessions(now_ts: int) -> None:
+    """Remove all portal sessions whose expiry is in the past."""
+    with get_db() as conn:
+        conn.execute("DELETE FROM portal_sessions WHERE expires_at < ?", (now_ts,))
+
+
 # -- Portal Deliverables --
 
 def create_portal_deliverable(project_id: int, data: Dict) -> int:
