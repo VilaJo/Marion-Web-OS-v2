@@ -276,6 +276,9 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     // Google Calendar sync state (derived from React Query)
     const googleCalendarConnected = syncStatus?.connected ?? localStorage.getItem('marion_gcal_connected') === 'true';
     const googleCalendarEmail = syncStatus?.email ?? localStorage.getItem('marion_gcal_email');
+    // A previously-connected account whose token expired is a different (more urgent) case
+    // than "never connected" — this lets the banner wording stay accurate instead of alarming.
+    const googleNeedsReconnect = !googleCalendarConnected && Boolean(googleCalendarEmail);
     const infomaniakCalendarConnected = Boolean(infomaniakSyncStatus?.connected);
     const infomaniakCalendarLabel = infomaniakSyncStatus?.username || 'Infomaniak';
     const isSyncing = isSyncingGcal || isSyncingInfomaniak;
@@ -1168,7 +1171,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                 <span className="w-3 h-3 rounded-sm bg-brand-orange flex-shrink-0" />
                                 <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Eonora Tech OS</span>
                             </label>
-                            {googleCalendarConnected && (
+                            {googleCalendarConnected ? (
                                 <label className="flex items-center gap-3 cursor-pointer group">
                                     <input 
                                         type="checkbox" 
@@ -1182,6 +1185,22 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                         {googleCalendarEmail && <div className="text-[11px] text-slate-400 truncate">{googleCalendarEmail}</div>}
                                     </div>
                                 </label>
+                            ) : (
+                                <button
+                                    onClick={handleReconnect}
+                                    className="w-full flex items-center gap-3 text-left group"
+                                    title={googleNeedsReconnect ? 'Reconnecter Google Calendar' : 'Connecter Google Calendar'}
+                                >
+                                    <span className="w-3 h-3 rounded-sm bg-slate-300 dark:bg-slate-600 flex-shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="text-sm text-slate-400 dark:text-slate-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                            Google Calendar — {googleNeedsReconnect ? 'à reconnecter' : 'non connecté'}
+                                        </div>
+                                        <div className="text-[11px] text-amber-600 dark:text-amber-400 group-hover:underline">
+                                            {googleNeedsReconnect ? 'Reconnecter' : 'Connecter'}
+                                        </div>
+                                    </div>
+                                </button>
                             )}
                             {infomaniakCalendarConnected && (
                                 <label className="flex items-center gap-3 cursor-pointer group">
@@ -1346,12 +1365,18 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                 {!googleCalendarConnected && (
                     <div className="mx-1 mb-2 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs">
                         <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
-                        <span className="text-amber-700 dark:text-amber-300 flex-1">Google Calendar déconnecté</span>
+                        <span className="text-amber-700 dark:text-amber-300 flex-1">
+                            {googleNeedsReconnect
+                                ? 'Votre agenda Google a besoin d\'être reconnecté'
+                                : 'Agenda Google non connecté'}
+                            {infomaniakCalendarConnected && ' — vos événements Infomaniak restent affichés'}
+                        </span>
                         <button
                             onClick={handleReconnect}
-                            className="px-2.5 py-1 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors text-[11px]"
+                            disabled={connectGoogleMutation.isPending}
+                            className="px-2.5 py-1 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors text-[11px] disabled:opacity-50"
                         >
-                            Reconnecter
+                            {connectGoogleMutation.isPending ? 'Connexion...' : 'Reconnecter'}
                         </button>
                     </div>
                 )}
@@ -1400,10 +1425,10 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             <button 
                                 onClick={handleReconnect}
                                 className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full text-amber-600 dark:text-amber-400 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
-                                title="Cliquez pour reconnecter Google Calendar"
+                                title={googleNeedsReconnect ? 'Cliquez pour reconnecter votre agenda Google' : 'Cliquez pour connecter votre agenda Google'}
                             >
                                 <AlertCircle size={12} />
-                                <span className="hidden sm:inline">Reconnecter</span>
+                                <span className="hidden sm:inline">{googleNeedsReconnect ? 'Reconnecter' : 'Connecter'}</span>
                             </button>
                         )}
                         

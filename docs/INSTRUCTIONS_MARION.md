@@ -1,4 +1,4 @@
-# Eonora Tech OS — Instructions Marion (v2.9.0)
+# Eonora Tech OS — Instructions Marion (v2.9.1)
 
 Une page pour le quotidien. Garde ce fichier à portée de main.
 
@@ -92,7 +92,17 @@ Ne le supprime pas. C’est là que vivent clients, tâches et factures.
 
 ---
 
-## 10. Bug ? Qui appeler / quoi envoyer
+## 10. Agenda se déconnecte souvent ?
+
+Si le bandeau **« Reconnecter »** revient régulièrement dans l'Agenda (plus d'une fois par semaine) :
+
+- Ce n'est pas un bug de l'app — c'est un réglage côté Google Cloud que seul **Johan** peut changer (publier l'app OAuth Google, mode Testing → Production).
+- Préviens Johan : *« Agenda se déconnecte souvent »*.
+- En attendant, si tes rendez-vous Infomaniak sont déjà configurés, ils continuent de s'afficher normalement dans l'Agenda — seule la synchro Google est temporairement coupée.
+
+---
+
+## 11. Bug ? Qui appeler / quoi envoyer
 
 Contact : **Johan**
 

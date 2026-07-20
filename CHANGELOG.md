@@ -2,6 +2,13 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.9.1] - 2026-07-20
+### Fiabilité : retirer le faux, clarifier l'Agenda
+- **Messagerie (WhatsApp/SMS)** : retirée de l'en-tête et du menu mobile — c'était une démo 100% locale (aucun message n'était réellement envoyé). Le composant reste dans le code mais n'est plus accessible, pour éviter que Marion pense avoir envoyé un message à un client.
+- **Dropbox** : carte retirée des Paramètres — le bouton « Connecter » ne faisait qu'activer un faux statut en local, sans connexion réelle. Google Drive (sauvegarde + OAuth réel) reste inchangé.
+- **Agenda** : bannière de déconnexion Google Calendar reformulée (distingue « jamais connecté » de « jeton expiré, à reconnecter ») et indique quand les événements Infomaniak restent disponibles pendant la coupure Google. Le mode immersion affiche aussi l'état Google dans la liste des agendas, avec reconnexion en un clic.
+- Doc : nouvelle note pour Johan sur la publication de l'app OAuth Google (Testing → Production) en cas de déconnexions fréquentes (`docs/GOOGLE_OAUTH_EONORA.md`, `docs/troubleshooting.md`, `docs/INSTRUCTIONS_MARION.md`).
+
 ## [2.9.0] - 2026-07-16
 ### Portail client : lien officiel (Cloudflare Tunnel)
 - Nouveau : partage du portail client via un vrai lien HTTPS (Cloudflare Tunnel), sans ouvrir de port

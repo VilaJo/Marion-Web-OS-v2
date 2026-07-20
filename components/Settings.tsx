@@ -691,7 +691,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
     }, [oauthData]);
 
-    const handleCloudConfigChange = (provider: 'googleDrive' | 'dropbox', key: string, value: any) => {
+    const handleCloudConfigChange = (provider: 'googleDrive', key: string, value: any) => {
         const updated = {
             ...cloudConfig,
             [provider]: { ...cloudConfig[provider], [key]: value }
@@ -776,31 +776,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         });
     };
 
-    const handleConnectCloud = async (provider: 'googleDrive' | 'dropbox') => {
-        if (provider === 'googleDrive') {
-            handleConnectGoogle();
-        } else {
-            // Dropbox - placeholder for now
-            const updated = {
-                ...cloudConfig,
-                [provider]: { ...cloudConfig[provider], connected: true, enabled: true }
-            };
-            setCloudConfig(updated);
-            localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
-        }
+    const handleConnectCloud = async (provider: 'googleDrive') => {
+        handleConnectGoogle();
     };
 
-    const handleDisconnectCloud = (provider: 'googleDrive' | 'dropbox') => {
-        if (provider === 'googleDrive') {
-            handleDisconnectGoogle();
-        } else {
-            const updated = {
-                ...cloudConfig,
-                [provider]: { enabled: false, connected: false, folder: '' }
-            };
-            setCloudConfig(updated);
-            localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
-        }
+    const handleDisconnectCloud = (provider: 'googleDrive') => {
+        handleDisconnectGoogle();
     };
     const [isSaving, setIsSaving] = useState(false);
 
@@ -2280,63 +2261,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 )}
                             </div>
 
-                            {/* Dropbox */}
-                            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center shadow-sm">
-                                            <svg viewBox="0 0 24 24" className="w-7 h-7" fill="#0061FF">
-                                                <path d="M6 2L0 6l6 4 6-4-6-4zm12 0l-6 4 6 4 6-4-6-4zM0 14l6 4 6-4-6-4-6 4zm18-4l-6 4 6 4 6-4-6-4zM6 20l6 4 6-4-6-4-6 4z"/>
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 dark:text-white">Dropbox</h4>
-                                            <p className="text-xs text-slate-400">
-                                                {cloudConfig.dropbox.connected ? 'Connecté' : 'Non connecté'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {cloudConfig.dropbox.connected ? (
-                                        <button
-                                            onClick={() => handleDisconnectCloud('dropbox')}
-                                            className="px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                        >
-                                            Déconnecter
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleConnectCloud('dropbox')}
-                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                                        >
-                                            <ExternalLink size={14} /> Connecter
-                                        </button>
-                                    )}
-                                </div>
-                                {cloudConfig.dropbox.connected && (
-                                    <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-600">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Dossier de synchronisation</label>
-                                            <input
-                                                type="text"
-                                                value={cloudConfig.dropbox.folder}
-                                                onChange={(e) => handleCloudConfigChange('dropbox', 'folder', e.target.value)}
-                                                placeholder="/Eonora Tech OS/Clients"
-                                                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:border-brand-orange"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm text-slate-600 dark:text-slate-300">Synchronisation active</span>
-                                            <button
-                                                onClick={() => handleCloudConfigChange('dropbox', 'enabled', !cloudConfig.dropbox.enabled)}
-                                                className={`w-12 h-6 rounded-full transition-colors ${cloudConfig.dropbox.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                                            >
-                                                <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${cloudConfig.dropbox.enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
                             {/* Auto-Sync Settings */}
                             <div className="bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 rounded-2xl p-5 border border-orange-100 dark:border-orange-800">
                                 <div className="flex items-center gap-3 mb-4">
@@ -2387,7 +2311,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <AlertCircle size={18} className="text-blue-500 mt-0.5" />
                                 <div>
                                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                                        <strong>Note:</strong> La synchronisation cloud nécessite une connexion à votre compte Google ou Dropbox. 
+                                        <strong>Note:</strong> La synchronisation cloud nécessite une connexion à votre compte Google Drive. 
                                         Vos fichiers clients seront automatiquement organisés par projet.
                                     </p>
                                 </div>

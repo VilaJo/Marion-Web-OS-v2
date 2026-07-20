@@ -81,3 +81,17 @@ curl -s http://127.0.0.1:5003/api/v1/gcal/sync-status | python3 -m json.tool
 | `redirect_uri_mismatch` | Mauvais port ou URI | URI = `http://127.0.0.1:5003/api/v1/oauth/google/callback` |
 | Connecté mais mauvais calendrier | Autre compte Google choisi | Déconnecter, reconnecter avec le bon compte |
 | Token expired | Refresh token invalide | Déconnecter + reconnecter dans Paramètres |
+
+---
+
+## Déconnexions fréquentes ? Passer en Production
+
+Tant que l'app OAuth reste en mode **Testing**, Google impose des jetons de courte durée qui expirent régulièrement (Marion doit alors cliquer sur « Reconnecter » dans l'Agenda plus souvent que nécessaire).
+
+Si Marion signale que l'Agenda se déconnecte souvent :
+
+1. [Google Cloud Console — OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent)
+2. **PUBLISH APP** → confirmer le passage de **Testing** à **Production**
+3. Si Google demande une vérification (écran de consentement avec scopes sensibles), suivre l'assistant — pour un usage interne à un seul utilisateur (Marion), la vérification complète n'est généralement pas nécessaire tant que l'app reste à faible volume
+
+Ceci ne se fait que côté Google Cloud Console (aucun changement de code nécessaire).

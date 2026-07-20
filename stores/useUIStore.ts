@@ -38,7 +38,6 @@ interface UIState {
     showGuide: boolean;
     showGoalsKPIs: boolean;
     showDocTemplates: boolean;
-    showMessagingHub: boolean;
     showNotifCenter: boolean;
     showGlobalSearch: boolean;
     showMediaWorkshop: boolean;
@@ -113,7 +112,6 @@ interface UIState {
     setShowGuide: (v: boolean) => void;
     setShowGoalsKPIs: (v: boolean) => void;
     setShowDocTemplates: (v: boolean) => void;
-    setShowMessagingHub: (v: boolean) => void;
     setShowNotifCenter: (v: boolean) => void;
     setShowGlobalSearch: (v: boolean) => void;
     setShowMediaWorkshop: (v: boolean) => void;
@@ -186,7 +184,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     showGuide: false,
     showGoalsKPIs: false,
     showDocTemplates: false,
-    showMessagingHub: false,
     showNotifCenter: false,
     showGlobalSearch: false,
     showMediaWorkshop: false,
@@ -335,7 +332,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     setShowGuide: (v) => set({ showGuide: v }),
     setShowGoalsKPIs: (v) => set({ showGoalsKPIs: v }),
     setShowDocTemplates: (v) => set({ showDocTemplates: v }),
-    setShowMessagingHub: (v) => set({ showMessagingHub: v }),
     setShowNotifCenter: (v) => set({ showNotifCenter: v }),
     setShowGlobalSearch: (v) => set({ showGlobalSearch: v }),
     setShowMediaWorkshop: (v) => set({ showMediaWorkshop: v }),

@@ -47,7 +47,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         showNotifCenter, setShowNotifCenter,
         setShowMediaWorkshop, setShowNotes, setShowFileDispatcher,
         setShowGuide, setShowGoalsKPIs,
-        setShowMessagingHub, setShowMondayBriefing, setShowGlobalSearch,
+        setShowMondayBriefing, setShowGlobalSearch,
         setIsFocusMode,
         setDroppedFiles, setShowImporter,
         isMobileMenuOpen, setIsMobileMenuOpen,
@@ -464,11 +464,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         {unseenCount === 0 && emailHasIssue && (
                             <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 ring-2 ring-white dark:ring-slate-900" />
                         )}
-                    </button>
-                </Tooltip>
-                <Tooltip content="Messagerie">
-                    <button onClick={() => setShowMessagingHub(true)} className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <MessageCircle size={18} className="text-green-500" />
                     </button>
                 </Tooltip>
                 <Tooltip content="Donner à Franck">

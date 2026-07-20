@@ -16,7 +16,6 @@ import { Coffee } from 'lucide-react';
 const InvoiceBuilder = React.lazy(() => import('./InvoiceBuilder').then(m => ({ default: m.InvoiceBuilder })));
 const GoalsKPIs = React.lazy(() => import('./GoalsKPIs').then(m => ({ default: m.GoalsKPIs })));
 const DocumentTemplates = React.lazy(() => import('./DocumentTemplates').then(m => ({ default: m.DocumentTemplates })));
-const MessagingHub = React.lazy(() => import('./MessagingHub').then(m => ({ default: m.MessagingHub })));
 
 export const GlobalDashboardModals: React.FC = () => {
     const { data: projects = [] } = useProjects();
@@ -30,7 +29,6 @@ export const GlobalDashboardModals: React.FC = () => {
         showMondayBriefing, setShowMondayBriefing,
         showGoalsKPIs, setShowGoalsKPIs,
         showDocTemplates, setShowDocTemplates,
-        showMessagingHub, setShowMessagingHub,
     } = useUIStore();
 
     const [briefingContent, setBriefingContent] = useState('');
@@ -162,11 +160,6 @@ export const GlobalDashboardModals: React.FC = () => {
                 </Suspense>
             )}
 
-            {showMessagingHub && (
-                <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full" /></div>}>
-                    <MessagingHub projects={projects} onClose={() => setShowMessagingHub(false)} />
-                </Suspense>
-            )}
         </>
     );
 };

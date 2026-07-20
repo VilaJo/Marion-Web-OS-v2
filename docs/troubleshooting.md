@@ -66,6 +66,10 @@
 
 **Solution** : Cliquer sur **Reconnecter** dans l'Agenda. Si la reconnexion échoue, déconnecter puis reconnecter dans les paramètres.
 
+**Si ça se reproduit souvent** (déconnexions fréquentes, quelques jours après chaque reconnexion) : c'est presque toujours parce que l'app OAuth Google est encore en mode **Testing** — les jetons de test expirent régulièrement. Johan doit publier l'app OAuth Google (Google Cloud Console → OAuth consent screen → passer de **Testing** à **Production**). Voir [`GOOGLE_OAUTH_EONORA.md`](./GOOGLE_OAUTH_EONORA.md).
+
+**Pendant ce temps** : si l'agenda Infomaniak (CalDAV) est déjà configuré, l'Agenda continue d'afficher ces événements normalement — seuls les événements Google sont temporairement indisponibles.
+
 ---
 
 ### Portail client ne s'affiche pas

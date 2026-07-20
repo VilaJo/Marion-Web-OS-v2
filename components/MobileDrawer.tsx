@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../stores';
 import {
     X, LayoutGrid, StickyNote, Wand2, Tent, Target,
-    Mail, MessageCircle, Sparkles, Settings,
+    Mail, Sparkles, Settings,
     HelpCircle, Sun, Moon, Upload, Sunrise,
 } from 'lucide-react';
 
@@ -21,7 +21,7 @@ export const MobileDrawer: React.FC = () => {
         theme, cycleTheme,
         setShowMondayBriefing, setShowNotes, setShowMediaWorkshop,
         setIsFocusMode, setShowGoalsKPIs,
-        setShowMessagingHub, setShowGuide,
+        setShowGuide,
         setDroppedFiles, setShowFileDispatcher,
     } = useUIStore();
 
@@ -53,7 +53,6 @@ export const MobileDrawer: React.FC = () => {
         { icon: Tent, label: 'Mode Focus', color: 'text-blue-500', action: () => menuAction(() => setIsFocusMode(true)) },
         { icon: Target, label: 'Objectifs & KPIs', color: 'text-violet-500', action: () => menuAction(() => setShowGoalsKPIs(true)) },
         { icon: Mail, label: 'Emails', color: 'text-blue-500', action: () => { close(); navigate('/emails'); } },
-        { icon: MessageCircle, label: 'Messagerie', color: 'text-green-500', action: () => menuAction(() => setShowMessagingHub(true)) },
         { icon: Sparkles, label: 'Donner à Franck', color: 'text-emerald-500', action: () => {
             close();
             const input = document.createElement('input');
