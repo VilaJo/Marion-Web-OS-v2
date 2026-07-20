@@ -171,7 +171,11 @@ export const useUIStore = create<UIState>((set, get) => ({
     tjh: localStorage.getItem('marion_tjh') || '60',
     aiTone: localStorage.getItem('marion_ai_tone') || 'witty',
     briefingVocal: localStorage.getItem('marion_briefing_vocal') === 'true',
-    aiMode: ((localStorage.getItem('marion_ai_mode') as 'local' | 'hybrid' | 'cloud') || 'cloud'),
+    aiMode: ((): 'local' | 'hybrid' | 'cloud' => {
+        const stored = localStorage.getItem('marion_ai_mode') as 'local' | 'hybrid' | 'cloud' | null;
+        // Hybride/Local sont des modes avancés verrouillés pour Marion (v2.9.2) — toute valeur persistée autre que 'cloud' est ramenée à 'cloud'.
+        return stored === 'hybrid' || stored === 'local' ? 'cloud' : (stored || 'cloud');
+    })(),
     localModelName: localStorage.getItem('marion_ai_local_model') || 'qwen2.5:7b-instruct',
     aiFallbackEnabled: localStorage.getItem('marion_ai_fallback_enabled') !== 'false',
     

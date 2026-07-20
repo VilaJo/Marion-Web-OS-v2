@@ -39,6 +39,7 @@ from pathlib import Path
 from flask import Blueprint, request, jsonify, send_file
 from werkzeug.utils import secure_filename
 from services.logger import get_logger
+from config import get_current_config
 
 logger = get_logger('api.portal')
 
@@ -540,6 +541,37 @@ def portal_public_download_deliverable(token: str, deliverable_id: int):
     force_download = request.args.get('download', '0') == '1'
     return send_file(str(full_path), mimetype=mime or 'application/octet-stream',
                      download_name=row['original_name'] or full_path.name, as_attachment=force_download)
+
+
+TUNNEL_PID_FILE = Path('/tmp/eonora_tunnel.pid')
+
+
+@portal_bp.route('/tunnel-status', methods=['GET'])
+def portal_tunnel_status():
+    """Report whether the Cloudflare Tunnel (packaging/cloudflare_tunnel.sh) is
+    currently running, so the app can show Marion an accurate "lien public"
+    banner instead of a stale/guessed state."""
+    pid: int | None = None
+    running = False
+    try:
+        raw_pid = TUNNEL_PID_FILE.read_text().strip()
+        pid = int(raw_pid)
+    except (OSError, ValueError):
+        pid = None
+
+    if pid is not None:
+        try:
+            os.kill(pid, 0)
+            running = True
+        except OSError:
+            running = False
+
+    cfg = get_current_config()
+    return jsonify({
+        "running": running,
+        "pid": pid if running else None,
+        "publicBaseUrl": cfg.PUBLIC_BASE_URL or None,
+    })
 
 
 # ==========================================================================

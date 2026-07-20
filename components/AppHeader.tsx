@@ -361,7 +361,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 {/* Atelier dropdown — Marion 2030 (v2.6.0) */}
                 {!isToolbarCollapsed && (
                 <div ref={atelierMenuRef} className="relative hidden lg:flex">
-                    <Tooltip content="Atelier (WP Studio, Recettes, Stack Picker, Skills, Audit…)">
+                    <Tooltip content="Outils avancés (WP Studio, refontes)">
                         <button
                             onClick={() => setShowAtelierMenu(v => !v)}
                             className={`p-2 rounded-full transition-colors flex items-center gap-1 ${

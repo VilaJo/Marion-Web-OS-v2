@@ -8,7 +8,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { ChatMessage, Project, CalendarEvent } from '../types';
 
 import { createChatSession, fetchFranckData, clearFranckData, fetchFranckSuggestions, transcribeAudioBlob, type FranckSuggestion } from '../services/geminiService';
-import { useFranckGreeting } from '../services/queries';
+import { useFranckGreeting, useClaudeStatus } from '../services/queries';
 import { wpGlossaryLookup } from './WpGlossary';
 import { CodeReviewPanel } from './CodeReviewPanel';
 
@@ -159,6 +159,8 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
         try { return localStorage.getItem('franck_code_mode') === 'true'; } catch { return false; }
     });
     const [showClaudeReview, setShowClaudeReview] = useState(false);
+    const { data: claudeStatus } = useClaudeStatus();
+    const claudeConfigured = !!claudeStatus?.configured;
     const setCodeMode = (updater: boolean | ((prev: boolean) => boolean)) => {
         setCodeModeState(prev => {
             const next = typeof updater === 'function' ? (updater as (p: boolean) => boolean)(prev) : updater;
@@ -926,13 +928,15 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                                 {cc.label}
                             </button>
                         ))}
-                        <button
-                            onClick={() => setShowClaudeReview(true)}
-                            className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[10px] font-bold hover:brightness-110 transition-all"
-                            title="Review approfondie via Claude Opus 4.7"
-                        >
-                            🦾 Claude Opus
-                        </button>
+                        {claudeConfigured && (
+                            <button
+                                onClick={() => setShowClaudeReview(true)}
+                                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[10px] font-bold hover:brightness-110 transition-all"
+                                title="Review approfondie via Claude Opus 4.7"
+                            >
+                                🦾 Claude Opus
+                            </button>
+                        )}
                     </div>
                 )}
 

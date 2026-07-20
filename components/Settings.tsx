@@ -1448,22 +1448,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             { id: 'cloud', label: 'Cloud' },
                                             { id: 'hybrid', label: 'Hybride' },
                                             { id: 'local', label: 'Local' },
-                                        ] as const).map(mode => (
-                                            <button
-                                                key={mode.id}
-                                                onClick={() => setLocalAiMode(mode.id)}
-                                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                                                    localAiMode === mode.id
-                                                        ? 'bg-white dark:bg-slate-700 text-brand-orange shadow-sm'
-                                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                                                }`}
-                                            >
-                                                {mode.label}
-                                            </button>
-                                        ))}
+                                        ] as const).map(mode => {
+                                            const isLocked = mode.id !== 'cloud';
+                                            return (
+                                                <button
+                                                    key={mode.id}
+                                                    onClick={() => !isLocked && setLocalAiMode(mode.id)}
+                                                    disabled={isLocked}
+                                                    title={isLocked ? 'Mode avancé — Cloud recommandé pour Marion' : undefined}
+                                                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                                                        isLocked
+                                                            ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                                            : localAiMode === mode.id
+                                                                ? 'bg-white dark:bg-slate-700 text-brand-orange shadow-sm'
+                                                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                                    }`}
+                                                >
+                                                    {mode.label}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                     <p className="text-xs text-slate-400">
-                                        <strong>Cloud</strong> : Gemini uniquement · <strong>Hybride</strong> : Local puis fallback cloud · <strong>Local</strong> : Ollama uniquement
+                                        <strong>Cloud</strong> : Gemini uniquement. Hybride/Local sont des modes avancés, désactivés pour Marion.
                                     </p>
                                 </div>
 

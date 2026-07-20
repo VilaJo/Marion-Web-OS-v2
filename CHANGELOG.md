@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.9.2] - 2026-07-20
+### Fiabilité suite — portail live, sécurité IA, factures PDF
+- **Portail client** : bandeau live dans l'onglet Portail client — distingue « aperçu local », « lien public inactif » (tunnel coupé) et « lien public actif » (badge vert), avec vérification automatique toutes les 20 secondes (`GET /api/v1/portal/tunnel-status`).
+- **IA** : Claude Opus (Code Review) masqué automatiquement tant qu'aucune clé Anthropic n'est configurée — plus de bouton ou de panneau « fantôme » pour Marion (Franck, Compétences).
+- **IA** : le mode d'exécution est verrouillé sur **Cloud** — Hybride et Local sont grisés (usage avancé, pas pour Marion) ; toute ancienne préférence locale « hybrid »/« local » est ramenée à « cloud ».
+- **Emails** : « Joindre facture… » génère maintenant un vrai **PDF** (numéro, client, montant, échéance, détail des prestations) au lieu d'un simple `.txt`.
+- **Atelier** : infobulle clarifiée — « Outils avancés (WP Studio, refontes) », pour rappeler que ce n'est pas un usage quotidien.
+- Docs : checklist QA v2.9.2, checklist Johan pour publier l'app OAuth Google, note de cadrage pour un portail 24/7 indépendant du Mac de Marion (`docs/PORTAIL_24H.md`).
+
 ## [2.9.1] - 2026-07-20
 ### Fiabilité : retirer le faux, clarifier l'Agenda
 - **Messagerie (WhatsApp/SMS)** : retirée de l'en-tête et du menu mobile — c'était une démo 100% locale (aucun message n'était réellement envoyé). Le composant reste dans le code mais n'est plus accessible, pour éviter que Marion pense avoir envoyé un message à un client.

@@ -34,6 +34,7 @@ export const queryKeys = {
     version: ['version'] as const,
     franckGreeting: ['franck', 'greeting'] as const,
     franckData: ['franck', 'data'] as const,
+    claudeStatus: ['ai', 'claude', 'status'] as const,
     oauthStatus: ['oauth', 'status'] as const,
     checkStatus: ['check-status'] as const,
     checkUpdates: ['updates', 'check'] as const,
@@ -1286,6 +1287,23 @@ export function useFranckGreeting() {
             const res = await apiFetch('/api/v1/franck/greeting');
             if (!res.ok) return { greeting: 'Salut !' };
             return res.json();
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+}
+
+/**
+ * Whether Claude (Anthropic) is configured for this install. Used to hide
+ * Claude-only UI (Code Review button, Skills panel) when no key is set —
+ * Marion doesn't have a Claude key, so these stay hidden for her by default.
+ */
+export function useClaudeStatus() {
+    return useQuery({
+        queryKey: queryKeys.claudeStatus,
+        queryFn: async () => {
+            const res = await apiFetch('/api/v1/ai/claude/status');
+            if (!res.ok) return { configured: false };
+            return res.json() as Promise<{ configured: boolean }>;
         },
         staleTime: 5 * 60 * 1000,
     });

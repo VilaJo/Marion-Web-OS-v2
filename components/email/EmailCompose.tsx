@@ -313,7 +313,7 @@ export const EmailCompose: React.FC<Props> = ({ state }) => {
                     className="flex items-center gap-1.5 px-3 py-2.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg text-xs font-bold transition-all disabled:opacity-40"
                     title={state.openInvoiceOptions.length === 0 ? 'Aucune facture ouverte' : 'Joindre un résumé de facture'}
                 >
-                    <Receipt size={16} /> Joindre facture… <ChevronDown size={12} className={showInvoicePicker ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                    <Receipt size={16} /> Joindre facture (PDF)… <ChevronDown size={12} className={showInvoicePicker ? 'rotate-180 transition-transform' : 'transition-transform'} />
                 </button>
 
                 {showInvoicePicker && (

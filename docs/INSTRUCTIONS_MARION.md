@@ -1,6 +1,14 @@
-# Eonora Tech OS — Instructions Marion (v2.9.1)
+# Eonora Tech OS — Instructions Marion (v2.9.2)
 
 Une page pour le quotidien. Garde ce fichier à portée de main.
+
+---
+
+## 0. Ton usage au quotidien
+
+Ta boucle de tous les jours, c'est : **Ma journée → Clients → Agenda → Emails → Portail → Franck**. Tout le reste (facturation, timeline, réglages) part de ces écrans.
+
+L'**Atelier** (WP Studio, refontes de sites) est un outil avancé pour les gros chantiers ponctuels — tu n'as pas besoin d'y toucher pour ton travail de tous les jours.
 
 ---
 
@@ -102,7 +110,20 @@ Si le bandeau **« Reconnecter »** revient régulièrement dans l'Agenda (plus 
 
 ---
 
-## 11. Bug ? Qui appeler / quoi envoyer
+## 11. Checklist Johan — OAuth Google
+
+*(Section pour Johan, pas pour Marion — la garder ici pour ne pas la perdre.)*
+
+Pour que l'Agenda de Marion arrête de se déconnecter tous les quelques jours, il faut publier l'app OAuth Google (mode **Testing → Production**). Détail complet :
+[`GOOGLE_OAUTH_EONORA.md`](./GOOGLE_OAUTH_EONORA.md) § *« Déconnexions fréquentes ? Passer en Production »*.
+
+1. [Google Cloud Console → OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent) → **PUBLISH APP** (passer de **Testing** à **Production**)
+2. **Reconnecter Agenda** une fois sur le Mac de Marion (Paramètres → Agenda → reconnecter Google Calendar)
+3. Cocher ici quand fait : [ ]
+
+---
+
+## 12. Bug ? Qui appeler / quoi envoyer
 
 Contact : **Johan**
 
@@ -130,4 +151,4 @@ Envoie :
 
 Guide install complet : [`INSTALL_EONORA.md`](./INSTALL_EONORA.md)  
 Guide portail public (lien client) : [`PORTAIL_PUBLIC.md`](./PORTAIL_PUBLIC.md)  
-Checklist QA v2.8.0 : [`QA_RELEASE_v2.8.0.md`](./QA_RELEASE_v2.8.0.md)
+Checklist QA v2.9.2 : [`QA_RELEASE_v2.9.2.md`](./QA_RELEASE_v2.9.2.md)

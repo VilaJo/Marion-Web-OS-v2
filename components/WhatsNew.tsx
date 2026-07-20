@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, ShieldCheck, Award, CalendarClock, EyeOff } from 'lucide-react';
+import { Bot, ArrowRight, Gift, ShieldCheck, Award, Wifi, FileText } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.9.1";
+const CURRENT_VERSION = "2.9.2";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,31 +37,31 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Fiabilité : Agenda plus clair, fonctions démo retirées
+                            Fiabilité : portail client live, factures PDF, IA simplifiée
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-50 to-orange-50 dark:from-violet-900/10 dark:to-orange-900/10 border border-violet-200/50 dark:border-violet-800/30">
                             <div className="w-12 h-12 rounded-full bg-violet-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <CalendarClock size={24} />
+                                <Wifi size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Agenda : reconnexion plus claire</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Portail client : bandeau en direct</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le bandeau de déconnexion Google Calendar est plus explicite et le bouton « Reconnecter » relance directement la connexion. Si Infomaniak est déjà configuré, tes événements y restent visibles.
+                                    L'onglet Portail client indique maintenant en direct si ton lien public est actif, coupé, ou si tu n'as pas encore lancé le tunnel — vérifié automatiquement toutes les 20 secondes.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-fuchsia-50 to-pink-50 dark:from-fuchsia-900/10 dark:to-pink-900/10 border border-fuchsia-200/50 dark:border-fuchsia-800/30">
                             <div className="w-12 h-12 rounded-full bg-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <EyeOff size={24} />
+                                <FileText size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Messagerie & Dropbox retirés</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Emails : vraie facture PDF jointe</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Ces deux fonctions n'étaient pas réellement connectées (démo locale) — elles sont retirées pour éviter toute confusion. Google Drive reste disponible pour la sauvegarde cloud.
+                                    Le bouton « Joindre facture… » génère désormais un vrai PDF (numéro, montant, échéance, détail des prestations) au lieu d'un simple fichier texte.
                                 </p>
                             </div>
                         </div>
@@ -71,9 +71,9 @@ export const WhatsNew: React.FC = () => {
                                 <ShieldCheck size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Portail client partageable</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">IA simplifiée pour toi</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Double-clic sur <strong>LANCER_PORTAIL_PUBLIC.command</strong> pour activer un vrai lien HTTPS à envoyer à ton client — plus besoin d’être sur le même réseau que lui.
+                                    Le mode IA reste sur <strong>Cloud</strong> (le plus fiable pour toi) et les options avancées réservées à Johan (Claude, Hybride, Local) restent masquées tant qu'elles ne sont pas configurées.
                                 </p>
                             </div>
                         </div>

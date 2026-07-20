@@ -23,7 +23,7 @@ import { apiFetch } from '../services/api';
 import { WORKFLOW_CONFIG } from '../constants';
 import { WorkflowTimeline } from './WorkflowTimeline';
 import { Language, LANGUAGE_OPTIONS, portalT, DATE_LOCALES } from '../translations/i18n';
-import { useAppConfig } from '../hooks/useAppConfig';
+import { useAppConfig, useTunnelStatus } from '../hooks/useAppConfig';
 
 declare const confetti: any;
 
@@ -119,9 +119,12 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
     // Prefer the Cloudflare Tunnel public URL when configured so the link Marion
     // copies actually works for the client outside her own Mac (127.0.0.1).
     const { publicBaseUrl } = useAppConfig();
+    const tunnelStatus = useTunnelStatus();
     const portalOrigin = publicBaseUrl || window.location.origin;
     const portalUrl = `${portalOrigin}/portal/${portalSettings.shareToken}`;
     const isLocalPreviewOnly = !publicBaseUrl;
+    const isTunnelDown = !!publicBaseUrl && !tunnelStatus.running;
+    const isTunnelUp = !!publicBaseUrl && tunnelStatus.running;
 
     // ---- Load data ----
     const loadPortalData = useCallback(async () => {
@@ -424,7 +427,19 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                     {isLocalPreviewOnly && (
                         <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-300">
                             <AlertCircle size={14} className="flex-shrink-0" />
-                            <span className="font-medium">Aperçu local uniquement — activez le tunnel pour partager ce lien</span>
+                            <span className="font-medium">Aperçu local uniquement — activez le tunnel pour un vrai lien client</span>
+                        </div>
+                    )}
+                    {isTunnelDown && (
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-300">
+                            <AlertCircle size={14} className="flex-shrink-0" />
+                            <span className="font-medium">Lien public inactif — lancez LANCER_PORTAIL_PUBLIC.command</span>
+                        </div>
+                    )}
+                    {isTunnelUp && (
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
+                            <CheckCircle size={14} className="flex-shrink-0" />
+                            <span className="font-medium">Lien public actif</span>
                         </div>
                     )}
                     <div className="flex items-center gap-3">

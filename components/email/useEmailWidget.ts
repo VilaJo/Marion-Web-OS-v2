@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../services/api';
 import { useNotificationStore } from '../../stores/useNotificationStore';
 import { useUIStore } from '../../stores/useUIStore';
+import { buildInvoiceSummaryPdf, type InvoiceSummaryLineItem } from '../../utils/invoiceSummaryPdf';
 import {
     useEmailStatus, useEmails, useEmailConnect, useEmailDisconnect,
     useSendEmail, useDeleteEmail, useMarkRead, useSaveDraft,
@@ -53,8 +54,10 @@ export interface InvoicePickerRow {
     clientName: string;
     amount: number;
     currency: string;
+    date?: string;
     dueDate?: string;
     status: string;
+    items?: InvoiceSummaryLineItem[];
 }
 
 export interface EmailWidgetProps {
@@ -74,6 +77,8 @@ export function useEmailWidget(props: EmailWidgetProps) {
     const queryClient = useQueryClient();
     const { addNotification } = useNotificationStore();
     const signatureSettings = useUIStore(s => s.signatureSettings);
+    const agencyName = useUIStore(s => s.agencyName);
+    const agencyWebsite = useUIStore(s => s.agencyWebsite);
 
     // ------ Connection ------
     const { data: statusData } = useEmailStatus();
@@ -126,8 +131,14 @@ export function useEmailWidget(props: EmailWidgetProps) {
                     clientName: p.clientName,
                     amount: inv.amount,
                     currency: inv.currency || 'CHF',
+                    date: inv.date,
                     dueDate: inv.dueDate,
                     status: inv.status,
+                    items: (inv.items || []).map(item => ({
+                        desc: item.desc,
+                        quantity: item.quantity,
+                        price: item.price,
+                    })),
                 });
             }
         }
@@ -135,15 +146,18 @@ export function useEmailWidget(props: EmailWidgetProps) {
     }, [allProjects]);
 
     const attachInvoiceSummary = useCallback((row: InvoicePickerRow) => {
-        const summary = [
-            'Résumé de facture — Eonora Tech',
-            `Client : ${row.clientName}`,
-            `Facture : ${row.invoiceNumber}`,
-            `Montant : ${row.amount} ${row.currency}`,
-            row.dueDate ? `Échéance : ${row.dueDate}` : null,
-            `Statut : ${row.status}`,
-        ].filter(Boolean).join('\n');
-        const file = new File([summary], `Facture-${row.invoiceNumber}.txt`, { type: 'text/plain' });
+        const file = buildInvoiceSummaryPdf({
+            invoiceNumber: row.invoiceNumber,
+            clientName: row.clientName,
+            amount: row.amount,
+            currency: row.currency,
+            date: row.date,
+            dueDate: row.dueDate,
+            status: row.status,
+            items: row.items,
+            agencyName,
+            agencyWebsite,
+        });
         setComposeFiles((prev) => [...prev, file]);
         setInvoiceHint({
             projectId: row.projectId,
@@ -154,8 +168,8 @@ export function useEmailWidget(props: EmailWidgetProps) {
             currency: row.currency,
             dueDate: row.dueDate,
         });
-        addNotification('Email', `Résumé de la facture ${row.invoiceNumber} joint à l'email.`, 'success');
-    }, [addNotification]);
+        addNotification('Email', `Facture ${row.invoiceNumber} (PDF) jointe à l'email.`, 'success');
+    }, [addNotification, agencyName, agencyWebsite]);
 
     const clearInvoiceHint = useCallback(() => setInvoiceHint(null), []);
 
