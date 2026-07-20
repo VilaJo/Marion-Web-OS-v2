@@ -264,10 +264,10 @@ const PortalPublicPage: React.FC = () => {
     // PIN entry
     if (authState === 'pin') {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-pink-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
                 <div className="w-full max-w-sm">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <div className="w-16 h-16 bg-eonora-gradient rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                             <Lock className="text-white" size={28} />
                         </div>
                         <h1 className="text-2xl font-serif font-bold text-gray-800">{t.clientPortal}</h1>
@@ -292,7 +292,7 @@ const PortalPublicPage: React.FC = () => {
                         <button
                             onClick={() => doAuth(pinInput)}
                             disabled={pinInput.length < 4}
-                            className="w-full mt-4 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl hover:shadow-lg disabled:opacity-40 transition-all"
+                            className="w-full mt-4 py-3 bg-[#7C9A7E] hover:bg-[#647D66] text-white font-bold rounded-xl hover:shadow-lg disabled:opacity-40 transition-all"
                         >
                             {t.accessPortal}
                         </button>
@@ -526,7 +526,7 @@ const PortalPublicPage: React.FC = () => {
                                     <div className="flex flex-wrap gap-3">
                                         <a
                                             href="mailto:marion@eonoratech.ch"
-                                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-sm font-semibold rounded-xl hover:shadow-lg transition-all"
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#7C9A7E] hover:bg-[#647D66] text-white text-sm font-semibold rounded-xl hover:shadow-lg transition-all"
                                         >
                                             <Mail size={14} /> marion@eonoratech.ch
                                         </a>
@@ -797,7 +797,7 @@ const PortalPublicPage: React.FC = () => {
                                 <button
                                     onClick={handleComment}
                                     disabled={commentSending || !commentText.trim() || !commentAuthor.trim()}
-                                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl hover:shadow-md disabled:opacity-40 transition-all"
+                                    className="px-4 py-2 bg-[#7C9A7E] hover:bg-[#647D66] text-white rounded-xl hover:shadow-md disabled:opacity-40 transition-all"
                                 >
                                     {commentSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                                 </button>
@@ -896,14 +896,14 @@ const PortalPublicPage: React.FC = () => {
                                 {/* Progress + Send */}
                                 {uploading && (
                                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-gradient-to-r from-orange-400 to-pink-500 rounded-full transition-all"
+                                        <div className="h-full bg-eonora-gradient rounded-full transition-all"
                                              style={{ width: `${uploadProgress}%` }} />
                                     </div>
                                 )}
                                 <button
                                     onClick={handleUpload}
                                     disabled={uploading || uploadFiles.length === 0}
-                                    className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl hover:shadow-lg disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+                                    className="w-full py-3 bg-[#7C9A7E] hover:bg-[#647D66] text-white font-bold rounded-xl hover:shadow-lg disabled:opacity-40 transition-all flex items-center justify-center gap-2"
                                 >
                                     {uploading ? (
                                         <><Loader2 size={16} className="animate-spin" /> {t.uploadingProgress} {uploadProgress}%</>

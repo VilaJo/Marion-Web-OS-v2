@@ -219,11 +219,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     // Loading state while checking auth
     if (isCheckingAuth) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center relative z-10">
+            <div className="min-h-screen bg-[#FAF7F2] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center relative z-10">
                 <div className="flex flex-col items-center gap-6">
                     <MarionLogo size={100} />
                     <div className="flex items-center gap-3">
-                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin" />
+                        <Loader2 className="w-5 h-5 text-[#7C9A7E] animate-spin" />
                         <p className="text-slate-500 dark:text-slate-400" style={{ fontFamily: 'Raleway, sans-serif' }}>
                             Chargement...
                         </p>
@@ -235,7 +235,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
     if (isConfigured === null) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] flex items-center justify-center p-4">
+            <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
                 <div className="max-w-md w-full bg-white/80 rounded-3xl p-8 text-center shadow-xl">
                     <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                     <h1 className="text-xl font-semibold text-slate-800 mb-2">Marion ne répond pas</h1>
@@ -243,7 +243,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                     <button
                         type="button"
                         onClick={() => { setIsCheckingAuth(true); setError(''); checkAuthStatus(); }}
-                        className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white font-semibold py-3 rounded-2xl"
+                        className="w-full bg-gradient-to-r from-[#7C9A7E] to-[#647D66] text-white font-semibold py-3 rounded-2xl"
                     >
                         Réessayer
                     </button>
@@ -255,9 +255,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     // If not configured yet, show setup form
     if (isConfigured === false) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
+            <div className="min-h-screen bg-[#FAF7F2] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
                 {/* Background decorations (light mode only) */}
-                <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-transparent rounded-full blur-[120px] -z-10" />
+                <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#A7C1A3]/25 dark:bg-transparent rounded-full blur-[120px] -z-10" />
                 <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-transparent rounded-full blur-[100px] -z-10" />
                 
                 <div className="w-full max-w-md">
@@ -301,7 +301,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Minimum 6 caractères"
-                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-12 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-12 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7C9A7E]/40 focus:border-[#7C9A7E] transition-all"
                                         style={{ fontFamily: 'Raleway, sans-serif' }}
                                         autoFocus
                                     />
@@ -330,7 +330,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="Répétez le mot de passe"
-                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7C9A7E]/40 focus:border-[#7C9A7E] transition-all"
                                         style={{ fontFamily: 'Raleway, sans-serif' }}
                                     />
                                 </div>
@@ -348,7 +348,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                             <button
                                 type="submit"
                                 disabled={isLoading || !password || !confirmPassword}
-                                className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white font-semibold py-4 rounded-2xl hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+                                className="w-full bg-gradient-to-r from-[#7C9A7E] to-[#647D66] text-white font-semibold py-4 rounded-2xl hover:shadow-lg hover:shadow-[#7C9A7E]/30 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
                                 style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
                                 {isLoading ? (
@@ -368,10 +368,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                         {/* Security Info */}
                         <div className="mt-6 pt-5 border-t border-slate-200/50 dark:border-slate-700/50">
                             <div className="flex items-start gap-3 text-sm text-slate-500 dark:text-slate-400">
-                                <Sparkles className="w-5 h-5 text-[#FF7E5F] flex-shrink-0 mt-0.5" />
+                                <Sparkles className="w-5 h-5 text-[#7C9A7E] flex-shrink-0 mt-0.5" />
                                 <p style={{ fontFamily: 'Raleway, sans-serif' }}>
                                     Vos données seront chiffrées localement avec ce mot de passe. 
-                                    <span className="text-[#FF7E5F] font-medium"> Conservez-le précieusement !</span>
+                                    <span className="text-[#7C9A7E] font-medium"> Conservez-le précieusement !</span>
                                 </p>
                             </div>
                         </div>
@@ -380,7 +380,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                     <button
                         type="button"
                         onClick={() => setShowResetConfirm(true)}
-                        className="mt-5 w-full text-slate-400 text-sm hover:text-[#FF7E5F] transition-colors"
+                        className="mt-5 w-full text-slate-400 text-sm hover:text-[#7C9A7E] transition-colors"
                         style={{ fontFamily: 'Raleway, sans-serif' }}
                     >
                         Mot de passe oublié ? Réinitialiser
@@ -425,9 +425,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
     // Login form (auth already configured)
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
+        <div className="min-h-screen bg-[#FAF7F2] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
             {/* Background decorations (light mode only) */}
-            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-transparent rounded-full blur-[120px] -z-10" />
+            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#A7C1A3]/25 dark:bg-transparent rounded-full blur-[120px] -z-10" />
             <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-transparent rounded-full blur-[100px] -z-10" />
             
             <div className="w-full max-w-md">
@@ -471,7 +471,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Votre mot de passe"
-                                    className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-12 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                    className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-12 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7C9A7E]/40 focus:border-[#7C9A7E] transition-all"
                                     style={{ fontFamily: 'Raleway, sans-serif' }}
                                     autoFocus
                                 />
@@ -497,7 +497,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                         <button
                             type="submit"
                             disabled={isLoading || !password}
-                            className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white font-semibold py-4 rounded-2xl hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+                            className="w-full bg-gradient-to-r from-[#7C9A7E] to-[#647D66] text-white font-semibold py-4 rounded-2xl hover:shadow-lg hover:shadow-[#7C9A7E]/30 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
                             style={{ fontFamily: 'Montserrat, sans-serif' }}
                         >
                             {isLoading ? (
@@ -519,7 +519,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
                 <button
                     type="button"
                     onClick={() => setShowResetConfirm(true)}
-                    className="mt-5 w-full text-slate-400 text-sm hover:text-[#FF7E5F] transition-colors"
+                    className="mt-5 w-full text-slate-400 text-sm hover:text-[#7C9A7E] transition-colors"
                     style={{ fontFamily: 'Raleway, sans-serif' }}
                 >
                     Mot de passe oublié ?

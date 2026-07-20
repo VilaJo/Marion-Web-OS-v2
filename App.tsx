@@ -265,15 +265,18 @@ const App: React.FC = () => {
     }, [theme]);
 
     useEffect(() => {
-        document.documentElement.style.setProperty('--brand-color', accentColor);
+        // Migrate the retired orange accent to the Eonora sage brand.
+        const brand = (!accentColor || accentColor === 'orange' || accentColor === '#FF7E5F')
+            ? '#7C9A7E'
+            : accentColor;
+        document.documentElement.style.setProperty('--brand-color', brand);
         if (theme === 'light') {
-            let bgGradient = 'linear-gradient(135deg, #FFE4D6 0%, #FFF8F5 50%, #FFF0F5 100%)';
-            if (accentColor === '#3B82F6') bgGradient = 'linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 50%, #F0F9FF 100%)';
-            else if (accentColor === '#10B981') bgGradient = 'linear-gradient(135deg, #D1FAE5 0%, #ECFDF5 50%, #F0FDF4 100%)';
-            else if (accentColor === '#8B5CF6') bgGradient = 'linear-gradient(135deg, #EDE9FE 0%, #F5F3FF 50%, #FAF5FF 100%)';
-            document.body.style.backgroundImage = bgGradient;
+            // Eonora "fond clair ultra-épuration" — clean cream, no busy gradient.
+            document.body.style.backgroundImage = '';
+            document.body.style.backgroundColor = '#FAF7F2';
         } else {
             document.body.style.backgroundImage = '';
+            document.body.style.backgroundColor = '';
         }
     }, [accentColor, theme]);
 

@@ -2,6 +2,16 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.10.0] - 2026-07-20
+### Refonte visuelle — charte graphique Eonora Tech
+- **Identité** : application de la charte officielle Eonora Tech sur toute l'interface — fond crème ultra-épuré (`#FAF7F2`), boutons **sage** (`#7C9A7E`) et **dégradé signature** violet → bleu → cyan (`#7C3AED → #3B82F6 → #22D3EE`) pour les accents, logo et surbrillances.
+- **Mode sombre** : passage à un **charbon** profond (`#1A1C20`) avec cartes contrastées (`#23262B`) et accents sage, à la place de l'ancien thème « espace » coloré (planètes masquées, étoiles atténuées).
+- **Système de couleurs** : tokens centralisés (`--eonora-bg`, `--eonora-sage`, `--eonora-charcoal`, `--eonora-gradient`) et remappage de l'ancienne palette orange vers le sage — un seul changement se répercute partout (boutons, badges, survols, ombres).
+- **Écran de connexion / déverrouillage** : fond crème, bouton sage, accents à jour.
+- **Accent personnalisable** : la couleur d'accentuation par défaut devient le sage ; nouvelles pastilles alignées sur le dégradé (sage, violet, bleu, cyan). L'ancien orange est migré automatiquement.
+- **Facturation** : l'InvoiceBuilder est laissé tel quel (à la demande de Marion) — il hérite uniquement des tokens globaux, sans refonte.
+- Docs : charte graphique ajoutée dans `docs/brand/` (image + README).
+
 ## [2.9.2] - 2026-07-20
 ### Fiabilité suite — portail live, sécurité IA, factures PDF
 - **Portail client** : bandeau live dans l'onglet Portail client — distingue « aperçu local », « lien public inactif » (tunnel coupé) et « lien public actif » (badge vert), avec vérification automatique toutes les 20 secondes (`GET /api/v1/portal/tunnel-status`).

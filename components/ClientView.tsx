@@ -799,7 +799,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                     const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
                     audio.volume = 0.2;
                     audio.play().catch(() => {});
-                    confetti({ particleCount: 30, spread: 40, origin: { x: 0.7, y: 0.5 }, colors: ['#FF7E5F', '#FEB47B'] });
+                    confetti({ particleCount: 30, spread: 40, origin: { x: 0.7, y: 0.5 }, colors: ['#7C9A7E', '#7C3AED', '#22D3EE'] });
                 }
                 return { ...t, column: targetColumn, completed: isCompleted };
             }
@@ -973,7 +973,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
                 audio.volume = 0.2;
                 audio.play().catch(() => {});
-                confetti({ particleCount: 30, spread: 40, origin: { x: 0.7, y: 0.5 }, colors: ['#FF7E5F', '#FEB47B'] });
+                confetti({ particleCount: 30, spread: 40, origin: { x: 0.7, y: 0.5 }, colors: ['#7C9A7E', '#7C3AED', '#22D3EE'] });
             }
 
             // Insert at the position of the over item, or at the end

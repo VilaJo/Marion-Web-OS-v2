@@ -144,7 +144,11 @@ interface UIState {
 export const useUIStore = create<UIState>((set, get) => ({
     // Initialize from localStorage
     theme: (localStorage.getItem('marion_theme') as Theme) || 'light',
-    accentColor: localStorage.getItem('marion_accent') || 'orange',
+    accentColor: (() => {
+        // Eonora rebrand (v2.10.0): the legacy orange accent is retired → sage brand.
+        const stored = localStorage.getItem('marion_accent');
+        return (!stored || stored === 'orange' || stored === '#FF7E5F') ? '#7C9A7E' : stored;
+    })(),
     currency: localStorage.getItem('marion_currency') || 'CHF',
     agencyName: localStorage.getItem('marion_agency_name') || 'Eonora Tech',
     agencyWebsite: localStorage.getItem('marion_agency_website') || 'eonoratech.ch',

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, ShieldCheck, Award, Wifi, FileText } from 'lucide-react';
+import { Bot, ArrowRight, Gift, ShieldCheck, Award, Sparkles } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.9.2";
+const CURRENT_VERSION = "2.10.0";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -25,55 +25,55 @@ export const WhatsNew: React.FC = () => {
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="" width="max-w-2xl">
             <div className="relative overflow-hidden">
-                {/* Decorative Background */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                {/* Decorative Background — dégradé signature Eonora */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-eonora-gradient opacity-15 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
                 
                 <div className="p-8 pt-2">
                     <div className="flex flex-col items-center text-center mb-10">
-                        <div className="w-16 h-16 bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-fuchsia-200 dark:shadow-none mb-6 rotate-3">
+                        <div className="w-16 h-16 bg-eonora-gradient rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-200 dark:shadow-none mb-6">
                             <Gift size={32} />
                         </div>
                         <h2 className="font-serif text-3xl font-bold text-slate-800 dark:text-white mb-2">
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Fiabilité : portail client live, factures PDF, IA simplifiée
+                            Nouvelle identité visuelle Eonora : crème, sage & dégradé signature
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-50 to-orange-50 dark:from-violet-900/10 dark:to-orange-900/10 border border-violet-200/50 dark:border-violet-800/30">
-                            <div className="w-12 h-12 rounded-full bg-violet-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <Wifi size={24} />
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-50 via-blue-50 to-cyan-50 dark:from-violet-900/10 dark:via-blue-900/10 dark:to-cyan-900/10 border border-slate-200/60 dark:border-slate-700/40">
+                            <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                                <Sparkles size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Portail client : bandeau en direct</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Charte graphique Eonora Tech</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    L'onglet Portail client indique maintenant en direct si ton lien public est actif, coupé, ou si tu n'as pas encore lancé le tunnel — vérifié automatiquement toutes les 20 secondes.
+                                    Toute l'application adopte la nouvelle identité : fond crème ultra-épuré, boutons sage et le dégradé signature violet → bleu → cyan pour les accents.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-fuchsia-50 to-pink-50 dark:from-fuchsia-900/10 dark:to-pink-900/10 border border-fuchsia-200/50 dark:border-fuchsia-800/30">
-                            <div className="w-12 h-12 rounded-full bg-fuchsia-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <FileText size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Emails : vraie facture PDF jointe</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le bouton « Joindre facture… » génère désormais un vrai PDF (numéro, montant, échéance, détail des prestations) au lieu d'un simple fichier texte.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/10 dark:to-cyan-900/10 border border-blue-200/50 dark:border-blue-800/30">
-                            <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-800/20 border border-slate-200/60 dark:border-slate-700/40">
+                            <div className="w-12 h-12 rounded-full bg-[#23262B] text-white flex items-center justify-center flex-shrink-0 shadow-md">
                                 <ShieldCheck size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">IA simplifiée pour toi</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Mode sombre charcoal</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le mode IA reste sur <strong>Cloud</strong> (le plus fiable pour toi) et les options avancées réservées à Johan (Claude, Hybride, Local) restent masquées tant qu'elles ne sont pas configurées.
+                                    Le mode sombre passe à un charbon profond avec cartes contrastées et accents sage — plus sobre, plus lisible, plus « techno ».
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#F2F5F0] to-[#E3EBDF] dark:from-emerald-900/10 dark:to-emerald-900/5 border border-slate-200/60 dark:border-slate-700/40">
+                            <div className="w-12 h-12 rounded-full bg-sage text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                                <Award size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Mêmes outils, tout est à sa place</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Aucune fonctionnalité n'a bougé — seuls les couleurs, boutons et cartes changent. Tes clients, factures et agenda restent exactement où tu les connais.
                                 </p>
                             </div>
                         </div>

@@ -403,7 +403,7 @@ export const Dashboard: React.FC = () => {
         // Optimistic update
         updateProjectCache({ ...project, status: nextStatus });
         addActivity('project_status_changed', `${project.clientName} → ${nextStatus}`, project.id, project.clientName);
-        confetti({ particleCount: 30, spread: 50, origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight }, colors: ['#FF7E5F', '#FEB47B'] });
+        confetti({ particleCount: 30, spread: 50, origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight }, colors: ['#7C9A7E', '#7C3AED', '#22D3EE'] });
 
         moveProjectMutation.mutate(
             { clientName: project.clientName, newStatus: nextStatus },
@@ -427,7 +427,7 @@ export const Dashboard: React.FC = () => {
         await handleCreateClient({
             name: "Dossier_Exemple",
             status: ProjectStatus.PROSPECT,
-            avatarColor: "from-[#FF7E5F] to-[#d946ef]",
+            avatarColor: "from-[#7C3AED] to-[#22D3EE]",
             profile: {
                 email: "",
                 phone: "",
@@ -707,7 +707,7 @@ export const Dashboard: React.FC = () => {
                         className={`px-3 md:px-5 py-1.5 md:py-2 rounded-full text-white transition-all duration-300 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase whitespace-nowrap group flex-shrink-0 ${
                             projects.length === 0
                             ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse shadow-lg'
-                            : 'bg-gradient-to-r from-[#FF7E5F] to-[#d946ef] hover:scale-105 shadow-md'
+                            : 'bg-gradient-to-r from-[#7C9A7E] to-[#647D66] hover:scale-105 shadow-md'
                         }`}
                     >
                         {projects.length === 0 ? (

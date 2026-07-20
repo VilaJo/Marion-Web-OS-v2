@@ -92,9 +92,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[200] bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] bg-gradient-to-br from-[#FAF7F2] via-[#FAF7F2] to-[#FAF7F2] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
             {/* Background decorations */}
-            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#FEB47B]/20 dark:bg-orange-900/10 rounded-full blur-[120px] -z-10" />
+            <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#A7C1A3]/25 dark:bg-orange-900/10 rounded-full blur-[120px] -z-10" />
             <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-[100px] -z-10" />
 
             <div className="max-w-lg w-full relative z-10">
@@ -129,7 +129,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
                             </p>
                             <button 
                                 onClick={() => setStep('input')}
-                                className="bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white px-10 py-4 rounded-2xl font-semibold text-lg hover:scale-[1.02] hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 transition-all flex items-center gap-3 mx-auto"
+                                className="bg-gradient-to-r from-[#7C9A7E] to-[#647D66] text-white px-10 py-4 rounded-2xl font-semibold text-lg hover:scale-[1.02] hover:shadow-lg hover:shadow-[#7C9A7E]/30 dark:hover:shadow-orange-900/30 transition-all flex items-center gap-3 mx-auto"
                                 style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
                                 Commencer <ArrowRight size={20} />
@@ -162,7 +162,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
                                         value={apiKey}
                                         onChange={(e) => setApiKey(e.target.value)}
                                         placeholder="Collez votre clé ici (AIza...)"
-                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF7E5F]/50 focus:border-[#FF7E5F] transition-all"
+                                        className="w-full bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7C9A7E]/40 focus:border-[#7C9A7E] transition-all"
                                         style={{ fontFamily: 'Raleway, sans-serif' }}
                                         autoFocus
                                         onKeyDown={(e) => e.key === 'Enter' && handleSetup()}
@@ -179,7 +179,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
                                 <button 
                                     onClick={handleSetup}
                                     disabled={!apiKey.trim()}
-                                    className="w-full bg-gradient-to-r from-[#FF7E5F] to-[#FEB47B] text-white py-4 rounded-2xl font-semibold text-lg hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+                                    className="w-full bg-gradient-to-r from-[#7C9A7E] to-[#647D66] text-white py-4 rounded-2xl font-semibold text-lg hover:shadow-lg hover:shadow-[#7C9A7E]/30 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
                                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                                 >
                                     <Sparkles className="w-5 h-5" />
@@ -199,7 +199,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
                                 href="https://makersuite.google.com/app/apikey" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="inline-block mt-6 text-sm text-[#FF7E5F] hover:underline"
+                                className="inline-block mt-6 text-sm text-[#7C9A7E] hover:underline"
                                 style={{ fontFamily: 'Raleway, sans-serif' }}
                             >
                                 Comment obtenir une clé API Gemini ?
@@ -220,15 +220,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onSetupComplete }) => {
                             <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-white/50 dark:border-slate-700/50 shadow-xl max-w-sm mx-auto">
                                 <div className="space-y-5 text-left">
                                     <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300">
-                                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin flex-shrink-0" />
+                                        <Loader2 className="w-5 h-5 text-[#7C9A7E] animate-spin flex-shrink-0" />
                                         <span style={{ fontFamily: 'Raleway, sans-serif' }}>Connexion à Gemini...</span>
                                     </div>
                                     <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300 animate-in fade-in slide-in-from-left-2 delay-300 fill-mode-both">
-                                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin flex-shrink-0" />
+                                        <Loader2 className="w-5 h-5 text-[#7C9A7E] animate-spin flex-shrink-0" />
                                         <span style={{ fontFamily: 'Raleway, sans-serif' }}>Création de "00_INBOX"...</span>
                                     </div>
                                     <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300 animate-in fade-in slide-in-from-left-2 delay-700 fill-mode-both">
-                                        <Loader2 className="w-5 h-5 text-[#FF7E5F] animate-spin flex-shrink-0" />
+                                        <Loader2 className="w-5 h-5 text-[#7C9A7E] animate-spin flex-shrink-0" />
                                         <span style={{ fontFamily: 'Raleway, sans-serif' }}>Configuration du Dashboard...</span>
                                     </div>
                                 </div>

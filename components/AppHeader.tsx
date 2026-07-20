@@ -318,7 +318,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                     </button>
                 </Tooltip>
                 {!isToolbarCollapsed && (<>
-                <button onClick={() => setShowMondayBriefing(true)} className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-gradient-to-r from-brand-orange to-pink-500 text-white flex items-center gap-1.5">
+                <button onClick={() => setShowMondayBriefing(true)} className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-eonora-gradient text-white flex items-center gap-1.5">
                     <LayoutGrid size={14} /> Briefing
                 </button>
                 <Tooltip content="Ma journée — priorités et échéances">

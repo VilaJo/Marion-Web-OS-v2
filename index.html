@@ -7,13 +7,13 @@
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="Eonora Tech OS - Votre espace de travail personnel pour la gestion clients, facturation et agenda" />
-    <meta name="theme-color" content="#FF7E5F" />
+    <meta name="theme-color" content="#FAF7F2" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Eonora" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Eonora Tech OS" />
-    <meta name="msapplication-TileColor" content="#FF7E5F" />
+    <meta name="msapplication-TileColor" content="#23262B" />
     <meta name="msapplication-tap-highlight" content="no" />
     <meta name="format-detection" content="telephone=no" />
     
@@ -54,27 +54,55 @@
               calligraphy: ['"Montserrat"', 'sans-serif'],
             },
             colors: {
-              cream: '#FDFCF8',
-              'cream-dark': '#F5F2EA',
+              // === Eonora Tech brand ===
+              cream: '#FAF7F2',
+              'cream-dark': '#F2EDE4',
+              'eonora-bg': '#FAF7F2',
+              sage: '#7C9A7E',
+              'sage-dark': '#647D66',
+              'sage-light': '#A7C1A3',
+              charcoal: '#23262B',
+              'charcoal-deep': '#1A1C20',
+              'charcoal-card': '#26292F',
+              'eo-violet': '#7C3AED',
+              'eo-blue': '#3B82F6',
+              'eo-cyan': '#22D3EE',
+              // Legacy pastel tokens kept for backward-compat (retired from brand use)
               'pastel-pink': '#FCE7F3',
               'pastel-purple': '#E9D5FF',
               'pastel-orange': '#FFEDD5',
               'deep-space': '#1E1B4B', 
               'glass-white': 'rgba(255, 255, 255, 0.65)',
-              'glass-dark': 'rgba(15, 23, 42, 0.65)',
+              'glass-dark': 'rgba(26, 28, 32, 0.65)',
+              // Brand accent → sage (was orange). Ripples to bg-brand-orange / text-brand-orange etc.
               'brand-orange': 'var(--brand-color)',
-              'brand-pink': '#FEB47B',
+              'brand-pink': 'var(--brand-secondary-color)',
               'brand-primary': 'var(--brand-color)',
-              'brand-secondary': '#FEB47B',
+              'brand-secondary': 'var(--brand-secondary-color)',
+              // Remap the whole "orange" scale to sage tints so legacy orange-* utilities are on-brand
+              orange: {
+                50: '#F2F5F0',
+                100: '#E3EBDF',
+                200: '#C9D8C4',
+                300: '#A7C1A3',
+                400: '#8DAB89',
+                500: '#7C9A7E',
+                600: '#647D66',
+                700: '#516551',
+                800: '#3F4F40',
+                900: '#333F34',
+              },
             },
             borderRadius: {
               '4xl': '32px',
             },
             backgroundImage: {
               'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-              'marion-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #FEB47B 100%)',
-              'sunset-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #d946ef 100%)',
-              'space-gradient': 'linear-gradient(to bottom, #2E1065, #0F172A)', 
+              // Signature Eonora gradient: violet → blue → cyan
+              'eonora-gradient': 'linear-gradient(90deg, #7C3AED 0%, #3B82F6 50%, #22D3EE 100%)',
+              'marion-gradient': 'linear-gradient(90deg, #7C3AED 0%, #3B82F6 50%, #22D3EE 100%)',
+              'sunset-gradient': 'linear-gradient(90deg, #7C3AED 0%, #3B82F6 50%, #22D3EE 100%)',
+              'space-gradient': 'linear-gradient(to bottom, #23262B, #1A1C20)', 
               'unicorn-gradient': 'linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 50%, #F3E5F5 100%)',
             },
             animation: {
@@ -132,9 +160,9 @@
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
       }
       .dark .glass {
-        background: rgba(30, 41, 59, 0.4); /* More transparent in dark mode to see space */
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        background: rgba(38, 41, 47, 0.72); /* Charcoal card surface */
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
       }
 
       /* Unicorn Mode specific glass override */
@@ -403,7 +431,7 @@
       .briefing-content h3 {
         font-family: 'Montserrat', sans-serif;
         font-weight: 600;
-        background: linear-gradient(to right, var(--brand-color), #FEB47B);
+        background: linear-gradient(90deg, #7C3AED 0%, #3B82F6 50%, #22D3EE 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-size: 1.8rem;
@@ -412,7 +440,7 @@
         letter-spacing: -0.02em;
       }
       .dark .briefing-content h3 {
-        background: linear-gradient(to right, #FEB47B, #fff);
+        background: linear-gradient(90deg, #8B5CF6 0%, #60A5FA 50%, #67E8F9 100%);
         -webkit-background-clip: text;
       }
       
@@ -478,9 +506,9 @@
       .dark button[class*="bg-gradient"], 
       .dark button[class*="bg-brand-orange"],
       .dark button[class*="from-brand-orange"] {
-        box-shadow: 0 0 10px rgba(255, 126, 95, 0.4), 
-                    inset 0 0 10px rgba(255, 255, 255, 0.2),
-                    0 0 0 1px rgba(255, 126, 95, 0.3); /* Thin border */
+        box-shadow: 0 0 10px rgba(124, 154, 126, 0.35), 
+                    inset 0 0 10px rgba(255, 255, 255, 0.12),
+                    0 0 0 1px rgba(124, 154, 126, 0.25); /* Thin sage border */
         text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         backdrop-filter: blur(4px);
       }
@@ -488,11 +516,11 @@
       .dark button[class*="bg-gradient"]:hover, 
       .dark button[class*="bg-brand-orange"]:hover,
       .dark button[class*="from-brand-orange"]:hover {
-        box-shadow: 0 0 20px rgba(255, 126, 95, 0.7), 
-                    0 0 40px rgba(255, 126, 95, 0.4), 
-                    inset 0 0 15px rgba(255, 255, 255, 0.4);
-        transform: translateY(-2px) scale(1.03);
-        text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+        box-shadow: 0 0 18px rgba(124, 154, 126, 0.55), 
+                    0 0 34px rgba(124, 154, 126, 0.3), 
+                    inset 0 0 15px rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px) scale(1.02);
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
         z-index: 10;
       }
 
@@ -501,18 +529,18 @@
       .dark button.bg-white,
       .dark button.bg-slate-900,
       .dark button:not([class*="bg-gradient"]):not([class*="bg-brand-orange"]):not([class*="bg-transparent"]):not([class*="bg-red"]):not([class*="text-red"]) {
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 0 5px rgba(139, 92, 246, 0.1); /* Faint purple glow */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 5px rgba(124, 154, 126, 0.08); /* Faint sage glow */
         backdrop-filter: blur(5px);
       }
 
       .dark button.bg-white:hover,
       .dark button.bg-slate-900:hover,
       .dark button:not([class*="bg-gradient"]):not([class*="bg-brand-orange"]):not([class*="bg-transparent"]):not([class*="bg-red"]):not([class*="text-red"]):hover {
-        border-color: rgba(139, 92, 246, 0.6); /* Purple border on hover */
-        box-shadow: 0 0 15px rgba(139, 92, 246, 0.4), inset 0 0 10px rgba(139, 92, 246, 0.1);
+        border-color: rgba(124, 154, 126, 0.5); /* Sage border on hover */
+        box-shadow: 0 0 12px rgba(124, 154, 126, 0.3), inset 0 0 10px rgba(124, 154, 126, 0.08);
         color: #fff;
-        transform: scale(1.05);
+        transform: scale(1.03);
       }
 
       /* Specific override for Red/Danger buttons in dark mode */
@@ -523,19 +551,32 @@
          box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
       }
 
-      /* Sci-Fi Grid Overlay for Body */
+      /* Charcoal base for dark mode (Eonora brand) with subtle grid */
       .dark body {
+        background-color: #1A1C20;
         background-image: 
-            linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)), /* Darken the grid slightly */
-            linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            linear-gradient(rgba(26, 28, 32, 0.96), rgba(26, 28, 32, 0.96)),
+            linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
         background-size: 100% 100%, 50px 50px, 50px 50px;
       }
 
+      /* Eonora dark mode: keep it clean/minimal — hide decorative planets, keep faint stars */
+      .dark #space-scene {
+        background: #1A1C20 !important;
+      }
+      .dark #space-scene .planet-lollipop,
+      .dark #space-scene .planet-peach,
+      .dark #space-scene .planet-blue,
+      .dark #space-scene .shooting-star {
+        display: none !important;
+      }
+      .dark #space-scene .star-bg { opacity: 0.35 !important; }
+
       /* --- Firefly Glow Animation --- */
       @keyframes firefly-glow {
-        0%, 100% { box-shadow: 0 0 8px rgba(255, 126, 95, 0.6), 0 0 20px rgba(255, 126, 95, 0.3); } /* Subtle glow */
-        50% { box-shadow: 0 0 15px rgba(255, 126, 95, 0.9), 0 0 35px rgba(255, 126, 95, 0.5); } /* Brighter pulse */
+        0%, 100% { box-shadow: 0 0 8px rgba(124, 154, 126, 0.5), 0 0 20px rgba(124, 154, 126, 0.25); } /* Subtle sage glow */
+        50% { box-shadow: 0 0 15px rgba(124, 154, 126, 0.75), 0 0 35px rgba(124, 154, 126, 0.4); } /* Brighter pulse */
       }
       
       .dark #briefing-button,
@@ -547,7 +588,7 @@
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-gradient-to-br from-[#FFE4D6] via-[#FFF8F5] to-[#FFF0F5] text-slate-800 transition-colors duration-1000 dark:bg-none dark:bg-transparent dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+  <body class="bg-[#FAF7F2] text-slate-800 transition-colors duration-700 dark:bg-none dark:bg-transparent dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
     
     <!-- CUTE SPACE BACKGROUND (Dark Mode Only) -->
     <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-space-gradient">

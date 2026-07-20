@@ -5,7 +5,22 @@
 @tailwind utilities;
 
 :root {
-  --brand-orange: #FF7E5F;
+  /* === Eonora Tech brand tokens === */
+  --eonora-bg: #FAF7F2;          /* Fond clair ultra-épuration */
+  --eonora-sage: #7C9A7E;        /* CTA sage */
+  --eonora-sage-dark: #647D66;   /* Sage hover / pressed */
+  --eonora-sage-light: #A7C1A3;  /* Sage secondaire / dégradé doux */
+  --eonora-charcoal: #23262B;    /* Cartes dark mode */
+  --eonora-charcoal-deep: #1A1C20;
+  --eonora-violet: #7C3AED;
+  --eonora-blue: #3B82F6;
+  --eonora-cyan: #22D3EE;
+  --eonora-gradient: linear-gradient(90deg, #7C3AED 0%, #3B82F6 50%, #22D3EE 100%);
+
+  /* Brand accent (overridable via Settings). Default = sage. */
+  --brand-color: #7C9A7E;
+  --brand-secondary-color: #A7C1A3;
+  --brand-orange: #7C9A7E; /* legacy alias */
   --pastel-pink: #FFF0F5;
   --pastel-purple: #F3E8FF;
 }
@@ -14,6 +29,7 @@ body {
   font-family: 'Raleway', sans-serif;
   font-weight: 400; /* Regular par défaut */
   overflow-x: hidden; /* Prevent horizontal scroll from animations */
+  background-color: var(--eonora-bg);
 }
 
 /* Titres avec Montserrat */
