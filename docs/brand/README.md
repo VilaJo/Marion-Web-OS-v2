@@ -14,12 +14,13 @@ Charte officielle appliquée à toute l'interface de **Eonora Tech OS** (à part
 | Sage — secondaire / dégradé doux | `--eonora-sage-light` | `#A7C1A3` |
 | Cartes mode sombre | `--eonora-charcoal` / `charcoal` | `#23262B` |
 | Fond mode sombre | `--eonora-charcoal-deep` | `#1A1C20` |
-| Dégradé — violet | `--eonora-violet` / `eo-violet` | `#7C3AED` |
-| Dégradé — bleu | `--eonora-blue` / `eo-blue` | `#3B82F6` |
-| Dégradé — cyan | `--eonora-cyan` / `eo-cyan` | `#22D3EE` |
+| Dégradé — rose/plum (0%) | `--eonora-rose` / `eo-rose` | `#b05070` |
+| Dégradé — bleu (55%) | `--eonora-blue` / `eo-blue` | `#4a72c4` |
+| Dégradé — teal (100%) | `--eonora-teal` / `eo-teal` | `#2aada0` |
 
-**Dégradé signature :** `linear-gradient(90deg, #7C3AED 0%, #3B82F6 50%, #22D3EE 100%)`
-(disponible via la classe utilitaire `bg-eonora-gradient`).
+**Dégradé signature :** `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)`
+(disponible via la classe utilitaire `bg-eonora-gradient`). Angle **120deg**, stops
+rose/plum → bleu → teal — c'est le dégradé du logo « Eonora Tech ».
 
 ## Où sont définis les tokens
 

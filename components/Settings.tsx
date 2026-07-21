@@ -1321,7 +1321,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div className="space-y-4">
                                 <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Couleur d'accentuation</label>
                                 <div className="flex gap-4">
-                                    {['#7C9A7E', '#7C3AED', '#3B82F6', '#22D3EE'].map((color) => (
+                                    {['#7C9A7E', '#b05070', '#4a72c4', '#2aada0'].map((color) => (
                                         <button 
                                             key={color}
                                             onClick={() => onAccentColorChange(color)}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, ShieldCheck, Award, Sparkles } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.10.0";
+const CURRENT_VERSION = "2.10.1";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,19 +37,19 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Nouvelle identité visuelle Eonora : crème, sage & dégradé signature
+                            Identité visuelle Eonora : crème, sage & dégradé signature corrigé
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-50 via-blue-50 to-cyan-50 dark:from-violet-900/10 dark:via-blue-900/10 dark:to-cyan-900/10 border border-slate-200/60 dark:border-slate-700/40">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
                                 <Sparkles size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Charte graphique Eonora Tech</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Dégradé signature corrigé</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Toute l'application adopte la nouvelle identité : fond crème ultra-épuré, boutons sage et le dégradé signature violet → bleu → cyan pour les accents.
+                                    Le dégradé de marque adopte les bonnes couleurs du logo Eonora : rose → bleu → teal (120°). Fond crème et boutons sage inchangés.
                                 </p>
                             </div>
                         </div>

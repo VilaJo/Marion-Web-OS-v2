@@ -403,7 +403,7 @@ export const Dashboard: React.FC = () => {
         // Optimistic update
         updateProjectCache({ ...project, status: nextStatus });
         addActivity('project_status_changed', `${project.clientName} → ${nextStatus}`, project.id, project.clientName);
-        confetti({ particleCount: 30, spread: 50, origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight }, colors: ['#7C9A7E', '#7C3AED', '#22D3EE'] });
+        confetti({ particleCount: 30, spread: 50, origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight }, colors: ['#7C9A7E', '#b05070', '#4a72c4', '#2aada0'] });
 
         moveProjectMutation.mutate(
             { clientName: project.clientName, newStatus: nextStatus },
@@ -427,7 +427,7 @@ export const Dashboard: React.FC = () => {
         await handleCreateClient({
             name: "Dossier_Exemple",
             status: ProjectStatus.PROSPECT,
-            avatarColor: "from-[#7C3AED] to-[#22D3EE]",
+            avatarColor: "from-[#b05070] to-[#2aada0]",
             profile: {
                 email: "",
                 phone: "",

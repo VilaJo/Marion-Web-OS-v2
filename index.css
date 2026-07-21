@@ -12,10 +12,10 @@
   --eonora-sage-light: #A7C1A3;  /* Sage secondaire / dégradé doux */
   --eonora-charcoal: #23262B;    /* Cartes dark mode */
   --eonora-charcoal-deep: #1A1C20;
-  --eonora-violet: #7C3AED;
-  --eonora-blue: #3B82F6;
-  --eonora-cyan: #22D3EE;
-  --eonora-gradient: linear-gradient(90deg, #7C3AED 0%, #3B82F6 50%, #22D3EE 100%);
+  --eonora-rose: #b05070;        /* Dégradé — rose/plum */
+  --eonora-blue: #4a72c4;        /* Dégradé — bleu */
+  --eonora-teal: #2aada0;        /* Dégradé — teal */
+  --eonora-gradient: linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%);
 
   /* Brand accent (overridable via Settings). Default = sage. */
   --brand-color: #7C9A7E;

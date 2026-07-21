@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.10.1] - 2026-07-21
+### Correctif — dégradé signature
+- **Couleurs** : correction du dégradé signature Eonora qui utilisait les mauvaises teintes. Le dégradé de marque reprend désormais les couleurs exactes du logo « Eonora Tech » : `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)` (rose/plum → bleu → teal).
+- **Tokens** : `--eonora-rose` (`#b05070`), `--eonora-blue` (`#4a72c4`), `--eonora-teal` (`#2aada0`) et alias Tailwind `eo-rose` / `eo-blue` / `eo-teal` ; mise à jour de `eonora-gradient`, `marion-gradient`, `sunset-gradient`.
+- **Impact** : accents, logo, en-têtes de briefing, pastilles d'accentuation (Paramètres) et confettis alignés sur le bon dégradé. Fond crème (`#FAF7F2`) et boutons sage (`#7C9A7E`) inchangés. `InvoiceBuilder` non touché.
+
 ## [2.10.0] - 2026-07-20
 ### Refonte visuelle — charte graphique Eonora Tech
 - **Identité** : application de la charte officielle Eonora Tech sur toute l'interface — fond crème ultra-épuré (`#FAF7F2`), boutons **sage** (`#7C9A7E`) et **dégradé signature** violet → bleu → cyan (`#7C3AED → #3B82F6 → #22D3EE`) pour les accents, logo et surbrillances.
