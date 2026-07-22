@@ -206,7 +206,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         { path: '/market-watch', label: 'Veille Marché', icon: Newspaper, color: 'text-amber-500', desc: 'Actus & tendances du secteur', run: () => navigate('/market-watch') },
         { path: '/prospection', label: 'Prospection', icon: Telescope, color: 'text-eo-blue', desc: 'Trouver de nouveaux clients', run: () => navigate('/prospection') },
         { path: '/prompts', label: 'Bibliothèque de Prompts', icon: Code2, color: 'text-eo-teal', desc: 'Tes prompts Cursor favoris', run: () => navigate('/prompts') },
-        { label: 'Notes rapides', icon: StickyNote, color: 'text-amber-500', desc: 'Petit pense-bête toujours à portée', run: () => setShowNotes(true) },
         { label: 'Atelier Média', icon: Wand2, color: 'text-eo-teal', desc: 'Détourage & export visuels', run: () => setShowMediaWorkshop(true) },
         { label: 'Mode Focus', icon: Tent, color: 'text-blue-500', desc: 'Session de concentration minutée', run: () => setIsFocusMode(true) },
         { label: 'Objectifs & KPIs', icon: Target, color: 'text-eo-teal', desc: 'Suivi de tes objectifs du moment', run: () => setShowGoalsKPIs(true) },
@@ -377,6 +376,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         {unseenCount === 0 && emailHasIssue && (
                             <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 ring-2 ring-white dark:ring-slate-900" />
                         )}
+                    </button>
+                </Tooltip>
+                <Tooltip content="Notes rapides">
+                    <button onClick={() => setShowNotes(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
+                        <StickyNote size={18} className="text-amber-500" />
                     </button>
                 </Tooltip>
                 <Tooltip content="Facturation">

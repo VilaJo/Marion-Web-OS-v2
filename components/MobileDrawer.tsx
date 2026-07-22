@@ -63,6 +63,7 @@ export const MobileDrawer: React.FC = () => {
         { icon: LayoutGrid, label: 'Clients', color: 'text-eo-rose', action: () => { close(); navigate('/'); } },
         { icon: Calendar, label: 'Agenda', color: 'text-eo-blue', action: () => menuAction(() => setShowAgendaModal(true)) },
         { icon: Mail, label: 'Emails', color: 'text-blue-500', action: () => { close(); navigate('/emails'); } },
+        { icon: StickyNote, label: 'Notes rapides', color: 'text-amber-500', action: () => menuAction(() => setShowNotes(true)) },
         { icon: Sparkles, label: 'Franck', color: 'text-emerald-500', action: () => menuAction(() => setShowChat(true)) },
         { icon: Settings, label: 'Paramètres', color: 'text-slate-400', action: () => { close(); navigate('/settings'); } },
     ];
@@ -78,7 +79,6 @@ export const MobileDrawer: React.FC = () => {
         { icon: Newspaper, label: 'Veille Marché', color: 'text-amber-500', action: () => { close(); navigate('/market-watch'); } },
         { icon: Telescope, label: 'Prospection', color: 'text-eo-blue', action: () => { close(); navigate('/prospection'); } },
         { icon: Code2, label: 'Bibliothèque de Prompts', color: 'text-eo-teal', action: () => { close(); navigate('/prompts'); } },
-        { icon: StickyNote, label: 'Notes rapides', color: 'text-amber-500', action: () => menuAction(() => setShowNotes(true)) },
         { icon: Wand2, label: 'Atelier Média', color: 'text-eo-teal', action: () => menuAction(() => setShowMediaWorkshop(true)) },
         { icon: Tent, label: 'Mode Focus', color: 'text-blue-500', action: () => menuAction(() => setIsFocusMode(true)) },
         { icon: Target, label: 'Objectifs & KPIs', color: 'text-eo-teal', action: () => menuAction(() => setShowGoalsKPIs(true)) },
