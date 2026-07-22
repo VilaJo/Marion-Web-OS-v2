@@ -23,7 +23,7 @@ import {
     Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X, Telescope,
     Code2, Newspaper, Sunrise,
     Hammer, ChevronDown, BookOpen, Palette, Shield,
-    ChevronsLeft, ChevronsRight,
+    ChevronsLeft, ChevronsRight, Calendar, Wallet,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
 
@@ -53,6 +53,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         isMobileMenuOpen, setIsMobileMenuOpen,
         isToolbarCollapsed, toggleToolbarCollapsed,
         setAiMode, setAiFallbackEnabled,
+        setShowAgendaModal,
     } = useUIStore();
 
     const {
@@ -179,30 +180,52 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
     };
 
     const [franckTestLoading, setFranckTestLoading] = useState(false);
-    const [showAtelierMenu, setShowAtelierMenu] = useState(false);
-    const atelierMenuRef = useRef<HTMLDivElement>(null);
+    const [showAdvancedMenu, setShowAdvancedMenu] = useState(false);
+    const advancedMenuRef = useRef<HTMLDivElement>(null);
 
-    // Close atelier dropdown when clicking outside
+    // Close "Avancé" dropdown when clicking outside
     useEffect(() => {
-        if (!showAtelierMenu) return;
+        if (!showAdvancedMenu) return;
         const handleClick = (e: MouseEvent) => {
-            if (atelierMenuRef.current && !atelierMenuRef.current.contains(e.target as Node)) {
-                setShowAtelierMenu(false);
+            if (advancedMenuRef.current && !advancedMenuRef.current.contains(e.target as Node)) {
+                setShowAdvancedMenu(false);
             }
         };
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
-    }, [showAtelierMenu]);
+    }, [showAdvancedMenu]);
 
-    const ATELIER_ITEMS = [
-        { path: '/wp-studio', label: 'Atelier Refonte WP', icon: Hammer, color: 'text-eo-teal', desc: 'Screenshots → plan Cursor' },
-        { path: '/recipes', label: 'Recettes WP → React', icon: BookOpen, color: 'text-blue-500', desc: '12 patterns prêts à coller' },
-        { path: '/components', label: 'Catalog Marion', icon: Palette, color: 'text-eo-blue', desc: 'Tes snippets favoris' },
-        { path: '/stack-picker', label: 'Stack Picker', icon: Wand2, color: 'text-emerald-500', desc: 'Quelle stack pour ce projet ?' },
-        { path: '/skills', label: 'Mes compétences', icon: Target, color: 'text-eo-rose', desc: 'Radar 8 axes + skill du mois' },
-        { path: '/audit-wp', label: 'Audit Prospect WP', icon: Shield, color: 'text-rose-500', desc: 'Lighthouse + pitch de vente' },
+    // "Avancé" — tous les outils secondaires regroupés dans un seul menu (v2.11.0 nav allégée)
+    const ADVANCED_ITEMS: { label: string; icon: React.ElementType; color: string; desc: string; path?: string; run: () => void }[] = [
+        { path: '/wp-studio', label: 'Atelier Refonte WP', icon: Hammer, color: 'text-eo-teal', desc: 'Screenshots → plan Cursor', run: () => navigate('/wp-studio') },
+        { path: '/recipes', label: 'Recettes WP → React', icon: BookOpen, color: 'text-blue-500', desc: '12 patterns prêts à coller', run: () => navigate('/recipes') },
+        { path: '/components', label: 'Catalog Marion', icon: Palette, color: 'text-eo-blue', desc: 'Tes snippets favoris', run: () => navigate('/components') },
+        { path: '/stack-picker', label: 'Stack Picker', icon: Wand2, color: 'text-emerald-500', desc: 'Quelle stack pour ce projet ?', run: () => navigate('/stack-picker') },
+        { path: '/skills', label: 'Mes compétences', icon: Target, color: 'text-eo-rose', desc: 'Radar 8 axes + skill du mois', run: () => navigate('/skills') },
+        { path: '/audit-wp', label: 'Audit Prospect WP', icon: Shield, color: 'text-rose-500', desc: 'Lighthouse + pitch de vente', run: () => navigate('/audit-wp') },
+        { path: '/market-watch', label: 'Veille Marché', icon: Newspaper, color: 'text-amber-500', desc: 'Actus & tendances du secteur', run: () => navigate('/market-watch') },
+        { path: '/prospection', label: 'Prospection', icon: Telescope, color: 'text-eo-blue', desc: 'Trouver de nouveaux clients', run: () => navigate('/prospection') },
+        { path: '/prompts', label: 'Bibliothèque de Prompts', icon: Code2, color: 'text-eo-teal', desc: 'Tes prompts Cursor favoris', run: () => navigate('/prompts') },
+        { label: 'Notes rapides', icon: StickyNote, color: 'text-amber-500', desc: 'Petit pense-bête toujours à portée', run: () => setShowNotes(true) },
+        { label: 'Atelier Média', icon: Wand2, color: 'text-eo-teal', desc: 'Détourage & export visuels', run: () => setShowMediaWorkshop(true) },
+        { label: 'Mode Focus', icon: Tent, color: 'text-blue-500', desc: 'Session de concentration minutée', run: () => setIsFocusMode(true) },
+        { label: 'Objectifs & KPIs', icon: Target, color: 'text-eo-teal', desc: 'Suivi de tes objectifs du moment', run: () => setShowGoalsKPIs(true) },
+        { label: 'Briefing du jour', icon: LayoutGrid, color: 'text-eo-rose', desc: 'Résumé Franck de ta journée', run: () => setShowMondayBriefing(true) },
+        {
+            label: 'Donner à Franck', icon: Sparkles, color: 'text-emerald-500', desc: 'Glisser des fichiers à analyser',
+            run: () => {
+                const input = document.createElement('input');
+                input.type = 'file'; input.multiple = true;
+                input.onchange = (e: any) => {
+                    const files = Array.from(e.target.files || []) as File[];
+                    if (files.length > 0) { setDroppedFiles(files); setShowFileDispatcher(true); }
+                };
+                input.click();
+            },
+        },
+        { label: 'Guide & Aide', icon: HelpCircle, color: 'text-slate-500', desc: "Comment utiliser l'app", run: () => setShowGuide(true) },
     ];
-    const isAtelierActive = ATELIER_ITEMS.some(it => isActiveRoute(it.path));
+    const isAdvancedActive = ADVANCED_ITEMS.some(it => it.path && isActiveRoute(it.path));
     const handleFranckReconnect = async () => {
         setFranckSetupError('');
         setFranckSetupSuccess(false);
@@ -317,17 +340,55 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         {isToolbarCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
                     </button>
                 </Tooltip>
-                {!isToolbarCollapsed && (<>
-                <button onClick={() => setShowMondayBriefing(true)} className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-eonora-gradient text-white flex items-center gap-1.5">
-                    <LayoutGrid size={14} /> Briefing
-                </button>
+                {/* PRIMARY — toujours visible, quotidien de Marion (v2.11.0 nav allégée) */}
                 <Tooltip content="Ma journée — priorités et échéances">
                     <button
                         type="button"
                         onClick={() => navigate('/today')}
-                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5"
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide flex items-center gap-1.5 transition-colors ${
+                            isActiveRoute('/today')
+                                ? 'bg-[#7C9A7E]/15 dark:bg-[#7C9A7E]/25 text-[#647D66] dark:text-[#A7C1A3] ring-1 ring-[#7C9A7E]/40'
+                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                        }`}
                     >
-                        <Sunrise size={14} className="text-brand-orange" /> Journée
+                        <Sunrise size={14} className="text-[#7C9A7E]" /> Journée
+                    </button>
+                </Tooltip>
+                <Tooltip content="Agenda">
+                    <button onClick={() => setShowAgendaModal(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
+                        <Calendar size={18} className="text-[#4a72c4]" />
+                    </button>
+                </Tooltip>
+                <Tooltip content={emailHasIssue ? 'Emails (non connecté)' : 'Emails'}>
+                    <button
+                        onClick={() => navigate('/emails')}
+                        className={`p-2 rounded-full transition-colors relative ${
+                            isActiveRoute('/emails')
+                                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 ring-1 ring-blue-300/50'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                        <Mail size={18} className={isActiveRoute('/emails') ? '' : 'text-blue-500'} />
+                        {unseenCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-sm animate-pulse">
+                                {unseenCount > 99 ? '99+' : unseenCount}
+                            </span>
+                        )}
+                        {unseenCount === 0 && emailHasIssue && (
+                            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 ring-2 ring-white dark:ring-slate-900" />
+                        )}
+                    </button>
+                </Tooltip>
+                <Tooltip content="Facturation">
+                    <button
+                        onClick={() => navigate('/finances')}
+                        className={`p-2 rounded-full transition-colors ${
+                            isActiveRoute('/finances')
+                                ? 'bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal ring-1 ring-[#2aada0]/40'
+                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                        <Wallet size={18} className={isActiveRoute('/finances') ? '' : 'text-eo-teal'} />
                     </button>
                 </Tooltip>
                 <Tooltip content="Recherche (⌘K)">
@@ -335,61 +396,53 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Search size={18} className="text-slate-500 dark:text-slate-300" />
                     </button>
                 </Tooltip>
-                </>)}
-                {!isToolbarCollapsed && (<>
-                <Tooltip content="Notes Rapides">
-                    <button onClick={() => setShowNotes(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors">
-                        <StickyNote size={18} className="text-amber-500" />
+                <Tooltip content="Paramètres">
+                    <button onClick={() => navigate('/settings')} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
+                        <Settings size={18} />
                     </button>
                 </Tooltip>
-                <Tooltip content="Atelier Média">
-                    <button onClick={() => setShowMediaWorkshop(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <Wand2 size={18} className="text-eo-teal" />
+                <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+                <Tooltip content="Changer de thème">
+                    <button onClick={() => { const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'unicorn' : 'light'; setTheme(next as any); }} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
+                        {theme === 'light' && <Sun size={18} className="text-amber-400" />}
+                        {theme === 'dark' && <Moon size={18} className="text-brand-orange" />}
+                        {theme === 'unicorn' && <Sparkles size={18} className="text-pink-500" />}
                     </button>
                 </Tooltip>
-                <Tooltip content="Mode Focus">
-                    <button onClick={() => setIsFocusMode(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <Tent size={18} className="text-blue-500" />
-                    </button>
-                </Tooltip>
-                <Tooltip content="Objectifs & KPIs">
-                    <button onClick={() => setShowGoalsKPIs(true)} className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <Target size={18} className="text-eo-teal" />
-                    </button>
-                </Tooltip>
-                </>)}
-                {/* Atelier dropdown — Marion 2030 (v2.6.0) */}
+
+                {/* "Avancé" — tous les outils secondaires regroupés en un seul menu (v2.11.0) */}
                 {!isToolbarCollapsed && (
-                <div ref={atelierMenuRef} className="relative hidden lg:flex">
-                    <Tooltip content="Outils avancés (WP Studio, refontes)">
+                <div ref={advancedMenuRef} className="relative hidden lg:flex">
+                    <Tooltip content="Outils avancés (Atelier, veille, prospection…)">
                         <button
-                            onClick={() => setShowAtelierMenu(v => !v)}
-                            className={`p-2 rounded-full transition-colors flex items-center gap-1 ${
-                                isAtelierActive
+                            onClick={() => setShowAdvancedMenu(v => !v)}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5 ${
+                                isAdvancedActive
                                     ? 'bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal ring-1 ring-[#2aada0]/40'
                                     : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
                             }`}
-                            aria-expanded={showAtelierMenu}
+                            aria-expanded={showAdvancedMenu}
                             aria-haspopup="menu"
                         >
-                            <Hammer size={18} className={isAtelierActive ? '' : 'text-eo-teal'} />
-                            <ChevronDown size={12} className={`transition-transform ${showAtelierMenu ? 'rotate-180' : ''}`} />
+                            <Hammer size={16} className={isAdvancedActive ? '' : 'text-eo-teal'} />
+                            Avancé
+                            <ChevronDown size={12} className={`transition-transform ${showAdvancedMenu ? 'rotate-180' : ''}`} />
                         </button>
                     </Tooltip>
-                    {showAtelierMenu && (
-                        <div className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden" role="menu">
-                            <div className="p-3 bg-gradient-to-r from-[#2aada0]/10 to-[#4a72c4]/10 dark:from-[#2aada0]/15 dark:to-[#4a72c4]/15 border-b border-slate-200 dark:border-slate-700">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-eo-teal dark:text-eo-teal">Atelier 2030</div>
-                                <div className="text-xs text-slate-500 mt-0.5">Outils pour ta transition WP → Cursor</div>
+                    {showAdvancedMenu && (
+                        <div className="absolute top-full right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-50" role="menu">
+                            <div className="p-3 bg-gradient-to-r from-[#2aada0]/10 to-[#4a72c4]/10 dark:from-[#2aada0]/15 dark:to-[#4a72c4]/15 border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-eo-teal dark:text-eo-teal">Outils avancés</div>
+                                <div className="text-xs text-slate-500 mt-0.5">Atelier, veille, prospection & co. — usage ponctuel</div>
                             </div>
                             <ul className="p-1">
-                                {ATELIER_ITEMS.map(it => {
+                                {ADVANCED_ITEMS.map((it) => {
                                     const Icon = it.icon;
-                                    const active = isActiveRoute(it.path);
+                                    const active = it.path ? isActiveRoute(it.path) : false;
                                     return (
-                                        <li key={it.path}>
+                                        <li key={it.label}>
                                             <button
-                                                onClick={() => { navigate(it.path); setShowAtelierMenu(false); }}
+                                                onClick={() => { it.run(); setShowAdvancedMenu(false); }}
                                                 className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg transition-colors ${
                                                     active ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
                                                 }`}
@@ -409,102 +462,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                     )}
                 </div>
                 )}
-                {!isToolbarCollapsed && (<>
-                <Tooltip content="Prospection">
-                    <button
-                        onClick={() => navigate('/prospection')}
-                        className={`hidden lg:flex p-2 rounded-full transition-colors ${
-                            isActiveRoute('/prospection')
-                                ? 'bg-[#4a72c4]/15 dark:bg-[#4a72c4]/25 text-eo-blue dark:text-eo-blue ring-1 ring-[#4a72c4]/40'
-                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
-                        }`}
-                    >
-                        <Telescope size={18} className={isActiveRoute('/prospection') ? '' : 'text-eo-blue'} />
-                    </button>
-                </Tooltip>
-                <Tooltip content="Bibliothèque de Prompts">
-                    <button
-                        onClick={() => navigate('/prompts')}
-                        className={`hidden lg:flex p-2 rounded-full transition-colors ${
-                            isActiveRoute('/prompts')
-                                ? 'bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal ring-1 ring-[#2aada0]/40'
-                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
-                        }`}
-                    >
-                        <Code2 size={18} className={isActiveRoute('/prompts') ? '' : 'text-eo-teal'} />
-                    </button>
-                </Tooltip>
-                <Tooltip content="Veille Marché">
-                    <button
-                        onClick={() => navigate('/market-watch')}
-                        className={`hidden lg:flex p-2 rounded-full transition-colors ${
-                            isActiveRoute('/market-watch')
-                                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 ring-1 ring-amber-300/50'
-                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
-                        }`}
-                    >
-                        <Newspaper size={18} className={isActiveRoute('/market-watch') ? '' : 'text-amber-500'} />
-                    </button>
-                </Tooltip>
-                <Tooltip content={emailHasIssue ? 'Emails (non connecté)' : 'Emails'}>
-                    <button
-                        onClick={() => navigate('/emails')}
-                        className={`hidden lg:flex p-2 rounded-full transition-colors relative ${
-                            isActiveRoute('/emails')
-                                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 ring-1 ring-blue-300/50'
-                                : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
-                        }`}
-                    >
-                        <Mail size={18} className={isActiveRoute('/emails') ? '' : 'text-blue-500'} />
-                        {unseenCount > 0 && (
-                            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-sm animate-pulse">
-                                {unseenCount > 99 ? '99+' : unseenCount}
-                            </span>
-                        )}
-                        {unseenCount === 0 && emailHasIssue && (
-                            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 ring-2 ring-white dark:ring-slate-900" />
-                        )}
-                    </button>
-                </Tooltip>
-                <Tooltip content="Donner à Franck">
-                    <button
-                        onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file'; input.multiple = true;
-                            input.onchange = (e: any) => {
-                                const files = Array.from(e.target.files || []) as File[];
-                                if (files.length > 0) { setDroppedFiles(files); setShowFileDispatcher(true); }
-                            };
-                            input.click();
-                        }}
-                        className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
-                    >
-                        <Sparkles size={18} className="text-emerald-500" />
-                    </button>
-                </Tooltip>
-                </>)}
-                {!isToolbarCollapsed && (<>
-                <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-                <Tooltip content="Changer de thème">
-                    <button onClick={() => { const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'unicorn' : 'light'; setTheme(next as any); }} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        {theme === 'light' && <Sun size={18} className="text-amber-400" />}
-                        {theme === 'dark' && <Moon size={18} className="text-brand-orange" />}
-                        {theme === 'unicorn' && <Sparkles size={18} className="text-pink-500" />}
-                    </button>
-                </Tooltip>
-                </>)}
-                {!isToolbarCollapsed && (<>
-                <Tooltip content="Paramètres">
-                    <button onClick={() => navigate('/settings')} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <Settings size={18} />
-                    </button>
-                </Tooltip>
-                <Tooltip content="Guide & Aide">
-                    <button onClick={() => setShowGuide(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <HelpCircle size={18} />
-                    </button>
-                </Tooltip>
-                </>)}
                 {/* Notifications */}
                 <div className="relative">
                     <Tooltip content="Notifications">

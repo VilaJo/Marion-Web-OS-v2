@@ -1,33 +1,28 @@
 /**
- * Dashboard Page - Main dashboard view
- * Extracted from App.tsx for route-based navigation
+ * Dashboard Page — Clients explorer (arborescence + tableau)
+ *
+ * Extracted from App.tsx for route-based navigation. v2.11.0: la grille de
+ * cartes est remplacée par une vue "explorateur de fichiers" (arborescence de
+ * dossiers à gauche + tableau triable à droite). L'Agenda, le widget Santé
+ * Financière et le fil d'activité ont été retirés de cette page (déclutter) —
+ * l'Agenda reste accessible via le bouton dédié du header.
  */
 
-import React, { Suspense, useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Project, ProjectStatus, CalendarEvent, WorkflowPhase, Invoice, Activity } from '../types';
-import { formatCurrency, formatCurrencyWithSymbol, invoiceEffectiveAmount } from '../utils';
-import { loadStandaloneInvoices } from '../utils/standaloneInvoicesStorage';
-import { useProjectStore, useUIStore, useNotificationStore, useUndoStore } from '../stores';
-import { useProjects, useSaveProject, useMoveProject, useCreateClientFolder, useInitDatabase, useUpdateProjectCache, useCreateGoogleEvent } from '../services/queries';
-import { ProjectCard } from '../components/ProjectCard';
-import { Card, Modal, EmptyState } from '../components/Shared';
-import { SplashScreen } from '../components/SplashScreen';
+import { Project, ProjectStatus, WorkflowPhase } from '../types';
+import { invoiceEffectiveAmount } from '../utils';
+import { useProjectStore, useUIStore, useNotificationStore } from '../stores';
+import { useProjects, useCreateClientFolder, useInitDatabase, useUpdateProjectCache } from '../services/queries';
+import { EmptyState } from '../components/Shared';
 import { NewClientScreen, NewClientData } from '../components/NewClientScreen';
-import { openGlobalInvoiceModal } from '../components/GlobalDashboardModals';
-
-// Lazy loaded components
-const Agenda = React.lazy(() => import('../components/Agenda').then(m => ({ default: m.Agenda })));
-const FinancialHealthWidget = React.lazy(() => import('../components/FinancialHealthWidget').then(m => ({ default: m.FinancialHealthWidget })));
-const Importer = React.lazy(() => import('../components/Importer').then(m => ({ default: m.Importer })));
+import { ClientsFolderTree } from '../components/ClientsFolderTree';
+import { ClientsTable } from '../components/ClientsTable';
 
 import {
-    Search, Plus, RefreshCw, Database, Clock, DollarSign,
-    FolderPlus, Archive, CheckCircle, User, Palette,
-    Calendar, Upload, FileText, Briefcase, Download,
-    ChevronRight, ArrowRight, X, History,
+    Search, Plus, RefreshCw, Database, Briefcase, Download,
 } from 'lucide-react';
-import { exportCSV, exportSingleSheetXLSX, type CSVColumn } from '../utils/exportUtils';
+import { exportCSV, type CSVColumn } from '../utils/exportUtils';
 
 declare const confetti: any;
 
@@ -63,33 +58,23 @@ export const Dashboard: React.FC = () => {
 
     // --- React Query ---
     const { data: projects = [], isFetching: isRefreshing, refetch: refetchProjects } = useProjects();
-    const saveProjectMutation = useSaveProject();
-    const moveProjectMutation = useMoveProject();
     const createClientFolder = useCreateClientFolder();
     const initDatabase = useInitDatabase();
-    const createGoogleEventMutation = useCreateGoogleEvent();
     const updateProjectCache = useUpdateProjectCache();
-    const pushUndo = useUndoStore((s) => s.pushUndo);
 
     // --- Stores ---
     const {
-        events, activities, filter, searchQuery,
-        addActivity, setFilter, setSearchQuery,
-        addEvent, updateEvent, deleteEvent,
+        events, activities,
+        filter: selectedFolder, searchQuery,
+        addActivity, setFilter: setSelectedFolder, setSearchQuery,
     } = useProjectStore();
 
-    const {
-        theme, currency, showImporter,
-        setShowImporter,
-    } = useUIStore();
+    const { showImporter, setShowImporter } = useUIStore();
 
     const { addNotification } = useNotificationStore();
 
     // --- Local State ---
     const [isCreatingClient, setIsCreatingClient] = useState(false);
-    const [showAllActivities, setShowAllActivities] = useState(false);
-    const [standaloneRev, setStandaloneRev] = useState(0);
-    const standaloneInvoices = useMemo(() => loadStandaloneInvoices(), [standaloneRev]);
 
     // Module-level sets persist across mount/unmount cycles
 
@@ -225,8 +210,8 @@ export const Dashboard: React.FC = () => {
     // Handlers
     // ========================================================================
 
-    const handleOpenProject = (project: Project) => {
-        navigate(`/client/${encodeURIComponent(project.id)}`);
+    const handleOpenProject = (projectId: string) => {
+        navigate(`/client/${encodeURIComponent(projectId)}`);
     };
 
     const handleCreateClient = async (data: NewClientData) => {
@@ -352,76 +337,6 @@ export const Dashboard: React.FC = () => {
         );
     };
 
-    const handleUpdateProject = async (updated: Project, oldId?: string) => {
-        saveProjectMutation.mutate({ project: updated, oldId }, {
-            onError: () => {
-                addNotification("Erreur Sauvegarde", "Vos modifications n'ont pas été enregistrées.", "error");
-            },
-        });
-    };
-
-    const handleOpenGlobalInvoiceModal = (invoice?: Invoice, project?: Project) => {
-        const { setCurrentInvoiceToEdit, setShowGlobalInvoiceModal } = useUIStore.getState();
-        openGlobalInvoiceModal(setCurrentInvoiceToEdit, setShowGlobalInvoiceModal, invoice, project);
-    };
-
-    const handleAddEvent = (event: CalendarEvent) => {
-        addEvent(event);
-        if (event.type === 'Call ou rdv pro') {
-            addActivity('meeting_scheduled', `Réunion: ${event.title}`, undefined, undefined, event.date);
-        }
-        confetti({ particleCount: 30, spread: 40, colors: ['#5BBFBA', '#F0B7A4'] });
-    };
-
-    const handleUpdateEvent = (updatedEvent: CalendarEvent) => {
-        updateEvent(updatedEvent);
-    };
-
-    const handleDeleteEvent = (eventId: string) => {
-        const eventToDelete = events.find(e => e.id === eventId);
-        if (!eventToDelete) return;
-
-        // Execute deletion
-        deleteEvent(eventId);
-
-        // Undo support
-        pushUndo({
-            description: `Événement "${eventToDelete.title}" supprimé`,
-            restore: () => {
-                addEvent(eventToDelete);
-            },
-        });
-    };
-
-    const handleStatusCycle = (e: React.MouseEvent, project: Project) => {
-        e.stopPropagation();
-        const statuses = [ProjectStatus.EN_COURS, ProjectStatus.MAINTENANCE, ProjectStatus.ASSOCIATION, ProjectStatus.PROSPECT];
-        const currentIndex = statuses.indexOf(project.status);
-        const nextStatus = currentIndex === -1 ? statuses[0] : statuses[(currentIndex + 1) % statuses.length];
-        const previousStatus = project.status;
-
-        // Optimistic update
-        updateProjectCache({ ...project, status: nextStatus });
-        addActivity('project_status_changed', `${project.clientName} → ${nextStatus}`, project.id, project.clientName);
-        confetti({ particleCount: 30, spread: 50, origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight }, colors: ['#7C9A7E', '#b05070', '#4a72c4', '#2aada0'] });
-
-        moveProjectMutation.mutate(
-            { clientName: project.clientName, newStatus: nextStatus },
-            {
-                onSuccess: (data) => {
-                    if (data.path) {
-                        updateProjectCache({ ...project, id: data.path as string, status: nextStatus });
-                    }
-                },
-                onError: (error) => {
-                    // Rollback optimistic update
-                    updateProjectCache({ ...project, status: previousStatus });
-                    addNotification('Erreur Statut', error.message || `Impossible de déplacer le dossier.`, 'error');
-                },
-            }
-        );
-    };
-
     const handleCreateDatabase = async () => {
         try { await initDatabase.mutateAsync(); } catch { /* ignore */ }
         await handleCreateClient({
@@ -447,32 +362,10 @@ export const Dashboard: React.FC = () => {
     // Computed Values
     // ========================================================================
 
-    const statusPriority: Record<string, number> = {
-        [ProjectStatus.EN_COURS]: 1,
-        [ProjectStatus.MAINTENANCE]: 2,
-        [ProjectStatus.ASSOCIATION]: 3,
-        [ProjectStatus.PROSPECT]: 4,
-        [ProjectStatus.ARCHIVED]: 5
-    };
-
-    const filteredProjects = projects
-        .filter(p => {
-            let matchesFilter = filter === 'Tous';
-            if (!matchesFilter) {
-                if (filter === 'En cours') matchesFilter = p.status === ProjectStatus.EN_COURS;
-                else if (filter === 'Maintenance') matchesFilter = p.status === ProjectStatus.MAINTENANCE;
-                else if (filter === 'Association') matchesFilter = p.status === ProjectStatus.ASSOCIATION;
-                else if (filter === 'Prospect') matchesFilter = p.status === ProjectStatus.PROSPECT;
-                else if (filter === 'Archivé') matchesFilter = p.status === ProjectStatus.ARCHIVED;
-            }
-            const matchesSearch = p.clientName.toLowerCase().includes(searchQuery.toLowerCase());
-            return matchesFilter && matchesSearch;
-        })
-        .sort((a, b) => {
-            const statusDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
-            if (statusDiff !== 0) return statusDiff;
-            return a.clientName.localeCompare(b.clientName, 'fr');
-        });
+    const folderFilteredProjects = useMemo(() => {
+        if (selectedFolder === 'Tous') return projects;
+        return projects.filter(p => p.status === selectedFolder);
+    }, [projects, selectedFolder]);
 
     // ========================================================================
     // Render
@@ -480,309 +373,92 @@ export const Dashboard: React.FC = () => {
 
     return (
         <div className="animate-in fade-in slide-in-from-left-8 duration-500">
-            {/* TOP ROW: Agenda + Financial */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8 mb-4 md:mb-8">
-                <div className="lg:col-span-2 space-y-4 md:space-y-8 animate-in slide-in-from-left-8 duration-700">
-                    <div id="agenda-widget">
-                        <Suspense fallback={<Card className="h-64 animate-pulse" />}>
-                            <Agenda
-                                events={events}
-                                onAddEvent={handleAddEvent}
-                                onUpdateEvent={handleUpdateEvent}
-                                onDeleteEvent={handleDeleteEvent}
-                            />
-                        </Suspense>
-                    </div>
+            {/* TOP BAR: search + actions */}
+            <div id="dashboard-search" className="bg-white/40 dark:bg-slate-800/30 p-2 md:p-3 rounded-2xl md:rounded-3xl backdrop-blur-sm flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+                <div className="relative flex items-center gap-2 flex-1 min-w-0 md:flex-none md:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input
+                        id="dashboard-search-input"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Rechercher un client..."
+                        className="pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-800/80 border border-transparent dark:border-slate-700/50 focus:border-[#7C9A7E] shadow-sm focus:ring-2 focus:ring-[#7C9A7E]/20 w-full transition-all outline-none text-sm dark:text-slate-100 dark:placeholder-slate-400"
+                    />
                 </div>
-                <div className="lg:col-span-2 h-full animate-in slide-in-from-right-8 duration-700">
-                    <Suspense fallback={<Card className="h-64 animate-pulse" />}>
-                        <FinancialHealthWidget
-                            projects={projects}
-                            standaloneInvoices={standaloneInvoices}
-                            currency={currency}
-                            onClick={() => navigate('/finances')}
-                            currentTheme={theme}
-                            onCreateInvoice={() => handleOpenGlobalInvoiceModal()}
-                            onAddCalendarEvent={(evt) => {
-                                createGoogleEventMutation.mutate(evt, {
-                                    onSuccess: () => addNotification('📅 Événement créé', `"${evt.title}" ajouté à l'agenda le ${evt.date} à ${evt.startTime}${evt.addMeet ? ' avec Meet' : ''}`, 'success'),
-                                    onError: () => {
-                                        handleAddEvent({ id: `local-${Date.now()}`, title: evt.title, date: evt.date, startTime: evt.startTime, duration: evt.duration, type: 'Call ou rdv pro', source: 'local' });
-                                    },
-                                });
-                            }}
-                            onAddReminder={(todoId, text, remindAt) => {
-                                addNotification('Rappel ajouté', `Je te rappellerai: ${text}`, 'deadline');
-                                const dateStr = `${remindAt.getFullYear()}-${String(remindAt.getMonth() + 1).padStart(2, '0')}-${String(remindAt.getDate()).padStart(2, '0')}`;
-                                const timeStr = `${String(remindAt.getHours()).padStart(2, '0')}:${String(remindAt.getMinutes()).padStart(2, '0')}`;
-                                addEvent({
-                                    id: `reminder-${todoId}`,
-                                    title: text,
-                                    date: dateStr,
-                                    startTime: timeStr,
-                                    duration: 15,
-                                    type: 'Perso',
-                                    source: 'local',
-                                    isAppEvent: true
-                                });
-                            }}
-                        />
-                    </Suspense>
-                </div>
-            </div>
-
-            {/* ACTIVITY WIDGET */}
-            {activities.length > 0 && (() => {
-                const activityConfig: Record<Activity['type'], { icon: React.ReactNode; color: string; borderColor: string; getLink: (act: Activity) => string | null; label: string }> = {
-                    invoice_created: { icon: <FileText size={14} />, color: 'text-emerald-500', borderColor: 'border-l-emerald-500', getLink: () => '/finances', label: 'Facture' },
-                    invoice_paid: { icon: <DollarSign size={14} />, color: 'text-green-500', borderColor: 'border-l-green-500', getLink: () => '/finances', label: 'Paiement' },
-                    project_created: { icon: <FolderPlus size={14} />, color: 'text-blue-500', borderColor: 'border-l-blue-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Nouveau client' },
-                    project_archived: { icon: <Archive size={14} />, color: 'text-slate-500', borderColor: 'border-l-slate-400', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Archivage' },
-                    project_status_changed: { icon: <RefreshCw size={14} />, color: 'text-purple-500', borderColor: 'border-l-purple-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Statut' },
-                    task_completed: { icon: <CheckCircle size={14} />, color: 'text-emerald-500', borderColor: 'border-l-emerald-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Tâche' },
-                    client_updated: { icon: <User size={14} />, color: 'text-orange-500', borderColor: 'border-l-orange-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Client' },
-                    brand_updated: { icon: <Palette size={14} />, color: 'text-pink-500', borderColor: 'border-l-pink-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Branding' },
-                    meeting_scheduled: { icon: <Calendar size={14} />, color: 'text-blue-500', borderColor: 'border-l-blue-500', getLink: () => '/agenda', label: 'Réunion' },
-                    file_uploaded: { icon: <Upload size={14} />, color: 'text-cyan-500', borderColor: 'border-l-cyan-500', getLink: (a) => a.projectId ? `/client/${encodeURIComponent(a.projectId)}` : null, label: 'Fichier' },
-                };
-
-                const timeAgo = (ts: string) => {
-                    const diff = Date.now() - new Date(ts).getTime();
-                    const mins = Math.floor(diff / 60000);
-                    if (mins < 1) return "À l'instant";
-                    if (mins < 60) return `Il y a ${mins} min`;
-                    const hours = Math.floor(mins / 60);
-                    if (hours < 24) return `Il y a ${hours}h`;
-                    return `Il y a ${Math.floor(hours / 24)}j`;
-                };
-
-                const groupByDay = (acts: Activity[]) => {
-                    const now = new Date();
-                    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                    const yesterdayStart = todayStart - 86400000;
-                    const weekStart = todayStart - 6 * 86400000;
-
-                    const groups: { label: string; items: Activity[] }[] = [
-                        { label: "Aujourd'hui", items: [] },
-                        { label: 'Hier', items: [] },
-                        { label: 'Cette semaine', items: [] },
-                        { label: 'Plus ancien', items: [] },
-                    ];
-
-                    for (const act of acts) {
-                        const t = new Date(act.timestamp).getTime();
-                        if (t >= todayStart) groups[0].items.push(act);
-                        else if (t >= yesterdayStart) groups[1].items.push(act);
-                        else if (t >= weekStart) groups[2].items.push(act);
-                        else groups[3].items.push(act);
-                    }
-                    return groups.filter(g => g.items.length > 0);
-                };
-
-                const renderActivityRow = (act: Activity, compact = false) => {
-                    const cfg = activityConfig[act.type];
-                    const link = cfg.getLink(act);
-                    const Tag = link ? 'button' : 'div';
-                    return (
-                        <Tag
-                            key={act.id}
-                            {...(link ? { onClick: () => { navigate(link); setShowAllActivities(false); } } : {})}
-                            className={`w-full text-left flex items-center gap-3 ${compact ? 'py-2' : 'py-2.5'} px-3 rounded-xl border-l-[3px] ${cfg.borderColor} transition-all ${
-                                link 
-                                    ? 'hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer group' 
-                                    : 'cursor-default'
-                            }`}
-                        >
-                            <div className={`p-1.5 bg-white dark:bg-slate-700/80 rounded-lg shadow-sm ${cfg.color} flex-shrink-0`}>
-                                {cfg.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-slate-700 dark:text-slate-200 truncate`}>{act.title}</p>
-                                <div className="flex items-center gap-2">
-                                    {act.projectName && <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{act.projectName}</span>}
-                                    {act.description && <span className="text-[11px] text-slate-400 truncate">· {act.description}</span>}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <span className="text-[10px] text-slate-400 whitespace-nowrap">{timeAgo(act.timestamp)}</span>
-                                {link && <ChevronRight size={14} className="text-slate-300 dark:text-slate-600 group-hover:text-brand-orange transition-colors" />}
-                            </div>
-                        </Tag>
-                    );
-                };
-
-                return (
-                    <>
-                    <div className="mb-4 md:mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <Card className="p-5">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                    <Clock size={18} className="text-brand-orange" /> Activité récente
-                                </h3>
-                                <button
-                                    onClick={() => setShowAllActivities(true)}
-                                    className="flex items-center gap-1 text-xs text-slate-400 hover:text-brand-orange transition-colors font-medium"
-                                >
-                                    {activities.length} actions <ArrowRight size={12} />
-                                </button>
-                            </div>
-                            <div className="space-y-1">
-                                {activities.slice(0, 5).map((act) => renderActivityRow(act))}
-                            </div>
-                            {activities.length > 5 && (
-                                <button
-                                    onClick={() => setShowAllActivities(true)}
-                                    className="mt-3 w-full py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand-orange transition-colors flex items-center justify-center gap-1 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800"
-                                >
-                                    Voir tout l'historique <History size={12} />
-                                </button>
-                            )}
-                        </Card>
-                    </div>
-
-                    {/* Full Activity History Modal */}
-                    {showAllActivities && (
-                        <Modal isOpen={showAllActivities} onClose={() => setShowAllActivities(false)} title="Historique d'activité" width="max-w-3xl">
-                            <div className="w-full max-w-2xl mx-auto max-h-[80vh] flex flex-col">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="font-serif text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-                                        <History size={22} className="text-brand-orange" /> Historique d'activité
-                                    </h2>
-                                    <button onClick={() => setShowAllActivities(false)} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                        <X size={20} className="text-slate-400" />
-                                    </button>
-                                </div>
-                                <div className="overflow-y-auto flex-1 -mx-2 px-2 space-y-6">
-                                    {groupByDay(activities).map((group) => (
-                                        <div key={group.label}>
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{group.label}</h3>
-                                                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700/50" />
-                                                <span className="text-[10px] text-slate-400">{group.items.length}</span>
-                                            </div>
-                                            <div className="space-y-1">
-                                                {group.items.map((act) => renderActivityRow(act, true))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </Modal>
-                    )}
-                    </>
-                );
-            })()}
-
-            {/* SEARCH, FILTERS & PROJECT CARDS */}
-            <div className="space-y-4 md:space-y-8 mb-4 md:mb-8">
-                <div id="dashboard-search" className="bg-white/40 dark:bg-slate-800/30 p-2 md:p-3 rounded-2xl md:rounded-3xl backdrop-blur-sm flex items-center gap-2 md:gap-3">
-                    <div className="relative flex items-center gap-2 flex-shrink-0 w-48 md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input
-                            id="dashboard-search-input"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Rechercher..."
-                            className="pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-800/80 border border-transparent dark:border-slate-700/50 focus:border-orange-300 dark:focus:border-orange-600 shadow-sm focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 w-full transition-all outline-none text-sm dark:text-slate-100 dark:placeholder-slate-400"
-                        />
-                    </div>
-                    <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto flex-1 no-scrollbar">
-                        {['En cours', 'Maintenance', 'Association', 'Prospect', 'Archivé', 'Tous'].map(f => (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`px-3 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
-                                    filter === f
-                                    ? 'bg-eonora-gradient text-white shadow-md'
-                                    : 'bg-white dark:bg-slate-800/60 text-slate-400 hover:text-eo-teal hover:bg-[#2aada0]/10 dark:hover:bg-slate-700/80'
-                                }`}
-                            >
-                                {f.toUpperCase()}
-                            </button>
-                        ))}
-                    </div>
-                    <button
-                        id="new-client-filter-button"
-                        onClick={() => projects.length === 0 ? handleCreateDatabase() : setShowImporter(true)}
-                        className={`px-3 md:px-5 py-1.5 md:py-2 rounded-full text-white transition-all duration-300 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase whitespace-nowrap group flex-shrink-0 ${
-                            projects.length === 0
-                            ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse shadow-lg'
-                            : 'bg-gradient-to-r from-[#7C9A7E] to-[#647D66] hover:scale-105 shadow-md'
-                        }`}
-                    >
-                        {projects.length === 0 ? (
-                            <><Database size={12} /> <span className="hidden sm:inline">Database</span></>
-                        ) : (
-                            <><Plus size={12} className="group-hover:rotate-90 transition-transform duration-300" /> <span>Nouveau</span></>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => {
-                            const clientColumns: CSVColumn[] = [
-                                { header: 'Nom', key: 'clientName' },
-                                { header: 'Email', key: 'email', format: (_, row) => row.profile?.email || '' },
-                                { header: 'Téléphone', key: 'phone', format: (_, row) => row.profile?.phone || '' },
-                                { header: 'Statut', key: 'status' },
-                                { header: 'Date création', key: 'createdAt', format: (v) => v ? new Date(v).toLocaleDateString('fr-CH') : '' },
-                                { header: 'CA Total (payé)', key: 'revenue', format: (_, row) => String(row.invoices?.filter((i: any) => i.status === 'Paid').reduce((s: number, i: any) => s + invoiceEffectiveAmount(i as Invoice), 0) || 0) },
-                                { header: 'Nb Projets', key: 'projectCount', format: () => '1' },
-                                { header: 'Nb Tâches', key: 'taskCount', format: (_, row) => String(row.tasks?.length || 0) },
-                                { header: 'Factures en attente', key: 'pending', format: (_, row) => String(row.invoices?.filter((i: any) => i.status !== 'Paid').reduce((s: number, i: any) => s + invoiceEffectiveAmount(i as Invoice), 0) || 0) },
-                            ];
-                            const clientData = projects.map(p => ({ ...p }));
-                            exportCSV(clientData, clientColumns, `Export_Clients_${new Date().getFullYear()}.csv`);
-                        }}
-                        className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-emerald-500 hover:shadow-md transition-all flex-shrink-0 dark:border dark:border-slate-700/50"
-                        title="Exporter la liste clients (CSV)"
-                    >
-                        <Download size={16} />
-                    </button>
-                    <button
-                        onClick={() => refetchProjects()}
-                        disabled={isRefreshing}
-                        className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-brand-orange hover:shadow-md transition-all disabled:opacity-50 flex-shrink-0 dark:border dark:border-slate-700/50"
-                        title="Actualiser les dossiers"
-                    >
-                        <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-                    </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6 animate-in slide-in-from-bottom-8 duration-500 px-0">
-                    {!isRefreshing && projects.length === 0 ? (
-                        <div className="col-span-1 sm:col-span-2 xl:col-span-3">
-                            <EmptyState
-                                title="Aucun projet"
-                                message="Créez votre premier projet pour commencer."
-                                icon={Briefcase}
-                                actionLabel="Créer un projet"
-                                onAction={() => setShowImporter(true)}
-                            />
-                        </div>
+                <div className="flex-1 hidden md:block" />
+                <button
+                    id="new-client-filter-button"
+                    onClick={() => projects.length === 0 ? handleCreateDatabase() : setShowImporter(true)}
+                    className={`px-3 md:px-5 py-1.5 md:py-2 rounded-full text-white transition-all duration-300 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase whitespace-nowrap group flex-shrink-0 ${
+                        projects.length === 0
+                        ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse shadow-lg'
+                        : 'bg-gradient-to-r from-[#7C9A7E] to-[#647D66] hover:scale-105 shadow-md'
+                    }`}
+                >
+                    {projects.length === 0 ? (
+                        <><Database size={12} /> <span className="hidden sm:inline">Database</span></>
                     ) : (
-                        <>
-                            {filteredProjects.map(p => (
-                                <ProjectCard
-                                    key={p.id}
-                                    project={p}
-                                    onClick={() => handleOpenProject(p)}
-                                    onStatusCycle={(e) => handleStatusCycle(e, p)}
-                                />
-                            ))}
-                            <div
-                                id="new-project-card"
-                                onClick={() => setShowImporter(true)}
-                                className="group rounded-4xl p-6 border-2 border-dashed border-slate-300 dark:border-slate-600/50 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:border-brand-orange hover:text-brand-orange hover:bg-white/30 dark:hover:bg-slate-800/30 cursor-pointer transition-all min-h-[280px]"
-                            >
-                                <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-90 transition-transform duration-300 shadow-inner">
-                                    <Plus size={32} />
-                                </div>
-                                <span className="font-serif text-xl">Nouveau Projet</span>
-                                <span className="text-xs mt-2 opacity-60 font-sans">Créer un client & dossier</span>
-                            </div>
-                        </>
+                        <><Plus size={12} className="group-hover:rotate-90 transition-transform duration-300" /> <span>Nouveau</span></>
                     )}
-                </div>
+                </button>
+                <button
+                    onClick={() => {
+                        const clientColumns: CSVColumn[] = [
+                            { header: 'Nom', key: 'clientName' },
+                            { header: 'Email', key: 'email', format: (_, row) => row.profile?.email || '' },
+                            { header: 'Téléphone', key: 'phone', format: (_, row) => row.profile?.phone || '' },
+                            { header: 'Statut', key: 'status' },
+                            { header: 'Date création', key: 'createdAt', format: (v) => v ? new Date(v).toLocaleDateString('fr-CH') : '' },
+                            { header: 'CA Total (payé)', key: 'revenue', format: (_, row) => String(row.invoices?.filter((i: any) => i.status === 'Paid').reduce((s: number, i: any) => s + invoiceEffectiveAmount(i as any), 0) || 0) },
+                            { header: 'Nb Projets', key: 'projectCount', format: () => '1' },
+                            { header: 'Nb Tâches', key: 'taskCount', format: (_, row) => String(row.tasks?.length || 0) },
+                            { header: 'Factures en attente', key: 'pending', format: (_, row) => String(row.invoices?.filter((i: any) => i.status !== 'Paid').reduce((s: number, i: any) => s + invoiceEffectiveAmount(i as any), 0) || 0) },
+                        ];
+                        const clientData = projects.map(p => ({ ...p }));
+                        exportCSV(clientData, clientColumns, `Export_Clients_${new Date().getFullYear()}.csv`);
+                    }}
+                    className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-emerald-500 hover:shadow-md transition-all flex-shrink-0 dark:border dark:border-slate-700/50"
+                    title="Exporter la liste clients (CSV)"
+                >
+                    <Download size={16} />
+                </button>
+                <button
+                    onClick={() => refetchProjects()}
+                    disabled={isRefreshing}
+                    className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-[#7C9A7E] hover:shadow-md transition-all disabled:opacity-50 flex-shrink-0 dark:border dark:border-slate-700/50"
+                    title="Actualiser les dossiers"
+                >
+                    <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                </button>
             </div>
+
+            {/* EXPLORATEUR: arborescence de dossiers + tableau */}
+            {!isRefreshing && projects.length === 0 ? (
+                <EmptyState
+                    title="Aucun projet"
+                    message="Créez votre premier projet pour commencer."
+                    icon={Briefcase}
+                    actionLabel="Créer un projet"
+                    onAction={() => setShowImporter(true)}
+                />
+            ) : (
+                <div className="flex flex-col md:flex-row gap-3 md:gap-6 animate-in slide-in-from-bottom-8 duration-500">
+                    <div className="md:w-[220px] md:flex-shrink-0">
+                        <ClientsFolderTree
+                            projects={projects}
+                            selected={selectedFolder}
+                            onSelect={setSelectedFolder}
+                        />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <ClientsTable
+                            projects={folderFilteredProjects}
+                            onOpenProject={handleOpenProject}
+                            searchQuery={searchQuery}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* ============================================================== */}
             {/* MODALS managed by Dashboard (domain-specific)                  */}

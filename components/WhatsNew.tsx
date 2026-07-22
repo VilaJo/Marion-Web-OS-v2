@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, ShieldCheck, Award, Sparkles } from 'lucide-react';
+import { Bot, ArrowRight, Gift, FolderTree, Award, Sparkles } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.10.2";
+const CURRENT_VERSION = "2.11.0";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,31 +37,31 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Unification de la palette Eonora — fin des incohérences
+                            Nouvelle vue Clients — arborescence + tableau, navigation allégée
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <Sparkles size={24} />
+                                <FolderTree size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Palette Eonora unifiée</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Clients : arborescence + tableau</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Fini les violets, indigos et orangés parasites : toute l'app (accueil, header, Franck, e-mails, prospection, réglages, portail client…) parle désormais la même langue — crème, sage et le dégradé signature rose → bleu → teal (120°).
+                                    La page Clients devient un vrai explorateur : dossiers à gauche (Tous, En cours, Maintenance, Association, Prospect, Archivé) et un tableau triable à droite (phase, progression, deadline, santé, montant dû). Clique un dossier pour filtrer, une colonne pour trier, une ligne pour ouvrir le client.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-800/20 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-[#23262B] text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <ShieldCheck size={24} />
+                                <Sparkles size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Mode sombre charcoal</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Menu « Avancé » dans le header</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le mode sombre passe à un charbon profond avec cartes contrastées et accents sage — plus sobre, plus lisible, plus « techno ».
+                                    Le header ne garde que ton quotidien (Ma journée, Agenda, Emails, Franck, Facturation, Recherche, Paramètres). Tous les outils ponctuels (Atelier, Veille Marché, Prospection, Prompts, Notes rapides, Atelier Média, Mode Focus, Objectifs & KPIs…) sont regroupés dans un seul menu « Avancé ».
                                 </p>
                             </div>
                         </div>
@@ -71,9 +71,9 @@ export const WhatsNew: React.FC = () => {
                                 <Award size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Mêmes outils, tout est à sa place</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Rien n'a disparu</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Aucune fonctionnalité n'a bougé — seuls les couleurs, boutons et cartes changent. Tes clients, factures et agenda restent exactement où tu les connais.
+                                    Aucun outil n'a été supprimé, seulement rangé. La facturation, l'agenda et tes factures restent exactement où tu les connais.
                                 </p>
                             </div>
                         </div>

@@ -1,4 +1,4 @@
-# Eonora Tech OS — Instructions Marion (v2.9.2)
+# Eonora Tech OS — Instructions Marion (v2.11.0)
 
 Une page pour le quotidien. Garde ce fichier à portée de main.
 
@@ -9,6 +9,32 @@ Une page pour le quotidien. Garde ce fichier à portée de main.
 Ta boucle de tous les jours, c'est : **Ma journée → Clients → Agenda → Emails → Portail → Franck**. Tout le reste (facturation, timeline, réglages) part de ces écrans.
 
 L'**Atelier** (WP Studio, refontes de sites) est un outil avancé pour les gros chantiers ponctuels — tu n'as pas besoin d'y toucher pour ton travail de tous les jours.
+
+### Clients : arborescence + tableau (depuis v2.11.0)
+
+La page d'accueil (**Clients**) est maintenant un explorateur, comme un dossier sur ton bureau :
+
+- À gauche : une **arborescence de dossiers** (Tous, En cours, Maintenance, Association, Prospect, Archivé) avec le nombre de clients dans chaque dossier. Clique sur un dossier pour filtrer.
+- À droite : un **tableau** avec tes clients — phase, progression, tâches, deadline, santé (pastille verte/orange/rouge), prochaine action, montant dû. Clique sur une colonne (Client, Progression, Deadline) pour trier ; clique sur une ligne pour ouvrir le client.
+- La recherche en haut filtre le tableau par nom.
+- Sur mobile, l'arborescence devient une rangée de pastilles à faire défiler en haut de l'écran.
+
+---
+
+## 0bis. Où trouver quoi
+
+Le menu du haut (header) a été allégé. Deux zones :
+
+**Toujours visible (ton quotidien)** : logo (→ Clients), **Ma journée**, **Agenda**, **Emails**, **Franck**, **Facturation**, **Recherche** (⌘K), **Paramètres**.
+
+**Menu "Avancé ···"** (un seul bouton, à droite du header ; sur mobile : section « Avancé » repliée dans le menu ☰) — pour les outils que tu utilises ponctuellement :
+
+- Atelier : Atelier Refonte WP, Recettes WP → React, Catalog Marion, Stack Picker, Mes compétences, Audit Prospect WP
+- Veille Marché, Prospection, Bibliothèque de Prompts
+- Notes rapides, Atelier Média, Mode Focus, Objectifs & KPIs
+- Briefing du jour, Guide & Aide
+
+Rien n'a été supprimé : tout est toujours là, juste rangé pour que le header du quotidien reste simple.
 
 ---
 

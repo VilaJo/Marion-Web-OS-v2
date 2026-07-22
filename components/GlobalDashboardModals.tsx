@@ -2,7 +2,7 @@
  * Modales globales — disponibles depuis toutes les routes (pas seulement le Dashboard).
  */
 import React, { Suspense, useEffect, useState } from 'react';
-import { useUIStore, useProjectStore, useNotificationStore } from '../stores';
+import { useUIStore, useProjectStore, useNotificationStore, useUndoStore } from '../stores';
 import { useProjects, useSaveProject } from '../services/queries';
 import { Modal } from './Shared';
 import { SplashScreen } from './SplashScreen';
@@ -10,18 +10,20 @@ import { sanitizeHTML } from '../utils/sanitize';
 import { formatCurrency } from '../utils';
 import { loadStandaloneInvoices, upsertStandaloneInvoice, removeStandaloneInvoice } from '../utils/standaloneInvoicesStorage';
 import { generateBriefing } from '../services/geminiService';
-import { Invoice, Project, ProjectStatus } from '../types';
+import { CalendarEvent, Invoice, Project, ProjectStatus } from '../types';
 import { Coffee } from 'lucide-react';
 
 const InvoiceBuilder = React.lazy(() => import('./InvoiceBuilder').then(m => ({ default: m.InvoiceBuilder })));
 const GoalsKPIs = React.lazy(() => import('./GoalsKPIs').then(m => ({ default: m.GoalsKPIs })));
 const DocumentTemplates = React.lazy(() => import('./DocumentTemplates').then(m => ({ default: m.DocumentTemplates })));
+const Agenda = React.lazy(() => import('./Agenda').then(m => ({ default: m.Agenda })));
 
 export const GlobalDashboardModals: React.FC = () => {
     const { data: projects = [] } = useProjects();
     const saveProjectMutation = useSaveProject();
-    const { events, addActivity } = useProjectStore();
+    const { events, addActivity, addEvent, updateEvent, deleteEvent } = useProjectStore();
     const { addNotification } = useNotificationStore();
+    const pushUndo = useUndoStore((s) => s.pushUndo);
     const {
         currency, briefingVocal,
         showGlobalInvoiceModal, setShowGlobalInvoiceModal,
@@ -29,6 +31,7 @@ export const GlobalDashboardModals: React.FC = () => {
         showMondayBriefing, setShowMondayBriefing,
         showGoalsKPIs, setShowGoalsKPIs,
         showDocTemplates, setShowDocTemplates,
+        showAgendaModal, setShowAgendaModal,
     } = useUIStore();
 
     const [briefingContent, setBriefingContent] = useState('');
@@ -66,6 +69,27 @@ export const GlobalDashboardModals: React.FC = () => {
 
         void loadBriefing();
     }, [showMondayBriefing, projects, events, briefingVocal, briefingContent, isBriefingLoading]);
+
+    const handleAddEvent = (event: CalendarEvent) => {
+        addEvent(event);
+        if (event.type === 'Call ou rdv pro') {
+            addActivity('meeting_scheduled', `Réunion: ${event.title}`, undefined, undefined, event.date);
+        }
+    };
+
+    const handleUpdateEvent = (updatedEvent: CalendarEvent) => {
+        updateEvent(updatedEvent);
+    };
+
+    const handleDeleteEvent = (eventId: string) => {
+        const eventToDelete = events.find(e => e.id === eventId);
+        if (!eventToDelete) return;
+        deleteEvent(eventId);
+        pushUndo({
+            description: `Événement "${eventToDelete.title}" supprimé`,
+            restore: () => { addEvent(eventToDelete); },
+        });
+    };
 
     const handleSaveGlobalInvoice = (invoice: Invoice, projectId: string): boolean | void => {
         if (!projectId.trim()) {
@@ -159,6 +183,17 @@ export const GlobalDashboardModals: React.FC = () => {
                     <DocumentTemplates onClose={() => setShowDocTemplates(false)} />
                 </Suspense>
             )}
+
+            <Modal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)} title="Agenda" width="max-w-5xl">
+                <Suspense fallback={<div className="min-h-[300px] flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-[#7C9A7E] border-t-transparent rounded-full" /></div>}>
+                    <Agenda
+                        events={events}
+                        onAddEvent={handleAddEvent}
+                        onUpdateEvent={handleUpdateEvent}
+                        onDeleteEvent={handleDeleteEvent}
+                    />
+                </Suspense>
+            </Modal>
 
         </>
     );

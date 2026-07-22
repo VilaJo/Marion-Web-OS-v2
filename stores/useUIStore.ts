@@ -46,6 +46,7 @@ interface UIState {
     showMondayBriefing: boolean;
     showTour: boolean;
     isFocusMode: boolean;
+    showAgendaModal: boolean;
     
     // Mobile
     isMobileMenuOpen: boolean;
@@ -120,6 +121,7 @@ interface UIState {
     setShowMondayBriefing: (v: boolean) => void;
     setShowTour: (v: boolean) => void;
     setIsFocusMode: (v: boolean) => void;
+    setShowAgendaModal: (v: boolean) => void;
     setIsMobileMenuOpen: (v: boolean) => void;
     setIsToolbarCollapsed: (v: boolean) => void;
     toggleToolbarCollapsed: () => void;
@@ -200,6 +202,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     showMondayBriefing: false,
     showTour: false,
     isFocusMode: false,
+    showAgendaModal: false,
     
     // Mobile
     isMobileMenuOpen: false,
@@ -348,6 +351,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     setShowMondayBriefing: (v) => set({ showMondayBriefing: v }),
     setShowTour: (v) => set({ showTour: v }),
     setIsFocusMode: (v) => set({ isFocusMode: v }),
+    setShowAgendaModal: (v) => set({ showAgendaModal: v }),
     setIsMobileMenuOpen: (v) => set({ isMobileMenuOpen: v }),
     setIsToolbarCollapsed: (v) => {
         localStorage.setItem('marion_toolbar_collapsed', String(v));

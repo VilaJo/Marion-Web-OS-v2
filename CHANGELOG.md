@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.11.0] - 2026-07-22
+### Clients explorateur & navigation allégée
+- **Clients** : la page d'accueil devient un explorateur façon dossiers — arborescence à gauche (Tous, En cours, Maintenance, Association, Prospect, Archivé) avec compteur par dossier, et tableau triable à droite (client, phase, progression, tâches, deadline, santé, prochaine action, montant dû). Clic sur un dossier = filtre, clic sur une colonne = tri, clic sur une ligne = ouvre le client. Les anciennes cartes/pastilles de filtre disparaissent au profit de ce nouvel explorateur.
+- **Alertes visuelles** : une fine bordure rose signale les clients en danger ou à échéance proche (≤ 7 jours), une bordure ambre les clients à surveiller.
+- **Responsive** : sur mobile, l'arborescence devient une rangée de pastilles défilante, et le tableau masque « Prochaine action » / « Montant dû » pour rester lisible.
+- **Navigation** : le header ne garde que le quotidien (logo, Ma journée, Agenda, Emails, Franck, Facturation, Recherche ⌘K, Paramètres). Tous les outils ponctuels (Atelier, Veille Marché, Prospection, Bibliothèque de Prompts, Notes rapides, Atelier Média, Mode Focus, Objectifs & KPIs, Briefing, Guide) sont regroupés dans un nouveau menu « Avancé ». Même logique sur mobile : section « Quotidien » visible, section « Avancé » repliée par défaut.
+- **Technique** : extraction des helpers de santé projet (`getProjectHealth`, `getNextDeadline`, `getPendingAmount`, `getTotalRevenue`, `getStatusColors`) dans `utils/projectHealth.ts`, réutilisés par la fiche client et le nouveau tableau. `InvoiceBuilder` non retouché.
+- Docs : section « Où trouver quoi » dans `INSTRUCTIONS_MARION.md`, nouvelle checklist `docs/QA_CLIENTS_EXPLORER.md`.
+
 ## [2.10.2] - 2026-07-22
 ### Unification palette Eonora — fin des incohérences
 - **Cohérence visuelle** : chasse aux couleurs parasites (violets/indigos/fuchsias « IA », orangés/ambres résiduels, dégradés arc-en-ciel) sur toute l'interface. Tout le chrome de marque parle désormais la même langue Eonora : crème `#FAF7F2`, sage `#7C9A7E`, et dégradé signature `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)`.
