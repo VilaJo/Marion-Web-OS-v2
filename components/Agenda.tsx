@@ -27,6 +27,9 @@ interface AgendaProps {
     onAddEvent: (event: CalendarEvent) => void;
     onUpdateEvent: (event: CalendarEvent) => void;
     onDeleteEvent: (eventId: string) => void;
+    initiallyExpanded?: boolean;
+    initialViewMode?: 'day' | 'week' | 'month';
+    onClose?: () => void;
 }
 
 interface EventTypeBadgeProps {
@@ -123,7 +126,7 @@ const COMMON_CITIES = [
     { name: 'Singapore', tz: 'Asia/Singapore', country: '🇸🇬', favorite: false },
 ];
 
-const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
+const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, onUpdateEvent, onDeleteEvent, initiallyExpanded = false, initialViewMode = 'week', onClose }) => {
     // === React Query hooks for external calendar data ===
     const { data: syncStatus } = useCalendarSync();
     const { data: infomaniakSyncStatus } = useInfomaniakCalendarSync();
@@ -313,8 +316,8 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
-    const [isExpanded, setIsExpanded] = useState(false); // Expanded = "Immersion Mode"
-    const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day'); // Only used in expanded
+    const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
+    const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>(initialViewMode);
     const [localTimezone, setLocalTimezone] = useState(() => {
         try {
             return localStorage.getItem('marion_agenda_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -599,8 +602,8 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     
     const navigate = (direction: number) => {
         const newDate = new Date(currentDate);
-        if (viewMode === 'week' && isExpanded) newDate.setDate(newDate.getDate() + (direction * 7));
-        else if (viewMode === 'month' && isExpanded) newDate.setMonth(newDate.getMonth() + direction);
+        if (viewMode === 'week') newDate.setDate(newDate.getDate() + (direction * 7));
+        else if (viewMode === 'month') newDate.setMonth(newDate.getMonth() + direction);
         else newDate.setDate(newDate.getDate() + direction);
         setCurrentDate(newDate);
     };
@@ -1077,7 +1080,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             <button
                                 key={m}
                                 onClick={() => setViewMode(m)}
-                                className={`px-3 md:px-4 py-1.5 rounded-md text-xs md:text-sm font-bold capitalize transition-all ${viewMode === m ? 'bg-white dark:bg-slate-700 shadow-sm text-brand-orange' : 'text-slate-500 hover:text-slate-700'}`}
+                                className={`px-3 md:px-4 py-1.5 rounded-md text-xs md:text-sm font-bold capitalize transition-all ${viewMode === m ? 'bg-white dark:bg-slate-700 shadow-sm text-[#2aada0]' : 'text-slate-500 hover:text-slate-700'}`}
                             >
                                 {m === 'day' ? 'Jour' : m === 'week' ? 'Sem.' : 'Mois'}
                             </button>
@@ -1086,7 +1089,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
 
                     {/* Timezone Selector */}
                     <div className="relative group hidden md:block">
-                        <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-brand-orange px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-[#2aada0] px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <Globe size={16} /> 
                             {viewTimezone.split('/').pop()?.replace(/_/g, ' ')}
                         </button>
@@ -1123,11 +1126,11 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         </button>
                     </div>
                     <button 
-                        onClick={() => setIsExpanded(false)} 
+                        onClick={() => { setIsExpanded(false); onClose?.(); }} 
                         className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-red-500 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                        aria-label="Fermer le mode immersion"
+                        aria-label="Fermer l'agenda"
                     >
-                        <Minimize2 size={20} />
+                        <X size={20} />
                     </button>
                 </div>
             </div>
@@ -1136,7 +1139,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
             <div className="flex-1 flex overflow-hidden">
                 {/* Sidebar (Mini Cal + Filters) */}
                 <div className="w-64 border-r border-slate-200 dark:border-slate-800 p-6 hidden lg:block overflow-y-auto">
-                    <button onClick={() => { setIsEditing(false); setEventForm({ type: 'To do pro', date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: viewTimezone }); setShowEventModal(true); }} className="w-full py-3 bg-brand-orange text-white rounded-xl shadow-lg shadow-orange-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                    <button onClick={() => { setIsEditing(false); setEventForm({ type: 'To do pro', date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: viewTimezone }); setShowEventModal(true); }} className="w-full py-3 bg-[#7C9A7E] text-white rounded-xl shadow-lg shadow-sage-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
                         <Plus size={20} /> Créer
                     </button>
                     {/* Mini Month View (Simplified) */}
@@ -1149,7 +1152,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                 d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) + i);
                                 const isSel = toISODate(d) === toISODate(currentDate);
                                 return (
-                                    <div key={i} onClick={() => setCurrentDate(d)} className={`py-1.5 rounded-full cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${isSel ? 'bg-brand-orange text-white font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
+                                    <div key={i} onClick={() => setCurrentDate(d)} className={`py-1.5 rounded-full cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${isSel ? 'bg-[#7C9A7E] text-white font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
                                         {d.getDate()}
                                     </div>
                                 );
@@ -1168,7 +1171,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                     onChange={() => setVisibleSources(prev => ({ ...prev, local: !prev.local }))}
                                     className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
                                 />
-                                <span className="w-3 h-3 rounded-sm bg-brand-orange flex-shrink-0" />
+                                <span className="w-3 h-3 rounded-sm bg-[#7C9A7E] flex-shrink-0" />
                                 <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Eonora Tech OS</span>
                             </label>
                             {googleCalendarConnected ? (
@@ -1256,7 +1259,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                         >
                                             <div className={`text-xs font-bold mb-1 flex justify-end ${!isCurrentMonth ? 'text-slate-400 dark:text-slate-600' : 'text-slate-700 dark:text-slate-300'}`}>
                                                 {isToday ? (
-                                                    <span className="w-7 h-7 flex items-center justify-center rounded-full bg-brand-orange text-white text-xs font-bold">
+                                                    <span className="w-7 h-7 flex items-center justify-center rounded-full bg-[#7C9A7E] text-white text-xs font-bold">
                                                         {d.getDate()}
                                                     </span>
                                                 ) : (
@@ -1294,7 +1297,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                                 ))}
                                                 {moreCount > 0 && (
                                                     <div 
-                                                        className="text-[11px] font-medium text-brand-orange hover:underline cursor-pointer px-1.5"
+                                                        className="text-[11px] font-medium text-[#2aada0] hover:underline cursor-pointer px-1.5"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setCurrentDate(d);
@@ -1330,10 +1333,10 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                     return (
                                         <div key={d.toISOString()} className="flex-1 flex flex-col min-w-[150px]">
                                             <div className={`text-center py-2 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white/95 dark:bg-slate-900/95 z-10 backdrop-blur-sm`}>
-                                                <div className={`text-[11px] uppercase font-bold tracking-wider ${isDayToday ? 'text-brand-orange' : 'text-slate-500 dark:text-slate-400'}`}>{format(d, 'EEE', { locale: fr })}</div>
+                                                <div className={`text-[11px] uppercase font-bold tracking-wider ${isDayToday ? 'text-[#2aada0]' : 'text-slate-500 dark:text-slate-400'}`}>{format(d, 'EEE', { locale: fr })}</div>
                                                 <div className="flex justify-center mt-0.5">
                                                     {isDayToday ? (
-                                                        <span className="w-9 h-9 flex items-center justify-center rounded-full bg-brand-orange text-white text-lg font-serif font-bold">
+                                                        <span className="w-9 h-9 flex items-center justify-center rounded-full bg-[#7C9A7E] text-white text-lg font-serif font-bold">
                                                             {d.getDate()}
                                                         </span>
                                                     ) : (
@@ -1434,7 +1437,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         
                         <button
                             onClick={() => setCurrentDate(new Date())}
-                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors"
+                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-[#2aada0] transition-colors"
                             title="Aujourd'hui"
                             aria-label="Aller à aujourd'hui"
                         >
@@ -1442,7 +1445,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         </button>
                         <button
                             onClick={() => setShowLocationModal(true)}
-                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-[#2aada0] transition-colors"
                             title="Changer de ville"
                         >
                             <MapPin size={18} />
@@ -1455,7 +1458,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                         </button>
                         <button 
                             onClick={() => setIsExpanded(true)} 
-                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-brand-orange transition-colors" 
+                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-[#2aada0] transition-colors" 
                             title="Agrandir"
                             aria-label="Agrandir l'agenda"
                         >
@@ -1482,7 +1485,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                     </div>
                     <button 
                         onClick={() => { setIsEditing(false); setEventForm({ date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: localTimezone, type: 'To do pro' }); setShowEventModal(true); }}
-                        className="absolute bottom-4 right-4 w-12 h-12 bg-brand-orange text-white rounded-full shadow-lg shadow-orange-200/50 dark:shadow-none flex items-center justify-center hover:scale-110 transition-transform z-20"
+                        className="absolute bottom-4 right-4 w-12 h-12 bg-[#7C9A7E] text-white rounded-full shadow-lg shadow-sage-200/50 dark:shadow-none flex items-center justify-center hover:scale-110 transition-transform z-20"
                     >
                         <Plus size={24} />
                     </button>
@@ -1509,7 +1512,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                                     }
                                                 }}
                                                 placeholder="Ex: Brief Client..." 
-                                                className="w-full text-xl font-serif border-b-2 border-slate-200 bg-transparent py-2 focus:border-brand-orange focus:outline-none dark:text-white" 
+                                                className="w-full text-xl font-serif border-b-2 border-slate-200 bg-transparent py-2 focus:border-[#2aada0] focus:outline-none dark:text-white" 
                                             />
                                         </div>
                                         
@@ -1626,7 +1629,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                                                  <textarea 
                                                                     value={eventForm.description || ''}
                                                                     onChange={e => setEventForm({...eventForm, description: e.target.value})}
-                                                                    className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-orange h-24 resize-none dark:text-white"
+                                                                    className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#2aada0] h-24 resize-none dark:text-white"
                                                                     placeholder="Détails de l'événement..."
                                                                  />
                                                             </div>                    <div>
@@ -1650,7 +1653,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             onDeleteEvent(eventForm.id!);
                             setShowEventModal(false);
                         }} className="text-red-500 font-bold text-sm">Supprimer</button>}
-                        <button onClick={handleSaveEvent} className="bg-brand-orange text-white px-6 py-2 rounded-full font-bold ml-auto">{isEditing ? 'Sauvegarder' : 'Créer'}</button>
+                        <button onClick={handleSaveEvent} className="bg-[#7C9A7E] text-white px-6 py-2 rounded-full font-bold ml-auto">{isEditing ? 'Sauvegarder' : 'Créer'}</button>
                     </div>
                 </div>
             </Modal>
@@ -1665,7 +1668,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             placeholder="Rechercher une ville..."
                             value={locationSearchQuery}
                             onChange={(e) => setLocationSearchQuery(e.target.value)}
-                            className="w-full bg-slate-100 dark:bg-slate-900 border-0 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-orange dark:text-white"
+                            className="w-full bg-slate-100 dark:bg-slate-900 border-0 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#2aada0] dark:text-white"
                             autoFocus
                         />
                         {locationSearchQuery && (
@@ -1732,8 +1735,8 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                         key={city.tz}
                                         className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                                             customCity === city.name
-                                            ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/20 dark:from-orange-500/30 dark:to-amber-500/30 border-brand-orange shadow-sm ring-1 ring-brand-orange/30' 
-                                            : 'bg-gradient-to-r from-amber-50/30 to-orange-50/30 dark:from-slate-800 dark:to-slate-800 border-amber-200/50 dark:border-slate-700 hover:border-brand-orange'
+                                            ? 'bg-gradient-to-r from-[#b05070]/20 to-[#2aada0]/20 dark:from-[#b05070]/30 dark:to-[#2aada0]/30 border-[#2aada0] shadow-sm ring-1 ring-[#2aada0]/30' 
+                                            : 'bg-gradient-to-r from-amber-50/30 to-orange-50/30 dark:from-slate-800 dark:to-slate-800 border-amber-200/50 dark:border-slate-700 hover:border-[#2aada0]'
                                         }`}
                                     >
                                         <button
@@ -1778,7 +1781,7 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                     key={city.name}
                                     className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                                         customCity === city.name
-                                        ? 'bg-orange-500/15 dark:bg-orange-500/25 border-brand-orange ring-1 ring-brand-orange/30' 
+                                        ? 'bg-orange-500/15 dark:bg-orange-500/25 border-[#2aada0] ring-1 ring-[#2aada0]/30' 
                                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
                                 >

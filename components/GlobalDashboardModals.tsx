@@ -184,16 +184,19 @@ export const GlobalDashboardModals: React.FC = () => {
                 </Suspense>
             )}
 
-            <Modal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)} title="Agenda" width="max-w-5xl">
-                <Suspense fallback={<div className="min-h-[300px] flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-[#7C9A7E] border-t-transparent rounded-full" /></div>}>
+            {showAgendaModal && (
+                <Suspense fallback={<div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-slate-900/80"><div className="animate-spin w-10 h-10 border-4 border-[#7C9A7E] border-t-transparent rounded-full" /></div>}>
                     <Agenda
                         events={events}
                         onAddEvent={handleAddEvent}
                         onUpdateEvent={handleUpdateEvent}
                         onDeleteEvent={handleDeleteEvent}
+                        initiallyExpanded={true}
+                        initialViewMode="week"
+                        onClose={() => setShowAgendaModal(false)}
                     />
                 </Suspense>
-            </Modal>
+            )}
 
         </>
     );
