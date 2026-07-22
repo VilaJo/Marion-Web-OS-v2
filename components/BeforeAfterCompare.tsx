@@ -332,7 +332,7 @@ export const BeforeAfterCompare: React.FC<Props> = ({ projectId, defaultFocus = 
                         <button
                             onClick={handleCompare}
                             disabled={!original || !recreation || loading}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold text-sm disabled:opacity-50 hover:brightness-105 transition-all"
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-eonora-gradient text-white font-semibold text-sm disabled:opacity-50 hover:brightness-105 transition-all"
                         >
                             {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                             {loading ? 'Analyse en cours…' : 'Comparer'}

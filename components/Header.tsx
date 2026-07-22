@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
                         onClick={onNavigateHome}
                         className="relative group cursor-pointer hover:scale-105 transition-transform duration-500"
                     >
-                        <div className="w-16 h-16 rounded-full bg-marion-gradient shadow-[0_10px_30px_-5px_rgba(255,126,95,0.5)] flex items-center justify-center relative overflow-hidden">
+                        <div className="w-16 h-16 rounded-full bg-marion-gradient shadow-[0_10px_30px_-5px_rgba(74,114,196,0.45)] flex items-center justify-center relative overflow-hidden">
                             <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-white/20 rounded-full blur-sm"></div>
                             <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-orange-600/10 rounded-full blur-sm"></div>
                             <span className="font-serif text-3xl text-white italic pr-0.5 drop-shadow-md">M</span>
@@ -93,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
                     )}
 
                     <Tooltip content="Briefing Matinal">
-                        <button onClick={onOpenBriefing} className="flex px-4 py-2.5 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-full text-xs font-bold uppercase tracking-wider hover:scale-105 transition-all duration-300 items-center gap-2 shadow-lg shadow-orange-200/50 dark:shadow-none">
+                        <button onClick={onOpenBriefing} className="flex px-4 py-2.5 bg-eonora-gradient text-white rounded-full text-xs font-bold uppercase tracking-wider hover:scale-105 transition-all duration-300 items-center gap-2 shadow-lg shadow-orange-200/50 dark:shadow-none">
                             <LayoutGrid size={14} />
                             <span>Briefing</span>
                         </button>

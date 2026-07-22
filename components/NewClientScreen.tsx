@@ -311,7 +311,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                         <button
                             onClick={handleCreate}
                             disabled={!name.trim() || isCreating}
-                            className={`px-6 md:px-8 py-2.5 md:py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-full font-bold text-sm uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-orange-200/50 dark:shadow-orange-900/20 transition-all duration-300 ${
+                            className={`px-6 md:px-8 py-2.5 md:py-3 bg-eonora-gradient text-white rounded-full font-bold text-sm uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-orange-200/50 dark:shadow-orange-900/20 transition-all duration-300 ${
                                 !name.trim() || isCreating
                                     ? 'opacity-50 cursor-not-allowed'
                                     : 'hover:scale-105 hover:shadow-[0_0_25px_rgba(255,126,95,0.4)]'
@@ -373,7 +373,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
 
                                     {/* Name input */}
                                     <div className="relative group">
-                                        <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-orange to-pink-500 rounded-2xl opacity-0 group-focus-within:opacity-30 transition-opacity duration-500 blur" />
+                                        <div className="absolute -inset-0.5 bg-eonora-gradient rounded-2xl opacity-0 group-focus-within:opacity-30 transition-opacity duration-500 blur" />
                                         <input
                                             ref={nameRef}
                                             value={name}
@@ -395,7 +395,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                                 onClick={() => setStatus(s)}
                                                 className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                                                     status === s
-                                                        ? 'bg-gradient-to-r from-brand-orange to-pink-500 text-white shadow-md shadow-orange-200/40 dark:shadow-orange-900/20 scale-[1.02]'
+                                                        ? 'bg-eonora-gradient text-white shadow-md shadow-orange-200/40 dark:shadow-orange-900/20 scale-[1.02]'
                                                         : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 border border-slate-200/60 dark:border-slate-700/40'
                                                 }`}
                                             >
@@ -424,7 +424,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                                 onClick={() => setSelectedTemplate(null)}
                                                 className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                                                     !selectedTemplate
-                                                        ? 'bg-gradient-to-r from-brand-orange to-pink-500 text-white shadow-sm'
+                                                        ? 'bg-eonora-gradient text-white shadow-sm'
                                                         : 'bg-white/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/40 hover:bg-white dark:hover:bg-slate-700/50'
                                                 }`}
                                             >
@@ -436,7 +436,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                                     onClick={() => { setSelectedTemplate(tpl); setStatus(tpl.defaultStatus); }}
                                                     className={`w-full text-left px-3 py-2 rounded-xl transition-all ${
                                                         selectedTemplate?.id === tpl.id
-                                                            ? 'bg-gradient-to-r from-brand-orange to-pink-500 text-white shadow-sm'
+                                                            ? 'bg-eonora-gradient text-white shadow-sm'
                                                             : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/40 hover:bg-white dark:hover:bg-slate-700/50'
                                                     }`}
                                                 >
@@ -469,7 +469,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
 
                                 {/* Franck helper note */}
                                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/40 dark:bg-slate-800/30 border border-white/50 dark:border-slate-700/30">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-orange to-pink-500 flex items-center justify-center shrink-0 shadow-sm">
+                                    <div className="w-8 h-8 rounded-full bg-eonora-gradient flex items-center justify-center shrink-0 shadow-sm">
                                         <Sparkles size={14} className="text-white" />
                                     </div>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed">

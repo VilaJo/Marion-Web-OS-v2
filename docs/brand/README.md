@@ -31,6 +31,34 @@ rose/plum → bleu → teal — c'est le dégradé du logo « Eonora Tech ».
 - **Accent runtime** : `--brand-color` est posé par `App.tsx` d'après la couleur
   d'accentuation choisie dans les Paramètres (sage par défaut).
 
+## Couleurs interdites / à utiliser
+
+**À utiliser (signature de marque uniquement) :**
+
+- Dégradé signature : `bg-eonora-gradient` / `bg-marion-gradient` = `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)`.
+- Accents plats : `eo-rose` `#b05070`, `eo-blue` `#4a72c4`, `eo-teal` `#2aada0`.
+- CTA / boutons primaires : `sage` `#7C9A7E` (survol `sage-dark` `#647D66`).
+- Fonds : crème `#FAF7F2` (clair) / charcoal `#23262B`–`#1A1C20` (sombre).
+
+**Interdites en chrome de marque (héros, en-têtes, CTA, dégradés signature) :**
+
+- Ancien violet/cyan « IA » : `#7C3AED`, `#22D3EE`, dégradés 90° violet→cyan.
+- Ancien orange de marque : `#FF7E5F`, `#FEB47B`, `from-orange-*`/`to-amber-*` en accent principal.
+- `from-fuchsia-*`, `from-purple-*`, `from-indigo-*`, `from-violet-*` en chrome principal.
+- Dégradés arc-en-ciel décoratifs (jaune→bleu→rose→violet…).
+
+> Garde-fou technique : dans la config Tailwind (`index.html`), les échelles
+> `orange` → sage, et `indigo` → bleu Eonora, `violet`/`purple`/`fuchsia` → rose Eonora
+> sont **remappées**. Les classes héritées restent donc automatiquement dans la palette
+> (un dégradé `from-purple-… to-indigo-…` devient rose→bleu = signature Eonora).
+
+**Exceptions tolérées (non concernées par l'interdiction) :**
+
+- Statuts sémantiques : vert (succès), rouge (danger), jaune/ambre (alerte).
+- Couleurs tierces de fournisseurs remappées sur la palette (Gemini → bleu, Claude → rose).
+- Avatars/catégories à rotation de teintes (variété volontaire par entité).
+- `components/InvoiceBuilder.tsx` (non retouché), notes historiques du CHANGELOG, specs Figma.
+
 ## Principes
 
 - **Clair d'abord** : monde crème `#FAF7F2`, beaucoup d'espace, cartes douces.

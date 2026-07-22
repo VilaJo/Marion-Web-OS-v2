@@ -137,7 +137,7 @@ export const GlobalOverlays: React.FC<GlobalOverlaysProps> = ({ projects, events
                 <button
                     id="chat-btn"
                     onClick={() => setShowChat(true)}
-                    className="fixed bottom-8 right-8 z-50 w-14 h-14 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-full shadow-[0_4px_20px_rgba(255,126,95,0.4)] flex items-center justify-center hover:scale-110 hover:rotate-3 transition-all duration-300 group border-2 border-white dark:border-slate-800"
+                    className="fixed bottom-8 right-8 z-50 w-14 h-14 bg-eonora-gradient text-white rounded-full shadow-[0_4px_20px_rgba(74,114,196,0.4)] flex items-center justify-center hover:scale-110 hover:rotate-3 transition-all duration-300 group border-2 border-white dark:border-slate-800"
                     title="Parler à Franck"
                 >
                     <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-0 group-hover:opacity-50"></div>

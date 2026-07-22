@@ -36,7 +36,7 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({ currentPhase
                     Avancement du projet
                 </span>
                 <div className="flex items-center gap-2">
-                    <span className={`font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500 ${compact ? 'text-sm' : 'text-lg'}`}>
+                    <span className={`font-bold text-transparent bg-clip-text bg-eonora-gradient ${compact ? 'text-sm' : 'text-lg'}`}>
                         {progressPercent}%
                     </span>
                 </div>
@@ -48,7 +48,7 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({ currentPhase
                     className="h-full rounded-full transition-all duration-1000 ease-out"
                     style={{
                         width: `${progressPercent}%`,
-                        background: `linear-gradient(90deg, #facc15 0%, #38bdf8 20%, #ec4899 40%, #8b5cf6 60%, #f97316 80%, #10b981 100%)`,
+                        background: `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)`,
                     }}
                 />
             </div>
@@ -64,7 +64,7 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({ currentPhase
                         className={`absolute top-0 left-0 ${compact ? 'h-0.5' : 'h-[3px]'} rounded-full transition-all duration-1000 ease-out`}
                         style={{
                             width: currentIdx === 0 ? '0%' : `${(currentIdx / (PHASES.length - 1)) * 100}%`,
-                            background: `linear-gradient(90deg, #facc15, #38bdf8, #ec4899, #8b5cf6, #f97316, #10b981)`,
+                            background: `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)`,
                         }}
                     />
                 </div>
@@ -82,7 +82,7 @@ export const WorkflowTimeline: React.FC<WorkflowTimelineProps> = ({ currentPhase
                             {/* "En cours" badge or spacer for alignment */}
                             {isCurrent ? (
                                 <div className={`whitespace-nowrap ${compact ? 'mb-1' : 'mb-1.5'}`}>
-                                    <span className={`font-bold text-white bg-gradient-to-r from-orange-500 to-pink-500 rounded-full shadow-sm ${compact ? 'text-[7px] px-1.5 py-px' : 'text-[9px] px-2 py-0.5'}`}>
+                                    <span className={`font-bold text-white bg-eonora-gradient rounded-full shadow-sm ${compact ? 'text-[7px] px-1.5 py-px' : 'text-[9px] px-2 py-0.5'}`}>
                                         En cours
                                     </span>
                                 </div>

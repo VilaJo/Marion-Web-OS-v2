@@ -725,7 +725,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                         {clientAvatarImage ? (
                                             <img src={clientAvatarImage} alt={clientName} className="w-14 h-14 rounded-full object-cover border border-slate-200 dark:border-slate-600" />
                                         ) : (
-                                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-orange to-pink-500 text-white font-bold flex items-center justify-center">
+                                            <div className="w-14 h-14 rounded-full bg-eonora-gradient text-white font-bold flex items-center justify-center">
                                                 {(clientName || 'CL').slice(0, 2).toUpperCase()}
                                             </div>
                                         )}
@@ -770,7 +770,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                             <span className="text-base font-medium">{PROCESSING_STEPS[processingStep]}</span>
                                         </div>
                                         <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-gradient-to-r from-brand-orange to-pink-500 rounded-full animate-[progress_2s_ease-in-out_infinite]" style={{ width: `${((processingStep + 1) / PROCESSING_STEPS.length) * 100}%`, transition: 'width 0.8s ease' }} />
+                                            <div className="h-full bg-eonora-gradient rounded-full animate-[progress_2s_ease-in-out_infinite]" style={{ width: `${((processingStep + 1) / PROCESSING_STEPS.length) * 100}%`, transition: 'width 0.8s ease' }} />
                                         </div>
                                         <div className="flex gap-1.5">
                                             {PROCESSING_STEPS.map((_, i) => (
@@ -811,7 +811,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                             onClick={startRecording}
                                             disabled={requireConsent && !consentAccepted}
                                             title={requireConsent && !consentAccepted ? "Cochez le consentement pour continuer" : undefined}
-                                            className="px-8 py-4 text-base bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-xl font-semibold hover:brightness-105 transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                                            className="px-8 py-4 text-base bg-eonora-gradient text-white rounded-xl font-semibold hover:brightness-105 transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
                                         >
                                             <Mic size={18} /> {status === 'error' ? "Relancer l'enregistrement" : "Lancer l'enregistrement"}
                                         </button>
@@ -940,7 +940,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                 {status === 'done' && result && (
                     <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-12 gap-0">
                         <section className="xl:col-span-8 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
-                            <div className="bg-gradient-to-r from-brand-orange to-purple-600 p-6 text-white">
+                            <div className="bg-eonora-gradient p-6 text-white">
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <div className="flex items-center gap-2 text-white/80 text-xs font-bold uppercase tracking-wider mb-2">
@@ -1084,7 +1084,7 @@ export const MeetingMode: React.FC<MeetingModeProps> = ({ clientName, clientProf
                                         </div>
 
                                         <div className="space-y-2">
-                                            <button onClick={handleSave} className="w-full py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-lg font-semibold shadow-sm">
+                                            <button onClick={handleSave} className="w-full py-3 bg-eonora-gradient text-white rounded-lg font-semibold shadow-sm">
                                                 <span className="inline-flex items-center gap-2"><Save size={16} /> Enregistrer & Créer {selectedTaskIds.length} tâche(s)</span>
                                             </button>
                                             {savedTaskCount !== null && (

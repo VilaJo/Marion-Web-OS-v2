@@ -427,7 +427,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                         )}
                         {showTodo && (
                             <div className="flex flex-col">
-                                <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-pink-500 via-orange-400 to-amber-400 bg-clip-text text-transparent">
+                                <h3 className="text-lg md:text-xl font-bold bg-eonora-gradient bg-clip-text text-transparent">
                                     ✨ Ma petite to‑do du jour
                                 </h3>
                                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -597,7 +597,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                         <button
                             type="button"
                             onClick={() => addTodoFromText(newTodo, newTodoCategory)}
-                            className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-brand-orange to-pink-500 text-white hover:shadow-md hover:scale-[1.02] transition-all"
+                            className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-eonora-gradient text-white hover:shadow-md hover:scale-[1.02] transition-all"
                         >
                             Ajouter
                         </button>

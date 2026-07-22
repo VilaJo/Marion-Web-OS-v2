@@ -202,7 +202,7 @@ npx shadcn@latest init
 npx shadcn@latest add button dialog tabs accordion card sheet
 
 # Le code est copié dans ton repo (components/ui), à toi de le styler.`,
-        cursor_prompt: `Initialise shadcn/ui dans un projet Next.js 15 + Tailwind v4. Ajoute Button, Card, Tabs, Sheet, Accordion. Configure le theme avec mes couleurs primaires #FF7E5F et accent #1F2937, radius 0.75rem.`,
+        cursor_prompt: `Initialise shadcn/ui dans un projet Next.js 15 + Tailwind v4. Ajoute Button, Card, Tabs, Sheet, Accordion. Configure le theme avec mes couleurs primaires #7C9A7E et accent #23262B, radius 0.75rem.`,
         docs_url: 'https://ui.shadcn.com/docs',
     },
     {

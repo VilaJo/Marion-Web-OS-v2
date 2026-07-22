@@ -343,7 +343,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
             if (data.subject && data.body) {
                 subject = data.subject;
                 body = data.body;
-                confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 }, colors: ['#a855f7', '#ec4899'] });
+                confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 }, colors: ['#b05070', '#4a72c4', '#2aada0'] });
             }
         } catch (err) {
             console.warn("AI generation failed, using local template.");

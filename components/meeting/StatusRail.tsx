@@ -26,7 +26,7 @@ export const StatusRail: React.FC<StatusRailProps> = ({ stage }) => {
                             className={[
                                 'h-7 min-w-[98px] rounded-full px-3 text-xs font-bold uppercase tracking-wider inline-flex items-center justify-center',
                                 isActive
-                                    ? 'bg-gradient-to-r from-brand-orange to-pink-500 text-white shadow-sm'
+                                    ? 'bg-eonora-gradient text-white shadow-sm'
                                     : isDone
                                         ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/40'
                                         : 'bg-white/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700',

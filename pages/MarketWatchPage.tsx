@@ -195,7 +195,7 @@ const MarketWatchPage: React.FC = () => {
             <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-5">
                 <div className="max-w-5xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-eonora-gradient flex items-center justify-center shadow-sm">
                             <Newspaper size={20} className="text-white" />
                         </div>
                         <div>
@@ -285,8 +285,8 @@ const MarketWatchPage: React.FC = () => {
 
                 {!result && !isLoading && !error && (
                     <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-14 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center mx-auto mb-4">
-                            <Newspaper size={28} className="text-amber-500" />
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#b05070]/15 to-[#2aada0]/15 dark:from-[#b05070]/25 dark:to-[#2aada0]/25 flex items-center justify-center mx-auto mb-4">
+                            <Newspaper size={28} className="text-eo-rose" />
                         </div>
                         <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-2">Génère ta veille de la semaine</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-5">
@@ -294,7 +294,7 @@ const MarketWatchPage: React.FC = () => {
                         </p>
                         <button
                             onClick={() => fetchWatch(true)}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl text-sm font-semibold shadow-sm hover:brightness-105 transition-all"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-eonora-gradient text-white rounded-xl text-sm font-semibold shadow-sm hover:brightness-105 transition-all"
                         >
                             <Newspaper size={15} /> Générer la veille
                         </button>

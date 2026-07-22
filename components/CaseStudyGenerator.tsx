@@ -166,7 +166,7 @@ export const CaseStudyGenerator: React.FC<CaseStudyGeneratorProps> = ({ project 
                 <button
                     onClick={handleGenerate}
                     disabled={isLoading}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:brightness-105 transition-all disabled:opacity-60"
+                    className="w-full py-2.5 rounded-xl bg-eonora-gradient text-white text-sm font-semibold flex items-center justify-center gap-2 hover:brightness-105 transition-all disabled:opacity-60"
                 >
                     {isLoading
                         ? <><Loader2 size={14} className="animate-spin" /> Génération en cours…</>

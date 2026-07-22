@@ -183,7 +183,7 @@ export const TourGuide: React.FC<TourGuideProps> = ({ isOpen, onClose, onComplet
                 style={tooltipStyle}
             >
                 <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-orange to-pink-500 flex items-center justify-center text-white font-serif font-bold text-xl shadow-lg shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-eonora-gradient flex items-center justify-center text-white font-serif font-bold text-xl shadow-lg shrink-0">
                         F
                     </div>
                     <div>

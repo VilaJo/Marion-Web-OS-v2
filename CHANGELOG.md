@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.10.2] - 2026-07-22
+### Unification palette Eonora — fin des incohérences
+- **Cohérence visuelle** : chasse aux couleurs parasites (violets/indigos/fuchsias « IA », orangés/ambres résiduels, dégradés arc-en-ciel) sur toute l'interface. Tout le chrome de marque parle désormais la même langue Eonora : crème `#FAF7F2`, sage `#7C9A7E`, et dégradé signature `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)`.
+- **Surfaces harmonisées** : header, écran de connexion/onboarding, Franck (chat + coach Focus + bouton flottant), briefing, e-mails, prospection (Apollo), bibliothèque de prompts, Code Review, WP Studio / Screenshot → Prompt, veille marché, réglages (IA & sécurité), portail client, Meeting Mode, notes rapides, timelines de projet, splash & PWA — tous alignés.
+- **Garde-fou tokens** : remappage des échelles Tailwind `indigo → bleu Eonora` et `violet`/`purple`/`fuchsia → rose Eonora` (en plus de `orange → sage`) dans `index.html`. Les classes héritées restent automatiquement dans la palette ; un `from-purple-… to-indigo-…` devient rose→bleu (signature).
+- **Dégradés signature** : héros, en-têtes IA et CTA phares passent tous par `bg-eonora-gradient` (120°, rose→bleu→teal).
+- **Conservé volontairement** : statuts sémantiques (vert/rouge/jaune), couleurs fournisseurs remappées sur la palette (Gemini bleu, Claude rose), rotations d'avatars/catégories, et `InvoiceBuilder` (non retouché).
+- Docs : section « couleurs interdites / à utiliser » ajoutée dans `docs/brand/README.md`.
+
 ## [2.10.1] - 2026-07-21
 ### Correctif — dégradé signature
 - **Couleurs** : correction du dégradé signature Eonora qui utilisait les mauvaises teintes. Le dégradé de marque reprend désormais les couleurs exactes du logo « Eonora Tech » : `linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)` (rose/plum → bleu → teal).

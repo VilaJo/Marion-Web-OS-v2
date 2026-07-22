@@ -12,27 +12,42 @@
           calligraphy: ['"Montserrat"', 'sans-serif'],
         },
         colors: {
-          cream: '#FDFCF8',
-          'cream-dark': '#F5F2EA',
+          cream: '#FAF7F2',
+          'cream-dark': '#F2EDE4',
+          'eonora-bg': '#FAF7F2',
+          sage: '#7C9A7E',
+          'sage-dark': '#647D66',
+          'sage-light': '#A7C1A3',
+          charcoal: '#23262B',
+          'charcoal-deep': '#1A1C20',
+          'eo-rose': '#b05070',
+          'eo-blue': '#4a72c4',
+          'eo-teal': '#2aada0',
           'pastel-pink': '#FCE7F3',
           'pastel-purple': '#E9D5FF',
           'pastel-orange': '#FFEDD5',
           'deep-space': '#1E1B4B',
           'glass-white': 'rgba(255, 255, 255, 0.65)',
-          'glass-dark': 'rgba(15, 23, 42, 0.65)',
+          'glass-dark': 'rgba(26, 28, 32, 0.65)',
           'brand-orange': 'var(--brand-color)',
-          'brand-pink': '#FEB47B',
+          'brand-pink': 'var(--brand-secondary-color)',
           'brand-primary': 'var(--brand-color)',
-          'brand-secondary': '#FEB47B',
+          'brand-secondary': 'var(--brand-secondary-color)',
+          orange: { 50: '#F2F5F0', 100: '#E3EBDF', 200: '#C9D8C4', 300: '#A7C1A3', 400: '#8DAB89', 500: '#7C9A7E', 600: '#647D66', 700: '#516551', 800: '#3F4F40', 900: '#333F34' },
+          indigo: { 50: '#eef2fb', 100: '#dde5f5', 200: '#bccbeb', 300: '#93aadd', 400: '#6c8ad0', 500: '#4a72c4', 600: '#3a5aa0', 700: '#30497f', 800: '#293c66', 900: '#243356' },
+          violet: { 50: '#faeef2', 100: '#f4dbe4', 200: '#e9b8c9', 300: '#db8ea9', 400: '#c96a8b', 500: '#b05070', 600: '#95415c', 700: '#78354a', 800: '#622c3d', 900: '#522533' },
+          purple: { 50: '#faeef2', 100: '#f4dbe4', 200: '#e9b8c9', 300: '#db8ea9', 400: '#c96a8b', 500: '#b05070', 600: '#95415c', 700: '#78354a', 800: '#622c3d', 900: '#522533' },
+          fuchsia: { 50: '#faeef2', 100: '#f4dbe4', 200: '#e9b8c9', 300: '#db8ea9', 400: '#c96a8b', 500: '#b05070', 600: '#95415c', 700: '#78354a', 800: '#622c3d', 900: '#522533' },
         },
         borderRadius: {
           '4xl': '32px',
         },
         backgroundImage: {
           'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-          'marion-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #FEB47B 100%)',
-          'sunset-gradient': 'linear-gradient(135deg, #FF7E5F 0%, #d946ef 100%)',
-          'space-gradient': 'linear-gradient(to bottom, #2E1065, #0F172A)',
+          'eonora-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
+          'marion-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
+          'sunset-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
+          'space-gradient': 'linear-gradient(to bottom, #23262B, #1A1C20)',
           'unicorn-gradient': 'linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 50%, #F3E5F5 100%)',
         },
         animation: {
@@ -58,8 +73,10 @@
 <style>
   /* ===== CSS Variables ===== */
   :root {
-    --brand-color: #FF7E5F;
-    --brand-orange: #FF7E5F;
+    --brand-color: #7C9A7E;
+    --brand-secondary-color: #A7C1A3;
+    --brand-orange: #7C9A7E;
+    --eonora-gradient: linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%);
     --pastel-pink: #FFF0F5;
     --pastel-purple: #F3E8FF;
   }
@@ -172,26 +189,26 @@
   .dark button[class*="bg-gradient"], 
   .dark button[class*="bg-brand-orange"],
   .dark button[class*="from-brand-orange"] {
-    box-shadow: 0 0 10px rgba(255, 126, 95, 0.4), 
-                inset 0 0 10px rgba(255, 255, 255, 0.2),
-                0 0 0 1px rgba(255, 126, 95, 0.3);
+    box-shadow: 0 0 10px rgba(124, 154, 126, 0.35), 
+                inset 0 0 10px rgba(255, 255, 255, 0.12),
+                0 0 0 1px rgba(124, 154, 126, 0.25);
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     backdrop-filter: blur(4px);
   }
   .dark button[class*="bg-gradient"]:hover, 
   .dark button[class*="bg-brand-orange"]:hover,
   .dark button[class*="from-brand-orange"]:hover {
-    box-shadow: 0 0 20px rgba(255, 126, 95, 0.7), 
-                0 0 40px rgba(255, 126, 95, 0.4), 
-                inset 0 0 15px rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 18px rgba(124, 154, 126, 0.55), 
+                0 0 34px rgba(124, 154, 126, 0.3), 
+                inset 0 0 15px rgba(255, 255, 255, 0.25);
     transform: translateY(-2px) scale(1.03);
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
     z-index: 10;
   }
   .dark button.bg-white:hover,
   .dark button.bg-slate-900:hover {
-    border-color: rgba(139, 92, 246, 0.6);
-    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4), inset 0 0 10px rgba(139, 92, 246, 0.1);
+    border-color: rgba(124, 154, 126, 0.5);
+    box-shadow: 0 0 12px rgba(124, 154, 126, 0.3), inset 0 0 10px rgba(124, 154, 126, 0.08);
     color: #fff;
     transform: scale(1.05);
   }

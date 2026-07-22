@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, ShieldCheck, Award, Sparkles } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.10.1";
+const CURRENT_VERSION = "2.10.2";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +37,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Identité visuelle Eonora : crème, sage & dégradé signature corrigé
+                            Unification de la palette Eonora — fin des incohérences
                         </p>
                     </div>
 
@@ -47,9 +47,9 @@ export const WhatsNew: React.FC = () => {
                                 <Sparkles size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Dégradé signature corrigé</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Palette Eonora unifiée</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le dégradé de marque adopte les bonnes couleurs du logo Eonora : rose → bleu → teal (120°). Fond crème et boutons sage inchangés.
+                                    Fini les violets, indigos et orangés parasites : toute l'app (accueil, header, Franck, e-mails, prospection, réglages, portail client…) parle désormais la même langue — crème, sage et le dégradé signature rose → bleu → teal (120°).
                                 </p>
                             </div>
                         </div>
@@ -79,7 +79,7 @@ export const WhatsNew: React.FC = () => {
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0">
+                            <div className="w-12 h-12 rounded-full bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal flex items-center justify-center flex-shrink-0">
                                 <Bot size={24} />
                             </div>
                             <div>

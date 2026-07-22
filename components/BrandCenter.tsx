@@ -279,7 +279,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                 {/* Header */}
                 <div className="px-8 py-6 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                        <div className="w-12 h-12 bg-eonora-gradient rounded-xl flex items-center justify-center text-white shadow-lg">
                             <LayoutTemplate size={24} />
                         </div>
                         <div>
@@ -328,7 +328,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                         <button 
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={isExtracting}
-                                            className="px-4 py-2 bg-purple-50 text-purple-600 border border-purple-200 rounded-lg text-xs font-bold hover:bg-purple-100 flex items-center gap-2"
+                                            className="px-4 py-2 bg-[#2aada0]/10 text-eo-teal border border-[#2aada0]/30 rounded-lg text-xs font-bold hover:bg-[#2aada0]/20 flex items-center gap-2"
                                         >
                                             {isExtracting ? <RefreshCw className="animate-spin" size={14} /> : <Wand2 size={14} />}
                                             Extraire via IA
@@ -563,7 +563,7 @@ export const BrandCenter: React.FC<BrandCenterProps> = ({ isOpen, onClose, proje
                                         </span>
                                     </Card>
                                     <Card 
-                                        className={`p-4 border-dashed border-2 border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 hover:border-purple-500 hover:text-purple-500 cursor-pointer transition-colors ${!project.avatarImage ? 'opacity-50' : ''}`}
+                                        className={`p-4 border-dashed border-2 border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 hover:border-eo-teal hover:text-eo-teal cursor-pointer transition-colors ${!project.avatarImage ? 'opacity-50' : ''}`}
                                         onClick={project.avatarImage ? handleExportLogoVariations : undefined}
                                     >
                                         <ImageIcon size={24} className="mb-2" />

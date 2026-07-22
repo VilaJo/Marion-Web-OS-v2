@@ -9,7 +9,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ visible, loadingText
     // No internal state or effects anymore
     
     return (
-        <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#FDFCF8] dark:bg-[#0B0F19] transition-opacity duration-700 ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#FAF7F2] dark:bg-[#1A1C20] transition-opacity duration-700 ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
             
             <div className="relative flex flex-col items-center justify-center p-10">
                 {/* Central Animation Container */}
@@ -19,10 +19,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ visible, loadingText
                     <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
 
                     {/* 2. Spinner (CSS based) */}
-                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-orange border-r-purple-500 animate-spin"></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-eo-rose border-r-eo-blue animate-spin"></div>
                     
                     {/* 3. Reverse Inner Spinner */}
-                    <div className="absolute inset-4 rounded-full border-4 border-transparent border-b-brand-orange border-l-pink-400 animate-[spin_3s_linear_infinite_reverse]"></div>
+                    <div className="absolute inset-4 rounded-full border-4 border-transparent border-b-eo-teal border-l-eo-blue animate-[spin_3s_linear_infinite_reverse]"></div>
 
                     {/* 4. Logo */}
                     <div className="w-24 h-24 relative z-10 animate-pulse">

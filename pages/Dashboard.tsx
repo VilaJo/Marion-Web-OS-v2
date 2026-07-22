@@ -693,8 +693,8 @@ export const Dashboard: React.FC = () => {
                                 onClick={() => setFilter(f)}
                                 className={`px-3 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all duration-300 whitespace-nowrap flex-shrink-0 ${
                                     filter === f
-                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
-                                    : 'bg-white dark:bg-slate-800/60 text-slate-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-slate-700/80'
+                                    ? 'bg-eonora-gradient text-white shadow-md'
+                                    : 'bg-white dark:bg-slate-800/60 text-slate-400 hover:text-eo-teal hover:bg-[#2aada0]/10 dark:hover:bg-slate-700/80'
                                 }`}
                             >
                                 {f.toUpperCase()}

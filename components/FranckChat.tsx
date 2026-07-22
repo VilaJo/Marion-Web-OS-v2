@@ -753,7 +753,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
 
             {/* Header */}
 
-            <div className="p-4 bg-gradient-to-r from-brand-orange to-pink-600 md:rounded-t-3xl flex justify-between items-center text-white">
+            <div className="p-4 bg-eonora-gradient md:rounded-t-3xl flex justify-between items-center text-white">
 
                 <div className="flex items-center gap-4">
 
@@ -778,7 +778,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                         onClick={() => setCodeMode(m => !m)}
                         title={codeMode ? 'Passer en mode chat' : 'Passer en mode Code Review'}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                            codeMode ? 'bg-violet-600 text-white shadow-inner' : 'bg-white/20 text-white/80 hover:bg-white/30'
+                            codeMode ? 'bg-eo-teal text-white shadow-inner' : 'bg-white/20 text-white/80 hover:bg-white/30'
                         }`}
                     >
                         <Code2 size={13} /> {codeMode ? 'Code' : '</>'}
@@ -922,7 +922,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                             <button
                                 key={cc.cmd}
                                 onClick={() => setInput(prev => cc.prompt + prev)}
-                                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-[10px] font-bold hover:bg-violet-200 dark:hover:bg-violet-900/60 transition-colors"
+                                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal text-[10px] font-bold hover:bg-[#2aada0]/25 dark:hover:bg-[#2aada0]/35 transition-colors"
                                 title={cc.cmd}
                             >
                                 {cc.label}
@@ -931,7 +931,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                         {claudeConfigured && (
                             <button
                                 onClick={() => setShowClaudeReview(true)}
-                                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[10px] font-bold hover:brightness-110 transition-all"
+                                className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-eonora-gradient text-white text-[10px] font-bold hover:brightness-110 transition-all"
                                 title="Review approfondie via Claude Opus 4.7"
                             >
                                 🦾 Claude Opus
@@ -950,7 +950,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                             }}
                             placeholder="Colle ton code ici... (Ctrl+Entrée pour envoyer)"
                             rows={5}
-                            className="w-full bg-slate-950 text-slate-100 dark:bg-slate-900 rounded-xl py-3 pl-4 pr-14 focus:outline-none focus:ring-2 focus:ring-violet-400 placeholder:text-slate-500 text-xs font-mono resize-none"
+                            className="w-full bg-slate-950 text-slate-100 dark:bg-slate-900 rounded-xl py-3 pl-4 pr-14 focus:outline-none focus:ring-2 focus:ring-eo-teal placeholder:text-slate-500 text-xs font-mono resize-none"
                             autoFocus
                         />
                     ) : (
@@ -973,7 +973,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                                 className={`p-1.5 rounded-lg transition-all ${
                                     isListening
                                         ? 'bg-red-500 text-white animate-pulse'
-                                        : 'bg-purple-500 text-white hover:bg-purple-600'
+                                        : 'bg-eo-teal text-white hover:bg-[#238f85]'
                                 } disabled:opacity-50`}
                                 title={isListening ? 'Arrêter et envoyer' : 'Parler à Franck (enregistre ta voix)'}
                             >
@@ -982,7 +982,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                         )}
                         <button
                             onClick={handleSend}
-                            className={`p-1.5 text-white rounded-lg transition-colors ${codeMode ? 'bg-violet-600 hover:bg-violet-700' : 'bg-brand-orange hover:bg-orange-600'}`}
+                            className={`p-1.5 text-white rounded-lg transition-colors ${codeMode ? 'bg-eo-teal hover:bg-[#238f85]' : 'bg-brand-orange hover:bg-orange-600'}`}
                         >
                             {input.length > 0 ? <Send size={16} /> : <Sparkles size={16} />}
                         </button>
@@ -990,7 +990,7 @@ export const FranckChat: React.FC<FranckChatProps> = ({ isOpen, onClose, project
                 </div>
                 {voiceStatus && !codeMode && (
                     <p className={`text-[11px] text-center font-medium ${
-                        isListening ? 'text-purple-600 dark:text-purple-300' : 'text-amber-600 dark:text-amber-400'
+                        isListening ? 'text-eo-teal dark:text-eo-teal' : 'text-amber-600 dark:text-amber-400'
                     }`}>
                         {voiceStatus}
                     </p>

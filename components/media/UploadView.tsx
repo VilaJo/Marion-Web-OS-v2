@@ -109,7 +109,7 @@ export const UploadView: React.FC<UploadViewProps> = ({ actions }) => {
                             e.stopPropagation();
                             actions.setActiveTool('generate');
                         }}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--brand-orange)] to-pink-500 text-white text-sm font-bold shadow-md hover:brightness-105 transition-all"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-eonora-gradient text-white text-sm font-bold shadow-md hover:brightness-105 transition-all"
                     >
                         <WandSparkles size={16} />
                         Générer une image avec l'IA

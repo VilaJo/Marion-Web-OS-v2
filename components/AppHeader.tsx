@@ -195,11 +195,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
     }, [showAtelierMenu]);
 
     const ATELIER_ITEMS = [
-        { path: '/wp-studio', label: 'Atelier Refonte WP', icon: Hammer, color: 'text-fuchsia-500', desc: 'Screenshots → plan Cursor' },
+        { path: '/wp-studio', label: 'Atelier Refonte WP', icon: Hammer, color: 'text-eo-teal', desc: 'Screenshots → plan Cursor' },
         { path: '/recipes', label: 'Recettes WP → React', icon: BookOpen, color: 'text-blue-500', desc: '12 patterns prêts à coller' },
-        { path: '/components', label: 'Catalog Marion', icon: Palette, color: 'text-violet-500', desc: 'Tes snippets favoris' },
+        { path: '/components', label: 'Catalog Marion', icon: Palette, color: 'text-eo-blue', desc: 'Tes snippets favoris' },
         { path: '/stack-picker', label: 'Stack Picker', icon: Wand2, color: 'text-emerald-500', desc: 'Quelle stack pour ce projet ?' },
-        { path: '/skills', label: 'Mes compétences', icon: Target, color: 'text-purple-500', desc: 'Radar 8 axes + skill du mois' },
+        { path: '/skills', label: 'Mes compétences', icon: Target, color: 'text-eo-rose', desc: 'Radar 8 axes + skill du mois' },
         { path: '/audit-wp', label: 'Audit Prospect WP', icon: Shield, color: 'text-rose-500', desc: 'Lighthouse + pitch de vente' },
     ];
     const isAtelierActive = ATELIER_ITEMS.some(it => isActiveRoute(it.path));
@@ -344,7 +344,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 </Tooltip>
                 <Tooltip content="Atelier Média">
                     <button onClick={() => setShowMediaWorkshop(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <Wand2 size={18} className="text-purple-500" />
+                        <Wand2 size={18} className="text-eo-teal" />
                     </button>
                 </Tooltip>
                 <Tooltip content="Mode Focus">
@@ -354,7 +354,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 </Tooltip>
                 <Tooltip content="Objectifs & KPIs">
                     <button onClick={() => setShowGoalsKPIs(true)} className="hidden lg:flex p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <Target size={18} className="text-violet-500" />
+                        <Target size={18} className="text-eo-teal" />
                     </button>
                 </Tooltip>
                 </>)}
@@ -366,20 +366,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                             onClick={() => setShowAtelierMenu(v => !v)}
                             className={`p-2 rounded-full transition-colors flex items-center gap-1 ${
                                 isAtelierActive
-                                    ? 'bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-300 ring-1 ring-fuchsia-300/50'
+                                    ? 'bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal ring-1 ring-[#2aada0]/40'
                                     : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
                             }`}
                             aria-expanded={showAtelierMenu}
                             aria-haspopup="menu"
                         >
-                            <Hammer size={18} className={isAtelierActive ? '' : 'text-fuchsia-500'} />
+                            <Hammer size={18} className={isAtelierActive ? '' : 'text-eo-teal'} />
                             <ChevronDown size={12} className={`transition-transform ${showAtelierMenu ? 'rotate-180' : ''}`} />
                         </button>
                     </Tooltip>
                     {showAtelierMenu && (
                         <div className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden" role="menu">
-                            <div className="p-3 bg-gradient-to-r from-fuchsia-50 to-pink-50 dark:from-fuchsia-900/20 dark:to-pink-900/20 border-b border-slate-200 dark:border-slate-700">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-600 dark:text-fuchsia-400">Atelier 2030</div>
+                            <div className="p-3 bg-gradient-to-r from-[#2aada0]/10 to-[#4a72c4]/10 dark:from-[#2aada0]/15 dark:to-[#4a72c4]/15 border-b border-slate-200 dark:border-slate-700">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-eo-teal dark:text-eo-teal">Atelier 2030</div>
                                 <div className="text-xs text-slate-500 mt-0.5">Outils pour ta transition WP → Cursor</div>
                             </div>
                             <ul className="p-1">
@@ -415,11 +415,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         onClick={() => navigate('/prospection')}
                         className={`hidden lg:flex p-2 rounded-full transition-colors ${
                             isActiveRoute('/prospection')
-                                ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 ring-1 ring-indigo-300/50'
+                                ? 'bg-[#4a72c4]/15 dark:bg-[#4a72c4]/25 text-eo-blue dark:text-eo-blue ring-1 ring-[#4a72c4]/40'
                                 : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
                         }`}
                     >
-                        <Telescope size={18} className={isActiveRoute('/prospection') ? '' : 'text-indigo-500'} />
+                        <Telescope size={18} className={isActiveRoute('/prospection') ? '' : 'text-eo-blue'} />
                     </button>
                 </Tooltip>
                 <Tooltip content="Bibliothèque de Prompts">
@@ -427,11 +427,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         onClick={() => navigate('/prompts')}
                         className={`hidden lg:flex p-2 rounded-full transition-colors ${
                             isActiveRoute('/prompts')
-                                ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 ring-1 ring-violet-300/50'
+                                ? 'bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal ring-1 ring-[#2aada0]/40'
                                 : 'text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800'
                         }`}
                     >
-                        <Code2 size={18} className={isActiveRoute('/prompts') ? '' : 'text-violet-500'} />
+                        <Code2 size={18} className={isActiveRoute('/prompts') ? '' : 'text-eo-teal'} />
                     </button>
                 </Tooltip>
                 <Tooltip content="Veille Marché">

@@ -148,7 +148,7 @@ export const PanelGenerate: React.FC<PanelGenerateProps> = ({ actions }) => {
             <button
                 onClick={handleGenerate}
                 disabled={!prompt.trim() || isGenerating}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-[var(--brand-orange)] to-pink-500 text-white text-sm font-bold shadow-md hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-eonora-gradient text-white text-sm font-bold shadow-md hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isGenerating ? (
                     <>

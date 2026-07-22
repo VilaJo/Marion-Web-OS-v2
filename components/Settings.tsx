@@ -143,7 +143,7 @@ function LocalClientFoldersCard({
     return (
         <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
             <h4 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                <FolderSync size={18} className="text-indigo-500" />
+                <FolderSync size={18} className="text-eo-blue" />
                 Dossiers clients (disque local)
             </h4>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
@@ -1258,7 +1258,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             : 'border-slate-200 bg-white hover:border-orange-200'
                                         }`}
                                     >
-                                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-gradient-to-br from-orange-200 to-rose-200 rounded-full opacity-50"></div>
+                                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-gradient-to-br from-[#b05070]/25 to-[#4a72c4]/25 rounded-full opacity-50"></div>
                                         <div className="flex items-center gap-3 z-10">
                                             <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-brand-orange shadow-sm">
                                                 <Sun size={16} />
@@ -1282,7 +1282,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     >
                                         <div className="absolute inset-0 bg-space-gradient opacity-50"></div>
                                         <div className="flex items-center gap-3 z-10">
-                                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-purple-300 shadow-sm">
+                                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[#7fd4c9] shadow-sm">
                                                 <Moon size={16} />
                                             </div>
                                             <span className="font-bold text-white">Espace</span>
@@ -1345,13 +1345,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {activeTab === 'ai' && (
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
                              {/* ─── HERO ─── */}
-                             <div className="flex items-center gap-4 bg-gradient-to-r from-purple-500 to-indigo-600 p-6 rounded-2xl text-white shadow-lg">
+                             <div className="flex items-center gap-4 bg-eonora-gradient p-6 rounded-2xl text-white shadow-lg">
                                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30">
                                     <Bot size={32} />
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-xl font-serif">IA & Assistants</h3>
-                                    <p className="text-sm opacity-90 text-purple-100">Franck, providers IA et outils de prospection</p>
+                                    <p className="text-sm opacity-90 text-white/90">Franck, providers IA et outils de prospection</p>
                                 </div>
                                 <div className="hidden md:flex flex-col items-end gap-1 text-[11px] text-white/80">
                                     <div className="flex items-center gap-1.5">
@@ -1376,8 +1376,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                              {/* ═══════════════════════════════════════════════════ */}
                              <section className="space-y-5">
                                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                                    <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                                        <Bot size={14} className="text-purple-600 dark:text-purple-400" />
+                                    <div className="w-7 h-7 rounded-lg bg-[#2aada0]/15 dark:bg-[#2aada0]/25 flex items-center justify-center">
+                                        <Bot size={14} className="text-eo-teal dark:text-eo-teal" />
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-bold text-slate-800 dark:text-white">Personnalité de Franck</h4>
@@ -1398,11 +1398,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 onClick={() => setLocalAiTone(tone.id)}
                                                 className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
                                                     localAiTone === tone.id
-                                                    ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 text-purple-700 dark:text-purple-300'
+                                                    ? 'bg-[#2aada0]/10 dark:bg-[#2aada0]/20 border-eo-teal text-eo-teal dark:text-eo-teal'
                                                     : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                                                 }`}
                                             >
-                                                <tone.icon size={22} className={localAiTone === tone.id ? 'text-purple-500' : 'text-slate-400'} />
+                                                <tone.icon size={22} className={localAiTone === tone.id ? 'text-eo-teal' : 'text-slate-400'} />
                                                 <span className="text-xs font-bold">{tone.label}</span>
                                             </button>
                                         ))}
@@ -1431,8 +1431,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                              {/* ═══════════════════════════════════════════════════ */}
                              <section className="space-y-5">
                                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                                        <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                    <div className="w-7 h-7 rounded-lg bg-[#4a72c4]/15 dark:bg-[#4a72c4]/25 flex items-center justify-center">
+                                        <Sparkles size={14} className="text-eo-blue dark:text-eo-blue" />
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-bold text-slate-800 dark:text-white">Moteurs IA</h4>
@@ -1612,7 +1612,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                                 {/* 2c-bis — Gemini (Google) — provider IA principal */}
                                 <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-sky-500 to-indigo-600 text-white">
+                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-eo-blue to-[#3a5ba8] text-white">
                                         <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md border border-white/30 flex-shrink-0">
                                             <span className="font-black text-base">G</span>
                                         </div>
@@ -1682,7 +1682,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                             {geminiKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
                                                         </button>
                                                     </div>
-                                                    <button onClick={handleSaveGeminiKey} disabled={geminiSaving || !geminiKey.trim()} className="px-4 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2">
+                                                    <button onClick={handleSaveGeminiKey} disabled={geminiSaving || !geminiKey.trim()} className="px-4 py-2.5 bg-sage hover:bg-sage-dark text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm transition-all flex items-center gap-2">
                                                         {geminiSaving ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
                                                         Sauvegarder
                                                     </button>
@@ -1713,7 +1713,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                                 {/* 2d — Claude (Anthropic) — provider IA optionnel */}
                                 <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-orange-400 to-red-500 text-white">
+                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-eo-rose to-[#8f3f5a] text-white">
                                         <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md border border-white/30 flex-shrink-0">
                                             <span className="font-black text-base">C</span>
                                         </div>
@@ -1785,7 +1785,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                             {claudeKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
                                                         </button>
                                                     </div>
-                                                    <button onClick={handleSaveClaudeKey} disabled={claudeSaving || !claudeKey.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2">
+                                                    <button onClick={handleSaveClaudeKey} disabled={claudeSaving || !claudeKey.trim()} className="px-4 py-2.5 bg-sage hover:bg-sage-dark text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm transition-all flex items-center gap-2">
                                                         {claudeSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                                                         Enregistrer
                                                     </button>
@@ -1823,13 +1823,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                              {/* Apollo.io — Prospection B2B */}
                              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                                <div className="flex items-center gap-4 bg-gradient-to-r from-indigo-500 to-violet-600 p-5 text-white">
+                                <div className="flex items-center gap-4 bg-eonora-gradient p-5 text-white">
                                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/30 flex-shrink-0">
                                         <Telescope size={24} />
                                     </div>
                                     <div className="flex-1">
                                         <h4 className="font-bold text-base">Apollo.io — Prospection B2B</h4>
-                                        <p className="text-xs text-indigo-100 mt-0.5">210M+ contacts · Fallback IA automatique si crédits épuisés</p>
+                                        <p className="text-xs text-white/80 mt-0.5">210M+ contacts · Fallback IA automatique si crédits épuisés</p>
                                     </div>
                                     {apolloStatus && (
                                         <div className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
@@ -1870,7 +1870,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                     <button
                                                         onClick={handleSaveApolloKey}
                                                         disabled={apolloSaving || !apolloKey.trim()}
-                                                        className="px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+                                                        className="px-4 py-2.5 bg-sage hover:bg-sage-dark text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
                                                     >
                                                         {apolloSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                                                         Mettre à jour
@@ -1889,7 +1889,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <div className="space-y-3">
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                                 Connecte ton compte Apollo.io pour rechercher de vrais contacts B2B.
-                                                Crée un compte sur <a href="https://app.apollo.io" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline inline-flex items-center gap-1">apollo.io <ExternalLink size={10} /></a> → Settings → API → "Create new API key".
+                                                Crée un compte sur <a href="https://app.apollo.io" target="_blank" rel="noopener noreferrer" className="text-eo-blue hover:underline inline-flex items-center gap-1">apollo.io <ExternalLink size={10} /></a> → Settings → API → "Create new API key".
                                             </p>
                                             <div className="flex gap-2">
                                                 <div className="relative flex-1">
@@ -1908,7 +1908,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 <button
                                                     onClick={handleSaveApolloKey}
                                                     disabled={apolloSaving || !apolloKey.trim()}
-                                                    className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm hover:brightness-105 transition-all flex items-center gap-2"
+                                                    className="px-4 py-2.5 bg-sage hover:bg-sage-dark text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm transition-all flex items-center gap-2"
                                                 >
                                                     {apolloSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                                                     Enregistrer
@@ -2269,7 +2269,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             </div>
 
                             {/* Auto-Sync Settings */}
-                            <div className="bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 rounded-2xl p-5 border border-orange-100 dark:border-orange-800">
+                            <div className="bg-gradient-to-r from-[#7C9A7E]/10 to-[#2aada0]/10 dark:from-[#7C9A7E]/15 dark:to-[#2aada0]/15 rounded-2xl p-5 border border-[#7C9A7E]/20 dark:border-[#7C9A7E]/30">
                                 <div className="flex items-center gap-3 mb-4">
                                     <RefreshCw size={20} className="text-brand-orange" />
                                     <h4 className="font-bold text-slate-800 dark:text-white">Synchronisation Automatique</h4>
@@ -2329,7 +2329,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* DONNÉES LOCALES TAB — chemin dossiers clients (visible dans la barre latérale) */}
                     {activeTab === 'localData' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="flex items-center gap-4 bg-gradient-to-r from-indigo-500 to-slate-700 p-6 rounded-2xl text-white shadow-lg">
+                            <div className="flex items-center gap-4 bg-eonora-gradient p-6 rounded-2xl text-white shadow-lg">
                                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30">
                                     <HardDrive size={32} />
                                 </div>
@@ -2356,7 +2356,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {activeTab === 'security' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             {/* Header */}
-                            <div className="flex items-center gap-4 bg-gradient-to-r from-purple-500 to-indigo-600 p-6 rounded-2xl text-white shadow-lg">
+                            <div className="flex items-center gap-4 bg-eonora-gradient p-6 rounded-2xl text-white shadow-lg">
                                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30">
                                     <Shield size={32} />
                                 </div>
@@ -2370,7 +2370,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 Ces réglages sont aussi rassemblés sous l’onglet{' '}
                                 <button
                                     type="button"
-                                    className="font-bold text-indigo-600 dark:text-indigo-400 underline underline-offset-2"
+                                    className="font-bold text-eo-blue dark:text-eo-blue underline underline-offset-2"
                                     onClick={() => setActiveTab('localData')}
                                 >
                                     Données locales
@@ -2392,7 +2392,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             {/* Authentication Status */}
                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
                                 <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                    <Lock size={18} className="text-purple-500" />
+                                    <Lock size={18} className="text-eo-blue" />
                                     Authentification
                                 </h4>
                                 
@@ -2437,7 +2437,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             {/* Session Management */}
                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
                                 <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                    <Key size={18} className="text-purple-500" />
+                                    <Key size={18} className="text-eo-blue" />
                                     Session
                                 </h4>
                                 
@@ -2461,10 +2461,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             </div>
 
                             {/* Data Privacy Info */}
-                            <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-800">
-                                <Shield size={18} className="text-purple-500 mt-0.5" />
+                            <div className="flex items-start gap-3 p-4 bg-[#4a72c4]/10 dark:bg-[#4a72c4]/15 rounded-xl border border-[#4a72c4]/20 dark:border-[#4a72c4]/30">
+                                <Shield size={18} className="text-eo-blue mt-0.5" />
                                 <div>
-                                    <p className="text-sm text-purple-700 dark:text-purple-300">
+                                    <p className="text-sm text-eo-blue dark:text-[#8ba5db]">
                                         <strong>Confidentialité:</strong> Toutes vos données restent sur votre ordinateur. 
                                         Aucune information n'est envoyée à des serveurs externes, sauf pour les services 
                                         que vous connectez explicitement (Google Calendar, Drive).
@@ -2492,7 +2492,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-lg">
+                                        <div className="w-12 h-12 rounded-xl bg-eonora-gradient flex items-center justify-center shadow-lg">
                                             <Sparkles size={24} className="text-white" />
                                         </div>
                                         <div>
@@ -2649,14 +2649,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             )}
 
                             {/* Data Safety Info */}
-                            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl p-5 border border-purple-100 dark:border-purple-800">
+                            <div className="bg-gradient-to-r from-[#4a72c4]/10 to-[#2aada0]/10 dark:from-[#4a72c4]/15 dark:to-[#2aada0]/15 rounded-2xl p-5 border border-[#4a72c4]/20 dark:border-[#4a72c4]/30">
                                 <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-12 h-12 rounded-xl bg-eo-blue flex items-center justify-center flex-shrink-0">
                                         <Shield size={24} className="text-white" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-purple-700 dark:text-purple-300">Vos données sont protégées</h4>
-                                        <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
+                                        <h4 className="font-bold text-eo-blue dark:text-[#8ba5db]">Vos données sont protégées</h4>
+                                        <p className="text-sm text-eo-blue dark:text-[#8ba5db] mt-1">
                                             Lors d'une mise à jour, seuls les fichiers de l'application sont remplacés. 
                                             <strong> Vos données sont conservées :</strong>
                                         </p>

@@ -94,7 +94,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
         <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[100] animate-in slide-in-from-bottom-4 duration-500">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-brand-orange to-pink-500 px-4 py-3 flex items-center justify-between">
+                <div className="bg-eonora-gradient px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-white">
                         <Smartphone className="w-5 h-5" />
                         <span className="font-semibold text-sm" style={{ fontFamily: 'Montserrat, sans-serif' }}>
@@ -145,7 +145,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onDismiss })
                         // Android/Chrome install button
                         <button
                             onClick={handleInstall}
-                            className="w-full py-3 bg-gradient-to-r from-brand-orange to-pink-500 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg transition-all"
+                            className="w-full py-3 bg-eonora-gradient text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg transition-all"
                             style={{ fontFamily: 'Montserrat, sans-serif' }}
                         >
                             <Download className="w-4 h-4" />

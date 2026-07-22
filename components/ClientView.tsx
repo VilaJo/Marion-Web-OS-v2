@@ -1448,7 +1448,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 return (
                 <div className="mb-8 relative rounded-3xl bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-lg shadow-slate-200/30 dark:shadow-none">
                     {/* Decorative gradient top strip */}
-                    <div className="h-1 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #facc15, #38bdf8, #ec4899, #8b5cf6, #f97316, #10b981)' }} />
+                    <div className="h-1 rounded-t-3xl" style={{ background: 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)' }} />
 
                     <div className="p-6 pb-8 pt-5">
                         {/* Header */}
@@ -1461,7 +1461,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="text-right">
-                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">{progressPct}%</span>
+                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-eonora-gradient">{progressPct}%</span>
                                 </div>
                             </div>
                         </div>
@@ -1472,7 +1472,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 className="h-full rounded-full transition-all duration-1000 ease-out"
                                 style={{
                                     width: `${progressPct}%`,
-                                    background: 'linear-gradient(90deg, #facc15 0%, #38bdf8 20%, #ec4899 40%, #8b5cf6 60%, #f97316 80%, #10b981 100%)',
+                                    background: 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
                                 }}
                             />
                         </div>
@@ -1486,7 +1486,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                     className="absolute top-0 left-0 h-[3px] rounded-full transition-all duration-1000 ease-out"
                                     style={{
                                         width: currentIdx === 0 ? '0%' : `${(currentIdx / (WORKFLOW_STEPS.length - 1)) * 100}%`,
-                                        background: 'linear-gradient(90deg, #facc15, #38bdf8, #ec4899, #8b5cf6, #f97316, #10b981)',
+                                        background: 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
                                     }}
                                 />
                             </div>
@@ -1506,7 +1506,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                         {/* "En cours" badge */}
                                         {isCurrent && (
                                             <div className="mb-1.5 whitespace-nowrap">
-                                                <span className="text-[8px] font-bold text-white bg-gradient-to-r from-orange-500 to-pink-500 px-2.5 py-0.5 rounded-full shadow-md shadow-orange-200/50 dark:shadow-none">
+                                                <span className="text-[8px] font-bold text-white bg-eonora-gradient px-2.5 py-0.5 rounded-full shadow-md shadow-orange-200/50 dark:shadow-none">
                                                     En cours
                                                 </span>
                                             </div>

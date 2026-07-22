@@ -212,7 +212,7 @@ export const ScreenshotToPrompt: React.FC<Props> = ({
             className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 overflow-hidden"
             onPaste={handlePaste}
         >
-            <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white">
+            <div className="flex items-center gap-3 p-4 bg-eonora-gradient text-white">
                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md border border-white/30">
                     <Wand2 size={18} />
                 </div>
@@ -300,7 +300,7 @@ export const ScreenshotToPrompt: React.FC<Props> = ({
                     <button
                         onClick={handleGenerate}
                         disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white font-semibold disabled:opacity-50 hover:brightness-105 transition-all"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-eonora-gradient text-white font-semibold disabled:opacity-50 hover:brightness-105 transition-all"
                     >
                         {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                         {loading ? 'Analyse en cours…' : 'Générer le prompt Cursor'}

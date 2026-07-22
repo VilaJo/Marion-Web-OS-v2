@@ -334,7 +334,7 @@ const Step1: React.FC<{
                 <button
                     onClick={onNext}
                     disabled={!canContinue}
-                    className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white font-semibold disabled:opacity-50 hover:brightness-105 transition-all"
+                    className="flex items-center gap-2 px-5 py-3 rounded-xl bg-eonora-gradient text-white font-semibold disabled:opacity-50 hover:brightness-105 transition-all"
                 >
                     Lancer l'analyse <ArrowRight size={16} />
                 </button>
@@ -403,7 +403,7 @@ const PlanView: React.FC<{
     return (
         <div className="space-y-6">
             {/* Header card */}
-            <div className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 text-white p-6 shadow-lg">
+            <div className="rounded-2xl bg-eonora-gradient text-white p-6 shadow-lg">
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <p className="text-[11px] font-bold uppercase tracking-wider text-white/80">Plan de refonte</p>

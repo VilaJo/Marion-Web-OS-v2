@@ -156,7 +156,7 @@ const AuditWpPage: React.FC = () => {
                     <button
                         type="submit"
                         disabled={loading || !url.trim()}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm font-semibold disabled:opacity-50 hover:brightness-105"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-eonora-gradient text-white text-sm font-semibold disabled:opacity-50 hover:brightness-105"
                     >
                         {loading ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
                         {loading ? 'Audit en cours…' : 'Lancer l\'audit'}
@@ -254,7 +254,7 @@ const AuditWpPage: React.FC = () => {
                                     {result.ai.annual_cost_custom_eur.licenses !== undefined && <li>Licences : {result.ai.annual_cost_custom_eur.licenses} €</li>}
                                 </ul>
                             </div>
-                            <div className="rounded-2xl border border-fuchsia-300 dark:border-fuchsia-700 bg-gradient-to-br from-fuchsia-500 to-pink-500 text-white p-4">
+                            <div className="rounded-2xl border border-[#b05070]/40 dark:border-[#b05070]/60 bg-eonora-gradient text-white p-4">
                                 <h4 className="text-xs font-bold uppercase tracking-wider opacity-80 flex items-center gap-1.5"><TrendingUp size={11} /> Économie</h4>
                                 <div className="text-3xl font-bold mt-1">{result.ai.savings_per_year_eur?.toLocaleString('fr-FR')} €</div>
                                 <p className="text-[11px] opacity-85 mt-2">Économies par an pour le client</p>

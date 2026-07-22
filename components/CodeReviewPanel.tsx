@@ -198,7 +198,7 @@ export const CodeReviewPanel: React.FC<Props> = ({ initialCode = '', compact = f
 
     return (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 overflow-hidden">
-            <div className="p-4 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white">
+            <div className="p-4 bg-eonora-gradient text-white">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md border border-white/30">
                         <Award size={18} />
@@ -271,7 +271,7 @@ export const CodeReviewPanel: React.FC<Props> = ({ initialCode = '', compact = f
                     <button
                         onClick={handleReview}
                         disabled={loading || !code.trim()}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-sm font-semibold disabled:opacity-50 hover:brightness-105"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-eonora-gradient text-white text-sm font-semibold disabled:opacity-50 hover:brightness-105"
                     >
                         {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                         {loading ? 'Review en cours…' : 'Reviewer le code'}

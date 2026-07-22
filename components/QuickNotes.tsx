@@ -254,7 +254,7 @@ export const QuickNotes: React.FC = () => {
             <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-200 dark:shadow-none">
+                        <div className="w-10 h-10 rounded-2xl bg-eonora-gradient flex items-center justify-center shadow-lg shadow-orange-200 dark:shadow-none">
                             <StickyNote size={20} className="text-white" />
                         </div>
                         <div>
@@ -284,7 +284,7 @@ export const QuickNotes: React.FC = () => {
                         </div>
                         <button 
                             onClick={openNew} 
-                            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-orange-200/50 dark:shadow-orange-900/30 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2"
+                            className="bg-eonora-gradient text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-orange-200/50 dark:shadow-orange-900/30 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2"
                         >
                             <Plus size={18} /> Nouvelle
                         </button>
@@ -307,8 +307,8 @@ export const QuickNotes: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-6">
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center animate-pulse">
-                            <StickyNote size={24} className="text-orange-500" />
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#b05070]/15 to-[#4a72c4]/15 dark:from-[#b05070]/25 dark:to-[#4a72c4]/25 flex items-center justify-center animate-pulse">
+                            <StickyNote size={24} className="text-eo-rose" />
                         </div>
                         <p className="text-sm text-slate-400">Chargement des notes...</p>
                     </div>
@@ -323,7 +323,7 @@ export const QuickNotes: React.FC = () => {
                         </div>
                         <button 
                             onClick={openNew}
-                            className="mt-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                            className="mt-2 px-5 py-2.5 bg-eonora-gradient text-white rounded-xl font-medium text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
                         >
                             <Plus size={16} /> Créer une note
                         </button>

@@ -283,7 +283,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
             {/* Background Ambience */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className={`absolute top-[12%] left-[14%] w-80 h-80 rounded-full blur-[120px] ${settings.calmMode ? 'bg-brand-orange/5' : 'bg-brand-orange/10'} ${prefersReducedMotion ? '' : 'animate-pulse'}`}></div>
-                <div className={`absolute bottom-[12%] right-[10%] w-80 h-80 rounded-full blur-[120px] ${settings.calmMode ? 'bg-purple-500/5' : 'bg-purple-500/10'} ${prefersReducedMotion ? '' : 'animate-pulse'}`} style={{ animationDelay: '2s' }}></div>
+                <div className={`absolute bottom-[12%] right-[10%] w-80 h-80 rounded-full blur-[120px] ${settings.calmMode ? 'bg-[#4a72c4]/5' : 'bg-[#4a72c4]/10'} ${prefersReducedMotion ? '' : 'animate-pulse'}`} style={{ animationDelay: '2s' }}></div>
             </div>
 
             <div className="relative z-10 h-full w-full px-3 pt-[max(12px,env(safe-area-inset-top))] pb-[calc(92px+env(safe-area-inset-bottom))] md:px-6 md:pb-28">
@@ -393,7 +393,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                                                 void handleSendMessage("J'ai besoin d'un conseil simple pour me calmer et me remettre en route.");
                                             }
                                         }}
-                                        className="mt-3 px-3.5 py-2 rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-200 hover:text-white text-sm transition-colors"
+                                        className="mt-3 px-3.5 py-2 rounded-xl border border-[#2aada0]/40 bg-[#2aada0]/10 text-[#7fd4c9] hover:text-white text-sm transition-colors"
                                     >
                                         Ouvrir Franck en mode conseil
                                     </button>
@@ -540,7 +540,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                         <button
                             onClick={handlePrimaryAction}
                             disabled={!canStart && (focusState === 'idle' || focusState === 'completed')}
-                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-orange to-pink-500 text-white font-bold text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-4 py-2 rounded-xl bg-eonora-gradient text-white font-bold text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             {primaryIcon}
                             {primaryLabel}
@@ -597,10 +597,10 @@ export const FocusMode: React.FC<FocusModeProps> = ({
             {showChat && (
                 <div className="absolute inset-0 md:inset-auto md:bottom-8 md:right-8 md:w-[420px] md:h-[550px] bg-slate-900 border-0 md:border md:border-slate-700/50 md:rounded-3xl flex flex-col overflow-hidden shadow-2xl shadow-black/50 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 z-20">
                     {/* Header */}
-                    <div className="p-4 border-b border-slate-700/50 flex justify-between items-center bg-gradient-to-r from-orange-500/10 to-purple-500/10">
+                    <div className="p-4 border-b border-slate-700/50 flex justify-between items-center bg-gradient-to-r from-[#7C9A7E]/10 to-[#2aada0]/10">
                         <div className="flex items-center gap-3">
                             <div className="relative">
-                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-serif text-lg shadow-lg shadow-orange-500/30">
+                                <div className="w-10 h-10 rounded-2xl bg-eonora-gradient flex items-center justify-center text-white font-serif text-lg shadow-lg shadow-[#4a72c4]/30">
                                     F
                                 </div>
                                 <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-slate-800"></div>
@@ -624,7 +624,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                             <div className="space-y-6 pt-4">
                                 {/* Welcome Message */}
                                 <div className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-serif text-sm shrink-0 mt-1">F</div>
+                                    <div className="w-8 h-8 rounded-xl bg-eonora-gradient flex items-center justify-center text-white font-serif text-sm shrink-0 mt-1">F</div>
                                     <div className="bg-slate-800 p-4 rounded-2xl rounded-bl-none border border-slate-700/50 text-sm text-slate-200 leading-relaxed">
                                         <p className="mb-2">Hey ! 🎯</p>
                                         <p className="mb-2">On prend ce moment en douceur. Je peux t'aider a te calmer, clarifier une priorite, ou retrouver de l'elan.</p>
@@ -651,11 +651,11 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                         {chatHistory.map((msg, idx) => (
                             <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                                 {msg.role === 'model' && (
-                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-serif text-sm shrink-0 mt-1">F</div>
+                                    <div className="w-8 h-8 rounded-xl bg-eonora-gradient flex items-center justify-center text-white font-serif text-sm shrink-0 mt-1">F</div>
                                 )}
                                 <div className={`max-w-[80%] p-3.5 rounded-2xl text-sm leading-relaxed ${
                                     msg.role === 'user' 
-                                    ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-br-none shadow-lg shadow-orange-500/20' 
+                                    ? 'bg-eonora-gradient text-white rounded-br-none shadow-lg shadow-[#4a72c4]/20' 
                                     : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/50'
                                 }`}>
                                     {msg.text}
@@ -665,7 +665,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                         
                         {isTyping && (
                             <div className="flex gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-serif text-sm shrink-0">F</div>
+                                <div className="w-8 h-8 rounded-xl bg-eonora-gradient flex items-center justify-center text-white font-serif text-sm shrink-0">F</div>
                                 <div className="bg-slate-800 px-4 py-3 rounded-2xl rounded-bl-none flex gap-1.5 border border-slate-700/50">
                                     <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
                                     <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -690,7 +690,7 @@ export const FocusMode: React.FC<FocusModeProps> = ({
                             <button 
                                 onClick={() => handleSendMessage(chatInput)}
                                 disabled={!chatInput.trim() || isTyping}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r from-orange-500 to-rose-500 rounded-xl text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:scale-100 shadow-lg shadow-orange-500/20"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-eonora-gradient rounded-xl text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:scale-100 shadow-lg shadow-[#4a72c4]/20"
                             >
                                 <Send size={16} />
                             </button>

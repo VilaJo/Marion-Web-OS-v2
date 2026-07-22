@@ -423,7 +423,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
 
             {/* Share link */}
             {portalSettings.enabled && (
-                <Card className="p-4 bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 border-orange-200 dark:border-orange-800">
+                <Card className="p-4 bg-gradient-to-r from-[#7C9A7E]/10 to-[#2aada0]/10 dark:from-[#7C9A7E]/15 dark:to-[#2aada0]/15 border-[#7C9A7E]/25 dark:border-[#7C9A7E]/40">
                     {isLocalPreviewOnly && (
                         <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-300">
                             <AlertCircle size={14} className="flex-shrink-0" />

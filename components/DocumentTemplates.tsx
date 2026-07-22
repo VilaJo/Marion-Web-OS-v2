@@ -377,7 +377,7 @@ contact@example.com | +41 XX XXX XX XX`,
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl">
+                        <div className="p-2 bg-eonora-gradient rounded-xl">
                             <FileText className="w-6 h-6 text-white" />
                         </div>
                         <div>

@@ -259,7 +259,7 @@ const GeneratedEmailModal: React.FC<{
             >
                 <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-eonora-gradient flex items-center justify-center">
                             <WandSparkles size={16} className="text-white" />
                         </div>
                         <div>
@@ -321,7 +321,7 @@ const GeneratedEmailModal: React.FC<{
                                     navigate(`/emails?compose=true&to=${encodeURIComponent(prospect.email)}&subject=${encodeURIComponent(subject)}`);
                                     onClose();
                                 }}
-                                className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-semibold hover:brightness-105 transition-all shadow-sm flex items-center justify-center gap-2"
+                                className="flex-1 py-2.5 rounded-lg bg-eonora-gradient text-white text-sm font-semibold hover:brightness-105 transition-all shadow-sm flex items-center justify-center gap-2"
                             >
                                 <Mail size={14} /> Ouvrir dans Emails
                             </button>
@@ -617,7 +617,7 @@ const ImportProspectModal: React.FC<{
                     </button>
                     <button onClick={() => onConfirm({ name, email, website, company, notes })}
                         disabled={!name.trim() || isLoading}
-                        className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-semibold hover:brightness-105 transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                        className="flex-1 py-2.5 rounded-lg bg-eonora-gradient text-white text-sm font-semibold hover:brightness-105 transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2">
                         {isLoading ? <><Loader2 size={14} className="animate-spin" /> Import…</> : <><Plus size={14} /> Confirmer l'import</>}
                     </button>
                 </div>
@@ -920,7 +920,7 @@ const ProspectingPage: React.FC = () => {
             <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-5">
                 <div className="max-w-6xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-eonora-gradient flex items-center justify-center shadow-sm">
                             <Telescope size={20} className="text-white" />
                         </div>
                         <div>
@@ -1113,7 +1113,7 @@ const ProspectingPage: React.FC = () => {
                             <button
                                 onClick={handleSearch}
                                 disabled={isSearching}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-sm font-semibold shadow-sm hover:brightness-105 transition-all disabled:opacity-60"
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-eonora-gradient text-white rounded-xl text-sm font-semibold shadow-sm hover:brightness-105 transition-all disabled:opacity-60"
                             >
                                 {isSearching ? <><Loader2 size={15} className="animate-spin" /> Recherche…</> : <><Search size={15} /> Rechercher</>}
                             </button>
@@ -1244,8 +1244,8 @@ const ProspectingPage: React.FC = () => {
                 {/* Empty state */}
                 {allResults.length === 0 && !isSearching && !searchError && (
                     <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-14 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30 flex items-center justify-center mx-auto mb-4">
-                            <Telescope size={28} className="text-indigo-500" />
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4a72c4]/15 to-[#2aada0]/15 dark:from-[#4a72c4]/25 dark:to-[#2aada0]/25 flex items-center justify-center mx-auto mb-4">
+                            <Telescope size={28} className="text-eo-blue" />
                         </div>
                         <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-2">Trouve tes prochains clients</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
@@ -1255,7 +1255,7 @@ const ProspectingPage: React.FC = () => {
                         {hasFilters && (
                             <button
                                 onClick={handleSearch}
-                                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl text-sm font-semibold shadow-sm hover:brightness-105 transition-all"
+                                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-eonora-gradient text-white rounded-xl text-sm font-semibold shadow-sm hover:brightness-105 transition-all"
                             >
                                 <Search size={15} /> Lancer la recherche
                             </button>

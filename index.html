@@ -92,6 +92,57 @@
                 800: '#3F4F40',
                 900: '#333F34',
               },
+              // Kill the "AI purple/indigo aesthetic": remap indigo → Eonora blue,
+              // and violet/purple/fuchsia → Eonora rose. Legacy utilities stay on-brand,
+              // and purple↔indigo gradients naturally become rose→blue (Eonora signature).
+              indigo: {
+                50: '#eef2fb',
+                100: '#dde5f5',
+                200: '#bccbeb',
+                300: '#93aadd',
+                400: '#6c8ad0',
+                500: '#4a72c4',
+                600: '#3a5aa0',
+                700: '#30497f',
+                800: '#293c66',
+                900: '#243356',
+              },
+              violet: {
+                50: '#faeef2',
+                100: '#f4dbe4',
+                200: '#e9b8c9',
+                300: '#db8ea9',
+                400: '#c96a8b',
+                500: '#b05070',
+                600: '#95415c',
+                700: '#78354a',
+                800: '#622c3d',
+                900: '#522533',
+              },
+              purple: {
+                50: '#faeef2',
+                100: '#f4dbe4',
+                200: '#e9b8c9',
+                300: '#db8ea9',
+                400: '#c96a8b',
+                500: '#b05070',
+                600: '#95415c',
+                700: '#78354a',
+                800: '#622c3d',
+                900: '#522533',
+              },
+              fuchsia: {
+                50: '#faeef2',
+                100: '#f4dbe4',
+                200: '#e9b8c9',
+                300: '#db8ea9',
+                400: '#c96a8b',
+                500: '#b05070',
+                600: '#95415c',
+                700: '#78354a',
+                800: '#622c3d',
+                900: '#522533',
+              },
             },
             borderRadius: {
               '4xl': '32px',
@@ -298,8 +349,8 @@
 
       /* Space Objects */
       .planet-lollipop {
-          background: linear-gradient(135deg, #a855f7, #ec4899);
-          box-shadow: inset -10px -10px 20px rgba(0,0,0,0.2), 0 0 30px rgba(236, 72, 153, 0.4);
+          background: linear-gradient(135deg, #b05070, #4a72c4);
+          box-shadow: inset -10px -10px 20px rgba(0,0,0,0.2), 0 0 30px rgba(74, 114, 196, 0.4);
       }
       
       .planet-ring {
@@ -315,13 +366,13 @@
       }
 
       .planet-peach {
-          background: linear-gradient(to bottom, #ffed4a, #ff7e5f);
-          box-shadow: inset -5px -5px 10px rgba(0,0,0,0.1), 0 0 20px rgba(255, 126, 95, 0.3);
+          background: linear-gradient(to bottom, #A7C1A3, #2aada0);
+          box-shadow: inset -5px -5px 10px rgba(0,0,0,0.1), 0 0 20px rgba(42, 173, 160, 0.3);
       }
 
       .planet-blue {
-          background: linear-gradient(45deg, #60a5fa, #818cf8);
-          box-shadow: 0 0 15px rgba(96, 165, 250, 0.4);
+          background: linear-gradient(45deg, #6a8fd0, #4a72c4);
+          box-shadow: 0 0 15px rgba(74, 114, 196, 0.4);
       }
       
       .crater {
@@ -335,7 +386,7 @@
         position: absolute;
         width: 150px;
         height: 2px;
-        background: linear-gradient(to right, rgba(255,255,255,0), rgba(255, 126, 95, 1), rgba(255,255,255,0));
+        background: linear-gradient(to right, rgba(255,255,255,0), rgba(74, 114, 196, 1), rgba(255,255,255,0));
         z-index: -1;
         border-radius: 100%;
       }
