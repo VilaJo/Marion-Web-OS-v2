@@ -1302,24 +1302,16 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         const prevColumn = currentIndex > 0 ? kanbanOrder[currentIndex - 1] : null;
         const nextColumn = currentIndex < kanbanOrder.length - 1 ? kanbanOrder[currentIndex + 1] : null;
 
-        const bgColor = columnId === 'todo' ? 'bg-slate-50 dark:bg-slate-800/50' : 
-                       columnId === 'doing' ? 'bg-blue-50 dark:bg-blue-900/10' : 
-                       'bg-green-50 dark:bg-green-900/10';
-        
-        const titleColor = columnId === 'todo' ? 'text-slate-500' : 
-                          columnId === 'doing' ? 'text-blue-500' : 
-                          'text-green-500';
-
         return (
             <DroppableColumn id={columnId}>
                 <div 
-                    className={`flex-1 rounded-2xl ${bgColor} p-3 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors ${draggedTaskId ? 'border-2 border-dashed border-slate-300 dark:border-slate-700' : 'border border-transparent'}`}
+                    className={`flex-1 rounded-lg bg-slate-50 dark:bg-slate-800/40 p-3 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed border-slate-300 dark:border-slate-600' : 'border-slate-200 dark:border-slate-800'}`}
                     role="list"
                     aria-label={title}
                 >
                     <div className="flex justify-between items-center mb-3">
-                        <h4 className={`text-xs font-bold uppercase tracking-widest ${titleColor} flex items-center gap-2`}>
-                            {title} <span className="px-2 py-0.5 rounded-full bg-white dark:bg-slate-700 text-slate-500 text-[10px] shadow-sm">{columnTasks.length}</span>
+                        <h4 className="text-xs font-medium uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                            {title} <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 text-slate-400 text-[10px] tabular-nums border border-slate-200 dark:border-slate-700">{columnTasks.length}</span>
                         </h4>
                         <button 
                             onClick={() => handleOpenTaskModal(undefined, columnId)} 
@@ -1374,7 +1366,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                     </button>
 
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-3xl md:text-6xl font-sans text-slate-800 dark:text-white tracking-wide pt-2 truncate">{project.clientName}</h1>
+                        <h1 className="text-2xl md:text-4xl font-medium tracking-tight text-slate-800 dark:text-white pt-1 truncate">{project.clientName}</h1>
                         <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
                         <span className="tabular-nums bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">{project.status.toUpperCase()}/{project.clientName.toUpperCase()}</span>
                         <span>•</span>
@@ -1440,35 +1432,29 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 </div>
             </div>
 
-            {/* Creative Workflow Timeline */}
+            {/* Workflow stepper — Linear / Eonora */}
             {(() => {
                 const currentIdx = WORKFLOW_STEPS.indexOf(project.phase);
                 const progressPct = Math.round(((currentIdx + 1) / WORKFLOW_STEPS.length) * 100);
                 return (
-                <div className="mb-8 relative rounded-3xl bg-white/70 dark:bg-slate-800/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-lg shadow-slate-200/30 dark:shadow-none">
-                    {/* Decorative gradient top strip */}
-                    <div className="h-1 rounded-t-3xl" style={{ background: 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)' }} />
-
-                    <div className="p-6 pb-8 pt-5">
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-6">
+                <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <div className="px-4 py-4 md:px-5 md:py-5">
+                        <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Workflow</h3>
+                                <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Workflow</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Phase actuelle : <span className={`font-bold ${WORKFLOW_CONFIG[project.phase]?.color || 'text-slate-700'}`}>{WORKFLOW_CONFIG[project.phase]?.label || project.phase}</span>
+                                    Phase actuelle :{' '}
+                                    <span className="font-medium text-slate-800 dark:text-slate-100">
+                                        {WORKFLOW_CONFIG[project.phase]?.label || project.phase}
+                                    </span>
                                 </p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-eonora-gradient">{progressPct}%</span>
-                                </div>
-                            </div>
+                            <span className="text-sm font-medium tabular-nums text-slate-500">{progressPct}%</span>
                         </div>
 
-                        {/* Progress bar */}
-                        <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mb-8">
+                        <div className="h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-5">
                             <div
-                                className="h-full rounded-full transition-all duration-1000 ease-out"
+                                className="h-full rounded-full transition-all duration-500 ease-out"
                                 style={{
                                     width: `${progressPct}%`,
                                     background: 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
@@ -1476,16 +1462,17 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                             />
                         </div>
 
-                        {/* Phase nodes */}
                         <div className="relative flex justify-between items-start">
-                            {/* Connecting line - aligned to center of node circles (22px badge + 6px margin + 24px half-node = ~52px) */}
-                            <div className="absolute top-[46px] left-0 right-0" style={{ left: `${100 / (WORKFLOW_STEPS.length * 2)}%`, right: `${100 / (WORKFLOW_STEPS.length * 2)}%` }}>
-                                <div className="w-full h-[3px] bg-slate-100 dark:bg-slate-700 rounded-full" />
+                            <div
+                                className="absolute top-[13px] left-0 right-0"
+                                style={{ left: `${100 / (WORKFLOW_STEPS.length * 2)}%`, right: `${100 / (WORKFLOW_STEPS.length * 2)}%` }}
+                            >
+                                <div className="w-full h-px bg-slate-200 dark:bg-slate-700" />
                                 <div
-                                    className="absolute top-0 left-0 h-[3px] rounded-full transition-all duration-1000 ease-out"
+                                    className="absolute top-0 left-0 h-px transition-all duration-500 ease-out"
                                     style={{
                                         width: currentIdx === 0 ? '0%' : `${(currentIdx / (WORKFLOW_STEPS.length - 1)) * 100}%`,
-                                        background: 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
+                                        background: '#2aada0',
                                     }}
                                 />
                             </div>
@@ -1499,58 +1486,44 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 const isFuture = idx > currentIdx;
 
                                 return (
-                                    <div key={step} onClick={() => updatePhaseWithTemplates(step)}
-                                         className={`flex flex-col items-center flex-1 cursor-pointer transition-all duration-500 group relative z-10 ${isCurrent ? '' : 'hover:-translate-y-1'}`}>
-
-                                        {/* "En cours" badge */}
-                                        {isCurrent && (
-                                            <div className="mb-1.5 whitespace-nowrap">
-                                                <span className="text-[8px] font-bold text-white bg-eonora-gradient px-2.5 py-0.5 rounded-full shadow-md shadow-orange-200/50 dark:shadow-none">
-                                                    En cours
-                                                </span>
-                                            </div>
-                                        )}
-                                        {/* Spacer for non-current phases to align nodes */}
-                                        {!isCurrent && <div className="h-[22px]" />}
-
-                                        {/* Node */}
-                                        <div className={`relative flex items-center justify-center rounded-full transition-all duration-500 ${
-                                            isCurrent
-                                                ? `w-16 h-16 bg-gradient-to-br ${config.gradient} text-white shadow-xl scale-110`
-                                                : isPast
-                                                ? `w-12 h-12 bg-gradient-to-br ${config.gradient} text-white shadow-md`
-                                                : 'w-12 h-12 bg-white dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-600 text-slate-300 dark:text-slate-600'
-                                        }`}>
-                                            {/* Glow ring */}
-                                            {isCurrent && (
-                                                <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${config.gradient} opacity-25 animate-ping`}
-                                                     style={{ animationDuration: '2.5s' }} />
-                                            )}
-
-                                            <Icon size={isCurrent ? 26 : 18} strokeWidth={isCurrent ? 2.5 : 2} className="relative z-10" />
-
-                                            {/* Check badge for completed */}
-                                            {isPast && (
-                                                <div className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow border-2 border-emerald-500">
-                                                    <Check size={12} className="text-emerald-500" strokeWidth={3} />
-                                                </div>
+                                    <div
+                                        key={step}
+                                        onClick={() => updatePhaseWithTemplates(step)}
+                                        className="flex flex-col items-center flex-1 cursor-pointer relative z-10 group"
+                                        title={config.desc || config.label}
+                                    >
+                                        <div
+                                            className={`relative w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors ${
+                                                isPast
+                                                    ? 'bg-slate-800 dark:bg-slate-200 border-slate-800 dark:border-slate-200'
+                                                    : isCurrent
+                                                    ? 'bg-white dark:bg-slate-900 border-[#2aada0]'
+                                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                                            }`}
+                                        >
+                                            {isPast ? (
+                                                <Check size={12} className="text-white dark:text-slate-900" strokeWidth={2.5} />
+                                            ) : (
+                                                <Icon
+                                                    size={12}
+                                                    className={isCurrent ? 'text-[#2aada0]' : 'text-slate-300 dark:text-slate-600'}
+                                                />
                                             )}
                                         </div>
 
-                                        {/* Label + description */}
-                                        <div className={`text-center mt-3 transition-all duration-300 ${isFuture ? 'opacity-40 group-hover:opacity-100' : ''}`}>
-                                            <div className={`text-[10px] font-bold uppercase tracking-wider leading-tight ${
-                                                isCurrent ? config.color
-                                                : isPast ? 'text-slate-600 dark:text-slate-300'
-                                                : 'text-slate-400 dark:text-slate-500'
-                                            }`}>
+                                        <div className={`text-center mt-2 transition-opacity ${isFuture ? 'opacity-45 group-hover:opacity-100' : ''}`}>
+                                            <div
+                                                className={`text-[9px] md:text-[10px] font-medium uppercase tracking-widest leading-tight ${
+                                                    isCurrent
+                                                        ? 'text-slate-900 dark:text-white'
+                                                        : isPast
+                                                        ? 'text-slate-500 dark:text-slate-400'
+                                                        : 'text-slate-300 dark:text-slate-600'
+                                                }`}
+                                            >
                                                 {config.label}
                                             </div>
-                                            <div className={`text-[8px] mt-0.5 leading-tight ${
-                                                isCurrent ? 'text-slate-500 dark:text-slate-400'
-                                                : isFuture ? 'text-slate-300 dark:text-slate-600'
-                                                : 'text-slate-400 dark:text-slate-500'
-                                            }`}>
+                                            <div className="hidden md:block text-[9px] mt-0.5 leading-tight text-slate-400 dark:text-slate-500 max-w-[5.5rem]">
                                                 {config.desc}
                                             </div>
                                         </div>
@@ -1578,7 +1551,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                              <button onClick={handleRandomizeAvatar} className="p-2 bg-white/50 rounded-full hover:bg-white transition-colors"><RefreshCw size={14} /></button>
                         </div>
                         <div className="relative z-10 flex flex-col items-center gap-6 py-4">
-                             <h3 className="text-lg font-serif opacity-60 w-full text-center dark:text-white">Identité Visuelle</h3>
+                             <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 w-full text-center">Identité Visuelle</h3>
                              <div className="relative cursor-pointer transition-transform hover:scale-105" onClick={() => fileInputRef.current?.click()}>
                                 {project.avatarImage ? (
                                     <div className="w-32 h-32 rounded-full overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none border-4 border-white dark:border-slate-700">
@@ -1892,15 +1865,14 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 <button 
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
-                                    className={`text-sm md:text-lg font-serif transition-colors relative whitespace-nowrap px-2 py-1 ${activeTab === tab.id ? 'text-brand-orange' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                    className={`text-sm transition-colors relative whitespace-nowrap px-2 py-1.5 border-b-2 -mb-px ${activeTab === tab.id ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white font-medium' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                                 >
                                     {tab.label}
-                                    {activeTab === tab.id && <div className="absolute -bottom-[13px] md:-bottom-[17px] left-0 w-full h-0.5 bg-brand-orange"></div>}
                                 </button>
                             ))}
                             <button 
                                 onClick={() => setShowMeetingMode(true)}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/40 transition-colors whitespace-nowrap"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
                             >
                                 <Mic size={16} /> Meeting Copilot
                             </button>
@@ -1909,15 +1881,15 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                         {activeTab === 'tasks' && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col">
                                 <div className="flex justify-between items-center mb-2">
-                                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                        Phase: 
-                                        <span className={`px-2 py-0.5 rounded-full text-xs text-white ${getPhaseBg(project.phase).replace('bg-', 'bg-').replace('100', '500')}`}>
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        Phase
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                             {project.phase}
                                         </span>
                                     </h4>
                                     <button 
                                         onClick={() => handleOpenTaskModal()}
-                                        className="flex items-center gap-1 text-sm bg-orange-50 dark:bg-orange-900/30 text-brand-orange px-3 py-1 rounded-full hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors"
+                                        className="flex items-center gap-1 text-sm font-medium bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors"
                                     >
                                         <Plus size={14} /> Ajouter Tâche
                                     </button>
