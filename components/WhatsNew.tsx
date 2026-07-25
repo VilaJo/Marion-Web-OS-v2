@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, FolderTree, Award, Sparkles } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.12.0";
+const CURRENT_VERSION = "2.12.1";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +37,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Portail épuré, fiche client allégée — style Linear Eonora
+                            Fiche client Linear — workflow sobre, plus de glow « Magie Visuelle »
                         </p>
                     </div>
 
