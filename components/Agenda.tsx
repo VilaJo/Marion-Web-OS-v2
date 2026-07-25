@@ -12,7 +12,6 @@ import {
     useCreateGoogleEvent,
     useUpdateGoogleEvent,
     useDeleteGoogleEvent,
-    useConnectGoogle,
     useInfomaniakCalendarSync,
     useInfomaniakCalendarEvents,
     useCreateInfomaniakEvent,
@@ -21,6 +20,7 @@ import {
     queryKeys,
 } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
+import { connectGoogleViaPopup } from '../utils/googleOAuthPopup';
 
 interface AgendaProps {
     events: CalendarEvent[];
@@ -72,7 +72,7 @@ const EventTypeBadge: React.FC<EventTypeBadgeProps> = React.memo(({ type, select
     return (
         <div 
             onClick={onClick}
-            className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer transition-all ${cat.bg} ${cat.text} ${cat.border} ${cat.darkBg} ${cat.darkText} ${selected ? 'ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900' : 'opacity-60 hover:opacity-100'}`}
+            className={`px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wide border cursor-pointer transition-all ${cat.bg} ${cat.text} ${cat.border} ${cat.darkBg} ${cat.darkText} ${selected ? 'ring-1 ring-slate-400 dark:ring-slate-500' : 'opacity-70 hover:opacity-100'}`}
         >
             {cat.label}
         </div>
@@ -138,34 +138,33 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     const createInfomaniakEventMutation = useCreateInfomaniakEvent();
     const updateInfomaniakEventMutation = useUpdateInfomaniakEvent();
     const deleteInfomaniakEventMutation = useDeleteInfomaniakEvent();
-    const connectGoogleMutation = useConnectGoogle();
     const queryClient = useQueryClient();
+    const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
+    const [googleConnectError, setGoogleConnectError] = useState<string | null>(null);
 
-    // Reconnect handler — opens OAuth popup
-    const handleReconnect = useCallback(() => {
-        connectGoogleMutation.mutate(undefined, {
-            onSuccess: (data: any) => {
-                const popup = window.open(data.auth_url, 'Google Auth', 'width=500,height=600,left=200,top=100');
-                const handleMessage = (event: MessageEvent) => {
-                    if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-                        localStorage.setItem('marion_gcal_connected', 'true');
-                        if (event.data.email) localStorage.setItem('marion_gcal_email', event.data.email);
-                        queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
-                        queryClient.invalidateQueries({ queryKey: queryKeys.events });
-                        queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
-                        window.removeEventListener('message', handleMessage);
-                    }
-                    if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-                        window.removeEventListener('message', handleMessage);
-                    }
-                };
-                window.addEventListener('message', handleMessage);
-                const checkClosed = setInterval(() => {
-                    if (popup?.closed) { clearInterval(checkClosed); window.removeEventListener('message', handleMessage); }
-                }, 1000);
-            },
-        });
-    }, [connectGoogleMutation, queryClient]);
+    // Reconnect — clears stale tokens, opens OAuth, recovers via postMessage OR localStorage OR sync-status poll
+    const handleReconnect = useCallback(async () => {
+        setGoogleConnectError(null);
+        setIsConnectingGoogle(true);
+        try {
+            const result = await connectGoogleViaPopup({ forceClean: true });
+            if (result.ok) {
+                localStorage.setItem('marion_gcal_connected', 'true');
+                if (result.email) localStorage.setItem('marion_gcal_email', result.email);
+                await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync }),
+                    queryClient.invalidateQueries({ queryKey: queryKeys.events }),
+                    queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus }),
+                ]);
+            } else {
+                setGoogleConnectError(result.error);
+            }
+        } catch (err: any) {
+            setGoogleConnectError(err?.message || 'Connexion Google impossible');
+        } finally {
+            setIsConnectingGoogle(false);
+        }
+    }, [queryClient]);
 
     // Helper to map Google events from API
     const mapGoogleEvent = useCallback((e: any): CalendarEvent => {
@@ -281,7 +280,10 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     const googleCalendarEmail = syncStatus?.email ?? localStorage.getItem('marion_gcal_email');
     // A previously-connected account whose token expired is a different (more urgent) case
     // than "never connected" — this lets the banner wording stay accurate instead of alarming.
-    const googleNeedsReconnect = !googleCalendarConnected && Boolean(googleCalendarEmail);
+    const googleNeedsReconnect = Boolean(
+        syncStatus?.needsReconnect
+        || (!googleCalendarConnected && googleCalendarEmail)
+    );
     const infomaniakCalendarConnected = Boolean(infomaniakSyncStatus?.connected);
     const infomaniakCalendarLabel = infomaniakSyncStatus?.username || 'Infomaniak';
     const isSyncing = isSyncingGcal || isSyncingInfomaniak;
@@ -300,21 +302,27 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     // Listen for auth changes from Settings/OAuth popup to invalidate queries
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+            if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
                 localStorage.setItem('marion_gcal_connected', 'true');
                 if (event.data.email) {
                     localStorage.setItem('marion_gcal_email', event.data.email);
                 }
+                queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
+                queryClient.invalidateQueries({ queryKey: queryKeys.events });
+                queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
             }
-            if (event.data.type === 'GOOGLE_AUTH_DISCONNECT') {
+            if (event.data?.type === 'GOOGLE_AUTH_DISCONNECT') {
                 localStorage.removeItem('marion_gcal_connected');
                 localStorage.removeItem('marion_gcal_email');
+                queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
+                queryClient.invalidateQueries({ queryKey: queryKeys.events });
+                queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
             }
         };
         
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, []);
+    }, [queryClient]);
 
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>(initialViewMode);
@@ -1068,91 +1076,105 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
 
     // --- Expanded Mode Content (inline to preserve scroll position across re-renders) ---
     const expandedModalContent = (
-        <div className="fixed inset-0 z-[100] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl flex flex-col animate-in fade-in zoom-in-95 duration-300">
-            {/* Toolbar */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto">
-                    <h2 className="text-xl md:text-3xl font-serif font-bold text-slate-800 dark:text-white">Agenda</h2>
+        <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-950 flex flex-col animate-in fade-in duration-200">
+            {/* Toolbar — Linear */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 px-4 md:px-5 py-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
+                    <h2 className="text-base md:text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Agenda</h2>
                     
-                    {/* View Switcher */}
-                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                    {/* View Switcher — underline tabs */}
+                    <div className="flex items-center gap-1 border-b border-transparent">
                         {(['day', 'week', 'month'] as const).map(m => (
                             <button
                                 key={m}
                                 onClick={() => setViewMode(m)}
-                                className={`px-3 md:px-4 py-1.5 rounded-md text-xs md:text-sm font-bold capitalize transition-all ${viewMode === m ? 'bg-white dark:bg-slate-700 shadow-sm text-[#2aada0]' : 'text-slate-500 hover:text-slate-700'}`}
+                                className={`px-2.5 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors ${viewMode === m ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white' : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
-                                {m === 'day' ? 'Jour' : m === 'week' ? 'Sem.' : 'Mois'}
+                                {m === 'day' ? 'Jour' : m === 'week' ? 'Semaine' : 'Mois'}
                             </button>
                         ))}
                     </div>
 
                     {/* Timezone Selector */}
                     <div className="relative group hidden md:block">
-                        <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-[#2aada0] px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                            <Globe size={16} /> 
+                        <button className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 px-2 py-1.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            <Globe size={14} /> 
                             {viewTimezone.split('/').pop()?.replace(/_/g, ' ')}
                         </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end">
+                <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                    {!googleCalendarConnected && (
+                        <button
+                            onClick={handleReconnect}
+                            disabled={isConnectingGoogle}
+                            className="px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                        >
+                            {isConnectingGoogle ? 'Connexion…' : (googleNeedsReconnect ? 'Reconnecter Google' : 'Connecter Google')}
+                        </button>
+                    )}
                     <button 
                         onClick={() => setCurrentDate(new Date())} 
-                        className="px-3 md:px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs md:text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+                        className="px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                         aria-label="Aller à aujourd'hui"
                     >
                         Aujourd'hui
                     </button>
-                    <div className="flex items-center gap-1 md:gap-2">
+                    <div className="flex items-center gap-0.5">
                         <button 
                             onClick={() => navigate(-1)} 
-                            className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md min-w-[36px] min-h-[36px] flex items-center justify-center text-slate-500"
                             aria-label="Période précédente"
                         >
-                            <ChevronLeft />
+                            <ChevronLeft size={18} />
                         </button>
-                        <span className="text-sm md:text-lg font-bold w-32 md:w-48 text-center capitalize truncate">
+                        <span className="text-sm font-medium w-28 md:w-44 text-center capitalize truncate text-slate-800 dark:text-slate-100">
                             {viewMode === 'day' ? format(currentDate, 'EEEE d MMMM', { locale: fr }) :
                              viewMode === 'week' ? `Semaine ${format(currentDate, 'w')}` :
                              format(currentDate, 'MMMM yyyy', { locale: fr })}
                         </span>
                         <button 
                             onClick={() => navigate(1)} 
-                            className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md min-w-[36px] min-h-[36px] flex items-center justify-center text-slate-500"
                             aria-label="Période suivante"
                         >
-                            <ChevronRight />
+                            <ChevronRight size={18} />
                         </button>
                     </div>
                     <button 
                         onClick={() => { setIsExpanded(false); onClose?.(); }} 
-                        className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-red-500 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        className="p-2 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                         aria-label="Fermer l'agenda"
                     >
-                        <X size={20} />
+                        <X size={16} />
                     </button>
                 </div>
             </div>
+            {googleConnectError && (
+                <div className="px-4 md:px-5 py-2 border-b border-slate-200 dark:border-slate-800 text-[11px] text-[#b05070] bg-slate-50 dark:bg-slate-900">
+                    {googleConnectError}
+                </div>
+            )}
 
             {/* Main Content */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Sidebar (Mini Cal + Filters) */}
-                <div className="w-64 border-r border-slate-200 dark:border-slate-800 p-6 hidden lg:block overflow-y-auto">
-                    <button onClick={() => { setIsEditing(false); setEventForm({ type: 'To do pro', date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: viewTimezone }); setShowEventModal(true); }} className="w-full py-3 bg-[#7C9A7E] text-white rounded-xl shadow-lg shadow-sage-200 dark:shadow-none font-bold mb-8 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
-                        <Plus size={20} /> Créer
+                {/* Sidebar (Mini Cal + Filters) — Linear */}
+                <div className="w-56 border-r border-slate-200 dark:border-slate-800 p-4 hidden lg:block overflow-y-auto">
+                    <button onClick={() => { setIsEditing(false); setEventForm({ type: 'To do pro', date: toISODate(currentDate), startTime: '09:00', duration: 60, originalTimezone: viewTimezone }); setShowEventModal(true); }} className="w-full py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md font-medium text-sm mb-6 flex items-center justify-center gap-2 hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors">
+                        <Plus size={16} /> Créer
                     </button>
                     {/* Mini Month View (Simplified) */}
-                    <div className="mb-6">
-                        <div className="font-bold mb-4 capitalize text-slate-700 dark:text-slate-200">{format(currentDate, 'MMMM yyyy', { locale: fr })}</div>
-                        <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                            {['L','M','M','J','V','S','D'].map(d => <div key={d} className="text-slate-400 font-bold py-1">{d}</div>)}
+                    <div className="mb-5">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3 capitalize">{format(currentDate, 'MMMM yyyy', { locale: fr })}</div>
+                        <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
+                            {['L','M','M','J','V','S','D'].map(d => <div key={d} className="text-slate-400 font-medium py-1 text-[10px]">{d}</div>)}
                             {Array.from({length: 35}).map((_, i) => {
                                 const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
                                 d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) + i);
                                 const isSel = toISODate(d) === toISODate(currentDate);
                                 return (
-                                    <div key={i} onClick={() => setCurrentDate(d)} className={`py-1.5 rounded-full cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${isSel ? 'bg-[#7C9A7E] text-white font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
+                                    <div key={i} onClick={() => setCurrentDate(d)} className={`py-1.5 rounded-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${isSel ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
                                         {d.getDate()}
                                     </div>
                                 );
@@ -1161,8 +1183,8 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                     </div>
 
                     {/* Calendar Sources */}
-                    <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Mes agendas</div>
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Mes agendas</div>
                         <div className="space-y-2">
                             <label className="flex items-center gap-3 cursor-pointer group">
                                 <input 
@@ -1191,16 +1213,17 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                             ) : (
                                 <button
                                     onClick={handleReconnect}
-                                    className="w-full flex items-center gap-3 text-left group"
+                                    disabled={isConnectingGoogle}
+                                    className="w-full flex items-center gap-3 text-left group disabled:opacity-50"
                                     title={googleNeedsReconnect ? 'Reconnecter Google Calendar' : 'Connecter Google Calendar'}
                                 >
                                     <span className="w-3 h-3 rounded-sm bg-slate-300 dark:bg-slate-600 flex-shrink-0" />
                                     <div className="min-w-0">
-                                        <div className="text-sm text-slate-400 dark:text-slate-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                        <div className="text-sm text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">
                                             Google Calendar — {googleNeedsReconnect ? 'à reconnecter' : 'non connecté'}
                                         </div>
-                                        <div className="text-[11px] text-amber-600 dark:text-amber-400 group-hover:underline">
-                                            {googleNeedsReconnect ? 'Reconnecter' : 'Connecter'}
+                                        <div className="text-[11px] text-slate-900 dark:text-slate-100 font-medium group-hover:underline">
+                                            {isConnectingGoogle ? 'Connexion…' : (googleNeedsReconnect ? 'Reconnecter' : 'Connecter')}
                                         </div>
                                     </div>
                                 </button>
@@ -1364,88 +1387,94 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
     return (
         <>
             <div className="flex flex-col h-[350px] md:h-[500px] w-full animate-in fade-in slide-in-from-left duration-500">
-                {/* Reconnect banner */}
+                {/* Reconnect banner — Linear */}
                 {!googleCalendarConnected && (
-                    <div className="mx-1 mb-2 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs">
-                        <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
-                        <span className="text-amber-700 dark:text-amber-300 flex-1">
-                            {googleNeedsReconnect
-                                ? 'Votre agenda Google a besoin d\'être reconnecté'
-                                : 'Agenda Google non connecté'}
-                            {infomaniakCalendarConnected && ' — vos événements Infomaniak restent affichés'}
-                        </span>
-                        <button
-                            onClick={handleReconnect}
-                            disabled={connectGoogleMutation.isPending}
-                            className="px-2.5 py-1 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors text-[11px] disabled:opacity-50"
-                        >
-                            {connectGoogleMutation.isPending ? 'Connexion...' : 'Reconnecter'}
-                        </button>
+                    <div className="mx-1 mb-2 flex flex-col gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-xs">
+                        <div className="flex items-center gap-2">
+                            <AlertCircle size={14} className="text-slate-400 flex-shrink-0" />
+                            <span className="text-slate-600 dark:text-slate-300 flex-1">
+                                {googleNeedsReconnect
+                                    ? 'Google Calendar — session expirée'
+                                    : 'Google Calendar non connecté'}
+                                {infomaniakCalendarConnected && ' · Infomaniak actif'}
+                            </span>
+                            <button
+                                onClick={handleReconnect}
+                                disabled={isConnectingGoogle}
+                                className="px-2.5 py-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-medium rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors text-[11px] disabled:opacity-50"
+                            >
+                                {isConnectingGoogle ? 'Connexion…' : (googleNeedsReconnect ? 'Reconnecter' : 'Connecter')}
+                            </button>
+                        </div>
+                        {googleConnectError && (
+                            <p className="text-[11px] text-[#b05070] pl-5">{googleConnectError}</p>
+                        )}
                     </div>
                 )}
-                {/* Widget Header : date à gauche, boutons alignés à droite sur une seule ligne */}
+                {/* Widget Header */}
                 <div className="flex justify-between items-center mb-3 px-1">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <button 
                             onClick={() => navigate(-1)} 
-                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
                             aria-label="Jour précédent"
                         >
-                            <ChevronLeft size={20} />
+                            <ChevronLeft size={18} />
                         </button>
-                        <div className="text-center">
-                            <div className="text-xl md:text-2xl font-serif font-bold text-slate-800 dark:text-white capitalize leading-none">
+                        <div className="text-center min-w-[7rem]">
+                            <div className="text-lg md:text-xl font-medium tracking-tight text-slate-800 dark:text-white capitalize leading-none">
                                 {format(currentDate, 'EEEE d', { locale: fr })}
                             </div>
-                            <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+                            <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
                                 {format(currentDate, 'MMMM', { locale: fr })}
                             </div>
                         </div>
                         <button 
                             onClick={() => navigate(1)} 
-                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
                             aria-label="Jour suivant"
                         >
-                            <ChevronRight size={20} />
+                            <ChevronRight size={18} />
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         {/* Google Calendar Sync Indicator */}
                         {googleCalendarConnected ? (
                             <div 
-                                className="flex items-center gap-1.5 px-2 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-full text-emerald-600 dark:text-emerald-400 text-xs font-bold"
+                                className="flex items-center gap-1.5 px-2 py-1 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 text-[11px] font-medium"
                                 title={`Synchronisé avec ${googleCalendarEmail || 'Google Calendar'}`}
                             >
                                 {isSyncing ? (
-                                    <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-3 h-3 border-2 border-[#2aada0] border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                    <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                                    <div className="w-1.5 h-1.5 bg-[#2aada0] rounded-full" />
                                 )}
                                 <span className="hidden sm:inline">Sync</span>
                             </div>
                         ) : (
                             <button 
                                 onClick={handleReconnect}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full text-amber-600 dark:text-amber-400 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
-                                title={googleNeedsReconnect ? 'Cliquez pour reconnecter votre agenda Google' : 'Cliquez pour connecter votre agenda Google'}
+                                disabled={isConnectingGoogle}
+                                className="flex items-center gap-1.5 px-2.5 py-1 border border-slate-200 dark:border-slate-700 rounded-md text-slate-600 dark:text-slate-300 text-[11px] font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                                title={googleNeedsReconnect ? 'Reconnecter Google Calendar' : 'Connecter Google Calendar'}
                             >
-                                <AlertCircle size={12} />
-                                <span className="hidden sm:inline">{googleNeedsReconnect ? 'Reconnecter' : 'Connecter'}</span>
+                                <AlertCircle size={12} className="text-slate-400" />
+                                <span className="hidden sm:inline">{isConnectingGoogle ? '…' : (googleNeedsReconnect ? 'Reconnecter' : 'Connecter')}</span>
                             </button>
                         )}
                         
                         <button
                             onClick={() => setCurrentDate(new Date())}
-                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-[#2aada0] transition-colors"
+                            className="p-2 border border-slate-200 dark:border-slate-700 rounded-md text-slate-500 hover:text-[#2aada0] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             title="Aujourd'hui"
                             aria-label="Aller à aujourd'hui"
                         >
-                            <CalIcon size={18} />
+                            <CalIcon size={16} />
                         </button>
                         <button
                             onClick={() => setShowLocationModal(true)}
-                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-[#2aada0] transition-colors"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-slate-500 hover:text-[#2aada0] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             title="Changer de ville"
                         >
                             <MapPin size={18} />

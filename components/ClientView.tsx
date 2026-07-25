@@ -68,9 +68,10 @@ import { PROSPECT_PHASE_TEMPLATES, ACTIVE_PHASE_TEMPLATES, WORKFLOW_CONFIG, WORK
 import { apiFetch } from '../services/api';
 import { requestNextInvoiceNumber } from '../services/invoiceNumbering';
 import { voidInvoice, canHardDelete, restoreInvoice, appendAudit } from '../utils/invoiceEngine';
-import { useOAuthStatus, useConnectGoogle, queryKeys } from '../services/queries';
+import { useOAuthStatus, queryKeys } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { exportMeetingReportPdf } from '../utils/meetingReportPdf';
+import { connectGoogleViaPopup } from '../utils/googleOAuthPopup';
 
 declare const confetti: any;
 
@@ -303,8 +304,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     
     // --- Google OAuth status (for Drive section) ---
     const { data: oauthStatus } = useOAuthStatus();
-    const connectGoogleMutation = useConnectGoogle();
     const queryClient = useQueryClient();
+    const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
     
     // --- State: Modals ---
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -2234,31 +2235,30 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                                     </div>
                                                 </div>
                                                 <button
-                                                    onClick={() => {
-                                                        connectGoogleMutation.mutate(undefined, {
-                                                            onSuccess: (data: any) => {
-                                                                const popup = window.open(data.auth_url, 'Google Auth', 'width=500,height=600,left=200,top=100');
-                                                                const handleMessage = (event: MessageEvent) => {
-                                                                    if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-                                                                        queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
-                                                                        queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
-                                                                        onNotify('Google connecté', `Connecté à ${event.data.email}`, 'success');
-                                                                        window.removeEventListener('message', handleMessage);
-                                                                    }
-                                                                    if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-                                                                        window.removeEventListener('message', handleMessage);
-                                                                    }
-                                                                };
-                                                                window.addEventListener('message', handleMessage);
-                                                                const checkClosed = setInterval(() => {
-                                                                    if (popup?.closed) { clearInterval(checkClosed); window.removeEventListener('message', handleMessage); }
-                                                                }, 1000);
-                                                            },
-                                                        });
+                                                    onClick={async () => {
+                                                        setIsConnectingGoogle(true);
+                                                        try {
+                                                            const result = await connectGoogleViaPopup({ forceClean: true });
+                                                            if (result.ok) {
+                                                                await Promise.all([
+                                                                    queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus }),
+                                                                    queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync }),
+                                                                    queryClient.invalidateQueries({ queryKey: queryKeys.events }),
+                                                                ]);
+                                                                onNotify('Google connecté', `Connecté à ${result.email || 'Google'}`, 'success');
+                                                            } else {
+                                                                onNotify('Connexion Google', result.error, 'error');
+                                                            }
+                                                        } catch (err: any) {
+                                                            onNotify('Connexion Google', err?.message || 'Échec', 'error');
+                                                        } finally {
+                                                            setIsConnectingGoogle(false);
+                                                        }
                                                     }}
-                                                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl transition-colors flex items-center gap-2"
+                                                    disabled={isConnectingGoogle}
+                                                    className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium rounded-md transition-colors flex items-center gap-2 disabled:opacity-50"
                                                 >
-                                                    <Cloud size={14} /> Connecter
+                                                    <Cloud size={14} /> {isConnectingGoogle ? 'Connexion…' : 'Connecter'}
                                                 </button>
                                             </div>
                                         )}

@@ -51,7 +51,6 @@ import {
     useVersion,
     useCheckUpdates,
     useApplyUpdate,
-    useConnectGoogle,
     useDisconnectGoogle,
     useCloudBackupConfig,
     useSetCloudBackupConfig,
@@ -68,6 +67,7 @@ import {
     type ClientWorkspacePaths,
 } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
+import { connectGoogleViaPopup } from '../utils/googleOAuthPopup';
 import { useUIStore } from '../stores';
 import { apiFetch } from '../services/api';
 import { activateCloudAiMode } from '../services/geminiService';
@@ -428,7 +428,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     // React Query hooks
     const queryClient = useQueryClient();
     const { data: oauthData } = useOAuthStatus();
-    const connectGoogleMutation = useConnectGoogle();
     const disconnectGoogleMutation = useDisconnectGoogle();
     const isAiTabOpen = isOpen && activeTab === 'ai';
     const {
@@ -702,55 +701,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const handleConnectGoogle = async () => {
         setIsConnecting(true);
-        connectGoogleMutation.mutate(undefined, {
-            onSuccess: (data) => {
-                // Open popup for OAuth
-                const popup = window.open(data.auth_url, 'Google Auth', 'width=500,height=600,left=200,top=100');
-                
-                // Listen for messages from popup
-                const handleMessage = (event: MessageEvent) => {
-                    if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-                        const updated = {
-                            ...cloudConfig,
-                            googleDrive: { 
-                                ...cloudConfig.googleDrive, 
-                                connected: true, 
-                                enabled: true,
-                                email: event.data.email,
-                                name: event.data.name
-                            }
-                        };
-                        setCloudConfig(updated);
-                        localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
-                        // Refresh calendar & OAuth queries so Agenda picks up the new connection
-                        queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync });
-                        queryClient.invalidateQueries({ queryKey: queryKeys.events });
-                        queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus });
-                        setIsConnecting(false);
-                        window.removeEventListener('message', handleMessage);
-                    } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-                        console.error('Google Auth Error:', event.data.error);
-                        setIsConnecting(false);
-                        window.removeEventListener('message', handleMessage);
-                    }
+        try {
+            const result = await connectGoogleViaPopup({ forceClean: true });
+            if (result.ok) {
+                const updated = {
+                    ...cloudConfig,
+                    googleDrive: {
+                        ...cloudConfig.googleDrive,
+                        connected: true,
+                        enabled: true,
+                        email: result.email || '',
+                        name: result.name || '',
+                    },
                 };
-                
-                window.addEventListener('message', handleMessage);
-                
-                // Check if popup was closed without completing
-                const checkClosed = setInterval(() => {
-                    if (popup?.closed) {
-                        clearInterval(checkClosed);
-                        setIsConnecting(false);
-                        window.removeEventListener('message', handleMessage);
-                    }
-                }, 1000);
-            },
-            onError: (e) => {
-                console.error('Failed to initiate Google OAuth', e);
-                setIsConnecting(false);
-            },
-        });
+                setCloudConfig(updated);
+                localStorage.setItem('marion_cloud_config', JSON.stringify(updated));
+                localStorage.setItem('marion_gcal_connected', 'true');
+                if (result.email) localStorage.setItem('marion_gcal_email', result.email);
+                await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: queryKeys.calendarSync }),
+                    queryClient.invalidateQueries({ queryKey: queryKeys.events }),
+                    queryClient.invalidateQueries({ queryKey: queryKeys.oauthStatus }),
+                ]);
+            } else {
+                console.error('Google Auth Error:', result.error);
+            }
+        } catch (e) {
+            console.error('Failed to initiate Google OAuth', e);
+        } finally {
+            setIsConnecting(false);
+        }
     };
 
     const handleDisconnectGoogle = async () => {

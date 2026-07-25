@@ -1391,8 +1391,17 @@ export function useConnectGoogle() {
     return useMutation({
         mutationFn: async () => {
             const res = await apiFetch('/api/v1/oauth/google/login');
-            if (!res.ok) throw new Error('Failed to start Google login');
-            return res.json();
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(
+                    data.error
+                    || 'Impossible de démarrer la connexion Google'
+                );
+            }
+            if (!data.auth_url) {
+                throw new Error('URL OAuth Google manquante');
+            }
+            return data;
         },
         onSuccess: () => {
             // Status will be checked after popup completes

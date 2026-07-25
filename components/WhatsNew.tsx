@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, FolderOpen, Award } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.2";
+const CURRENT_VERSION = "2.13.3";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,19 +37,19 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Fiche client allégée — Mission Control, to-do, kanban Linear
+                            Agenda Google reconnectable + style Linear
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <FolderOpen size={24} />
+                                <CalendarDays size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Fiche client sans doublons</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Google Calendar — reconnecte</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Onglets Finances et E-mails retirés de la fiche client — ils restent dans le header (pages dédiées).
+                                    Le bouton Reconnecter de l’Agenda nettoie les tokens périmés et rouvre Google proprement. Autorise les popups si demandé.
                                 </p>
                             </div>
                         </div>

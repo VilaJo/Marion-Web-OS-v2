@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.3] - 2026-07-25
+### Agenda Google + style Linear
+- **Reconnect Google Calendar** : flux OAuth robuste (`utils/googleOAuthPopup.ts`) — nettoie les tokens périmés, détecte les popups bloquées, handshake `localStorage` si `window.opener` est null, poll `sync-status` à la fermeture. Erreurs visibles dans l’UI.
+- **Agenda Linear** : toolbar underline Jour/Semaine/Mois, sidebar compacte, banners neutres, badges catégories discrets.
+- Backend callback OAuth : page de succès claire + `localStorage` + `postMessage`.
+
 ## [2.13.2] - 2026-07-25
 ### Fiche client allégée + sync Mac
 - **Fiche client** : onglets Finances et E-mails retirés (déjà absents du code ; version forcée pour les installs Mac encore sur l’ancienne UI). Facturation et mails restent accessibles via le header.

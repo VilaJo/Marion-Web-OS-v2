@@ -981,16 +981,50 @@ def infomaniak_delete_event(event_id):
 # ============================================================================
 
 def _oauth_html_response(msg_type: str, **kwargs):
-    """Build the small HTML page that communicates back to the opener window."""
+    """Build the small HTML page that communicates back to the opener window.
+
+    Uses postMessage when ``window.opener`` is available, plus a localStorage
+    handshake so the parent can recover if COOP / popup policies null the opener.
+    """
     payload = json.dumps({"type": msg_type, **kwargs})
-    summary = kwargs.get('error') or kwargs.get('email') or ''
+    ok = msg_type == 'GOOGLE_AUTH_SUCCESS'
+    title = 'Google connecté' if ok else 'Connexion Google'
+    summary = kwargs.get('email') or kwargs.get('error') or ('OK' if ok else 'Erreur')
+    color = '#2aada0' if ok else '#b05070'
     return f"""
-    <html><body>
+    <!doctype html>
+    <html lang="fr"><head><meta charset="utf-8"/><title>{title}</title>
+    <style>
+      body {{ font-family: ui-sans-serif, system-ui, sans-serif; display:flex;
+             align-items:center; justify-content:center; min-height:100vh; margin:0;
+             background:#faf7f2; color:#1e293b; }}
+      .card {{ background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+               padding:28px 32px; max-width:360px; text-align:center; }}
+      h1 {{ font-size:16px; font-weight:600; margin:0 0 8px; }}
+      p {{ font-size:13px; color:#64748b; margin:0; word-break:break-word; }}
+      .dot {{ width:10px; height:10px; border-radius:999px; background:{color};
+              display:inline-block; margin-right:8px; }}
+    </style></head>
+    <body>
+    <div class="card">
+      <h1><span class="dot"></span>{title}</h1>
+      <p>{summary}</p>
+      <p style="margin-top:12px;font-size:11px;color:#94a3b8">Cette fenêtre se ferme toute seule…</p>
+    </div>
     <script>
-        window.opener.postMessage({payload}, '*');
-        window.close();
+      (function () {{
+        var payload = {payload};
+        try {{
+          localStorage.setItem('marion_oauth_result', JSON.stringify(payload));
+        }} catch (e) {{}}
+        try {{
+          if (window.opener && !window.opener.closed) {{
+            window.opener.postMessage(payload, '*');
+          }}
+        }} catch (e) {{}}
+        setTimeout(function () {{ window.close(); }}, 600);
+      }})();
     </script>
-    <p>{summary}</p>
     </body></html>
     """
 
