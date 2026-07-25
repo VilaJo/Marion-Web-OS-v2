@@ -374,14 +374,14 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
     const ToggleRow = ({ label, desc, value, onChange }: { label: string; desc: string; value: boolean; onChange: () => void }) => (
         <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700 last:border-0">
             <div>
-                <div className="font-bold text-sm text-slate-700 dark:text-white">{label}</div>
+                <div className="text-sm font-medium text-slate-700 dark:text-white">{label}</div>
                 <div className="text-xs text-slate-400">{desc}</div>
             </div>
             <button
                 onClick={onChange}
-                className={`w-12 h-6 rounded-full transition-colors ${value ? 'bg-brand-orange' : 'bg-slate-300'}`}
+                className={`w-10 h-5 rounded-full transition-colors ${value ? 'bg-slate-700 dark:bg-slate-300' : 'bg-slate-300 dark:bg-slate-600'}`}
             >
-                <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${value ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
         </div>
     );
@@ -402,18 +402,18 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <Link2 size={20} className="text-brand-orange" />
+                    <h3 className="text-sm font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                        <Link2 size={16} className="text-slate-400" />
                         {t.clientPortal}
                     </h3>
                     <p className="text-sm text-slate-500">{t.shareProgress}</p>
                 </div>
                 <button
                     onClick={handleTogglePortal}
-                    className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 border transition-all ${
                         portalSettings.enabled
-                            ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-400'
+                            ? 'border-slate-900 dark:border-slate-100 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900'
+                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:border-slate-400'
                     }`}
                 >
                     {portalSettings.enabled ? <Eye size={16} /> : <EyeOff size={16} />}
@@ -423,43 +423,43 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
 
             {/* Share link */}
             {portalSettings.enabled && (
-                <Card className="p-4 bg-gradient-to-r from-[#7C9A7E]/10 to-[#2aada0]/10 dark:from-[#7C9A7E]/15 dark:to-[#2aada0]/15 border-[#7C9A7E]/25 dark:border-[#7C9A7E]/40">
+                <Card className="p-4 border border-slate-200 dark:border-slate-700">
                     {isLocalPreviewOnly && (
-                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-300">
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md text-xs text-amber-700 dark:text-amber-300">
                             <AlertCircle size={14} className="flex-shrink-0" />
                             <span className="font-medium">Aperçu local uniquement — activez le tunnel pour un vrai lien client</span>
                         </div>
                     )}
                     {isTunnelDown && (
-                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-300">
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md text-xs text-amber-700 dark:text-amber-300">
                             <AlertCircle size={14} className="flex-shrink-0" />
                             <span className="font-medium">Lien public inactif — lancez LANCER_PORTAIL_PUBLIC.command</span>
                         </div>
                     )}
                     {isTunnelUp && (
-                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md text-xs text-emerald-700 dark:text-emerald-300">
                             <CheckCircle size={14} className="flex-shrink-0" />
                             <span className="font-medium">Lien public actif</span>
                         </div>
                     )}
                     <div className="flex items-center gap-3">
                         <div className="flex-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t.shareLink}</label>
+                            <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1 block">{t.shareLink}</label>
                             <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
                                 <input type="text" value={portalUrl} readOnly
                                     className="flex-1 bg-transparent text-sm text-slate-600 dark:text-slate-300 outline-none tabular-nums" />
                                 <button onClick={handleCopyLink}
-                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-brand-orange transition-colors">
+                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
                                     {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
                                 </button>
                             </div>
                         </div>
                         <button onClick={handleRegenerateLink}
-                            className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-brand-orange hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-colors">
+                            className="px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md transition-colors">
                             {t.regenerate}
                         </button>
                         <a href={portalUrl} target="_blank" rel="noopener noreferrer"
-                           className="p-2 bg-brand-orange text-white rounded-lg hover:bg-orange-600 transition-colors">
+                           className="p-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors">
                             <ExternalLink size={18} />
                         </a>
                     </div>
@@ -468,13 +468,13 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                         <Shield size={14} className="text-slate-400" />
                         <span className="text-xs text-slate-500">{t.pinCode}</span>
                         {portalSettings.pin ? (
-                            <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                            <span className="text-sm font-mono font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                                 {portalSettings.pin}
                             </span>
                         ) : (
                             <span className="text-xs text-slate-400 italic">{t.noPinFreeAccess}</span>
                         )}
-                        <button onClick={handleGeneratePin} className="text-xs text-brand-orange hover:underline font-medium">
+                        <button onClick={handleGeneratePin} className="text-xs text-slate-600 dark:text-slate-300 hover:underline font-medium">
                             {portalSettings.pin ? t.changePin : t.setPin}
                         </button>
                         {portalSettings.pin && (
@@ -487,7 +487,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             )}
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 overflow-x-auto">
+            <div className="flex gap-0 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
                 {tabs.map(tab => (
                     <button
                         key={tab.key}
@@ -496,19 +496,19 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             if (tab.key === 'comments' && unseenComments > 0) handleMarkCommentsSeen();
                             if (tab.key === 'files' && unseenFiles > 0) handleMarkFilesSeen();
                         }}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all relative ${
+                        className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-all relative border-b-2 -mb-px ${
                             activeSection === tab.key
-                                ? 'bg-white dark:bg-slate-700 text-brand-orange shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                         }`}
                     >
                         <tab.icon size={14} />
                         {tab.label}
                         {'count' in tab && tab.count! > 0 && (
-                            <span className="text-[10px] bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-full">{tab.count}</span>
+                            <span className="text-[10px] text-slate-400 tabular-nums">{tab.count}</span>
                         )}
                         {'unseen' in tab && tab.unseen! > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-1 bg-[#b05070] text-white text-[9px] font-medium rounded flex items-center justify-center">
                                 {tab.unseen}
                             </span>
                         )}
@@ -520,24 +520,24 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {activeSection === 'preview' && (
                 <div className="space-y-4">
                     {/* Preview banner */}
-                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-xs text-blue-700 dark:text-blue-300">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-600 dark:text-slate-300">
                         <Monitor size={14} />
                         <span className="font-medium">{t.previewBanner}</span>
                         {portalSettings.enabled && portalSettings.shareToken && (
                             <a href={portalUrl} target="_blank" rel="noopener noreferrer"
-                               className="ml-auto flex items-center gap-1 text-blue-600 hover:underline font-bold">
+                               className="ml-auto flex items-center gap-1 text-slate-700 dark:text-slate-200 hover:underline font-medium">
                                 {t.openRealPortal} <ExternalLink size={12} />
                             </a>
                         )}
                     </div>
 
                     {/* Preview container with portal-like styling */}
-                    <div className="bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                         {/* Simulated header */}
                         <div className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-5 py-3 flex items-center gap-3">
                             <img src="/logo-eonora.png" alt="Eonora Tech OS" className="w-8 h-8 rounded-lg shadow-sm object-contain" />
                             <div>
-                                <h4 className="font-serif font-bold text-slate-800 dark:text-white text-sm leading-tight">
+                                <h4 className="font-semibold text-slate-800 dark:text-white text-sm leading-tight tracking-tight">
                                     {portalSettings.clientName || project.clientName}
                                 </h4>
                                 <p className="text-[10px] text-slate-400">{t.projectPortal}</p>
@@ -547,7 +547,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                         <div className="p-5 space-y-5">
                             {/* Custom message */}
                             {portalSettings.customMessage && (
-                                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 rounded-xl p-3 text-xs text-orange-800 dark:text-orange-300">
+                                <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md p-3 text-xs text-slate-600 dark:text-slate-300">
                                     {portalSettings.customMessage}
                                 </div>
                             )}
@@ -555,8 +555,8 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             {/* Mon Compte preview */}
                             {portalSettings.showAccount && (
                                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-4">
-                                    <span className="font-serif font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
-                                        <User size={12} className="text-orange-500" /> {t.myAccount}
+                                    <span className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                        <User size={12} className="text-slate-400" /> {t.myAccount}
                                     </span>
 
                                     {/* Subscription overview */}
@@ -567,7 +567,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                             </div>
                                             <div>
                                                 <p className="text-[9px] text-slate-400">{t.contract}</p>
-                                                <p className="text-xs font-bold text-slate-700 dark:text-white">
+                                                <p className="text-xs font-semibold text-slate-700 dark:text-white">
                                                     {project.maintenance?.hasContract
                                                         ? <span className="text-emerald-600">{t.active}</span>
                                                         : <span className="text-slate-400">--</span>}
@@ -580,7 +580,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                             </div>
                                             <div>
                                                 <p className="text-[9px] text-slate-400">{t.rate}</p>
-                                                <p className="text-xs font-bold text-slate-700 dark:text-white">
+                                                <p className="text-xs font-semibold text-slate-700 dark:text-white">
                                                     {project.maintenance?.monthlyPrice
                                                         ? `${project.maintenance.monthlyPrice} CHF/mois`
                                                         : <span className="text-slate-400">--</span>}
@@ -592,13 +592,13 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                     {/* Invoices preview */}
                                     {project.invoices.length > 0 && (
                                         <div>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase block mb-2">{t.billing}</span>
+                                            <span className="text-[10px] font-semibold text-slate-400 uppercase block mb-2">{t.billing}</span>
                                             <div className="space-y-1">
                                                 {project.invoices.slice(0, 3).map(inv => (
                                                     <div key={inv.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-xs">
-                                                        <span className="font-bold text-slate-700 dark:text-white">{inv.number}</span>
+                                                        <span className="font-semibold text-slate-700 dark:text-white">{inv.number}</span>
                                                         <span className="text-slate-400">{inv.amount?.toLocaleString('fr-CH')} {inv.currency || 'CHF'}</span>
-                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                                                        <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full ${
                                                             inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
                                                             inv.status === 'Pending' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
                                                             'bg-slate-100 text-slate-500 dark:bg-slate-600 dark:text-slate-400'
@@ -614,14 +614,14 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                     {/* Documents preview */}
                                     {portalDocuments.filter(d => d.visible).length > 0 && (
                                         <div>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase block mb-2">{t.documents}</span>
+                                            <span className="text-[10px] font-semibold text-slate-400 uppercase block mb-2">{t.documents}</span>
                                             <div className="space-y-1">
                                                 {portalDocuments.filter(d => d.visible).slice(0, 3).map(doc => {
                                                     const cfg: Record<string, { color: string; bg: string; label: string }> = {
                                                         contract: { color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', label: t.typeContract },
                                                         invoice: { color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30', label: t.typeInvoice },
                                                         quote: { color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30', label: t.typeQuote },
-                                                        report: { color: 'text-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/30', label: t.typeReport },
+                                                        report: { color: 'text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800', label: t.typeReport },
                                                         other: { color: 'text-slate-500', bg: 'bg-slate-100 dark:bg-slate-600', label: t.typeOther },
                                                     };
                                                     const c = cfg[doc.docType] || cfg.other;
@@ -630,7 +630,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                                             <div className={`w-6 h-6 rounded flex items-center justify-center ${c.bg}`}>
                                                                 <FileText size={10} className={c.color} />
                                                             </div>
-                                                            <span className="font-bold text-slate-700 dark:text-white truncate flex-1">{doc.title}</span>
+                                                            <span className="font-semibold text-slate-700 dark:text-white truncate flex-1">{doc.title}</span>
                                                             <Download size={10} className="text-slate-300" />
                                                         </div>
                                                     );
@@ -640,9 +640,9 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                     )}
 
                                     {/* Contact */}
-                                    <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
-                                        <Mail size={12} className="text-orange-500" />
-                                        <span className="text-xs text-orange-700 dark:text-orange-300 font-medium">marion@eonoratech.ch</span>
+                                    <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
+                                        <Mail size={12} className="text-slate-400" />
+                                        <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">marion@eonoratech.ch</span>
                                     </div>
                                 </div>
                             )}
@@ -657,13 +657,13 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             {/* Tasks preview */}
                             {portalSettings.showTasks && project.tasks.filter(t => !t.completed).length > 0 && (
                                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
-                                    <span className="font-serif font-bold text-sm text-slate-800 dark:text-white block mb-3">{t.currentTasks}</span>
+                                    <span className="font-semibold tracking-tight text-sm text-slate-800 dark:text-white block mb-3">{t.currentTasks}</span>
                                     <div className="space-y-1.5">
                                         {project.tasks.filter(t => !t.completed).slice(0, 5).map(task => (
                                             <div key={task.id} className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                                                 <Circle size={10} className="text-slate-300 flex-shrink-0" />
                                                 <span className="text-xs text-slate-700 dark:text-slate-300 flex-1 truncate">{task.title}</span>
-                                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                                                <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full ${
                                                     task.priority === 'High' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
                                                     task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                                     'bg-slate-100 text-slate-500 dark:bg-slate-600 dark:text-slate-400'
@@ -677,19 +677,19 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             {/* Updates preview */}
                             {portalSettings.showUpdates && updates.length > 0 && (
                                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
-                                    <span className="font-serif font-bold text-sm text-slate-800 dark:text-white block mb-3">{t.latestUpdates}</span>
+                                    <span className="font-semibold tracking-tight text-sm text-slate-800 dark:text-white block mb-3">{t.latestUpdates}</span>
                                     <div className="space-y-3">
                                         {updates.slice(0, 3).map(u => (
-                                            <div key={u.id} className="border-l-2 border-orange-300 pl-3">
+                                            <div key={u.id} className="border-l-2 border-slate-300 pl-3">
                                                 <div className="flex items-center gap-2 mb-0.5">
                                                     {u.phase && (
-                                                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                                                        <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                                                             {WORKFLOW_CONFIG[u.phase as WorkflowPhase]?.label || u.phase}
                                                         </span>
                                                     )}
                                                     <span className="text-[9px] text-slate-400">{formatDate(u.createdAt)}</span>
                                                 </div>
-                                                <p className="font-bold text-xs text-slate-800 dark:text-white">{u.title}</p>
+                                                <p className="font-medium text-xs text-slate-800 dark:text-white">{u.title}</p>
                                                 {u.content && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{u.content}</p>}
                                             </div>
                                         ))}
@@ -700,7 +700,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             {/* Deliverables preview */}
                             {portalSettings.showDeliverables && deliverables.filter(d => d.visible).length > 0 && (
                                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
-                                    <span className="font-serif font-bold text-sm text-slate-800 dark:text-white block mb-3">{t.deliverables}</span>
+                                    <span className="font-semibold tracking-tight text-sm text-slate-800 dark:text-white block mb-3">{t.deliverables}</span>
                                     <div className="grid grid-cols-2 gap-2">
                                         {deliverables.filter(d => d.visible).map(d => {
                                             const isImg = d.type === 'image' && d.filePath;
@@ -719,13 +719,13 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                                         {d.type === 'figma' ? <Figma size={16} className="text-purple-400" /> :
                                                          d.type === 'website' ? <Globe size={16} className="text-blue-400" /> :
                                                          d.type === 'image' ? <Image size={16} className="text-pink-400" /> :
-                                                         d.type === 'link' ? <Link2 size={16} className="text-orange-400" /> :
+                                                         d.type === 'link' ? <Link2 size={16} className="text-slate-400" /> :
                                                          <File size={16} className="text-slate-400" />}
                                                     </div>
                                                 )}
                                                 <div className="p-2">
-                                                    <span className="text-[8px] font-bold uppercase text-slate-400">{d.type}</span>
-                                                    <p className="text-xs font-bold text-slate-700 dark:text-white truncate">{d.title}</p>
+                                                    <span className="text-[8px] font-semibold uppercase text-slate-400">{d.type}</span>
+                                                    <p className="text-xs font-semibold text-slate-700 dark:text-white truncate">{d.title}</p>
                                                     {d.description && <p className="text-[9px] text-slate-400 truncate mt-0.5">{d.description}</p>}
                                                 </div>
                                             </div>
@@ -738,22 +738,22 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             {/* Comments preview */}
                             {portalSettings.allowComments && (
                                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
-                                    <span className="font-serif font-bold text-sm text-slate-800 dark:text-white block mb-3 flex items-center gap-1.5">
-                                        <MessageSquare size={12} className="text-orange-500" />
+                                    <span className="font-semibold tracking-tight text-sm text-slate-800 dark:text-white block mb-3 flex items-center gap-1.5">
+                                        <MessageSquare size={12} className="text-slate-400" />
                                         {t.commentsCount} ({comments.length})
                                     </span>
                                     {comments.length > 0 ? (
                                         <div className="space-y-2 max-h-40 overflow-y-auto">
                                             {comments.slice(-5).map(c => (
-                                                <div key={c.id} className={`p-2 rounded-lg text-xs ${c.isAdmin ? 'bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-800' : 'bg-slate-50 dark:bg-slate-700/50'}`}>
+                                                <div key={c.id} className={`p-2 rounded-lg text-xs ${c.isAdmin ? 'bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700' : 'bg-slate-50 dark:bg-slate-700/50'}`}>
                                                     <div className="flex items-center gap-1.5 mb-0.5">
-                                                        <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold ${
-                                                            c.isAdmin ? 'bg-orange-200 text-orange-700' : 'bg-blue-100 text-blue-600'
+                                                        <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-semibold ${
+                                                            c.isAdmin ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200' : 'bg-slate-100 text-slate-600'
                                                         }`}>
                                                             {c.author?.charAt(0)?.toUpperCase() || '?'}
                                                         </div>
-                                                        <span className="font-bold text-slate-700 dark:text-white">{c.author}</span>
-                                                        {c.isAdmin && <span className="text-[7px] font-bold text-orange-500 bg-orange-100 dark:bg-orange-900/30 px-1 py-0.5 rounded">Marion</span>}
+                                                        <span className="font-semibold text-slate-700 dark:text-white">{c.author}</span>
+                                                        {c.isAdmin && <span className="text-[7px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">Marion</span>}
                                                     </div>
                                                     <p className="text-slate-600 dark:text-slate-400 pl-5 line-clamp-2">{c.text}</p>
                                                 </div>
@@ -768,7 +768,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             {/* Upload zone preview */}
                             {portalSettings.allowUploads && (
                                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
-                                    <span className="font-serif font-bold text-sm text-slate-800 dark:text-white block mb-3">{t.fileSending}</span>
+                                    <span className="font-semibold tracking-tight text-sm text-slate-800 dark:text-white block mb-3">{t.fileSending}</span>
                                     <div className="border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl p-4 text-center">
                                         <Upload size={20} className="mx-auto mb-1 text-slate-300" />
                                         <p className="text-xs text-slate-500">{t.dragDropZone}</p>
@@ -776,7 +776,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                     </div>
                                     {clientFiles.length > 0 && (
                                         <div className="mt-3 space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">{t.filesAlreadyReceived}</span>
+                                            <span className="text-[10px] font-semibold text-slate-400 uppercase">{t.filesAlreadyReceived}</span>
                                             {clientFiles.slice(0, 3).map(f => (
                                                 <div key={f.id} className="flex items-center gap-2 p-1.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-xs">
                                                     <File size={10} className="text-slate-400" />
@@ -794,7 +794,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                         {/* Simulated footer */}
                         <div className="border-t border-slate-100 dark:border-slate-700 py-3 text-center">
                             <p className="text-[9px] text-slate-400">
-                                {t.poweredBy} <span className="text-orange-500 font-medium">Eonora Tech</span>
+                                {t.poweredBy} <span className="text-slate-400 font-medium">Eonora Tech</span>
                             </p>
                         </div>
                     </div>
@@ -804,25 +804,25 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {/* =========== CONFIG =========== */}
             {activeSection === 'config' && (
                 <Card className="p-4">
-                    <h4 className="font-bold text-sm text-slate-700 dark:text-white mb-3">{t.portalVisibility}</h4>
+                    <h4 className="font-medium text-sm text-slate-700 dark:text-white mb-3">{t.portalVisibility}</h4>
                     <div className="mb-4">
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">{t.welcomeMessage}</label>
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.welcomeMessage}</label>
                         <textarea
                             value={portalSettings.customMessage || ''}
                             onChange={e => handleUpdateSettings('customMessage', e.target.value)}
                             placeholder={t.welcomePlaceholder}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange resize-none"
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400 resize-none"
                             rows={2}
                         />
                     </div>
                     <div className="mb-4">
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">{t.displayedName}</label>
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.displayedName}</label>
                         <input
                             type="text"
                             value={portalSettings.clientName || ''}
                             onChange={e => handleUpdateSettings('clientName', e.target.value)}
                             placeholder={project.clientName}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400"
                         />
                     </div>
                     <ToggleRow label={t.timeline} desc={t.timelineDesc} value={portalSettings.showTimeline} onChange={() => handleUpdateSettings('showTimeline', !portalSettings.showTimeline)} />
@@ -835,13 +835,13 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                     {/* Language selector */}
                     <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700 last:border-0">
                         <div>
-                            <div className="font-bold text-sm text-slate-700 dark:text-white">{t.portalLanguage}</div>
+                            <div className="font-medium text-sm text-slate-700 dark:text-white">{t.portalLanguage}</div>
                             <div className="text-xs text-slate-400">{t.portalLanguageDesc}</div>
                         </div>
                         <select
                             value={lang}
                             onChange={e => handleUpdateSettings('language', e.target.value)}
-                            className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold dark:text-white"
+                            className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-semibold dark:text-white"
                         >
                             {LANGUAGE_OPTIONS.map(opt => (
                                 <option key={opt.value} value={opt.value}>{opt.flag} {opt.label}</option>
@@ -855,10 +855,10 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {activeSection === 'deliverables' && (
                 <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-sm text-slate-700 dark:text-white">{t.deliverables} ({deliverables.length})</h4>
+                        <h4 className="font-medium text-sm text-slate-700 dark:text-white">{t.deliverables} ({deliverables.length})</h4>
                         <button
                             onClick={() => { setEditingDeliverable({ type: 'website', title: '', url: '', description: '', visible: true, sortOrder: deliverables.length }); setShowDeliverableModal(true); }}
-                            className="px-3 py-1.5 bg-brand-orange text-white text-xs font-bold rounded-lg hover:bg-orange-600 flex items-center gap-1.5"
+                            className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-medium rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 flex items-center gap-1.5"
                         >
                             <Plus size={14} /> {t.add}
                         </button>
@@ -883,7 +883,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                                 d.type === 'website' ? 'bg-blue-100 text-blue-500' :
                                                 d.type === 'figma' ? 'bg-purple-100 text-purple-500' :
                                                 d.type === 'image' ? 'bg-pink-100 text-pink-500' :
-                                                d.type === 'link' ? 'bg-orange-100 text-orange-500' :
+                                                d.type === 'link' ? 'bg-slate-100 text-slate-400' :
                                                 'bg-slate-100 text-slate-500'
                                             }`}>
                                                 {d.type === 'website' ? <Globe size={18} /> :
@@ -895,7 +895,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-sm text-slate-700 dark:text-white truncate">{d.title}</span>
+                                                <span className="font-medium text-sm text-slate-700 dark:text-white truncate">{d.title}</span>
                                                 <span className="text-[10px] text-slate-400 uppercase">{d.type}</span>
                                                 {d.filePath && (
                                                     <span className="text-[9px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">{t.typeFile}</span>
@@ -938,10 +938,10 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {activeSection === 'updates' && (
                 <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-sm text-slate-700 dark:text-white">{t.updatesLabel} ({updates.length})</h4>
+                        <h4 className="font-medium text-sm text-slate-700 dark:text-white">{t.updatesLabel} ({updates.length})</h4>
                         <button
                             onClick={() => { setEditingUpdate({ title: '', content: '', phase: project.phase }); setShowUpdateModal(true); }}
-                            className="px-3 py-1.5 bg-brand-orange text-white text-xs font-bold rounded-lg hover:bg-orange-600 flex items-center gap-1.5"
+                            className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-medium rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 flex items-center gap-1.5"
                         >
                             <Plus size={14} /> {t.publish}
                         </button>
@@ -958,13 +958,13 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
                                                 {u.phase && (
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                                                         {WORKFLOW_CONFIG[u.phase as WorkflowPhase]?.label || u.phase}
                                                     </span>
                                                 )}
                                                 <span className="text-[10px] text-slate-400">{formatDate(u.createdAt)}</span>
                                             </div>
-                                            <h4 className="font-bold text-sm text-slate-700 dark:text-white">{u.title}</h4>
+                                            <h4 className="font-medium text-sm text-slate-700 dark:text-white">{u.title}</h4>
                                             {u.content && <p className="text-sm text-slate-500 mt-1 whitespace-pre-line">{u.content}</p>}
                                         </div>
                                         <button onClick={() => handleDeleteUpdate(u.id)}
@@ -982,20 +982,20 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {/* =========== COMMENTS =========== */}
             {activeSection === 'comments' && (
                 <div className="space-y-3">
-                    <h4 className="font-bold text-sm text-slate-700 dark:text-white flex items-center gap-2">
+                    <h4 className="font-medium text-sm text-slate-700 dark:text-white flex items-center gap-2">
                         <MessageSquare size={14} /> {t.commentsCount} ({comments.length})
                     </h4>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                         {comments.map(c => (
-                            <Card key={c.id} className={`p-3 ${c.isAdmin ? 'border-l-2 border-l-brand-orange' : ''}`}>
+                            <Card key={c.id} className={`p-3 ${c.isAdmin ? 'border-l-2 border-l-slate-400' : ''}`}>
                                 <div className="flex items-start justify-between mb-1">
                                     <div className="flex items-center gap-2">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                            c.isAdmin ? 'bg-brand-orange/20 text-brand-orange' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold ${
+                                            c.isAdmin ? 'bg-slate-900 dark:bg-slate-100/20 text-slate-700 dark:text-slate-200' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                                         }`}>
                                             {c.author?.charAt(0)?.toUpperCase() || '?'}
                                         </div>
-                                        <span className="text-sm font-bold text-slate-700 dark:text-white">{c.author}</span>
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-white">{c.author}</span>
                                         {c.isAdmin && <Badge color="orange">Marion</Badge>}
                                         {!c.seen && !c.isAdmin && <span className="w-2 h-2 bg-red-500 rounded-full" />}
                                     </div>
@@ -1021,10 +1021,10 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             onChange={e => setReplyText(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleReply()}
                             placeholder={t.replyPlaceholder}
-                            className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+                            className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400"
                         />
                         <button onClick={handleReply} disabled={!replyText.trim()}
-                            className="p-2 bg-brand-orange text-white rounded-lg hover:bg-orange-600 disabled:opacity-40">
+                            className="p-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-40">
                             <Send size={16} />
                         </button>
                     </div>
@@ -1034,7 +1034,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {/* =========== FILES RECEIVED =========== */}
             {activeSection === 'files' && (
                 <div className="space-y-3">
-                    <h4 className="font-bold text-sm text-slate-700 dark:text-white flex items-center gap-2">
+                    <h4 className="font-medium text-sm text-slate-700 dark:text-white flex items-center gap-2">
                         <Upload size={14} /> {t.filesReceived} ({clientFiles.length})
                     </h4>
                     {clientFiles.length === 0 ? (
@@ -1058,7 +1058,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-sm text-slate-700 dark:text-white truncate">{f.originalName}</span>
+                                            <span className="font-medium text-sm text-slate-700 dark:text-white truncate">{f.originalName}</span>
                                             {!f.seen && <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />}
                                         </div>
                                         <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -1088,7 +1088,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             {/* =========== DOCUMENTS =========== */}
             {activeSection === 'documents' && (
                 <div className="space-y-4">
-                    <h4 className="font-bold text-sm text-slate-700 dark:text-white flex items-center gap-2">
+                    <h4 className="font-medium text-sm text-slate-700 dark:text-white flex items-center gap-2">
                         <FileText size={14} /> {t.portalDocuments} ({portalDocuments.length})
                     </h4>
                     <p className="text-xs text-slate-400">
@@ -1099,21 +1099,21 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                     <Card className="p-4 space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 mb-1 block">{t.docTitle}</label>
+                                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.docTitle}</label>
                                 <input
                                     type="text"
                                     value={docTitle}
                                     onChange={e => setDocTitle(e.target.value)}
                                     placeholder={t.docTitlePlaceholder}
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400"
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 mb-1 block">{t.docType}</label>
+                                <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.docType}</label>
                                 <select
                                     value={docType}
                                     onChange={e => setDocType(e.target.value as PortalDocumentType)}
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange"
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400"
                                 >
                                     <option value="contract">{t.typeContract}</option>
                                     <option value="invoice">{t.typeInvoice}</option>
@@ -1124,7 +1124,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <label className="flex-1 flex items-center gap-2 px-3 py-2.5 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:border-brand-orange transition-colors">
+                            <label className="flex-1 flex items-center gap-2 px-3 py-2.5 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:border-slate-400 transition-colors">
                                 <Upload size={16} className="text-slate-400" />
                                 <span className="text-sm text-slate-500 truncate">
                                     {docFile ? docFile.name : t.chooseFile}
@@ -1145,7 +1145,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             <button
                                 onClick={handleUploadDocument}
                                 disabled={!docFile || !docTitle.trim() || uploadingDoc}
-                                className="px-4 py-2.5 bg-brand-orange text-white text-xs font-bold rounded-lg hover:bg-orange-600 disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap"
+                                className="px-4 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-medium rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap"
                             >
                                 {uploadingDoc ? <><RefreshCw size={14} className="animate-spin" /> {t.uploading}</> : <><Plus size={14} /> {t.add}</>}
                             </button>
@@ -1164,7 +1164,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                     contract: { color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', label: t.typeContract },
                                     invoice: { color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30', label: t.typeInvoice },
                                     quote: { color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30', label: t.typeQuote },
-                                    report: { color: 'text-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/30', label: t.typeReport },
+                                    report: { color: 'text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800', label: t.typeReport },
                                     other: { color: 'text-slate-500', bg: 'bg-slate-100 dark:bg-slate-800', label: t.typeOther },
                                 };
                                 const cfg = typeConfig[doc.docType] || typeConfig.other;
@@ -1175,8 +1175,8 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-sm text-slate-700 dark:text-white truncate">{doc.title}</span>
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
+                                                <span className="font-medium text-sm text-slate-700 dark:text-white truncate">{doc.title}</span>
+                                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
                                                     {cfg.label}
                                                 </span>
                                             </div>
@@ -1189,7 +1189,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                         </div>
                                         <button
                                             onClick={() => handleToggleDocVisibility(doc)}
-                                            className="p-1.5 text-slate-400 hover:text-brand-orange rounded"
+                                            className="p-1.5 text-slate-400 hover:text-slate-700 dark:text-slate-200 rounded"
                                             title={doc.visible ? t.hide : t.makeVisible}
                                         >
                                             {doc.visible ? <Eye size={16} /> : <EyeOff size={16} />}
@@ -1219,14 +1219,14 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                 {editingDeliverable && (
                     <div className="space-y-4 p-4">
                         <div>
-                            <label className="text-xs font-bold text-slate-500 mb-1 block">{t.docType}</label>
+                            <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.docType}</label>
                             <div className="flex gap-2 flex-wrap">
                                 {DELIVERABLE_TYPES_RAW.map(dt => (
                                     <button key={dt.value}
                                         onClick={() => setEditingDeliverable({ ...editingDeliverable, type: dt.value as any })}
-                                        className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                                        className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                                             editingDeliverable.type === dt.value
-                                                ? 'bg-brand-orange text-white'
+                                                ? 'bg-slate-900 dark:bg-slate-100 text-white'
                                                 : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                         }`}>
                                         <dt.icon size={14} /> {t[dt.labelKey]}
@@ -1235,19 +1235,19 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             </div>
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 mb-1 block">{t.titleRequired}</label>
+                            <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.titleRequired}</label>
                             <input type="text" value={editingDeliverable.title || ''}
                                 onChange={e => setEditingDeliverable({ ...editingDeliverable, title: e.target.value })}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange" />
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400" />
                         </div>
 
                         {/* URL or File upload */}
                         <div>
-                            <label className="text-xs font-bold text-slate-500 mb-1 block">{t.urlOrFile}</label>
+                            <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.urlOrFile}</label>
                             <input type="url" value={editingDeliverable.url || ''}
                                 onChange={e => setEditingDeliverable({ ...editingDeliverable, url: e.target.value })}
                                 placeholder="https://..."
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange" />
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400" />
 
                             <div className="flex items-center gap-2 my-2">
                                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
@@ -1259,8 +1259,8 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                             <label
                                 className={`flex flex-col items-center gap-1.5 p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
                                     deliverableFile
-                                        ? 'border-brand-orange bg-orange-50 dark:bg-orange-900/10'
-                                        : 'border-slate-200 dark:border-slate-700 hover:border-brand-orange hover:bg-orange-50/50 dark:hover:bg-orange-900/5'
+                                        ? 'border-slate-900 dark:border-slate-100 bg-slate-50 dark:bg-slate-800/60'
+                                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                                 }`}
                             >
                                 <input
@@ -1294,7 +1294,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                                             </div>
                                         )}
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-slate-700 dark:text-white truncate">{deliverableFile.name}</p>
+                                            <p className="text-xs font-semibold text-slate-700 dark:text-white truncate">{deliverableFile.name}</p>
                                             <p className="text-[10px] text-slate-400">{formatSize(deliverableFile.size)}</p>
                                         </div>
                                         <button type="button" onClick={e => { e.preventDefault(); setDeliverableFile(null); }}
@@ -1322,23 +1322,23 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                         </div>
 
                         <div>
-                            <label className="text-xs font-bold text-slate-500 mb-1 block">{t.descriptionLabel}</label>
+                            <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.descriptionLabel}</label>
                             <textarea value={editingDeliverable.description || ''}
                                 onChange={e => setEditingDeliverable({ ...editingDeliverable, description: e.target.value })}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange resize-none"
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400 resize-none"
                                 rows={2} />
                         </div>
                         <div className="flex items-center gap-3">
-                            <label className="text-xs font-bold text-slate-500">{t.visibleToClient}</label>
+                            <label className="text-xs font-semibold text-slate-500">{t.visibleToClient}</label>
                             <button
                                 onClick={() => setEditingDeliverable({ ...editingDeliverable, visible: !editingDeliverable.visible })}
-                                className={`w-10 h-5 rounded-full transition-colors ${editingDeliverable.visible !== false ? 'bg-brand-orange' : 'bg-slate-300'}`}>
+                                className={`w-10 h-5 rounded-full transition-colors ${editingDeliverable.visible !== false ? 'bg-slate-900 dark:bg-slate-100' : 'bg-slate-300'}`}>
                                 <div className={`w-4 h-4 bg-white rounded-full shadow transform transition-transform ${editingDeliverable.visible !== false ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
                         <button onClick={handleSaveDeliverable}
                             disabled={!editingDeliverable.title || uploadingDeliverable}
-                            className="w-full py-2.5 bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
+                            className="w-full py-2.5 bg-slate-900 dark:bg-slate-100 text-white font-semibold rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
                             {uploadingDeliverable && <RefreshCw size={14} className="animate-spin" />}
                             {editingDeliverable.id ? t.save : t.add}
                         </button>
@@ -1350,10 +1350,10 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
             <Modal isOpen={showUpdateModal} onClose={() => setShowUpdateModal(false)} title={t.publishUpdate} width="max-w-lg">
                 <div className="space-y-4 p-4">
                     <div>
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">{t.phase}</label>
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.phase}</label>
                         <select value={editingUpdate.phase || ''}
                             onChange={e => setEditingUpdate({ ...editingUpdate, phase: e.target.value })}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange">
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400">
                             <option value="">{t.noPhase}</option>
                             {PHASES.map(p => (
                                 <option key={p} value={p}>{WORKFLOW_CONFIG[p]?.label || p}</option>
@@ -1361,23 +1361,23 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                         </select>
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">{t.titleRequired}</label>
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.titleRequired}</label>
                         <input type="text" value={editingUpdate.title || ''}
                             onChange={e => setEditingUpdate({ ...editingUpdate, title: e.target.value })}
                             placeholder={t.titlePlaceholder}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange" />
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400" />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">{t.content}</label>
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">{t.content}</label>
                         <textarea value={editingUpdate.content || ''}
                             onChange={e => setEditingUpdate({ ...editingUpdate, content: e.target.value })}
                             placeholder={t.contentPlaceholder}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-orange resize-none"
+                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-400 resize-none"
                             rows={4} />
                     </div>
                     <button onClick={handleSaveUpdate}
                         disabled={!editingUpdate.title}
-                        className="w-full py-2.5 bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 disabled:opacity-40 transition-colors">
+                        className="w-full py-2.5 bg-slate-900 dark:bg-slate-100 text-white font-semibold rounded-md hover:bg-slate-700 dark:hover:bg-slate-200 disabled:opacity-40 transition-colors">
                         {t.publish}
                     </button>
                 </div>
