@@ -37,7 +37,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Santé financière Linear + Yacht Bar sur le dashboard
+                            Finances Linear, Yacht Bar, fiches clients, Audit WP utile
                         </p>
                     </div>
 
