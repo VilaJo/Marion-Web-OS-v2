@@ -21,6 +21,7 @@ import {
     Layers, Calendar, CheckSquare, FolderOpen,
     LifeBuoy, Mail, RefreshCw, Power,
 } from 'lucide-react';
+import { TodoPanel } from './TodoPanel';
 
 declare const confetti: any;
 
@@ -44,12 +45,14 @@ export const GlobalOverlays: React.FC<GlobalOverlaysProps> = ({ projects, events
         showFileDispatcher, setShowFileDispatcher,
         showMediaWorkshop, setShowMediaWorkshop,
         showGuide, setShowGuide,
+        showTodoPanel, setShowTodoPanel,
         showScrollTop,
         isDraggingOver, setIsDraggingOver,
         droppedFiles, setDroppedFiles,
     } = useUIStore();
 
     const { addNotification } = useNotificationStore();
+    const { addEvent } = useProjectStore();
     const queryClient = useQueryClient();
 
     const { data: gcalEvents = [] } = useGoogleCalendarEvents();
@@ -107,6 +110,39 @@ export const GlobalOverlays: React.FC<GlobalOverlaysProps> = ({ projects, events
                     </div>
                 </div>
             )}
+
+            {/* Todo Panel Modal */}
+            <Modal isOpen={showTodoPanel} onClose={() => setShowTodoPanel(false)} title="To-do du jour" width="max-w-2xl">
+                <div className="p-4 pt-2">
+                    <TodoPanel
+                        onAddReminder={(todoId, text, remindAt) => {
+                            const dateStr = `${remindAt.getFullYear()}-${String(remindAt.getMonth() + 1).padStart(2, '0')}-${String(remindAt.getDate()).padStart(2, '0')}`;
+                            const timeStr = `${String(remindAt.getHours()).padStart(2, '0')}:${String(remindAt.getMinutes()).padStart(2, '0')}`;
+                            addEvent({
+                                id: `reminder-${todoId}`,
+                                title: text,
+                                date: dateStr,
+                                startTime: timeStr,
+                                duration: 15,
+                                type: 'To do pro',
+                            });
+                            addNotification('Rappel planifié', `"${text}" — alerte 30 min avant.`, 'success');
+                        }}
+                        onAddCalendarEvent={(event) => {
+                            addEvent({
+                                id: `event-${Date.now()}`,
+                                title: event.title,
+                                date: event.date,
+                                startTime: event.startTime,
+                                duration: event.duration,
+                                type: 'Call ou rdv pro',
+                                meetLink: event.addMeet ? 'pending' : undefined,
+                            });
+                            addNotification('Événement ajouté', `"${event.title}" dans l'agenda.`, 'success');
+                        }}
+                    />
+                </div>
+            </Modal>
 
             {/* Drag & Drop Visual — click to dismiss if stuck */}
             {isDraggingOver && (

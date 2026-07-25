@@ -1,11 +1,8 @@
 /**
- * Dashboard Page — Clients explorer (arborescence + tableau)
+ * Dashboard Page — Clients explorer + Mission Control (v2.13.0)
  *
- * Extracted from App.tsx for route-based navigation. v2.11.0: la grille de
- * cartes est remplacée par une vue "explorateur de fichiers" (arborescence de
- * dossiers à gauche + tableau triable à droite). L'Agenda, le widget Santé
- * Financière et le fil d'activité ont été retirés de cette page (déclutter) —
- * l'Agenda reste accessible via le bouton dédié du header.
+ * MetricsStrip, TodoWidget, view toggle (cards | table | roadmap).
+ * Agenda / Santé Financière restent hors de cette page (header).
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -18,13 +15,29 @@ import { EmptyState } from '../components/Shared';
 import { NewClientScreen, NewClientData } from '../components/NewClientScreen';
 import { ClientsFolderTree } from '../components/ClientsFolderTree';
 import { ClientsTable } from '../components/ClientsTable';
+import { ClientsGrid } from '../components/ClientsGrid';
+import { ClientsRoadmap } from '../components/ClientsRoadmap';
+import { MetricsStrip } from '../components/MetricsStrip';
+import { TodoWidget } from '../components/TodoWidget';
 
 import {
     Search, Plus, RefreshCw, Database, Briefcase, Download,
+    LayoutGrid, List, CalendarDays,
 } from 'lucide-react';
 import { exportCSV, type CSVColumn } from '../utils/exportUtils';
 
 declare const confetti: any;
+
+type DashboardViewMode = 'cards' | 'table' | 'roadmap';
+const VIEW_MODE_KEY = 'marion_dashboard_view_mode';
+
+function readViewMode(): DashboardViewMode {
+    try {
+        const v = localStorage.getItem(VIEW_MODE_KEY);
+        if (v === 'cards' || v === 'table' || v === 'roadmap') return v;
+    } catch { /* ignore */ }
+    return 'table';
+}
 
 function persistentSet(key: string): Set<string> {
     const raw = sessionStorage.getItem(key);
@@ -49,20 +62,14 @@ const _notifiedInvoices = persistentSet('_notifiedInvoices');
 const _notifiedInactiveClients = persistentSet('_notifiedInactiveClients');
 const _notifiedMaintenance = persistentSet('_notifiedMaintenance');
 
-// ============================================================================
-// Dashboard Component
-// ============================================================================
-
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
 
-    // --- React Query ---
     const { data: projects = [], isFetching: isRefreshing, refetch: refetchProjects } = useProjects();
     const createClientFolder = useCreateClientFolder();
     const initDatabase = useInitDatabase();
     const updateProjectCache = useUpdateProjectCache();
 
-    // --- Stores ---
     const {
         events, activities,
         filter: selectedFolder, searchQuery,
@@ -70,17 +77,16 @@ export const Dashboard: React.FC = () => {
     } = useProjectStore();
 
     const { showImporter, setShowImporter } = useUIStore();
-
     const { addNotification } = useNotificationStore();
 
-    // --- Local State ---
     const [isCreatingClient, setIsCreatingClient] = useState(false);
+    const [viewMode, setViewMode] = useState<DashboardViewMode>(readViewMode);
 
-    // Module-level sets persist across mount/unmount cycles
-
-    // ========================================================================
-    // Notification Schedulers
-    // ========================================================================
+    useEffect(() => {
+        try {
+            localStorage.setItem(VIEW_MODE_KEY, viewMode);
+        } catch { /* ignore */ }
+    }, [viewMode]);
 
     // Agenda notifications (15min / 1min before events)
     useEffect(() => {
@@ -122,7 +128,6 @@ export const Dashboard: React.FC = () => {
         return () => clearInterval(interval);
     }, [events, addNotification]);
 
-    // Invoice overdue & client inactivity notifications (batched)
     useEffect(() => {
         if (projects.length === 0) return;
         const today = new Date();
@@ -130,7 +135,6 @@ export const Dashboard: React.FC = () => {
         const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
         const now = Date.now();
 
-        // Overdue invoices
         const newOverdue: string[] = [];
         projects.forEach(project => {
             project.invoices.forEach(inv => {
@@ -149,7 +153,6 @@ export const Dashboard: React.FC = () => {
             addNotification('Retard de Paiement 💸', `${newOverdue.length} factures en retard : ${newOverdue.slice(0, 3).join(', ')}${newOverdue.length > 3 ? '…' : ''}.`, 'finance', '/finances');
         }
 
-        // Inactive clients
         const newInactive: string[] = [];
         const activeProjects = projects.filter(p => p.status === ProjectStatus.EN_COURS);
         activeProjects.forEach(project => {
@@ -169,7 +172,6 @@ export const Dashboard: React.FC = () => {
         }
     }, [projects, activities, addNotification]);
 
-    // Maintenance notifications (once per session per alert)
     useEffect(() => {
         if (projects.length === 0) return;
         const today = new Date();
@@ -205,10 +207,6 @@ export const Dashboard: React.FC = () => {
             }
         });
     }, [projects, addNotification]);
-
-    // ========================================================================
-    // Handlers
-    // ========================================================================
 
     const handleOpenProject = (projectId: string) => {
         navigate(`/client/${encodeURIComponent(projectId)}`);
@@ -284,8 +282,6 @@ export const Dashboard: React.FC = () => {
                     addNotification('Client Créé', `Dossier "${trimmed}" prêt dans ${targetFolder}.`, 'success', `/client/${encodeURIComponent(newProject.id)}`);
                     addActivity('project_created', `Nouveau client: ${trimmed}`, newProject.id, trimmed);
 
-                    // If a template was chosen with cursor prompts, suggest them in the
-                    // Prompt Library (notification with quick-link). Marion can ignore.
                     if (data.cursorPrompts && data.cursorPrompts.length > 0) {
                         try {
                             const STORAGE_KEY = 'cursor_prompt_library_v1';
@@ -298,7 +294,7 @@ export const Dashboard: React.FC = () => {
                                 .map((title, i) => ({
                                     id: `tpl-${data.templateId}-${Date.now()}-${i}`,
                                     title,
-                                    content: title, // Marion peut éditer
+                                    content: title,
                                     category: 'cursor',
                                     tags: [data.templateId || 'template', trimmed],
                                     rating: 0,
@@ -358,22 +354,31 @@ export const Dashboard: React.FC = () => {
         confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
     };
 
-    // ========================================================================
-    // Computed Values
-    // ========================================================================
-
     const folderFilteredProjects = useMemo(() => {
         if (selectedFolder === 'Tous') return projects;
         return projects.filter(p => p.status === selectedFolder);
     }, [projects, selectedFolder]);
 
-    // ========================================================================
-    // Render
-    // ========================================================================
+    const viewButtons: { mode: DashboardViewMode; icon: React.ElementType; label: string }[] = [
+        { mode: 'cards', icon: LayoutGrid, label: 'Cartes' },
+        { mode: 'table', icon: List, label: 'Tableau' },
+        { mode: 'roadmap', icon: CalendarDays, label: 'Roadmap' },
+    ];
 
     return (
         <div className="animate-in fade-in slide-in-from-left-8 duration-500">
-            {/* TOP BAR: search + actions */}
+            {projects.length > 0 && (
+                <MetricsStrip
+                    projects={projects}
+                    onFilterActive={() => setSelectedFolder(ProjectStatus.EN_COURS)}
+                    onOpenFinances={() => navigate('/finances')}
+                    onFilterUrgent={() => setSelectedFolder(ProjectStatus.EN_COURS)}
+                />
+            )}
+
+            {projects.length > 0 && <TodoWidget />}
+
+            {/* TOP BAR: search + view toggle + actions */}
             <div id="dashboard-search" className="bg-white/40 dark:bg-slate-800/30 p-2 md:p-3 rounded-2xl md:rounded-3xl backdrop-blur-sm flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
                 <div className="relative flex items-center gap-2 flex-1 min-w-0 md:flex-none md:w-72">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -385,6 +390,25 @@ export const Dashboard: React.FC = () => {
                         className="pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-800/80 border border-transparent dark:border-slate-700/50 focus:border-[#7C9A7E] shadow-sm focus:ring-2 focus:ring-[#7C9A7E]/20 w-full transition-all outline-none text-sm dark:text-slate-100 dark:placeholder-slate-400"
                     />
                 </div>
+
+                <div className="flex items-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 p-0.5 shrink-0">
+                    {viewButtons.map(({ mode, icon: Icon, label }) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setViewMode(mode)}
+                            title={label}
+                            className={`p-1.5 rounded-md transition-colors ${
+                                viewMode === mode
+                                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
+                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                            }`}
+                        >
+                            <Icon size={15} />
+                        </button>
+                    ))}
+                </div>
+
                 <div className="flex-1 hidden md:block" />
                 <button
                     id="new-client-filter-button"
@@ -432,7 +456,6 @@ export const Dashboard: React.FC = () => {
                 </button>
             </div>
 
-            {/* EXPLORATEUR: arborescence de dossiers + tableau */}
             {!isRefreshing && projects.length === 0 ? (
                 <EmptyState
                     title="Aucun projet"
@@ -443,28 +466,41 @@ export const Dashboard: React.FC = () => {
                 />
             ) : (
                 <div className="flex flex-col md:flex-row gap-3 md:gap-6 animate-in slide-in-from-bottom-8 duration-500">
-                    <div className="md:w-[220px] md:flex-shrink-0">
-                        <ClientsFolderTree
-                            projects={projects}
-                            selected={selectedFolder}
-                            onSelect={setSelectedFolder}
-                        />
-                    </div>
+                    {viewMode !== 'roadmap' && (
+                        <div className="md:w-[220px] md:flex-shrink-0">
+                            <ClientsFolderTree
+                                projects={projects}
+                                selected={selectedFolder}
+                                onSelect={setSelectedFolder}
+                            />
+                        </div>
+                    )}
                     <div className="flex-1 min-w-0">
-                        <ClientsTable
-                            projects={folderFilteredProjects}
-                            onOpenProject={handleOpenProject}
-                            searchQuery={searchQuery}
-                        />
+                        {viewMode === 'cards' && (
+                            <ClientsGrid
+                                projects={folderFilteredProjects}
+                                onOpenProject={handleOpenProject}
+                                searchQuery={searchQuery}
+                            />
+                        )}
+                        {viewMode === 'table' && (
+                            <ClientsTable
+                                projects={folderFilteredProjects}
+                                onOpenProject={handleOpenProject}
+                                searchQuery={searchQuery}
+                            />
+                        )}
+                        {viewMode === 'roadmap' && (
+                            <ClientsRoadmap
+                                projects={folderFilteredProjects}
+                                onOpenProject={handleOpenProject}
+                                searchQuery={searchQuery}
+                            />
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* ============================================================== */}
-            {/* MODALS managed by Dashboard (domain-specific)                  */}
-            {/* ============================================================== */}
-
-            {/* New Client Fullscreen */}
             <NewClientScreen
                 isOpen={showImporter}
                 onClose={() => setShowImporter(false)}

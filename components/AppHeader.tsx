@@ -23,7 +23,7 @@ import {
     Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X, Telescope,
     Code2, Newspaper, Sunrise,
     Hammer, ChevronDown, BookOpen, Palette, Shield,
-    ChevronsLeft, ChevronsRight, Calendar, Wallet,
+    ChevronsLeft, ChevronsRight, Calendar, Wallet, ListTodo,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
 
@@ -54,6 +54,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         isToolbarCollapsed, toggleToolbarCollapsed,
         setAiMode, setAiFallbackEnabled,
         setShowAgendaModal,
+        setShowTodoPanel,
     } = useUIStore();
 
     const {
@@ -222,6 +223,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 input.click();
             },
         },
+        { label: 'Notes rapides', icon: StickyNote, color: 'text-amber-500', desc: 'Mémos et brouillons du jour', run: () => setShowNotes(true) },
+        { label: 'To-do du jour', icon: ListTodo, color: 'text-[#7C9A7E]', desc: 'Rappels Client / Finance / Perso', run: () => setShowTodoPanel(true) },
         { label: 'Guide & Aide', icon: HelpCircle, color: 'text-slate-500', desc: "Comment utiliser l'app", run: () => setShowGuide(true) },
     ];
     const isAdvancedActive = ADVANCED_ITEMS.some(it => it.path && isActiveRoute(it.path));
@@ -376,6 +379,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         {unseenCount === 0 && emailHasIssue && (
                             <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 ring-2 ring-white dark:ring-slate-900" />
                         )}
+                    </button>
+                </Tooltip>
+                <Tooltip content="To-do du jour">
+                    <button onClick={() => setShowTodoPanel(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
+                        <ListTodo size={18} className="text-[#7C9A7E]" />
                     </button>
                 </Tooltip>
                 <Tooltip content="Notes rapides">

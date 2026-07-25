@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizza, Ship, Mic, ListTodo, RefreshCw, Pencil, Trash2, Check, X } from 'lucide-react';
-import { Project, Expense, Invoice } from '../types';
+import { TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, Clock, Sparkles, Pizza, Ship, Mic, ListTodo, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Project, Invoice } from '../types';
 import { Card } from './Shared';
 import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import { useExpenses } from '../services/queries';
+import { useTodoStore, TodoCategory } from '../stores/useTodoStore';
 
 interface FinancialHealthWidgetProps {
     projects: Project[];
@@ -50,24 +51,9 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
             localStorage.setItem('marion_dashboard_view', showTodo ? 'todo' : 'finance');
         } catch { /* ignore */ }
     }, [showTodo]);
+    const { todos, addTodo, updateTodo, removeTodo, toggleTodo, loadFromStorage } = useTodoStore();
     const [isListening, setIsListening] = useState(false);
     const [newTodo, setNewTodo] = useState('');
-    type TodoCategory = 'Client' | 'Finance' | 'Perso';
-    const [todos, setTodos] = useState<{ id: string; text: string; done: boolean; remindAt?: string; category?: TodoCategory }[]>(() => {
-        try {
-            const saved = localStorage.getItem('marion_daily_todos');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                // Check if saved date is today — reset if it's a new day
-                const savedDate = localStorage.getItem('marion_daily_todos_date');
-                const today = new Date().toISOString().slice(0, 10);
-                if (savedDate === today && Array.isArray(parsed)) return parsed;
-                // New day: keep uncompleted tasks, clear completed ones
-                if (Array.isArray(parsed)) return parsed.filter((t: any) => !t.done);
-            }
-        } catch { /* ignore */ }
-        return [];
-    });
     const [todoCategoryFilter, setTodoCategoryFilter] = useState<TodoCategory | 'all'>('all');
     const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
     const [editingTodoText, setEditingTodoText] = useState('');
@@ -76,13 +62,9 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     const [newTodoCategory, setNewTodoCategory] = useState<TodoCategory>('Perso');
     const editInputRef = useRef<HTMLInputElement>(null);
 
-    // Persist todos to localStorage on every change
     useEffect(() => {
-        try {
-            localStorage.setItem('marion_daily_todos', JSON.stringify(todos));
-            localStorage.setItem('marion_daily_todos_date', new Date().toISOString().slice(0, 10));
-        } catch { /* ignore */ }
-    }, [todos]);
+        loadFromStorage();
+    }, [loadFromStorage]);
 
     useEffect(() => {
         if (editingTodoId) {
@@ -97,17 +79,17 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     const saveTodoEdit = (id: string) => {
         const trimmed = editingTodoText.trim();
         if (trimmed) {
-            setTodos(prev => prev.map(t =>
-                t.id === id
-                    ? { ...t, text: trimmed, remindAt: editingTodoTime || undefined, category: editingTodoCategory }
-                    : t
-            ));
+            updateTodo(id, {
+                text: trimmed,
+                remindAt: editingTodoTime || undefined,
+                category: editingTodoCategory,
+            });
         }
         setEditingTodoId(null);
     };
 
     const deleteTodo = (id: string) => {
-        setTodos(prev => prev.filter(t => t.id !== id));
+        removeTodo(id);
         if (editingTodoId === id) setEditingTodoId(null);
     };
 
@@ -237,12 +219,11 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
     const addTodoFromText = (raw: string, category: TodoCategory = 'Perso') => {
         const trimmed = raw.trim();
         if (!trimmed) return;
-        const { text, remindAt, isEvent, wantsMeet, duration, cleanTitle } = parseReminderText(trimmed);
+        const { remindAt, isEvent, wantsMeet, duration, cleanTitle } = parseReminderText(trimmed);
 
-        const id = `todo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const remindAtStr = `${String(remindAt.getHours()).padStart(2, '0')}:${String(remindAt.getMinutes()).padStart(2, '0')}`;
         const todoLabel = isEvent ? `📅 ${cleanTitle}` : `🔔 ${cleanTitle}`;
-        setTodos(prev => [...prev, { id, text: todoLabel, done: false, remindAt: remindAtStr, category }]);
+        const id = addTodo({ text: todoLabel, done: false, remindAt: remindAtStr, category });
 
         if (isEvent && onAddCalendarEvent) {
             const dateStr = `${remindAt.getFullYear()}-${String(remindAt.getMonth() + 1).padStart(2, '0')}-${String(remindAt.getDate()).padStart(2, '0')}`;
@@ -642,11 +623,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                                                 checked={todo.done}
                                                 onChange={(e) => {
                                                     e.stopPropagation();
-                                                    setTodos(prev =>
-                                                        prev.map(t =>
-                                                            t.id === todo.id ? { ...t, done: !t.done } : t
-                                                        )
-                                                    );
+                                                    toggleTodo(todo.id);
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                                 className="mt-1.5 w-4 h-4 rounded border-2 border-slate-300 text-pink-500 focus:ring-pink-400 shrink-0"
