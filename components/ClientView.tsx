@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen, ZoomIn, ZoomOut, Move, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen, ZoomIn, ZoomOut, Move, RotateCcw } from 'lucide-react';
 import {
     DndContext, DragOverlay, PointerSensor, TouchSensor,
     useSensor, useSensors, DragStartEvent, DragEndEvent,
@@ -39,7 +39,7 @@ const snapOverlayToCursor: Modifier = ({ activatorEvent, draggingNodeRect, trans
     return transform;
 };
 import { Project, WorkflowPhase, Task, Invoice, FinderItem, ProjectStatus, NotificationType, MoodboardItem, MoodboardColor, MoodboardImage, MoodboardFont, Credential, MeetingReport } from '../types';
-import { formatCurrency, invoiceEffectiveAmount, normalizeCredentials } from '../utils';
+import { formatCurrency, normalizeCredentials } from '../utils';
 import { MaintenanceWidget } from './MaintenanceWidget';
 import { Badge, Card, Modal, Tooltip, EmptyState } from './Shared';
 import { Loader2 } from 'lucide-react';
