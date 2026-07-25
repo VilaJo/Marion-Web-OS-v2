@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, FolderOpen, Award } from 'lucide-react';
+import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.3";
+const CURRENT_VERSION = "2.13.4";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,31 +37,31 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Agenda Google reconnectable + style Linear
+                            Santé financière au style Linear
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <CalendarDays size={24} />
+                                <PiggyBank size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Google Calendar — reconnecte</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Santé financière — Linear</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le bouton Reconnecter de l’Agenda nettoie les tokens périmés et rouvre Google proprement. Autorise les popups si demandé.
+                                    KPIs en bandeau, onglets soulignés, Compta / Export / Trésorerie / Analytics épurés. Accents Eonora sur les montants seulement.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-800/20 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-[#23262B] text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <ListTodo size={24} />
+                                <CalendarDays size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">To-do du jour</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Agenda Google</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Petite liste sur le dashboard + panneau complet (bouton ListTodo dans le header).
+                                    Reconnexion OAuth fiable + interface Agenda déjà au style Linear (v2.13.3).
                                 </p>
                             </div>
                         </div>
@@ -79,13 +79,13 @@ export const WhatsNew: React.FC = () => {
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal flex items-center justify-center flex-shrink-0">
-                                <CalendarDays size={24} />
+                            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center flex-shrink-0">
+                                <ListTodo size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Kanban Linear + échéances</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">To-do du jour</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Colonnes sobres type Linear. À la création client, tu peux fixer les dates des tâches pour la roadmap.
+                                    Petite liste sur le dashboard + panneau complet (bouton ListTodo dans le header).
                                 </p>
                             </div>
                         </div>

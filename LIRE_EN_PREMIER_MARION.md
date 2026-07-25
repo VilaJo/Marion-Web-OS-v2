@@ -1,4 +1,4 @@
-# LIRE EN PREMIER — Eonora Tech OS v2.13.3
+# LIRE EN PREMIER — Eonora Tech OS v2.13.4
 
 Fiche courte pour Marion. Version détaillée : `docs/INSTRUCTIONS_MARION.md`
 
@@ -12,11 +12,11 @@ Double-clic **`STOPPER_EONORA.command`**
 
 ### Mettre à jour (important)
 1. Double-clic **`METTRE_A_JOUR.command`** dans le dossier que l’app utilise vraiment
-2. Vérifier que le script annonce **v2.13.3**
+2. Vérifier que le script annonce **v2.13.4**
 3. Relancer **Eonora Tech OS**
 4. Navigateur : **Cmd + Shift + R**
 
-Tu dois voir le bandeau WhatsNew **2.13.3**. Agenda : reconnexion Google fiable + style Linear.
+Tu dois voir le bandeau WhatsNew **2.13.4**. Santé financière : style Linear (Compta, Export, Trésorerie…).
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**
@@ -39,8 +39,8 @@ Envoyer à Johan : **capture d’écran** + fichier **`.marion.log`**
 
 ---
 
-### Nouveautés v2.13.3
-- Agenda : reconnexion Google Calendar corrigée (popup + handshake) + style Linear
+### Nouveautés v2.13.4
+- Santé financière : style Linear partout (KPIs, Compta, Export, Trésorerie, Analytics, Temps, Archives)
+- Agenda : reconnexion Google Calendar + style Linear (v2.13.3)
 - Fiche client : plus d’onglets Finances / E-mails
 - Header sans bouton « Replier »
-- Mission Control : KPIs, to-do, cartes / tableau / roadmap

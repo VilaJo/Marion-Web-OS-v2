@@ -5,12 +5,10 @@ import { EmailWidget as EmailClient } from './email/EmailWidget';
 import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import { 
     TrendingUp, 
-    CreditCard, 
     FileText, 
     Download, 
     ArrowUpRight, 
     ArrowDownRight,
-    DollarSign,
     Calendar,
     ChevronDown,
     Check,
@@ -27,7 +25,6 @@ import {
     BarChart3,
     Clock,
     Users,
-    PieChart,
     TrendingDown,
     FileSpreadsheet,
     Receipt,
@@ -502,292 +499,220 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
         for (const inv of p.invoices) bumpTreasurySnap(inv);
     }
 
+    const tabCls = (id: typeof activeTab) =>
+        `pb-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === id
+                ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white'
+                : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+        }`;
+
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[500px]" onClick={() => { setShowPeriodMenu(false); setShowStatusMenu(false); }}>
-            {/* Header */}
-            <div className="flex flex-col gap-4 p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 rounded-t-3xl">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                <div className="flex-1">
-                    <h2 className="text-3xl font-serif text-slate-800 dark:text-white flex items-center gap-2">
-                        {currentTheme === 'unicorn' && <span className="animate-bounce">🍕</span>} Santé Financière
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400">Vue d'ensemble de la trésorerie et du bénéfice.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    {/* NEW: Creation Buttons */}
-                    <button 
-                        onClick={() => onCreateInvoice && onCreateInvoice()}
-                        className="px-6 py-2 bg-brand-orange hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2"
-                    >
-                        <Plus size={16} /> Facture
-                    </button>
-
-                    {/* PIZZA MODE BUTTON (UNICORN ONLY) */}
-                    {currentTheme === 'unicorn' && (
-                        <button 
-                            onClick={() => setShowPizzaModal(true)}
-                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-transform hover:scale-105 shadow-lg shadow-red-200 animate-pulse"
+        <div className="space-y-5 animate-in fade-in duration-200 min-h-[500px]" onClick={() => { setShowPeriodMenu(false); setShowStatusMenu(false); }}>
+            {/* Header — Linear */}
+            <div className="flex flex-col gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                            {currentTheme === 'unicorn' && <span>🍕</span>} Santé financière
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Trésorerie, bénéfice et exports comptables</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            onClick={() => onCreateInvoice && onCreateInvoice()}
+                            className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium flex items-center gap-1.5 hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors"
                         >
-                            <Pizza size={16} /> Mode Pizza
+                            <Plus size={14} /> Facture
                         </button>
-                    )}
-
-                    {/* Accounting Button */}
-                    <button 
-                        onClick={() => setShowAccountingModal(true)}
-                        className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors"
-                        title="Exports Comptables & Fiscaux"
-                    >
-                        <FileDown size={16} /> <span className="hidden sm:inline">Compta</span>
-                    </button>
-
-                    {/* Period Dropdown */}
-                    <div className="relative">
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); setShowPeriodMenu(!showPeriodMenu); setShowStatusMenu(false); }}
-                            className={`px-4 py-2 border rounded-xl text-sm font-bold flex items-center gap-2 transition-colors ${showPeriodMenu ? 'bg-orange-50 border-orange-200 text-brand-orange' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'}`}
-                        >
-                            <Calendar size={16} /> {getPeriodLabel()} <ChevronDown size={14} />
-                        </button>
-                        {showPeriodMenu && (
-                            <div className="absolute top-full right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 p-1 z-50">
-                                {['month', 'year', 'all'].map((p) => (
-                                    <button 
-                                        key={p}
-                                        onClick={() => setPeriod(p as any)}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium flex justify-between items-center ${period === p ? 'bg-orange-50 text-brand-orange' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-                                    >
-                                        {p === 'month' ? 'Ce Mois' : p === 'year' ? 'Cette Année' : 'Tout'}
-                                        {period === p && <Check size={14} />}
-                                    </button>
-                                ))}
-                            </div>
+                        {currentTheme === 'unicorn' && (
+                            <button
+                                onClick={() => setShowPizzaModal(true)}
+                                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium flex items-center gap-1.5 text-slate-600 dark:text-slate-300"
+                            >
+                                <Pizza size={14} /> Pizza
+                            </button>
                         )}
-                    </div>
-                    {/* Custom Close Button */}
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors group">
-                        <X className="w-6 h-6 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white transition-colors" />
-                    </button>
-                </div>
-                </div>
-                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 px-4 py-3">
-                        <p className="text-[10px] font-bold uppercase text-emerald-700/80 dark:text-emerald-400/90">Encaissé (factures payées)</p>
-                        <p className="text-xl font-bold text-emerald-800 dark:text-emerald-200 tabular-nums">{formatCurrency(snapEncaisse)} {currency}</p>
-                    </div>
-                    <div className="rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 px-4 py-3">
-                        <p className="text-[10px] font-bold uppercase text-amber-800/80 dark:text-amber-300/90">En attente</p>
-                        <p className="text-xl font-bold text-amber-900 dark:text-amber-200 tabular-nums">{formatCurrency(snapAttente)} {currency}</p>
-                    </div>
-                    <div className="rounded-2xl bg-rose-50/90 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 px-4 py-3">
-                        <p className="text-[10px] font-bold uppercase text-rose-800/80 dark:text-rose-300/90">En retard (échu)</p>
-                        <p className="text-xl font-bold text-rose-900 dark:text-rose-200 tabular-nums">{formatCurrency(snapRetard)} {currency}</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Financial Health Widget (Unified) */}
-            <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="flex flex-col lg:flex-row gap-8 items-center">
-                    
-                    {/* Left: Net Profit (The "Performance") */}
-                    <div className="flex-1 w-full lg:w-auto">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className={`p-3 rounded-2xl ${netProfit >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                                <TrendingUp size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Bénéfice Net</h3>
-                                <div className={`text-4xl font-serif font-bold ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {formatCurrency(netProfit)}{' '}
-                                    <span className="text-2xl text-slate-400">{currency}</span>
+                        <button
+                            onClick={() => setShowAccountingModal(true)}
+                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            title="Exports Comptables & Fiscaux"
+                        >
+                            <FileDown size={14} /> <span className="hidden sm:inline">Compta</span>
+                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowPeriodMenu(!showPeriodMenu); setShowStatusMenu(false); }}
+                                className={`px-3 py-1.5 border rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors ${showPeriodMenu ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            >
+                                <Calendar size={14} /> {getPeriodLabel()} <ChevronDown size={12} />
+                            </button>
+                            {showPeriodMenu && (
+                                <div className="absolute top-full right-0 mt-1.5 w-40 bg-white dark:bg-slate-900 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 p-1 z-50">
+                                    {['month', 'year', 'all'].map((p) => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setPeriod(p as any)}
+                                            className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm flex justify-between items-center ${period === p ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                                        >
+                                            {p === 'month' ? 'Ce Mois' : p === 'year' ? 'Cette Année' : 'Tout'}
+                                            {period === p && <Check size={14} />}
+                                        </button>
+                                    ))}
                                 </div>
-                            </div>
+                            )}
                         </div>
-                        <p className="text-sm text-slate-500 mt-2 pl-14">
-                            Cela représente <strong className={netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                                {totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0}%
-                            </strong> de marge sur le chiffre d'affaires.
+                        <button onClick={onClose} className="p-1.5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" aria-label="Fermer">
+                            <X className="w-4 h-4 text-slate-400" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* KPI strip — inline Linear */}
+                <div className="flex flex-wrap items-stretch border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-slate-200 dark:divide-slate-700">
+                    <div className="flex-1 min-w-[120px] px-4 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Encaissé</p>
+                        <p className="text-lg font-semibold tabular-nums text-[#2aada0]">{formatCurrency(snapEncaisse)} <span className="text-xs text-slate-400 font-medium">{currency}</span></p>
+                    </div>
+                    <div className="flex-1 min-w-[120px] px-4 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">En attente</p>
+                        <p className="text-lg font-semibold tabular-nums text-slate-800 dark:text-slate-100">{formatCurrency(snapAttente)} <span className="text-xs text-slate-400 font-medium">{currency}</span></p>
+                    </div>
+                    <div className="flex-1 min-w-[120px] px-4 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">En retard</p>
+                        <p className={`text-lg font-semibold tabular-nums ${snapRetard > 0 ? 'text-[#b05070]' : 'text-slate-800 dark:text-slate-100'}`}>{formatCurrency(snapRetard)} <span className="text-xs text-slate-400 font-medium">{currency}</span></p>
+                    </div>
+                    <div className="flex-1 min-w-[140px] px-4 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Bénéfice net</p>
+                        <p className={`text-lg font-semibold tabular-nums ${netProfit >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
+                            {formatCurrency(netProfit)} <span className="text-xs text-slate-400 font-medium">{currency}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                            Marge {totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0}%
                         </p>
                     </div>
+                </div>
+            </div>
 
-                    {/* Right: Distribution Visualizer */}
-                    <div className="flex-1 w-full lg:w-auto border-l border-slate-100 dark:border-slate-700 lg:pl-8">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Flux de Trésorerie</h4>
-                        
-                        {/* Visual Bar */}
-                        <div className="h-4 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex mb-6">
-                            <div 
-                                className="h-full bg-red-400 dark:bg-red-500 transition-all duration-1000"
-                                style={{ width: `${Math.min((totalExpenses / (totalRevenue || 1)) * 100, 100)}%` }}
-                                title="Dépenses"
-                            />
-                            <div 
-                                className="h-full bg-emerald-400 dark:bg-emerald-500 transition-all duration-1000"
-                                style={{ width: `${Math.max(0, (netProfit / (totalRevenue || 1)) * 100)}%` }}
-                                title="Bénéfice"
-                            />
+            {/* Flux + KPIs secondaires — dense Linear */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div className="lg:col-span-1 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Flux</p>
+                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mb-3">
+                        <div
+                            className="h-full bg-[#b05070] transition-all"
+                            style={{ width: `${Math.min((totalExpenses / (totalRevenue || 1)) * 100, 100)}%` }}
+                            title="Dépenses"
+                        />
+                        <div
+                            className="h-full bg-[#2aada0] transition-all"
+                            style={{ width: `${Math.max(0, (netProfit / (totalRevenue || 1)) * 100)}%` }}
+                            title="Bénéfice"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <span className="text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-0.5">
+                                <ArrowUpRight size={10} className="text-[#2aada0]" /> CA
+                            </span>
+                            <span className="tabular-nums font-semibold text-slate-800 dark:text-white">
+                                {formatCurrency(totalRevenue)} {currency}
+                            </span>
                         </div>
+                        <div>
+                            <span className="text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-0.5">
+                                <ArrowDownRight size={10} className="text-[#b05070]" /> Charges
+                            </span>
+                            <span className="tabular-nums font-semibold text-slate-800 dark:text-white">
+                                {formatCurrency(totalExpenses)} {currency}
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-                        {/* Legend / Details */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col">
-                                <span className="text-xs text-slate-400 flex items-center gap-1 mb-1">
-                                    <ArrowUpRight size={12} className="text-emerald-500" /> Entrées (CA)
-                                </span>
-                                <span className="tabular-nums font-bold text-slate-800 dark:text-white text-lg">
-                                    {formatCurrency(totalRevenue)} {currency}
-                                </span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-xs text-slate-400 flex items-center gap-1 mb-1">
-                                    <ArrowDownRight size={12} className="text-red-500" /> Sorties (Charges)
-                                </span>
-                                <span className="tabular-nums font-bold text-slate-800 dark:text-white text-lg">
-                                    {formatCurrency(totalExpenses)} {currency}
-                                </span>
-                            </div>
-                        </div>
+                <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-0 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700">
+                    <div className="px-3 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">DSO</p>
+                        <p className="text-xl font-semibold text-slate-800 dark:text-white tabular-nums">
+                            {dso.days !== null ? dso.days : '—'}
+                            {dso.days !== null && <span className="text-xs text-slate-400 ml-0.5">j</span>}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">délai paiement</p>
+                    </div>
+                    <div className="px-3 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Impayés</p>
+                        <p className={`text-xl font-semibold tabular-nums ${overdueRatio.ratio > 0.2 ? 'text-[#b05070]' : 'text-slate-800 dark:text-white'}`}>
+                            {(overdueRatio.ratio * 100).toFixed(0)}<span className="text-xs text-slate-400">%</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">{formatCurrency(overdueRatio.overdue)} / {formatCurrency(overdueRatio.issued)}</p>
+                    </div>
+                    <div className="px-3 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">TVA ({vatPayable.quarter})</p>
+                        <p className="text-xl font-semibold text-slate-800 dark:text-white tabular-nums">
+                            {formatCurrency(vatPayable.total)} <span className="text-xs text-slate-400">CHF</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                            {vatPayable.breakdown.length === 0 ? 'aucune' : vatPayable.breakdown.map(b => `${b.rate}%`).join(' · ')}
+                        </p>
+                    </div>
+                    <div className="px-3 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1">
+                            {compliance.every(c => c.ok) ? <Shield size={10} /> : <ShieldAlert size={10} />} Conformité
+                        </p>
+                        <ul className="space-y-0.5">
+                            {compliance.map(c => (
+                                <li key={c.id} className="flex items-center gap-1.5 text-[10px]">
+                                    <span className={`inline-block w-1 h-1 rounded-full ${c.ok ? 'bg-[#2aada0]' : 'bg-[#b05070]'}`} />
+                                    <span className={c.ok ? 'text-slate-600 dark:text-slate-300' : 'text-[#b05070]'}>{c.label}</span>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 </div>
             </div>
 
-            {/* --- Santé Financière v2 — KPIs Swiss-grade --- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* DSO */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">DSO (12 mois)</p>
-                    <p className="text-3xl font-serif font-bold text-slate-800 dark:text-white tabular-nums">
-                        {dso.days !== null ? dso.days : '—'}
-                        {dso.days !== null && <span className="text-base text-slate-400 ml-1">j</span>}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                        Délai moyen de paiement
-                        {dso.sampleSize > 0 ? ` (${dso.sampleSize} factures)` : ''}
-                    </p>
-                </div>
-
-                {/* Ratio impayés */}
-                <div className={`rounded-2xl border p-5 ${overdueRatio.ratio > 0.2
-                    ? 'bg-red-50/60 dark:bg-red-950/30 border-red-200 dark:border-red-900/40'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ratio impayés</p>
-                    <p className="text-3xl font-serif font-bold text-slate-800 dark:text-white tabular-nums">
-                        {(overdueRatio.ratio * 100).toFixed(0)}<span className="text-base text-slate-400">%</span>
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-1 tabular-nums">
-                        {formatCurrency(overdueRatio.overdue)} / {formatCurrency(overdueRatio.issued)} {currency}
-                    </p>
-                </div>
-
-                {/* TVA à reverser (trimestre courant) */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                        TVA à reverser ({vatPayable.quarter} {vatPayable.year})
-                    </p>
-                    <p className="text-3xl font-serif font-bold text-slate-800 dark:text-white tabular-nums">
-                        {formatCurrency(vatPayable.total)} <span className="text-base text-slate-400">CHF</span>
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                        {vatPayable.breakdown.length === 0
-                            ? 'Aucune TVA encaissée ce trimestre'
-                            : vatPayable.breakdown.map(b => `${b.rate}%: ${formatCurrency(b.vat)}`).join(' · ')}
-                    </p>
-                </div>
-
-                {/* Conformité */}
-                <div className={`rounded-2xl border p-5 ${compliance.every(c => c.ok)
-                    ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40'
-                    : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'}`}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
-                        {compliance.every(c => c.ok) ? <Shield size={12} /> : <ShieldAlert size={12} />} Conformité CH
-                    </p>
-                    <ul className="space-y-0.5 mt-1">
-                        {compliance.map(c => (
-                            <li key={c.id} className="flex items-center gap-2 text-[11px]">
-                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.ok ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                <span className={c.ok ? 'text-slate-700 dark:text-slate-300' : 'text-amber-700 dark:text-amber-400'}>
-                                    {c.label}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-
-            {/* Alertes overdue (visibles uniquement s'il y en a) */}
+            {/* Alertes overdue — ligne compacte */}
             {overdueAlerts.length > 0 && (
-                <div className="bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-2xl p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                        <AlertTriangle className="text-rose-600" size={18} />
-                        <h3 className="font-bold text-rose-900 dark:text-rose-300">
+                <div className="border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="text-[#b05070]" size={14} />
+                        <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500">
                             {overdueAlerts.length} facture{overdueAlerts.length > 1 ? 's' : ''} en retard
                         </h3>
                     </div>
                     <div className="space-y-1">
                         {overdueAlerts.slice(0, 5).map(a => (
                             <div key={a.id} className="flex items-center justify-between text-sm">
-                                <span className="text-slate-700 dark:text-slate-300">
-                                    <strong>{a.number}</strong> — {a.clientName}
+                                <span className="text-slate-600 dark:text-slate-300">
+                                    <span className="font-medium text-slate-800 dark:text-white">{a.number}</span> — {a.clientName}
                                 </span>
-                                <span className="tabular-nums text-rose-700 dark:text-rose-400 font-bold">
+                                <span className="tabular-nums text-[#b05070] font-medium text-xs">
                                     {formatCurrency(a.amountDue)} {a.currency} · {a.daysLate}j
                                 </span>
                             </div>
                         ))}
                         {overdueAlerts.length > 5 && (
-                            <p className="text-xs text-slate-500 italic mt-1">… et {overdueAlerts.length - 5} autres</p>
+                            <p className="text-[11px] text-slate-400 mt-1">… et {overdueAlerts.length - 5} autres</p>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* Tab Switcher */}
-            <div className="flex gap-6 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-                <button 
-                    onClick={() => setActiveTab('revenus')}
-                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all px-4 whitespace-nowrap ${activeTab === 'revenus' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    Revenus
-                </button>
-                <button 
-                    onClick={() => setActiveTab('depenses')}
-                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'depenses' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    Dépenses
-                </button>
-                <button 
-                    onClick={() => setActiveTab('analytics')}
-                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'analytics' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <BarChart3 size={16} /> Analytics
-                </button>
-                <button 
-                    onClick={() => setActiveTab('temps')}
-                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'temps' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <Clock size={16} /> Temps
-                </button>
-                <button 
-                    onClick={() => setActiveTab('tresorerie')}
-                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'tresorerie' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <PiggyBank size={16} /> Trésorerie
-                </button>
-                <button 
-                    onClick={() => setActiveTab('export')}
-                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'export' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <FileSpreadsheet size={16} /> Export
-                </button>
+            {/* Tab Switcher — Linear underline */}
+            <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+                <button onClick={() => setActiveTab('revenus')} className={tabCls('revenus')}>Revenus</button>
+                <button onClick={() => setActiveTab('depenses')} className={tabCls('depenses')}>Dépenses</button>
+                <button onClick={() => setActiveTab('analytics')} className={tabCls('analytics')}><BarChart3 size={14} /> Analytics</button>
+                <button onClick={() => setActiveTab('temps')} className={tabCls('temps')}><Clock size={14} /> Temps</button>
+                <button onClick={() => setActiveTab('tresorerie')} className={tabCls('tresorerie')}><PiggyBank size={14} /> Trésorerie</button>
+                <button onClick={() => setActiveTab('export')} className={tabCls('export')}><FileSpreadsheet size={14} /> Export</button>
                 <button
                     onClick={() => setActiveTab('archives')}
-                    className={`pb-4 text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'archives' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={tabCls('archives')}
                     title="Factures annulées / archivées (conservées 10 ans, exclues des KPIs)"
                 >
-                    <Archive size={16} /> Archives
+                    <Archive size={14} /> Archives
                     {archivedInvoices.length > 0 && (
-                        <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full text-slate-600 dark:text-slate-300">
+                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
                             {archivedInvoices.length}
                         </span>
                     )}
@@ -827,7 +752,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                         </div>
 
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                                 <FileText className="text-slate-400" size={20} />
                                 Factures Clients
                             </h3>
@@ -835,7 +760,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-bold text-xs">
+                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-semibold tracking-widest text-[10px]">
                                     <tr>
                                         <th className="px-6 py-4">Numéro</th>
                                         <th className="px-6 py-4">Client</th>
@@ -881,10 +806,10 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                 {inv.status !== 'Paid' && (
                                                     <button 
                                                         onClick={(e) => handleMarkAsPaid(e, inv, inv.project)}
-                                                        className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-full transition-colors"
+                                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-[#2aada0] rounded-md transition-colors"
                                                         title="Marquer comme payé"
                                                     >
-                                                        <Check size={16} />
+                                                        <Check size={15} />
                                                     </button>
                                                 )}
                                                 
@@ -893,35 +818,35 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                     <button 
                                                         onClick={(e) => handleRemind(e, inv, inv.project)}
                                                         disabled={isReminding === inv.id}
-                                                        className="p-2 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-full transition-colors disabled:opacity-50"
+                                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-md transition-colors disabled:opacity-50"
                                                         title="Relancer par mail"
                                                     >
-                                                        {isReminding === inv.id ? <ScanLine className="animate-spin" size={16} /> : <Send size={16} />}
+                                                        {isReminding === inv.id ? <ScanLine className="animate-spin" size={15} /> : <Send size={15} />}
                                                     </button>
                                                 )}
 
-                                                <button className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-brand-orange transition-colors">
-                                                    <Download size={16} />
+                                                <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 transition-colors">
+                                                    <Download size={15} />
                                                 </button>
 
                                                 {/* Note de crédit (uniquement sur facture émise & type Invoice) */}
                                                 {inv.type === 'Invoice' && inv.status !== 'Draft' && !inv.parentInvoiceId && (
                                                     <button
                                                         onClick={(e) => handleCreateCreditNote(e, inv, inv.project)}
-                                                        className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-full transition-colors"
+                                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-md transition-colors"
                                                         title="Émettre une note de crédit"
                                                     >
-                                                        <FileMinus size={16} />
+                                                        <FileMinus size={15} />
                                                     </button>
                                                 )}
 
                                                 {/* Supprimer (brouillon) / Annuler (facture émise) */}
                                                 <button
                                                     onClick={(e) => handleVoidOrDelete(e, inv, inv.project)}
-                                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-slate-400 hover:text-red-500 transition-colors"
+                                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-[#b05070] transition-colors"
                                                     title={canHardDelete(inv) ? 'Supprimer le brouillon' : 'Annuler la facture (conservée 10 ans)'}
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={15} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -937,14 +862,14 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                     <>
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
                             <div className="flex items-center gap-4">
-                                <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                                     <ShoppingBag className="text-slate-400" size={20} />
                                     Achats & Charges
                                 </h3>
                                 <button 
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isScanning}
-                                    className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold hover:border-brand-orange text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-colors shadow-sm"
+                                    className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition-colors"
                                 >
                                     {isScanning ? <ScanLine className="animate-spin" size={16}/> : <UploadCloud size={16}/>}
                                     {isScanning ? "Analyse..." : "Scanner une facture"}
@@ -955,7 +880,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-bold text-xs">
+                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-semibold tracking-widest text-[10px]">
                                     <tr>
                                         <th className="px-6 py-4">Date</th>
                                         <th className="px-6 py-4">Fournisseur</th>
@@ -979,24 +904,24 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-slate-900 dark:text-slate-300 text-xs max-w-[200px] truncate" title={exp.description}>{exp.description}</td>
-                                            <td className="px-6 py-4 text-right tabular-nums font-bold text-red-600">
+                                            <td className="px-6 py-4 text-right tabular-nums font-medium text-[#b05070]">
                                                 -{formatCurrency(exp.amount)} {currency}
                                             </td>
                                             <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                 {exp.fileUrl && (
                                                     <button 
                                                         onClick={() => fetch('/api/v1/files/open', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: `Dépenses/${exp.id}${exp.fileUrl.substring(exp.fileUrl.lastIndexOf('.'))}` }) }) } 
-                                                        className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-blue-500 transition-colors"
+                                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-slate-700 transition-colors"
                                                         title="Voir le justificatif"
                                                     >
-                                                        <FileText size={16} />
+                                                        <FileText size={15} />
                                                     </button>
                                                 )}
                                                 <button 
                                                     onClick={() => handleDeleteExpense(exp.id)}
-                                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-slate-400 hover:text-red-500 transition-colors"
+                                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-[#b05070] transition-colors"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={15} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -1009,35 +934,35 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
 
                 {/* ANALYTICS TAB */}
                 {activeTab === 'analytics' && (
-                    <div className="p-6 space-y-8">
-                        {/* Conversion KPIs */}
+                    <div className="p-4 md:p-5 space-y-6">
+                        {/* Conversion KPIs — Linear strip */}
                         {analyticsData && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <Card className="p-4 text-center">
-                                    <div className="text-2xl font-bold text-blue-600 tabular-nums">{analyticsData.conversionRates.estimateToInvoice}%</div>
-                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">Devis → Facture</div>
-                                </Card>
-                                <Card className="p-4 text-center">
-                                    <div className="text-2xl font-bold text-emerald-600 tabular-nums">{analyticsData.conversionRates.invoiceToPaid}%</div>
-                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">Facture → Payée</div>
-                                </Card>
-                                <Card className="p-4 text-center">
-                                    <div className="text-2xl font-bold text-purple-600 tabular-nums">{analyticsData.avgPaymentDelay}j</div>
-                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">Délai paiement moy.</div>
-                                </Card>
-                                <Card className="p-4 text-center">
-                                    <div className="text-2xl font-bold text-orange-600 tabular-nums">{formatCurrency(analyticsData.totals.totalRevenue)}</div>
-                                    <div className="text-xs text-slate-500 uppercase font-bold mt-1">CA Total {currency}</div>
-                                </Card>
+                            <div className="flex flex-wrap border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-slate-200 dark:divide-slate-700">
+                                <div className="flex-1 min-w-[120px] px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Devis → Facture</div>
+                                    <div className="text-xl font-semibold tabular-nums text-[#4a72c4]">{analyticsData.conversionRates.estimateToInvoice}%</div>
+                                </div>
+                                <div className="flex-1 min-w-[120px] px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Facture → Payée</div>
+                                    <div className="text-xl font-semibold tabular-nums text-[#2aada0]">{analyticsData.conversionRates.invoiceToPaid}%</div>
+                                </div>
+                                <div className="flex-1 min-w-[120px] px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Délai paiement</div>
+                                    <div className="text-xl font-semibold tabular-nums text-slate-800 dark:text-white">{analyticsData.avgPaymentDelay}<span className="text-xs text-slate-400 ml-0.5">j</span></div>
+                                </div>
+                                <div className="flex-1 min-w-[120px] px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">CA Total</div>
+                                    <div className="text-xl font-semibold tabular-nums text-slate-800 dark:text-white">{formatCurrency(analyticsData.totals.totalRevenue)} <span className="text-xs text-slate-400">{currency}</span></div>
+                                </div>
                             </div>
                         )}
 
                         {/* SVG Line Chart - Monthly Revenue Trend */}
                         {analyticsData && analyticsData.monthlyRevenue.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
-                                    <TrendingUp className="text-emerald-500" size={20} />
-                                    Tendance CA Mensuel (12 mois)
+                                <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4">
+                                    <TrendingUp className="text-slate-400" size={16} />
+                                    Tendance CA mensuel (12 mois)
                                 </h3>
                                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
                                     {(() => {
@@ -1072,16 +997,16 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                 <path d={areaPath} fill="url(#areaGradient)" />
                                                 <defs>
                                                     <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-                                                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                                                        <stop offset="0%" stopColor="#2aada0" stopOpacity="0.25" />
+                                                        <stop offset="100%" stopColor="#2aada0" stopOpacity="0.02" />
                                                     </linearGradient>
                                                 </defs>
                                                 {/* Line */}
-                                                <path d={linePath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d={linePath} fill="none" stroke="#2aada0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                 {/* Data points */}
                                                 {points.map((p, i) => (
                                                     <g key={i}>
-                                                        <circle cx={p.x} cy={p.y} r="3.5" fill="#10b981" stroke="white" strokeWidth="1.5" />
+                                                        <circle cx={p.x} cy={p.y} r="3" fill="#2aada0" stroke="white" strokeWidth="1.5" />
                                                         {/* X-axis labels */}
                                                         {i % 2 === 0 && (
                                                             <text x={p.x} y={H - 4} textAnchor="middle" className="fill-slate-400 text-[7px]">{p.label.split(' ')[0]}</text>
@@ -1098,9 +1023,9 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
 
                         {/* Top Clients with Real Time & Profitability */}
                         <div>
-                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
-                                <Users className="text-blue-500" size={20} />
-                                Top Clients (Revenus & Temps réel)
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4">
+                                <Users className="text-slate-400" size={16} />
+                                Top clients (revenus & temps réel)
                             </h3>
                             {analyticsData && analyticsData.topClients.length > 0 ? (
                                 <table className="w-full text-sm">
@@ -1124,18 +1049,18 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                         <span className="font-medium text-slate-800 dark:text-white">{c.client}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-600">{formatCurrency(c.revenue)} {currency}</td>
+                                                <td className="px-4 py-3 text-right tabular-nums font-medium text-[#2aada0]">{formatCurrency(c.revenue)} {currency}</td>
                                                 <td className="px-4 py-3 text-right tabular-nums">{c.hours > 0 ? `${c.hours}h` : '—'}</td>
                                                 <td className="px-4 py-3 text-right tabular-nums">{c.hourlyRate > 0 ? `${c.hourlyRate.toFixed(0)} ${currency}/h` : '—'}</td>
                                                 <td className="px-4 py-3 text-center">
                                                     {c.hourlyRate >= 150 ? (
-                                                        <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-full text-xs font-bold">Excellent</span>
+                                                        <span className="text-xs font-medium text-[#2aada0]">Excellent</span>
                                                     ) : c.hourlyRate >= 100 ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">Bon</span>
+                                                        <span className="text-xs font-medium text-[#7C9A7E]">Bon</span>
                                                     ) : c.hourlyRate >= 50 ? (
-                                                        <span className="px-2 py-1 bg-yellow-100 text-yellow-600 rounded-full text-xs font-bold">Moyen</span>
+                                                        <span className="text-xs font-medium text-slate-500">Moyen</span>
                                                     ) : c.hours > 0 ? (
-                                                        <span className="px-2 py-1 bg-red-100 text-red-600 rounded-full text-xs font-bold">Faible</span>
+                                                        <span className="text-xs font-medium text-[#b05070]">Faible</span>
                                                     ) : (
                                                         <span className="text-slate-400 text-xs">—</span>
                                                     )}
@@ -1175,11 +1100,11 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                 <div className="flex-1">
                                                     <div className="flex justify-between mb-1">
                                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{client.name}</span>
-                                                        <span className="text-sm tabular-nums font-bold text-emerald-600">{formatCurrency(client.revenue)} {currency}</span>
+                                                        <span className="text-sm tabular-nums font-medium text-[#2aada0]">{formatCurrency(client.revenue)} {currency}</span>
                                                     </div>
-                                                    <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex">
-                                                        <div className="h-full bg-emerald-500" style={{ width: `${(client.revenue / maxRevenue) * 100}%` }} />
-                                                        <div className="h-full bg-yellow-400" style={{ width: `${(client.pending / maxRevenue) * 100}%` }} />
+                                                    <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex">
+                                                        <div className="h-full bg-[#2aada0]" style={{ width: `${(client.revenue / maxRevenue) * 100}%` }} />
+                                                        <div className="h-full bg-slate-300 dark:bg-slate-500" style={{ width: `${(client.pending / maxRevenue) * 100}%` }} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -1191,9 +1116,9 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
 
                         {/* Revenue by Month with N-1 Comparison */}
                         <div>
-                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
-                                <BarChart3 className="text-purple-500" size={20} />
-                                Revenus Mensuels (N vs N-1)
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4">
+                                <BarChart3 className="text-slate-400" size={16} />
+                                Revenus mensuels (N vs N-1)
                             </h3>
                             <div className="grid grid-cols-12 gap-2">
                                 {(() => {
@@ -1220,7 +1145,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                     title={`N-1: ${formatCurrency(d.lastYear)} ${currency}`}
                                                 />
                                                 <div 
-                                                    className="w-3 bg-emerald-500 rounded-t" 
+                                                    className="w-3 bg-[#2aada0] rounded-t" 
                                                     style={{ height: `${(d.thisYear / maxVal) * 100}%`, minHeight: d.thisYear > 0 ? '4px' : '0' }}
                                                     title={`N: ${formatCurrency(d.thisYear)} ${currency}`}
                                                 />
@@ -1230,41 +1155,41 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                     ));
                                 })()}
                             </div>
-                            <div className="flex gap-4 mt-4 justify-center text-xs">
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-300 dark:bg-slate-600" /> N-1</span>
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500" /> Cette année</span>
+                            <div className="flex gap-4 mt-4 justify-center text-xs text-slate-400">
+                                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-300 dark:bg-slate-600" /> N-1</span>
+                                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#2aada0]" /> Cette année</span>
                             </div>
                         </div>
 
                         {/* Year-over-Year Comparison */}
-                        <div className="grid grid-cols-2 gap-6">
-                            <Card className="p-4">
-                                <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Cette Année</h4>
-                                <div className="text-3xl font-bold text-emerald-600 tabular-nums">
-                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0).toLocaleString('fr-CH')} {currency}
-                                </div>
-                            </Card>
-                            <Card className="p-4">
-                                <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Année Précédente</h4>
-                                <div className="text-3xl font-bold text-slate-500 tabular-nums">
-                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0).toLocaleString('fr-CH')} {currency}
-                                </div>
+                        <div className="flex flex-wrap border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-slate-200 dark:divide-slate-700">
+                            <div className="flex-1 min-w-[140px] px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Cette année</p>
+                                <p className="text-xl font-semibold text-[#2aada0] tabular-nums">
+                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0).toLocaleString('fr-CH')} <span className="text-xs text-slate-400 font-medium">{currency}</span>
+                                </p>
+                            </div>
+                            <div className="flex-1 min-w-[140px] px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Année précédente</p>
+                                <p className="text-xl font-semibold text-slate-800 dark:text-white tabular-nums">
+                                    {allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0).toLocaleString('fr-CH')} <span className="text-xs text-slate-400 font-medium">{currency}</span>
+                                </p>
                                 {(() => {
                                     const thisY = allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                                     const lastY = allInvoices.filter(i => new Date(i.date).getFullYear() === new Date().getFullYear() - 1 && i.status === 'Paid').reduce((s, i) => s + invoiceEffectiveAmount(i), 0);
                                     const diff = lastY > 0 ? ((thisY - lastY) / lastY * 100).toFixed(0) : 0;
                                     return (
-                                        <div className={`text-sm mt-2 flex items-center gap-1 ${Number(diff) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                            {Number(diff) >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                        <p className={`text-[11px] mt-0.5 flex items-center gap-1 ${Number(diff) >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
+                                            {Number(diff) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                                             {diff}% vs N-1
-                                        </div>
+                                        </p>
                                     );
                                 })()}
-                            </Card>
+                            </div>
                         </div>
 
                         {/* Export Button */}
-                        <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
                             <button 
                                 onClick={() => {
                                     const data = allInvoices.map(i => ({
@@ -1273,15 +1198,15 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                     }));
                                     generateCSV(data, 'revenus');
                                 }}
-                                className="px-4 py-2 bg-emerald-100 text-emerald-600 rounded-lg text-sm font-bold hover:bg-emerald-200 flex items-center gap-2"
+                                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
                             >
-                                <FileSpreadsheet size={16} /> Export CSV Revenus
+                                <FileSpreadsheet size={14} /> CSV revenus
                             </button>
                             <button 
                                 onClick={() => generateCSV(expenses, 'depenses')}
-                                className="px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-bold hover:bg-red-200 flex items-center gap-2"
+                                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
                             >
-                                <FileSpreadsheet size={16} /> Export CSV Dépenses
+                                <FileSpreadsheet size={14} /> CSV dépenses
                             </button>
                         </div>
                     </div>
@@ -1291,9 +1216,9 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                 {activeTab === 'temps' && (
                     <div className="p-6 space-y-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                <Clock className="text-blue-500" size={20} />
-                                Rapport Temps Passé
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                <Clock className="text-slate-400" size={16} />
+                                Rapport temps passé
                             </h3>
                         </div>
 
@@ -1348,7 +1273,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                             {p.hours}h
                                                             {!p.isReal && <span className="text-[9px] text-slate-400 ml-1" title="Estimation basée sur les tâches">est.</span>}
                                                         </td>
-                                                        <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-600">
+                                                        <td className="px-4 py-3 text-right tabular-nums font-medium text-[#2aada0]">
                                                             {formatCurrency(p.revenue)} {currency}
                                                         </td>
                                                         <td className="px-4 py-3 text-right tabular-nums">
@@ -1356,13 +1281,13 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
                                                             {p.hourlyRate >= 150 ? (
-                                                                <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-full text-xs font-bold">Excellent</span>
+                                                                <span className="text-xs font-medium text-[#2aada0]">Excellent</span>
                                                             ) : p.hourlyRate >= 100 ? (
-                                                                <span className="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">Bon</span>
+                                                                <span className="text-xs font-medium text-[#7C9A7E]">Bon</span>
                                                             ) : p.hourlyRate >= 50 ? (
-                                                                <span className="px-2 py-1 bg-yellow-100 text-yellow-600 rounded-full text-xs font-bold">Moyen</span>
+                                                                <span className="text-xs font-medium text-slate-500">Moyen</span>
                                                             ) : (
-                                                                <span className="px-2 py-1 bg-red-100 text-red-600 rounded-full text-xs font-bold">Faible</span>
+                                                                <span className="text-xs font-medium text-[#b05070]">Faible</span>
                                                             )}
                                                         </td>
                                                     </tr>
@@ -1371,29 +1296,29 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                         </table>
 
                                         {/* Summary Stats */}
-                                        <div className="grid grid-cols-3 gap-4 mt-6">
-                                            <Card className="p-4 text-center">
-                                                <div className="text-2xl font-bold text-blue-600">
+                                        <div className="flex flex-wrap border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-slate-200 dark:divide-slate-700 mt-6">
+                                            <div className="flex-1 min-w-[100px] px-4 py-3 text-center">
+                                                <p className="text-xl font-semibold text-[#4a72c4] tabular-nums">
                                                     {projectsWithTime.reduce((s, p) => s + p.hours, 0)}h
-                                                </div>
-                                                <div className="text-xs text-slate-500 uppercase font-bold mt-1">Total Heures</div>
-                                            </Card>
-                                            <Card className="p-4 text-center">
-                                                <div className="text-2xl font-bold text-emerald-600">
+                                                </p>
+                                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">Total heures</p>
+                                            </div>
+                                            <div className="flex-1 min-w-[100px] px-4 py-3 text-center">
+                                                <p className="text-xl font-semibold text-[#2aada0] tabular-nums">
                                                     {(() => {
                                                         const totalHours = projectsWithTime.reduce((s, p) => s + p.hours, 0);
                                                         const totalRevenue = projectsWithTime.reduce((s, p) => s + p.revenue, 0);
                                                         return totalHours > 0 ? (totalRevenue / totalHours).toFixed(0) : 0;
-                                                    })()} {currency}/h
-                                                </div>
-                                                <div className="text-xs text-slate-500 uppercase font-bold mt-1">Taux Moyen</div>
-                                            </Card>
-                                            <Card className="p-4 text-center">
-                                                <div className="text-2xl font-bold text-purple-600">
+                                                    })()} <span className="text-xs text-slate-400 font-medium">{currency}/h</span>
+                                                </p>
+                                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">Taux moyen</p>
+                                            </div>
+                                            <div className="flex-1 min-w-[100px] px-4 py-3 text-center">
+                                                <p className="text-xl font-semibold text-slate-800 dark:text-white tabular-nums">
                                                     {projectsWithTime.filter(p => p.hourlyRate >= 100).length}
-                                                </div>
-                                                <div className="text-xs text-slate-500 uppercase font-bold mt-1">Projets Rentables</div>
-                                            </Card>
+                                                </p>
+                                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">Projets rentables</p>
+                                            </div>
                                         </div>
                                     </>
                                 );
@@ -1420,9 +1345,9 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                         `Rapport_Temps_${new Date().getFullYear()}.csv`
                                     );
                                 }}
-                                className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-200 flex items-center gap-2"
+                                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
                             >
-                                <FileSpreadsheet size={16} /> Export CSV Rapport Temps
+                                <FileSpreadsheet size={14} /> CSV rapport temps
                             </button>
                         </div>
                     </div>
@@ -1432,15 +1357,15 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                 {activeTab === 'tresorerie' && (
                     <div className="p-6 space-y-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                <PiggyBank className="text-emerald-500" size={20} />
-                                Prévisions de Trésorerie
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                <PiggyBank className="text-slate-400" size={16} />
+                                Prévisions de trésorerie
                             </h3>
                         </div>
 
                         {/* Prévisionnel 12 mois v2 — récurrentes + moyenne mobile (Phase 6) */}
-                        <Card className="p-5">
-                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 uppercase tracking-wider">
+                        <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-xl">
+                            <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
                                 Prévisionnel 12 mois — récurrentes + tendance
                             </h4>
                             <div className="overflow-x-auto">
@@ -1457,18 +1382,18 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                         {forecast12.map((m) => (
                                             <tr key={m.month}>
                                                 <td className="py-1.5 pr-3 font-medium text-slate-600 dark:text-slate-300">{m.label}</td>
-                                                <td className="py-1.5 pr-3 text-right tabular-nums text-indigo-600">{m.recurring > 0 ? `+${formatCurrency(m.recurring)}` : '—'}</td>
+                                                <td className="py-1.5 pr-3 text-right tabular-nums text-[#4a72c4]">{m.recurring > 0 ? `+${formatCurrency(m.recurring)}` : '—'}</td>
                                                 <td className="py-1.5 pr-3 text-right tabular-nums text-slate-500">{formatCurrency(m.average)}</td>
-                                                <td className="py-1.5 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(m.total)}</td>
+                                                <td className="py-1.5 text-right tabular-nums font-semibold text-[#2aada0]">{formatCurrency(m.total)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-t-2 border-slate-200 dark:border-slate-700">
-                                            <td className="py-2 pr-3 font-bold text-slate-700 dark:text-slate-200">Total 12 mois</td>
-                                            <td className="py-2 pr-3 text-right tabular-nums text-indigo-600">{formatCurrency(forecast12.reduce((s, m) => s + m.recurring, 0))}</td>
+                                            <td className="py-2 pr-3 font-semibold text-slate-700 dark:text-slate-200">Total 12 mois</td>
+                                            <td className="py-2 pr-3 text-right tabular-nums text-[#4a72c4]">{formatCurrency(forecast12.reduce((s, m) => s + m.recurring, 0))}</td>
                                             <td className="py-2 pr-3 text-right tabular-nums text-slate-500">{formatCurrency(forecast12.reduce((s, m) => s + m.average, 0))}</td>
-                                            <td className="py-2 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(forecast12.reduce((s, m) => s + m.total, 0))}</td>
+                                            <td className="py-2 text-right tabular-nums font-semibold text-[#2aada0]">{formatCurrency(forecast12.reduce((s, m) => s + m.total, 0))}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -1476,7 +1401,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                             <p className="text-[10px] text-slate-400 mt-2 italic">
                                 Récurrentes : projections depuis les templates actifs · Moyenne mobile : CA moyen des 6 derniers mois.
                             </p>
-                        </Card>
+                        </div>
 
                         {(() => {
                             // Calculate treasury forecast
@@ -1537,95 +1462,93 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                             return (
                                 <>
                                     {/* Current Balance */}
-                                    <div className="grid grid-cols-3 gap-4 mb-6">
-                                        <Card className="p-4">
-                                            <div className="text-sm text-slate-500 uppercase font-bold mb-1">Solde Actuel</div>
-                                            <div className={`text-2xl font-bold ${(totalPaid - totalExpenses) >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                    <div className="flex flex-wrap border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-slate-200 dark:divide-slate-700">
+                                        <div className="flex-1 min-w-[120px] px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Solde actuel</p>
+                                            <p className={`text-xl font-semibold tabular-nums ${(totalPaid - totalExpenses) >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
                                                 {formatCurrency(totalPaid - totalExpenses, currency)}
-                                            </div>
-                                        </Card>
-                                        <Card className="p-4">
-                                            <div className="text-sm text-slate-500 uppercase font-bold mb-1">Factures en Attente</div>
-                                            <div className="text-2xl font-bold text-amber-600" style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                            </p>
+                                        </div>
+                                        <div className="flex-1 min-w-[120px] px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">En attente</p>
+                                            <p className="text-xl font-semibold tabular-nums text-slate-800 dark:text-white">
                                                 {formatCurrency(
                                                     [...standaloneInvoices, ...projects.flatMap(p => p.invoices)].filter(i => i.status === 'Pending' || i.status === 'Draft').reduce((s, i) => s + invoiceEffectiveAmount(i), 0),
                                                     currency)}
-                                            </div>
-                                        </Card>
-                                        <Card className="p-4">
-                                            <div className="text-sm text-slate-500 uppercase font-bold mb-1">Prévision 6 mois</div>
-                                            <div className={`text-2xl font-bold ${months[5]?.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                            </p>
+                                        </div>
+                                        <div className="flex-1 min-w-[120px] px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Prévision 6 mois</p>
+                                            <p className={`text-xl font-semibold tabular-nums ${months[5]?.balance >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
                                                 {formatCurrency(months[5]?.balance || 0, currency)}
-                                            </div>
-                                        </Card>
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Chart */}
-                                    <Card className="p-6">
-                                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 uppercase">Évolution sur 6 mois</h4>
-                                        <div className="h-64 flex items-end gap-2">
+                                    <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-xl">
+                                        <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Évolution sur 6 mois</h4>
+                                        <div className="h-56 flex items-end gap-2">
                                             {months.map((m, idx) => (
                                                 <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                                                    <div className="w-full flex flex-col items-center justify-end h-48 gap-1">
-                                                        {/* Income bar */}
+                                                    <div className="w-full flex flex-col items-center justify-end h-40 gap-1">
                                                         <div 
-                                                            className="w-4 bg-emerald-400 rounded-t transition-all hover:bg-emerald-500"
+                                                            className="w-3.5 bg-[#2aada0] rounded-t transition-all"
                                                             style={{ height: `${maxValue > 0 ? (m.income / maxValue) * 100 : 0}%`, minHeight: m.income > 0 ? '4px' : '0' }}
                                                             title={`Revenus: ${formatCurrency(m.income, currency)}`}
                                                         />
-                                                        {/* Expense bar */}
                                                         <div 
-                                                            className="w-4 bg-red-400 rounded-t transition-all hover:bg-red-500"
+                                                            className="w-3.5 bg-[#b05070] rounded-t transition-all"
                                                             style={{ height: `${maxValue > 0 ? (m.expenses / maxValue) * 100 : 0}%`, minHeight: m.expenses > 0 ? '4px' : '0' }}
                                                             title={`Dépenses: ${formatCurrency(m.expenses, currency)}`}
                                                         />
                                                     </div>
-                                                    <div className="text-xs text-slate-500 text-center capitalize" style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                    <div className="text-[10px] text-slate-400 text-center capitalize">
                                                         {m.month.split(' ')[0].substring(0, 3)}
                                                     </div>
-                                                    <div className={`text-xs font-bold ${m.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                    <div className={`text-[11px] font-medium tabular-nums ${m.balance >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
                                                         {formatCurrency(m.balance, currency)}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="flex items-center justify-center gap-6 mt-4 text-xs">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 bg-emerald-400 rounded" />
-                                                <span className="text-slate-500">Revenus attendus</span>
+                                        <div className="flex items-center justify-center gap-6 mt-4 text-[11px] text-slate-400">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-2.5 h-2.5 bg-[#2aada0] rounded-sm" />
+                                                Revenus attendus
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 bg-red-400 rounded" />
-                                                <span className="text-slate-500">Dépenses estimées</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-2.5 h-2.5 bg-[#b05070] rounded-sm" />
+                                                Dépenses estimées
                                             </div>
                                         </div>
-                                    </Card>
+                                    </div>
 
                                     {/* Detailed Table */}
-                                    <Card className="overflow-hidden">
+                                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                                         <table className="w-full text-sm">
-                                            <thead className="bg-slate-50 dark:bg-slate-800">
+                                            <thead className="bg-slate-50 dark:bg-slate-800/50">
                                                 <tr>
-                                                    <th className="p-3 text-left text-xs font-bold text-slate-500 uppercase">Mois</th>
-                                                    <th className="p-3 text-right text-xs font-bold text-slate-500 uppercase">Revenus Attendus</th>
-                                                    <th className="p-3 text-right text-xs font-bold text-slate-500 uppercase">Dépenses Estimées</th>
-                                                    <th className="p-3 text-right text-xs font-bold text-slate-500 uppercase">Solde Prévisionnel</th>
+                                                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">Mois</th>
+                                                    <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">Revenus</th>
+                                                    <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">Dépenses</th>
+                                                    <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">Solde</th>
                                                 </tr>
                                             </thead>
-                                            <tbody>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                                                 {months.map((m, idx) => (
-                                                    <tr key={idx} className="border-t border-slate-100 dark:border-slate-700">
-                                                        <td className="p-3 font-medium text-slate-700 dark:text-slate-300 capitalize" style={{ fontFamily: 'Raleway, sans-serif' }}>{m.month}</td>
-                                                        <td className="p-3 text-right text-emerald-600 font-medium" style={{ fontFamily: 'Raleway, sans-serif' }}>+{formatCurrency(m.income, currency)}</td>
-                                                        <td className="p-3 text-right text-red-500 font-medium" style={{ fontFamily: 'Raleway, sans-serif' }}>-{formatCurrency(m.expenses, currency)}</td>
-                                                        <td className={`p-3 text-right font-bold ${m.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`} style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                                        <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-300 capitalize">{m.month}</td>
+                                                        <td className="px-4 py-2.5 text-right tabular-nums text-[#2aada0] font-medium">+{formatCurrency(m.income, currency)}</td>
+                                                        <td className="px-4 py-2.5 text-right tabular-nums text-[#b05070] font-medium">-{formatCurrency(m.expenses, currency)}</td>
+                                                        <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${m.balance >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
                                                             {formatCurrency(m.balance, currency)}
                                                         </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
-                                    </Card>
+                                    </div>
                                 </>
                             );
                         })()}
@@ -1634,58 +1557,48 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
 
                 {/* EXPORT TAB - Accounting Export */}
                 {activeTab === 'export' && (
-                    <div className="p-6 space-y-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                <FileSpreadsheet className="text-blue-500" size={20} />
-                                Export Comptable
+                    <div className="p-5 space-y-5">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                <FileSpreadsheet className="text-slate-400" size={16} />
+                                Export comptable
                             </h3>
                         </div>
 
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6" style={{ fontFamily: 'Raleway, sans-serif' }}>
-                            Exportez vos données dans des formats compatibles avec les logiciels comptables (Bexio, Banana, Crésus, etc.)
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
+                            Formats compatibles Bexio, Banana, Crésus et tableurs.
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {/* CSV Export */}
-                            <Card className="p-6 hover:shadow-lg transition-shadow">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
-                                        <FileText className="w-6 h-6 text-green-600" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Export CSV Standard</h4>
-                                        <p className="text-xs text-slate-500">Compatible Excel, Google Sheets</p>
-                                    </div>
+                            <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-xl">
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-semibold text-slate-800 dark:text-white">CSV standard</h4>
+                                    <p className="text-xs text-slate-400 mt-0.5">Excel, Google Sheets</p>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <button 
                                         onClick={() => generateCSV(filteredInvoices, 'revenus')}
-                                        className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-between"
+                                        className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-between"
                                     >
-                                        <span>Journal des Ventes</span>
-                                        <Download size={16} />
+                                        <span>Journal des ventes</span>
+                                        <Download size={14} />
                                     </button>
                                     <button 
                                         onClick={() => generateCSV(expenses as any, 'depenses')}
-                                        className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-between"
+                                        className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-between"
                                     >
-                                        <span>Journal des Achats</span>
-                                        <Download size={16} />
+                                        <span>Journal des achats</span>
+                                        <Download size={14} />
                                     </button>
                                 </div>
-                            </Card>
+                            </div>
 
                             {/* Bexio Format */}
-                            <Card className="p-6 hover:shadow-lg transition-shadow">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                                        <Receipt className="w-6 h-6 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Format Bexio</h4>
-                                        <p className="text-xs text-slate-500">Import direct dans Bexio</p>
-                                    </div>
+                            <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-xl">
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-semibold text-slate-800 dark:text-white">Bexio</h4>
+                                    <p className="text-xs text-slate-400 mt-0.5">Import direct</p>
                                 </div>
                                 <button 
                                     onClick={() => {
@@ -1705,22 +1618,17 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                         });
                                         exportSimpleCSV(headers, rows.map(r => r.split(';')), `Export_Bexio_${new Date().getFullYear()}.csv`);
                                     }}
-                                    className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full px-3 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
                                 >
-                                    <Download size={16} /> Exporter pour Bexio
+                                    <Download size={14} /> Exporter pour Bexio
                                 </button>
-                            </Card>
+                            </div>
 
                             {/* Banana Format */}
-                            <Card className="p-6 hover:shadow-lg transition-shadow">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl">
-                                        <FileSpreadsheet className="w-6 h-6 text-yellow-600" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Format Banana</h4>
-                                        <p className="text-xs text-slate-500">Compatible Banana Comptabilité</p>
-                                    </div>
+                            <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-xl">
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-semibold text-slate-800 dark:text-white">Banana</h4>
+                                    <p className="text-xs text-slate-400 mt-0.5">Comptabilité Banana</p>
                                 </div>
                                 <button 
                                     onClick={() => {
@@ -1739,22 +1647,17 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                         });
                                         exportSimpleCSV(headers, rows.map(r => r.split('\t')), `Export_Banana_${new Date().getFullYear()}.txt`, '\t');
                                     }}
-                                    className="w-full px-4 py-3 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full px-3 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
                                 >
-                                    <Download size={16} /> Exporter pour Banana
+                                    <Download size={14} /> Exporter pour Banana
                                 </button>
-                            </Card>
+                            </div>
 
                             {/* Crésus Format */}
-                            <Card className="p-6 hover:shadow-lg transition-shadow">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-                                        <PieChart className="w-6 h-6 text-purple-600" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Format Crésus</h4>
-                                        <p className="text-xs text-slate-500">Compatible Crésus Comptabilité</p>
-                                    </div>
+                            <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-xl">
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-semibold text-slate-800 dark:text-white">Crésus</h4>
+                                    <p className="text-xs text-slate-400 mt-0.5">Comptabilité Crésus</p>
                                 </div>
                                 <button 
                                     onClick={() => {
@@ -1772,28 +1675,26 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                         });
                                         exportSimpleCSV(headers, rows.map(r => r.split(';')), `Export_Cresus_${new Date().getFullYear()}.csv`);
                                     }}
-                                    className="w-full px-4 py-3 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full px-3 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
                                 >
-                                    <Download size={16} /> Exporter pour Crésus
+                                    <Download size={14} /> Exporter pour Crésus
                                 </button>
-                            </Card>
+                            </div>
                         </div>
 
                         {/* Full Report */}
-                        <Card className="p-6 mt-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h4 className="font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>Rapport Comptable Complet</h4>
-                                    <p className="text-xs text-slate-500" style={{ fontFamily: 'Raleway, sans-serif' }}>Compte de résultat + journaux</p>
-                                </div>
-                                <button 
-                                    onClick={() => setShowAccountingModal(true)}
-                                    className="px-6 py-3 bg-slate-800 dark:bg-slate-600 text-white rounded-lg text-sm font-bold hover:bg-slate-700 transition-colors flex items-center gap-2"
-                                >
-                                    <Printer size={16} /> Générer le Rapport
-                                </button>
+                        <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <h4 className="text-sm font-semibold text-slate-800 dark:text-white">Rapport comptable complet</h4>
+                                <p className="text-xs text-slate-400 mt-0.5">Compte de résultat + journaux</p>
                             </div>
-                        </Card>
+                            <button 
+                                onClick={() => setShowAccountingModal(true)}
+                                className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors flex items-center gap-2"
+                            >
+                                <Printer size={14} /> Générer le rapport
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -1801,7 +1702,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                 {activeTab === 'archives' && (
                     <>
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-                            <h3 className="text-lg font-serif font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                                 <Archive className="text-slate-400" size={20} />
                                 Archives & Annulations
                             </h3>
@@ -1814,7 +1715,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-bold text-xs">
+                                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-semibold tracking-widest text-[10px]">
                                         <tr>
                                             <th className="px-6 py-4">Numéro</th>
                                             <th className="px-6 py-4">Client</th>
@@ -1849,7 +1750,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                 <td className="px-6 py-4 text-right">
                                                     <button
                                                         onClick={(e) => handleRestore(e, inv, inv.project)}
-                                                        className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full transition-colors"
+                                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-[#2aada0] rounded-md transition-colors"
                                                         title="Restaurer la facture"
                                                     >
                                                         <RotateCcw size={14} />
@@ -1868,18 +1769,32 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
             {/* --- ACCOUNTING MODAL --- */}
             <Modal isOpen={showAccountingModal} onClose={() => setShowAccountingModal(false)} title="Clôture Comptable" width="max-w-[95vw] w-full h-[95vh]" noContentPadding={true}>
                 <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900">
-                    {/* Toolbar */}
-                    <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
-                        <div className="flex items-center gap-4">
-                            <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                                <button onClick={() => setAccountingView('report')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${accountingView === 'report' ? 'bg-white dark:bg-slate-600 shadow text-brand-orange' : 'text-slate-500'}`}>Compte de Résultat</button>
-                                <button onClick={() => setAccountingView('sales')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${accountingView === 'sales' ? 'bg-white dark:bg-slate-600 shadow text-brand-orange' : 'text-slate-500'}`}>Journal Ventes</button>
-                                <button onClick={() => setAccountingView('purchases')} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${accountingView === 'purchases' ? 'bg-white dark:bg-slate-600 shadow text-brand-orange' : 'text-slate-500'}`}>Journal Achats</button>
+                    {/* Toolbar — Linear */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="flex items-center gap-3 border-b border-transparent">
+                                {([
+                                    ['report', 'Compte de résultat'],
+                                    ['sales', 'Journal ventes'],
+                                    ['purchases', 'Journal achats'],
+                                ] as const).map(([id, label]) => (
+                                    <button
+                                        key={id}
+                                        onClick={() => setAccountingView(id)}
+                                        className={`pb-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                                            accountingView === id
+                                                ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white'
+                                                : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                        }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
                             </div>
-                            <select 
-                                value={accountingYear} 
+                            <select
+                                value={accountingYear}
                                 onChange={(e) => setAccountingYear(parseInt(e.target.value))}
-                                className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-4 py-2 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                                className="border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
                             >
                                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
                                     <option key={y} value={y}>{y}</option>
@@ -1887,11 +1802,11 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                             </select>
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={() => generateCSV(filteredInvoices, 'revenus')} className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-bold hover:bg-green-100 transition-colors">
-                                <FileText size={16} /> Export CSV
+                            <button onClick={() => generateCSV(filteredInvoices, 'revenus')} className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                <FileText size={14} /> CSV
                             </button>
-                            <button onClick={handleDownloadAccountingPDF} disabled={isGeneratingReport} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 transition-colors disabled:opacity-50">
-                                {isGeneratingReport ? <ScanLine className="animate-spin" size={16} /> : <Printer size={16} />}
+                            <button onClick={handleDownloadAccountingPDF} disabled={isGeneratingReport} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors disabled:opacity-50">
+                                {isGeneratingReport ? <ScanLine className="animate-spin" size={14} /> : <Printer size={14} />}
                                 PDF
                             </button>
                         </div>
@@ -1903,116 +1818,93 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                             
                             {accountingView === 'report' && (
                                 <>
-                                    {/* Header with branding */}
-                                    <div className="border-b-4 border-slate-900 pb-6 mb-8">
+                                    {/* Header */}
+                                    <div className="border-b border-slate-200 pb-5 mb-6">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <h1 className="text-3xl font-serif font-bold text-slate-900 mb-1">
-                                                    Compte de Résultat
+                                                <h1 className="text-lg font-semibold tracking-tight text-slate-900 mb-0.5">
+                                                    Compte de résultat
                                                 </h1>
-                                                <p className="text-slate-500 text-sm">Exercice comptable {accountingYear}</p>
+                                                <p className="text-slate-400 text-xs uppercase tracking-widest font-semibold">Exercice {accountingYear}</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-serif font-bold text-slate-900">Marion Kindynis</p>
+                                                <p className="font-medium text-slate-900 text-sm">Marion Kindynis</p>
                                                 <p className="text-xs text-slate-500">Web Designer Indépendante</p>
-                                                <p className="text-xs text-slate-400 mt-1">Généré le {new Date().toLocaleDateString('fr-CH')}</p>
+                                                <p className="text-[10px] text-slate-400 mt-1">Généré le {new Date().toLocaleDateString('fr-CH')}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Quick Summary Cards */}
-                                    <div className="grid grid-cols-3 gap-4 mb-10 avoid-break" style={{ pageBreakInside: 'avoid' }}>
-                                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 border border-emerald-200">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-                                                    <TrendingUp className="w-4 h-4 text-white" />
-                                                </div>
-                                                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Produits</span>
-                                            </div>
-                                            <p className="text-2xl tabular-nums font-bold text-emerald-700">{formatCurrency(totalRevenue)}</p>
-                                            <p className="text-xs text-emerald-600 mt-1">{currency} TTC</p>
+                                    {/* Quick Summary — Linear strip */}
+                                    <div className="flex flex-wrap border border-slate-200 rounded-xl overflow-hidden divide-x divide-slate-200 mb-8 avoid-break" style={{ pageBreakInside: 'avoid' }}>
+                                        <div className="flex-1 min-w-[120px] px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5 flex items-center gap-1"><TrendingUp size={10} className="text-[#4a72c4]" /> Produits</p>
+                                            <p className="text-lg font-semibold tabular-nums text-[#4a72c4]">{formatCurrency(totalRevenue)}</p>
+                                            <p className="text-[10px] text-slate-400">{currency} TTC</p>
                                         </div>
-                                        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-5 border border-red-200">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                                                    <Receipt className="w-4 h-4 text-white" />
-                                                </div>
-                                                <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Charges</span>
-                                            </div>
-                                            <p className="text-2xl tabular-nums font-bold text-red-700">{formatCurrency(totalExpenses)}</p>
-                                            <p className="text-xs text-red-600 mt-1">{currency}</p>
+                                        <div className="flex-1 min-w-[120px] px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5 flex items-center gap-1"><Receipt size={10} className="text-[#b05070]" /> Charges</p>
+                                            <p className="text-lg font-semibold tabular-nums text-[#b05070]">{formatCurrency(totalExpenses)}</p>
+                                            <p className="text-[10px] text-slate-400">{currency}</p>
                                         </div>
-                                        <div className={`bg-gradient-to-br ${netProfit >= 0 ? 'from-blue-50 to-indigo-100 border-blue-200' : 'from-orange-50 to-red-100 border-red-200'} rounded-xl p-5 border`}>
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className={`w-8 h-8 ${netProfit >= 0 ? 'bg-blue-500' : 'bg-red-500'} rounded-lg flex items-center justify-center`}>
-                                                    <PiggyBank className="w-4 h-4 text-white" />
-                                                </div>
-                                                <span className={`text-xs font-bold uppercase tracking-wider ${netProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>Résultat</span>
-                                            </div>
-                                            <p className={`text-2xl tabular-nums font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                                        <div className="flex-1 min-w-[120px] px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5 flex items-center gap-1"><PiggyBank size={10} className={netProfit >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'} /> Résultat</p>
+                                            <p className={`text-lg font-semibold tabular-nums ${netProfit >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
                                                 {netProfit >= 0 ? '+' : ''}{formatCurrency(netProfit)}
                                             </p>
-                                            <p className={`text-xs mt-1 ${netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{currency} Net</p>
+                                            <p className="text-[10px] text-slate-400">{currency} net</p>
                                         </div>
                                     </div>
 
                                     {/* Products Section */}
-                                    <div className="mb-10">
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                                                <TrendingUp className="w-5 h-5 text-emerald-600" />
-                                            </div>
-                                            <div>
-                                                <h2 className="text-lg font-bold text-slate-900">Produits d'Exploitation</h2>
-                                                <p className="text-xs text-slate-500">Chiffre d'affaires et recettes</p>
-                                            </div>
-                                        </div>
+                                    <div className="mb-8">
+                                        <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Produits d'exploitation</h2>
                                         
-                                        <div className="bg-slate-50 rounded-xl p-6 space-y-3">
-                                            <div className="flex justify-between items-center py-3 border-b border-slate-200">
+                                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                            <div className="flex justify-between items-center px-4 py-2.5 border-b border-slate-100 hover:bg-slate-50">
                                                 <div>
-                                                    <span className="text-slate-700 font-medium">Chiffre d'Affaires HT</span>
-                                                    <span className="text-xs text-slate-400 ml-2">(Prestations de services)</span>
+                                                    <span className="text-sm text-slate-700 font-medium">Chiffre d'affaires HT</span>
+                                                    <span className="text-[10px] text-slate-400 ml-2">prestations</span>
                                                 </div>
-                                                <span className="tabular-nums font-bold text-slate-900 text-lg">{formatCurrency(totalRevenue / 1.081)}</span>
+                                                <span className="tabular-nums font-medium text-slate-900 text-sm">{formatCurrency(totalRevenue / 1.081)}</span>
                                             </div>
-                                            <div className="flex justify-between items-center py-3 border-b border-slate-200">
+                                            <div className="flex justify-between items-center px-4 py-2.5 border-b border-slate-100 hover:bg-slate-50">
                                                 <div>
-                                                    <span className="text-slate-500">TVA Collectée</span>
-                                                    <span className="text-xs text-slate-400 ml-2">(8.1%)</span>
+                                                    <span className="text-sm text-slate-500">TVA collectée</span>
+                                                    <span className="text-[10px] text-slate-400 ml-2">8.1%</span>
                                                 </div>
-                                                <span className="tabular-nums text-slate-500">{formatCurrency(totalRevenue - (totalRevenue / 1.081))}</span>
+                                                <span className="tabular-nums text-slate-500 text-sm">{formatCurrency(totalRevenue - (totalRevenue / 1.081))}</span>
                                             </div>
-                                            <div className="flex justify-between items-center py-4 bg-emerald-100 -mx-6 px-6 rounded-b-xl mt-4">
-                                                <span className="font-bold text-emerald-800 text-lg">Total Produits TTC</span>
-                                                <span className="tabular-nums font-black text-emerald-800 text-xl">{formatCurrency(totalRevenue)} {currency}</span>
+                                            <div className="flex justify-between items-center px-4 py-3 border-t-2 border-slate-200">
+                                                <span className="text-sm font-semibold text-slate-800">Total produits TTC</span>
+                                                <span className="tabular-nums font-semibold text-[#4a72c4]">{formatCurrency(totalRevenue)} {currency}</span>
                                             </div>
                                         </div>
 
                                         {/* Revenue Details Accordion */}
                                         <details className="mt-4 group">
-                                            <summary className="cursor-pointer flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2">
+                                            <summary className="cursor-pointer flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 font-medium py-2">
                                                 <FileText className="w-4 h-4" />
                                                 Voir le détail des {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).length} factures
                                                 <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
                                             </summary>
-                                            <div className="mt-3 border border-emerald-100 rounded-xl overflow-hidden">
+                                            <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden">
                                                 <table className="w-full text-sm">
-                                                    <thead className="bg-emerald-50 text-emerald-700">
+                                                    <thead className="bg-slate-50 text-slate-500">
                                                         <tr>
-                                                            <th className="px-4 py-3 text-left font-semibold">Date</th>
-                                                            <th className="px-4 py-3 text-left font-semibold">Client</th>
-                                                            <th className="px-4 py-3 text-left font-semibold">N° Facture</th>
-                                                            <th className="px-4 py-3 text-right font-semibold">Montant TTC</th>
+                                                            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest">Date</th>
+                                                            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest">Client</th>
+                                                            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest">N° Facture</th>
+                                                            <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest">Montant TTC</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-emerald-50">
-                                                        {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map((inv, idx) => (
-                                                            <tr key={inv.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-emerald-50/30'}>
-                                                                <td className="px-4 py-3 text-slate-600">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
-                                                                <td className="px-4 py-3 font-medium text-slate-900">{invoiceRowClientLabel(inv)}</td>
-                                                                <td className="px-4 py-3 text-slate-600">{inv.number}</td>
-                                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-emerald-700">{formatCurrency(invoiceEffectiveAmount(inv))}</td>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map((inv) => (
+                                                            <tr key={inv.id} className="hover:bg-slate-50">
+                                                                <td className="px-4 py-2.5 text-slate-600">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
+                                                                <td className="px-4 py-2.5 font-medium text-slate-900">{invoiceRowClientLabel(inv)}</td>
+                                                                <td className="px-4 py-2.5 text-slate-600">{inv.number}</td>
+                                                                <td className="px-4 py-2.5 text-right tabular-nums font-medium text-[#2aada0]">{formatCurrency(invoiceEffectiveAmount(inv))}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -2022,60 +1914,49 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                     </div>
 
                                     {/* Charges Section */}
-                                    <div className="mb-10" style={{ pageBreakBefore: 'auto', pageBreakInside: 'avoid' }}>
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                                                <Receipt className="w-5 h-5 text-red-600" />
-                                            </div>
-                                            <div>
-                                                <h2 className="text-lg font-bold text-slate-900">Charges d'Exploitation</h2>
-                                                <p className="text-xs text-slate-500">Dépenses et frais professionnels</p>
-                                            </div>
-                                        </div>
+                                    <div className="mb-8" style={{ pageBreakBefore: 'auto', pageBreakInside: 'avoid' }}>
+                                        <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Charges d'exploitation</h2>
                                         
-                                        <div className="bg-slate-50 rounded-xl p-6 space-y-3">
+                                        <div className="border border-slate-200 rounded-xl overflow-hidden">
                                             {Object.entries(expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).reduce((acc: any, exp) => {
                                                 acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
                                                 return acc;
-                                            }, {})).sort((a: any, b: any) => b[1] - a[1]).map(([cat, amount]: any, idx) => (
-                                                <div key={cat} className="flex justify-between items-center py-3 border-b border-slate-200 last:border-0">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
-                                                        <span className="text-slate-700 font-medium">{cat}</span>
-                                                    </div>
-                                                    <span className="tabular-nums text-slate-700">{formatCurrency(amount)}</span>
+                                            }, {})).sort((a: any, b: any) => b[1] - a[1]).map(([cat, amount]: any) => (
+                                                <div key={cat} className="flex justify-between items-center px-4 py-2.5 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                                    <span className="text-sm text-slate-700 font-medium">{cat}</span>
+                                                    <span className="tabular-nums text-sm text-slate-700">{formatCurrency(amount)}</span>
                                                 </div>
                                             ))}
-                                            <div className="flex justify-between items-center py-4 bg-red-100 -mx-6 px-6 rounded-b-xl mt-4">
-                                                <span className="font-bold text-red-800 text-lg">Total Charges</span>
-                                                <span className="tabular-nums font-black text-red-800 text-xl">{formatCurrency(totalExpenses)} {currency}</span>
+                                            <div className="flex justify-between items-center px-4 py-3 border-t-2 border-slate-200">
+                                                <span className="text-sm font-semibold text-slate-800">Total charges</span>
+                                                <span className="tabular-nums font-semibold text-[#b05070]">{formatCurrency(totalExpenses)} {currency}</span>
                                             </div>
                                         </div>
 
                                         {/* Expenses Details Accordion */}
                                         <details className="mt-4 group">
-                                            <summary className="cursor-pointer flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium py-2">
+                                            <summary className="cursor-pointer flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 font-medium py-2">
                                                 <FileText className="w-4 h-4" />
                                                 Voir le détail des {expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).length} dépenses
                                                 <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
                                             </summary>
-                                            <div className="mt-3 border border-red-100 rounded-xl overflow-hidden">
+                                            <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden">
                                                 <table className="w-full text-sm">
-                                                    <thead className="bg-red-50 text-red-700">
+                                                    <thead className="bg-slate-50 text-slate-500">
                                                         <tr>
-                                                            <th className="px-4 py-3 text-left font-semibold">Date</th>
-                                                            <th className="px-4 py-3 text-left font-semibold">Fournisseur</th>
-                                                            <th className="px-4 py-3 text-left font-semibold">Catégorie</th>
-                                                            <th className="px-4 py-3 text-right font-semibold">Montant</th>
+                                                            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest">Date</th>
+                                                            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest">Fournisseur</th>
+                                                            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest">Catégorie</th>
+                                                            <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest">Montant</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-red-50">
-                                                        {expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).map((exp, idx) => (
-                                                            <tr key={exp.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-red-50/30'}>
-                                                                <td className="px-4 py-3 text-slate-600">{new Date(exp.date).toLocaleDateString('fr-CH')}</td>
-                                                                <td className="px-4 py-3 font-medium text-slate-900">{exp.supplier}</td>
-                                                                <td className="px-4 py-3 text-slate-600">{exp.category}</td>
-                                                                <td className="px-4 py-3 text-right tabular-nums font-bold text-red-700">{formatCurrency(exp.amount)}</td>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).map((exp) => (
+                                                            <tr key={exp.id} className="hover:bg-slate-50">
+                                                                <td className="px-4 py-2.5 text-slate-600">{new Date(exp.date).toLocaleDateString('fr-CH')}</td>
+                                                                <td className="px-4 py-2.5 font-medium text-slate-900">{exp.supplier}</td>
+                                                                <td className="px-4 py-2.5 text-slate-600">{exp.category}</td>
+                                                                <td className="px-4 py-2.5 text-right tabular-nums font-medium text-[#b05070]">{formatCurrency(exp.amount)}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -2085,26 +1966,24 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                     </div>
 
                                     {/* Final Result */}
-                                    <div className={`rounded-2xl p-8 border-2 ${netProfit >= 0 ? 'bg-gradient-to-br from-emerald-50 to-blue-50 border-emerald-300' : 'bg-gradient-to-br from-red-50 to-orange-50 border-red-300'}`} style={{ pageBreakInside: 'avoid' }}>
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="text-slate-500 text-sm uppercase tracking-widest mb-1">Résultat de l'Exercice {accountingYear}</p>
-                                                <h3 className={`text-2xl font-serif font-bold ${netProfit >= 0 ? 'text-slate-900' : 'text-red-900'}`}>Bénéfice {netProfit >= 0 ? 'Net' : '(Perte)'}</h3>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-5" style={{ pageBreakInside: 'avoid' }}>
+                                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                            <div className="text-center sm:text-left">
+                                                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Résultat de l'exercice {accountingYear}</p>
+                                                <p className="text-[11px] text-slate-400 mt-0.5">{netProfit >= 0 ? 'Bénéfice net' : 'Perte'}</p>
                                             </div>
-                                            <div className="text-right">
-                                                <p className={`text-4xl tabular-nums font-black ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                            <div className="text-center">
+                                                <p className={`text-3xl tabular-nums font-semibold tracking-tight ${netProfit >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
                                                     {netProfit >= 0 ? '+' : ''}{formatCurrency(netProfit)}
                                                 </p>
-                                                <p className="text-slate-500 text-sm mt-1">{currency}</p>
+                                                <p className="text-[11px] text-slate-400 mt-0.5">{currency}</p>
                                             </div>
-                                        </div>
-                                        
-                                        {/* Profit Margin */}
-                                        <div className={`mt-6 pt-6 border-t flex justify-between items-center ${netProfit >= 0 ? 'border-emerald-200' : 'border-red-200'}`}>
-                                            <span className="text-slate-600 text-sm font-medium">Marge bénéficiaire</span>
-                                            <span className={`tabular-nums font-bold text-lg ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                {totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0}%
-                                            </span>
+                                            <div className="text-center sm:text-right">
+                                                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Marge</span>
+                                                <p className={`tabular-nums font-semibold text-lg mt-0.5 ${netProfit >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
+                                                    {totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0}%
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -2118,28 +1997,28 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                             )}
 
                             {accountingView === 'sales' && (
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-slate-50 uppercase font-bold text-slate-500">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 text-slate-500">
                                         <tr>
-                                            <th className="p-2">Numéro</th>
-                                            <th className="p-2">Client</th>
-                                            <th className="p-2">Date</th>
-                                            <th className="p-2 text-right">HT</th>
-                                            <th className="p-2 text-right">TVA</th>
-                                            <th className="p-2 text-right">TTC</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Numéro</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Client</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Date</th>
+                                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest">HT</th>
+                                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest">TVA</th>
+                                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest">TTC</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {filteredInvoices.filter(i => i.status === 'Paid' && new Date(i.date).getFullYear() === accountingYear).map(inv => {
                                             const eff = invoiceEffectiveAmount(inv);
                                             return (
-                                            <tr key={inv.id}>
-                                                <td className="p-2 font-bold text-black dark:text-white">{inv.number}</td>
-                                                <td className="p-2 text-black dark:text-white">{invoiceRowClientLabel(inv)}</td>
-                                                <td className="p-2 text-black dark:text-white">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
-                                                <td className="p-2 text-right font-bold text-black dark:text-white">{formatCurrency(eff / 1.081)}</td>
-                                                <td className="p-2 text-right text-black dark:text-white">{formatCurrency(eff - (eff / 1.081))}</td>
-                                                <td className="p-2 text-right font-extrabold text-black dark:text-white">{formatCurrency(eff)}</td>
+                                            <tr key={inv.id} className="hover:bg-slate-50">
+                                                <td className="px-3 py-2.5 font-medium text-slate-900">{inv.number}</td>
+                                                <td className="px-3 py-2.5 text-slate-700">{invoiceRowClientLabel(inv)}</td>
+                                                <td className="px-3 py-2.5 text-slate-600">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
+                                                <td className="px-3 py-2.5 text-right tabular-nums font-medium text-slate-900">{formatCurrency(eff / 1.081)}</td>
+                                                <td className="px-3 py-2.5 text-right tabular-nums text-slate-500">{formatCurrency(eff - (eff / 1.081))}</td>
+                                                <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-900">{formatCurrency(eff)}</td>
                                             </tr>
                                         );})}
                                     </tbody>
@@ -2147,22 +2026,22 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                             )}
 
                             {accountingView === 'purchases' && (
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-slate-50 uppercase font-bold text-slate-500">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 text-slate-500">
                                         <tr>
-                                            <th className="p-2">Date</th>
-                                            <th className="p-2">Fournisseur</th>
-                                            <th className="p-2">Catégorie</th>
-                                            <th className="p-2 text-right">Montant</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Date</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Fournisseur</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Catégorie</th>
+                                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest">Montant</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {expenses.filter(e => new Date(e.date).getFullYear() === accountingYear).map(exp => (
-                                            <tr key={exp.id}>
-                                                <td className="p-2 text-black dark:text-white">{new Date(exp.date).toLocaleDateString('fr-CH')}</td>
-                                                <td className="p-2 font-bold text-black dark:text-white">{exp.supplier}</td>
-                                                <td className="p-2 text-black dark:text-white">{exp.category}</td>
-                                                <td className="p-2 text-right font-bold text-red-600 dark:text-red-400">{formatCurrency(exp.amount)}</td>
+                                            <tr key={exp.id} className="hover:bg-slate-50">
+                                                <td className="px-3 py-2.5 text-slate-600">{new Date(exp.date).toLocaleDateString('fr-CH')}</td>
+                                                <td className="px-3 py-2.5 font-medium text-slate-900">{exp.supplier}</td>
+                                                <td className="px-3 py-2.5 text-slate-600">{exp.category}</td>
+                                                <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[#b05070]">{formatCurrency(exp.amount)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -2187,7 +2066,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
 
             {/* --- PIZZA MODAL --- */}
             <Modal isOpen={showPizzaModal} onClose={() => setShowPizzaModal(false)} title="" width="max-w-2xl">
-                <div className="relative p-8 text-center overflow-hidden bg-[#FFF8F0] border-4 border-[#FFD700] rounded-3xl shadow-2xl">
+                <div className="relative p-8 text-center overflow-hidden bg-[#FFF8F0] border-4 border-[#FFD700] rounded-xl shadow-2xl">
                     {/* Pizza Background Pattern */}
                     <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#EF4444 2px, transparent 2px)', backgroundSize: '20px 20px' }}></div>
                     
@@ -2196,7 +2075,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                     <div className="absolute bottom-10 right-10 text-6xl animate-spin-slow">🍕</div>
                     <div className="absolute top-1/2 left-10 text-2xl animate-pulse">🍅</div>
 
-                    <h2 className="font-serif text-4xl font-bold text-red-600 mb-2 tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>Marion Pizza Design Inc.</h2>
+                    <h2 className="font-semibold text-4xl font-bold text-red-600 mb-2 tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>Marion Pizza Design Inc.</h2>
                     <p className="text-slate-600 font-bold italic mb-8">Bilan Officiel en Pizzanomics</p>
 
                     <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-orange-200 mb-8 relative z-10">
@@ -2217,7 +2096,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                         <div className="flex justify-between items-center pt-2">
                             <span className="text-2xl font-bold text-slate-800 uppercase">Reste à Déguster</span>
                             <div className="text-right">
-                                <span className="text-5xl font-black text-brand-orange drop-shadow-sm">{netInPizzas} 🍕</span>
+                                <span className="text-5xl font-black text-slate-900 dark:text-white drop-shadow-sm">{netInPizzas} 🍕</span>
                                 <div className="text-sm font-bold text-slate-500 mt-1">Soit {netInPizzas * 8} parts</div>
                             </div>
                         </div>

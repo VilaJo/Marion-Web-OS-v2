@@ -2,6 +2,13 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.4] - 2026-07-25
+### Santé financière — style Linear
+- **FinanceDashboard** : header, KPIs en bandeau, onglets underline, actions sobres (`rounded-md`).
+- **Compta** : compte de résultat / journaux / charges / résultat net épurés (plus de cartes colorées ni gradients).
+- **Onglets** : Analytics, Temps, Trésorerie, Export, Archives — chrome Linear, accents Eonora (`#2aada0`, `#b05070`, `#4a72c4`) sur les montants.
+- **Version** : WhatsNew / BUILD_STAMP / `METTRE_A_JOUR` → **v2.13.4**.
+
 ## [2.13.3] - 2026-07-25
 ### Agenda Google + style Linear
 - **Reconnect Google Calendar** : flux OAuth robuste (`utils/googleOAuthPopup.ts`) — nettoie les tokens périmés, détecte les popups bloquées, handshake `localStorage` si `window.opener` est null, poll `sync-status` à la fermeture. Erreurs visibles dans l’UI.
