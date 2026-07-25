@@ -10,6 +10,13 @@ import { ProjectStatus, ClientProfile, WorkflowPhase } from '../types';
 // ---------------------------------------------------------------------------
 // Project templates
 // ---------------------------------------------------------------------------
+export interface TemplateTaskDraft {
+    title: string;
+    priority: 'Low' | 'Medium' | 'High';
+    phase: WorkflowPhase;
+    dueDate?: string; // YYYY-MM-DD — used by roadmap / kanban
+}
+
 export interface ProjectTemplate {
     id: string;
     label: string;
@@ -17,8 +24,20 @@ export interface ProjectTemplate {
     icon: string;
     defaultStatus: ProjectStatus;
     defaultPhase: WorkflowPhase;
-    tasks: { title: string; priority: 'Low' | 'Medium' | 'High'; phase: WorkflowPhase }[];
+    tasks: TemplateTaskDraft[];
     cursorPrompts: string[];
+}
+
+/** Stagger due dates over ~N weeks so roadmap shows a useful timeline. */
+function withStaggeredDueDates(tasks: TemplateTaskDraft[], weekSpan = 6): TemplateTaskDraft[] {
+    const start = new Date();
+    start.setHours(12, 0, 0, 0);
+    const n = Math.max(tasks.length, 1);
+    return tasks.map((t, i) => {
+        const d = new Date(start);
+        d.setDate(d.getDate() + Math.round((i / n) * weekSpan * 7));
+        return { ...t, dueDate: d.toISOString().slice(0, 10) };
+    });
 }
 
 export const PROJECT_TEMPLATES: ProjectTemplate[] = [
@@ -168,7 +187,7 @@ export interface NewClientData {
     profile: ClientProfile;
     links: Record<string, string>;
     templateId?: string;
-    templateTasks?: { title: string; priority: 'Low' | 'Medium' | 'High'; phase: WorkflowPhase }[];
+    templateTasks?: TemplateTaskDraft[];
     cursorPrompts?: string[];
 }
 
@@ -183,6 +202,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
     const [name, setName] = useState('');
     const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.EN_COURS);
     const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
+    const [editableTasks, setEditableTasks] = useState<TemplateTaskDraft[]>([]);
     const [templateSectionOpen, setTemplateSectionOpen] = useState(true);
     const [avatarColor, setAvatarColor] = useState(AVATAR_GRADIENTS[0]);
     const [avatarImage, setAvatarImage] = useState<string | undefined>();
@@ -217,10 +237,20 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
         setDriveLink(''); setServerAccess('');
         setCustomFields([]); setLinks({});
         setShowLinkAdd(false); setNewLinkKey(''); setNewLinkValue('');
-        setSelectedTemplate(null); setTemplateSectionOpen(true);
+        setSelectedTemplate(null); setEditableTasks([]); setTemplateSectionOpen(true);
     };
 
     const handleClose = () => { resetForm(); onClose(); };
+
+    const selectTemplate = (tpl: ProjectTemplate | null) => {
+        if (!tpl) {
+            setSelectedTemplate(null);
+            setEditableTasks([]);
+            return;
+        }
+        setSelectedTemplate(tpl);
+        setEditableTasks(withStaggeredDueDates(tpl.tasks));
+    };
 
     const handleCreate = () => {
         if (!name.trim()) {
@@ -235,7 +265,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
             profile: { email, phone, website, address, driveLink, serverAccess, customFields },
             links,
             templateId: selectedTemplate?.id,
-            templateTasks: selectedTemplate?.tasks,
+            templateTasks: editableTasks.length > 0 ? editableTasks : selectedTemplate?.tasks,
             cursorPrompts: selectedTemplate?.cursorPrompts,
         });
         resetForm();
@@ -421,7 +451,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                     {templateSectionOpen && (
                                         <div className="mt-3 space-y-2">
                                             <button
-                                                onClick={() => setSelectedTemplate(null)}
+                                                onClick={() => selectTemplate(null)}
                                                 className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                                                     !selectedTemplate
                                                         ? 'bg-eonora-gradient text-white shadow-sm'
@@ -433,7 +463,10 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                             {PROJECT_TEMPLATES.map(tpl => (
                                                 <button
                                                     key={tpl.id}
-                                                    onClick={() => { setSelectedTemplate(tpl); setStatus(tpl.defaultStatus); }}
+                                                    onClick={() => {
+                                                        selectTemplate(tpl);
+                                                        setStatus(tpl.defaultStatus);
+                                                    }}
                                                     className={`w-full text-left px-3 py-2 rounded-xl transition-all ${
                                                         selectedTemplate?.id === tpl.id
                                                             ? 'bg-eonora-gradient text-white shadow-sm'
@@ -452,14 +485,28 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
                                             ))}
                                         </div>
                                     )}
-                                    {selectedTemplate && (
+                                    {selectedTemplate && editableTasks.length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Tâches incluses</p>
-                                            <div className="space-y-0.5 max-h-32 overflow-y-auto">
-                                                {selectedTemplate.tasks.map((t, i) => (
-                                                    <div key={i} className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-brand-orange flex-shrink-0" />
-                                                        {t.title}
+                                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">
+                                                Tâches + échéances (roadmap)
+                                            </p>
+                                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                                {editableTasks.map((t, i) => (
+                                                    <div key={i} className="flex items-center gap-2 text-[10px] text-slate-600 dark:text-slate-300">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-[#7C9A7E] flex-shrink-0" />
+                                                        <span className="flex-1 min-w-0 truncate" title={t.title}>{t.title}</span>
+                                                        <input
+                                                            type="date"
+                                                            value={t.dueDate || ''}
+                                                            onChange={(e) => {
+                                                                const v = e.target.value;
+                                                                setEditableTasks(prev => prev.map((row, idx) =>
+                                                                    idx === i ? { ...row, dueDate: v || undefined } : row
+                                                                ));
+                                                            }}
+                                                            className="w-[118px] shrink-0 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1.5 py-1 text-[10px] text-slate-600 dark:text-slate-300 outline-none focus:ring-1 focus:ring-[#7C9A7E]/40"
+                                                            aria-label={`Échéance pour ${t.title}`}
+                                                        />
                                                     </div>
                                                 ))}
                                             </div>

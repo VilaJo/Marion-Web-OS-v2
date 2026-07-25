@@ -270,6 +270,7 @@ export const Dashboard: React.FC = () => {
                             priority: t.priority,
                             column: 'todo' as const,
                             phase: t.phase,
+                            dueDate: t.dueDate,
                             createdAt: new Date().toISOString(),
                         })),
                         invoices: [],

@@ -144,14 +144,14 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
             style={style}
             {...attributes}
             {...listeners}
-            className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 group hover:shadow-lg transition-shadow relative cursor-grab active:cursor-grabbing touch-none`}
+            className={`bg-white dark:bg-slate-900 p-3 rounded-md border border-slate-200 dark:border-slate-700 group hover:border-slate-300 dark:hover:border-slate-600 transition-colors relative cursor-grab active:cursor-grabbing touch-none ${isSortableDragging ? 'shadow-md' : ''}`}
             onClick={() => !isSortableDragging && onEdit(task)}
             tabIndex={0}
             role="listitem"
             onKeyDown={(e) => onKeyDown(e, task, columnId)}
         >
             {/* Priority (auto-escalates based on due date) */}
-            <div className="flex justify-between items-start mb-2">
+            <div className="flex justify-between items-start mb-1.5">
                 <div className="flex items-center gap-1.5">
                     {(() => {
                         const ep = getEffectivePriority(task);
@@ -165,7 +165,7 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                 </div>
                 <button 
                     onClick={(e) => onDelete(task.id, e)} 
-                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full"
+                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded"
                     aria-label="Supprimer la tâche"
                 >
                     <Trash2 size={12} />
@@ -173,7 +173,7 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
             </div>
 
             {/* Title */}
-            <div className={`text-sm font-bold mb-1 leading-snug ${task.completed ? 'line-through opacity-50 text-slate-400' : 'text-slate-800 dark:text-white'}`}>
+            <div className={`text-sm font-medium mb-1 leading-snug ${task.completed ? 'line-through opacity-50 text-slate-400' : 'text-slate-800 dark:text-white'}`}>
                 {task.title}
             </div>
 
@@ -1305,17 +1305,17 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         return (
             <DroppableColumn id={columnId}>
                 <div 
-                    className={`flex-1 rounded-lg bg-slate-50 dark:bg-slate-800/40 p-3 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed border-slate-300 dark:border-slate-600' : 'border-slate-200 dark:border-slate-800'}`}
+                    className={`flex-1 rounded-md bg-slate-50/80 dark:bg-slate-900/40 p-2.5 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed border-slate-300 dark:border-slate-600' : 'border-slate-200/80 dark:border-slate-800'}`}
                     role="list"
                     aria-label={title}
                 >
-                    <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-xs font-medium uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                            {title} <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 text-slate-400 text-[10px] tabular-nums border border-slate-200 dark:border-slate-700">{columnTasks.length}</span>
+                    <div className="flex justify-between items-center mb-2.5 px-0.5">
+                        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                            {title} <span className="px-1.5 py-0.5 rounded text-slate-400 text-[10px] tabular-nums font-medium">{columnTasks.length}</span>
                         </h4>
                         <button 
                             onClick={() => handleOpenTaskModal(undefined, columnId)} 
-                            className="p-1 rounded-full hover:bg-white/50 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition-colors"
+                            className="p-1 rounded hover:bg-white dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors"
                             aria-label={`Ajouter une tâche dans la colonne ${getColumnLabel(columnId)}`}
                         >
                             <Plus size={14} />
@@ -1323,7 +1323,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                     </div>
 
                     <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-                        <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar pb-10">
+                        <div className="flex-1 space-y-1.5 overflow-y-auto pr-0.5 custom-scrollbar pb-10">
                             {columnTasks.map(task => (
                                 <SortableTaskCard
                                     key={task.id}
@@ -1340,8 +1340,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 />
                             ))}
                             {columnTasks.length === 0 && (
-                                <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-300 text-xs">
-                                    <Archive size={20} className="mb-2 opacity-50" />
+                                <div className="flex flex-col items-center justify-center h-28 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-md text-slate-300 text-xs">
+                                    <Archive size={18} className="mb-2 opacity-40" />
                                     <span>Vide</span>
                                 </div>
                             )}

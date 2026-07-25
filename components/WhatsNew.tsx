@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award } from 'lucide-react';
+import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PanelLeftClose } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.0";
+const CURRENT_VERSION = "2.13.1";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +37,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Mission Control — KPIs, to-do partagée, vues cartes & roadmap
+                            Récupération Mission Control — header, to-do, kanban Linear
                         </p>
                     </div>
 
@@ -47,9 +47,9 @@ export const WhatsNew: React.FC = () => {
                                 <LayoutGrid size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Bandeau KPIs</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Bandeau KPIs + vues</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Clients actifs, CA en attente, deadlines urgentes et tâches ouvertes — capsules cliquables en haut du dashboard.
+                                    Capsules cliquables, bascule tableau / cartes / roadmap 3 mois.
                                 </p>
                             </div>
                         </div>
@@ -61,31 +61,43 @@ export const WhatsNew: React.FC = () => {
                             <div>
                                 <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">To-do du jour</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Widget compact + panneau complet (catégories, micro, rappels). Bouton ListTodo dans le header.
+                                    Petite liste sur le dashboard + panneau complet (bouton ListTodo dans le header).
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#F2F5F0] to-[#E3EBDF] dark:from-emerald-900/10 dark:to-emerald-900/5 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-sage text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <CalendarDays size={24} />
+                                <PanelLeftClose size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Vues cartes & roadmap</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Header qui se replie</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Alterne tableau, cartes compactes ou timeline 3 mois Linear — préférence mémorisée.
+                                    Chevron « Replier / Déplier » : garde le quotidien (Journée, Agenda, Mails, To-do, Finances) et range le reste.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <div className="w-12 h-12 rounded-full bg-[#2aada0]/15 dark:bg-[#2aada0]/25 text-eo-teal dark:text-eo-teal flex items-center justify-center flex-shrink-0">
+                                <CalendarDays size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Kanban Linear + échéances</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Colonnes sobres type Linear. À la création client, tu peux fixer les dates des tâches pour la roadmap.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center flex-shrink-0">
                                 <Bot size={24} />
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Aide Marion</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Fiche <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-mono">LIRE_EN_PREMIER_MARION.md</code> à la racine du projet.
+                                    Fiche <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-mono">LIRE_EN_PREMIER_MARION.md</code> — lance <strong>METTRE_A_JOUR</strong> puis Cmd+Shift+R.
                                 </p>
                             </div>
                         </div>

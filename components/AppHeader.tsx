@@ -386,11 +386,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <ListTodo size={18} className="text-[#7C9A7E]" />
                     </button>
                 </Tooltip>
-                <Tooltip content="Notes rapides">
-                    <button onClick={() => setShowNotes(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        <StickyNote size={18} className="text-amber-500" />
-                    </button>
-                </Tooltip>
                 <Tooltip content="Facturation">
                     <button
                         onClick={() => navigate('/finances')}
@@ -403,14 +398,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         <Wallet size={18} className={isActiveRoute('/finances') ? '' : 'text-eo-teal'} />
                     </button>
                 </Tooltip>
-                <Tooltip content="Recherche (⌘K)">
-                    <button onClick={() => setShowGlobalSearch(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors">
-                        <Search size={18} className="text-slate-500 dark:text-slate-300" />
-                    </button>
-                </Tooltip>
                 <Tooltip content="Paramètres">
                     <button onClick={() => navigate('/settings')} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
                         <Settings size={18} />
+                    </button>
+                </Tooltip>
+
+                {/* Secondaire — masqué quand la barre est repliée (chevron) */}
+                {!isToolbarCollapsed && (
+                <>
+                <Tooltip content="Notes rapides">
+                    <button onClick={() => setShowNotes(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
+                        <StickyNote size={18} className="text-amber-500" />
+                    </button>
+                </Tooltip>
+                <Tooltip content="Recherche (⌘K)">
+                    <button onClick={() => setShowGlobalSearch(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-700 transition-colors">
+                        <Search size={18} className="text-slate-500 dark:text-slate-300" />
                     </button>
                 </Tooltip>
                 <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
@@ -423,7 +427,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                 </Tooltip>
 
                 {/* "Avancé" — tous les outils secondaires regroupés en un seul menu (v2.11.0) */}
-                {!isToolbarCollapsed && (
                 <div ref={advancedMenuRef} className="relative hidden lg:flex">
                     <Tooltip content="Outils avancés (Atelier, veille, prospection…)">
                         <button
@@ -473,6 +476,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         </div>
                     )}
                 </div>
+                </>
                 )}
                 {/* Notifications */}
                 <div className="relative">

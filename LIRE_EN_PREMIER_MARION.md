@@ -1,4 +1,4 @@
-# LIRE EN PREMIER — Eonora Tech OS v2.8.0
+# LIRE EN PREMIER — Eonora Tech OS v2.13.1
 
 Fiche courte pour Marion. Version détaillée : `docs/INSTRUCTIONS_MARION.md`
 
@@ -10,10 +10,13 @@ Double-clic **Eonora Tech OS** (Bureau ou Applications). Pas de Terminal.
 ### Arrêter
 Double-clic **`STOPPER_EONORA.command`**
 
-### Mettre à jour
-1. **`METTRE_A_JOUR.command`**
-2. Relancer l’app
-3. Navigateur : **Cmd + Shift + R**
+### Mettre à jour (important)
+1. Double-clic **`METTRE_A_JOUR.command`** dans le dossier que l’app utilise vraiment
+2. Vérifier que le script annonce **v2.13.1** (Mission Control)
+3. Relancer **Eonora Tech OS**
+4. Navigateur : **Cmd + Shift + R**
+
+Tu dois voir le bandeau WhatsNew **2.13.1**, les KPIs en haut du dashboard, la petite to-do, et le chevron pour replier le header.
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**
@@ -36,8 +39,8 @@ Envoyer à Johan : **capture d’écran** + fichier **`.marion.log`**
 
 ---
 
-### Nouveautés v2.8.0 (résumé)
-- Franck vocal + chat Gemini plus fiables
-- App Bureau sans fenêtre Terminal
-- Veille Marché (Gemini) réparée
-- Mises à jour plus sûres (moins d’écrans blancs)
+### Nouveautés v2.13.1 (récupération)
+- Mission Control : KPIs, to-do du jour, vues cartes / tableau / roadmap
+- Header repliable (chevron) + bouton To-do
+- Kanban client style Linear
+- Dates des tâches à la création d’un client (roadmap)
