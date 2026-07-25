@@ -9,6 +9,7 @@ Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront docu
 - **Onglets** : Analytics, Temps, Trésorerie, Export, Archives — chrome Linear, accents Eonora (`#2aada0`, `#b05070`, `#4a72c4`) sur les montants.
 - **Yacht Bar** : bandeau Linear pleine largeur sur le dashboard, au-dessus de la to-do du jour (progression vers 300k CHF bénéfice net). Clic → Santé financière.
 - **Fiches clients** : cartes / tableau / dossiers explorateur passés au chrome Linear (plus de fond crème, avatars carrés, progression teal, toolbar épurée).
+- **Audit WP** : les 4 blocs Lighthouse vides remplacés par une **synthèse prospect** (CMS, builder, plugins, risques, économie + manques SEO). Scores Lighthouse uniquement s’ils sont réellement dispo.
 - **Version** : WhatsNew / BUILD_STAMP / `METTRE_A_JOUR` → **v2.13.4**.
 
 ## [2.13.3] - 2026-07-25

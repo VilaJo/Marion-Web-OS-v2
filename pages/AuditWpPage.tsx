@@ -2,18 +2,16 @@
  * AuditWpPage — Audit prospect WordPress
  *
  * Marion colle l'URL d'un prospect, l'app calcule :
- *  - Lighthouse (perf, a11y, SEO, BP) via PageSpeed Insights API
- *  - Plugins WP détectés + builders (Elementor, Divi…)
- *  - Coût annuel WP estimé vs custom (économies projetées)
- *  - Risques sécu / perf / dépendances
- *  - Argumentaire de vente prêt à coller
+ *  - Snapshot prospect (CMS, builder, plugins, risques, économie)
+ *  - Lighthouse (si PageSpeed disponible) + Core Web Vitals
+ *  - Coût annuel WP vs custom + argumentaire de vente
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ArrowLeft, Search, Loader2, AlertCircle, Shield, Zap, TrendingUp,
     Target, Copy, Check, Download, ExternalLink, Mail, FileText,
-    AlertTriangle, CheckCircle2,
+    AlertTriangle, CheckCircle2, Blocks, Puzzle, Gauge,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../services/api';
@@ -32,6 +30,10 @@ interface AuditResult {
         wp_plugins?: string[];
         wp_themes?: string[];
         builder_signals?: Record<string, boolean>;
+        has_favicon?: boolean;
+        has_canonical?: boolean;
+        has_viewport?: boolean;
+        og_image?: string | boolean;
     };
     lighthouse_mobile?: {
         available: boolean;
@@ -52,17 +54,42 @@ interface AuditResult {
     };
 }
 
-function scoreColor(s?: number) {
-    if (s === undefined || s === null) return 'text-slate-400 bg-slate-100 dark:bg-slate-800';
-    if (s >= 90) return 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30';
-    if (s >= 70) return 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30';
-    return 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30';
+type ScoreKey = 'performance' | 'accessibility' | 'seo' | 'best_practices';
+
+function hasRealScores(scores?: { performance?: number; accessibility?: number; seo?: number; best_practices?: number }): boolean {
+    if (!scores) return false;
+    return [scores.performance, scores.accessibility, scores.seo, scores.best_practices]
+        .some((v) => typeof v === 'number');
+}
+
+function scoreTone(s?: number): string {
+    if (s === undefined || s === null) return 'text-slate-400';
+    if (s >= 90) return 'text-[#2aada0]';
+    if (s >= 70) return 'text-amber-600 dark:text-amber-400';
+    return 'text-[#b05070]';
+}
+
+function scoreHint(s?: number): string {
+    if (s === undefined || s === null) return 'n/d';
+    if (s >= 90) return 'Bon';
+    if (s >= 70) return 'Moyen';
+    return 'Faible';
 }
 
 function severityClass(s: string) {
-    if (s === 'high') return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
+    if (s === 'high') return 'bg-[#b05070]/12 text-[#b05070]';
     if (s === 'medium') return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300';
-    return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
+    return 'bg-slate-100 dark:bg-slate-800 text-slate-500';
+}
+
+function detectBuilder(result: AuditResult): string {
+    const fromAi = result.ai?.wp_findings?.builder?.trim();
+    if (fromAi) return fromAi;
+    const signals = result.probe?.builder_signals || {};
+    const hit = Object.entries(signals).find(([, v]) => v);
+    if (!hit) return '—';
+    const name = hit[0].replace(/_/g, ' ');
+    return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +153,42 @@ const AuditWpPage: React.FC = () => {
 
     const lh = result?.lighthouse_mobile;
     const scores = lh?.scores;
+    const lighthouseReady = Boolean(lh?.available && hasRealScores(scores));
+
+    const snapshot = useMemo(() => {
+        if (!result) return null;
+        const plugins = result.probe?.wp_plugins?.length
+            ?? result.ai?.wp_findings?.plugins_detected?.length
+            ?? 0;
+        const risks = result.ai?.risks || [];
+        const highRisks = risks.filter((r) => r.severity === 'high').length;
+        const savings = result.ai?.savings_per_year_eur;
+        const missingBasics = [
+            !result.probe?.has_viewport && 'viewport',
+            !result.probe?.has_favicon && 'favicon',
+            !result.probe?.has_canonical && 'canonical',
+            !result.probe?.meta_description && 'meta description',
+            !result.probe?.og_image && 'og:image',
+        ].filter(Boolean) as string[];
+
+        return {
+            isWp: Boolean(result.probe?.is_wordpress ?? result.ai?.site?.is_wordpress),
+            builder: detectBuilder(result),
+            plugins,
+            highRisks,
+            riskTotal: risks.length,
+            savings,
+            title: result.probe?.title || result.ai?.site?.title || new URL(result.url).hostname,
+            missingBasics,
+        };
+    }, [result]);
+
+    const scoreItems: { key: ScoreKey; label: string; icon: React.ElementType }[] = [
+        { key: 'performance', label: 'Performance', icon: Zap },
+        { key: 'accessibility', label: 'Accessibilité', icon: Shield },
+        { key: 'seo', label: 'SEO', icon: Target },
+        { key: 'best_practices', label: 'Bonnes pratiques', icon: CheckCircle2 },
+    ];
 
     return (
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
@@ -133,16 +196,16 @@ const AuditWpPage: React.FC = () => {
                 <button onClick={() => navigate(-1)} className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 mb-2">
                     <ArrowLeft size={13} /> Retour
                 </button>
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <Shield className="text-rose-500" /> Audit Prospect WP
+                <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                    <Shield className="text-[#b05070]" size={22} /> Audit Prospect WP
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">
-                    Colle une URL, l'app sort un rapport Lighthouse + plugins + coût + argumentaire en 30 secondes.
+                    Colle une URL — synthèse pitchable (CMS, risques, coûts) en ~30 secondes.
                 </p>
             </div>
 
             {/* Input */}
-            <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 md:p-5 mb-6">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-4 mb-5">
                 <form onSubmit={(e) => { e.preventDefault(); handleAudit(); }} className="flex gap-2 flex-wrap">
                     <div className="flex-1 min-w-[200px] relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -150,84 +213,175 @@ const AuditWpPage: React.FC = () => {
                             value={url}
                             onChange={e => setUrl(e.target.value)}
                             placeholder="https://patisserie-marie.fr"
-                            className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-rose-400"
+                            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-sm outline-none focus:border-slate-400 dark:focus:border-slate-500"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={loading || !url.trim()}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-eonora-gradient text-white text-sm font-semibold disabled:opacity-50 hover:brightness-105"
+                        className="flex items-center gap-2 px-4 py-2 rounded-md bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-medium disabled:opacity-50 hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors"
                     >
                         {loading ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
                         {loading ? 'Audit en cours…' : 'Lancer l\'audit'}
                     </button>
                 </form>
                 {error && (
-                    <div className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 text-xs">
+                    <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 text-[#b05070] text-xs">
                         <AlertCircle size={14} /> {error}
                     </div>
                 )}
                 {loading && (
                     <p className="text-xs text-slate-500 mt-3">
-                        L'audit prend 20-40 s (Lighthouse + détection plugins + analyse IA). Patiente…
+                        Analyse HTML + PageSpeed + synthèse IA… 20–40 s.
                     </p>
                 )}
             </div>
 
-            {result && (
+            {result && snapshot && (
                 <div className="space-y-5">
-                    {/* Lighthouse scores */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                            { key: 'performance', label: 'Performance', icon: Zap },
-                            { key: 'accessibility', label: 'A11y', icon: Shield },
-                            { key: 'seo', label: 'SEO', icon: Target },
-                            { key: 'best_practices', label: 'Best Practices', icon: CheckCircle2 },
-                        ].map(({ key, label, icon: Icon }) => {
-                            const s = (scores as any)?.[key];
-                            return (
-                                <div key={key} className={`rounded-2xl p-4 border ${scoreColor(s)} border-current/20`}>
-                                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase opacity-80">
-                                        <Icon size={11} /> {label}
-                                    </div>
-                                    <div className="text-3xl font-bold mt-1">{s ?? '—'}</div>
-                                </div>
-                            );
-                        })}
+                    {/* Functional prospect snapshot — always useful */}
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Synthèse prospect</p>
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate mt-0.5">{snapshot.title}</p>
+                            </div>
+                            <a
+                                href={result.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 shrink-0"
+                            >
+                                {new URL(result.url).hostname} <ExternalLink size={11} />
+                            </a>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y md:divide-y-0 divide-slate-100 dark:divide-slate-800">
+                            <div className="px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1 mb-0.5">
+                                    <Blocks size={10} /> CMS
+                                </p>
+                                <p className={`text-sm font-semibold ${snapshot.isWp ? 'text-[#4a72c4]' : 'text-slate-800 dark:text-white'}`}>
+                                    {snapshot.isWp ? 'WordPress' : 'Autre / inconnu'}
+                                </p>
+                            </div>
+                            <div className="px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Builder</p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{snapshot.builder}</p>
+                            </div>
+                            <div className="px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1 mb-0.5">
+                                    <Puzzle size={10} /> Plugins
+                                </p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-white tabular-nums">
+                                    {snapshot.plugins}
+                                    <span className="text-[11px] font-medium text-slate-400 ml-1">détectés</span>
+                                </p>
+                            </div>
+                            <div className="px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1 mb-0.5">
+                                    <AlertTriangle size={10} /> Risques
+                                </p>
+                                <p className={`text-sm font-semibold tabular-nums ${snapshot.highRisks > 0 ? 'text-[#b05070]' : 'text-slate-800 dark:text-white'}`}>
+                                    {snapshot.highRisks > 0
+                                        ? `${snapshot.highRisks} critique${snapshot.highRisks > 1 ? 's' : ''}`
+                                        : snapshot.riskTotal > 0
+                                            ? `${snapshot.riskTotal} signalé${snapshot.riskTotal > 1 ? 's' : ''}`
+                                            : 'Aucun'}
+                                </p>
+                            </div>
+                            <div className="px-4 py-3 col-span-2 md:col-span-1">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1 mb-0.5">
+                                    <TrendingUp size={10} /> Économie / an
+                                </p>
+                                <p className="text-sm font-semibold text-[#2aada0] tabular-nums">
+                                    {typeof snapshot.savings === 'number'
+                                        ? `${snapshot.savings.toLocaleString('fr-FR')} €`
+                                        : '—'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {snapshot.missingBasics.length > 0 && (
+                            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/30">
+                                <p className="text-[11px] text-slate-500">
+                                    <span className="font-medium text-slate-600 dark:text-slate-300">Manques SEO / tech : </span>
+                                    {snapshot.missingBasics.join(' · ')}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* CWV metrics */}
-                    {lh?.metrics && (
-                        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4">
-                            <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-2">Core Web Vitals (mobile)</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-                                {Object.entries(lh.metrics).map(([k, v]) => v && (
-                                    <div key={k} className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2 border border-slate-200 dark:border-slate-700">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">{k}</div>
-                                        <div className="font-bold text-slate-800 dark:text-white">{v}</div>
-                                    </div>
-                                ))}
+                    {/* Lighthouse — only when real scores exist */}
+                    {lighthouseReady ? (
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 overflow-hidden">
+                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                                <Gauge size={14} className="text-slate-400" />
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                                    Lighthouse mobile
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100 dark:divide-slate-800">
+                                {scoreItems.map(({ key, label, icon: Icon }) => {
+                                    const s = scores?.[key];
+                                    return (
+                                        <div key={key} className="px-4 py-3">
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1 mb-0.5">
+                                                <Icon size={10} /> {label}
+                                            </p>
+                                            <p className={`text-2xl font-semibold tabular-nums ${scoreTone(s)}`}>
+                                                {typeof s === 'number' ? s : '—'}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">{scoreHint(s)}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {lh?.metrics && Object.values(lh.metrics).some(Boolean) && (
+                                <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 md:grid-cols-5 gap-2">
+                                    {Object.entries(lh.metrics).map(([k, v]) => v && (
+                                        <div key={k}>
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{k}</p>
+                                            <p className="text-xs font-medium text-slate-700 dark:text-slate-200 tabular-nums">{v}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-3 flex items-start gap-2">
+                            <Gauge size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                    Scores Lighthouse indisponibles
+                                </p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                    {lh?.error
+                                        ? `PageSpeed : ${lh.error}. La synthèse ci-dessus reste exploitable pour le pitch.`
+                                        : 'PageSpeed n’a pas renvoyé de scores. La synthèse CMS / risques / coûts suffit pour pitcher.'}
+                                </p>
                             </div>
                         </div>
                     )}
 
                     {/* WordPress findings */}
                     {result.probe?.is_wordpress && (
-                        <div className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/10 p-4">
-                            <h3 className="font-bold text-sm text-slate-800 dark:text-white">Site WordPress détecté</h3>
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-4">
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Site WordPress détecté</h3>
                             {result.probe.wp_plugins && result.probe.wp_plugins.length > 0 && (
-                                <div className="mt-2">
-                                    <div className="text-[10px] font-bold uppercase text-slate-500">Plugins détectés ({result.probe.wp_plugins.length})</div>
-                                    <div className="flex flex-wrap gap-1 mt-1">
+                                <div className="mt-1">
+                                    <div className="text-[11px] text-slate-500 mb-1.5">Plugins ({result.probe.wp_plugins.length})</div>
+                                    <div className="flex flex-wrap gap-1.5">
                                         {result.probe.wp_plugins.map(p => (
-                                            <span key={p} className="px-2 py-0.5 rounded text-[10px] font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">{p}</span>
+                                            <span key={p} className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">{p}</span>
                                         ))}
                                     </div>
                                 </div>
                             )}
                             {result.ai?.wp_findings?.builder && (
-                                <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
-                                    <strong>Builder :</strong> {result.ai.wp_findings.builder}
+                                <div className="mt-3 text-xs text-slate-600 dark:text-slate-300">
+                                    <span className="text-slate-400 font-medium">Builder · </span>
+                                    {result.ai.wp_findings.builder}
                                 </div>
                             )}
                         </div>
@@ -236,44 +390,46 @@ const AuditWpPage: React.FC = () => {
                     {/* Cost comparison */}
                     {result.ai?.annual_cost_wp_eur && result.ai?.annual_cost_custom_eur && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 p-4">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Coût WP / an</h4>
-                                <div className="text-3xl font-bold text-slate-800 dark:text-white mt-1">{result.ai.annual_cost_wp_eur.total?.toLocaleString('fr-FR')} €</div>
-                                <ul className="text-[11px] text-slate-600 dark:text-slate-300 mt-2 space-y-0.5">
-                                    {result.ai.annual_cost_wp_eur.hosting !== undefined && <li>Hébergement : {result.ai.annual_cost_wp_eur.hosting} €</li>}
-                                    {result.ai.annual_cost_wp_eur.maintenance !== undefined && <li>Maintenance : {result.ai.annual_cost_wp_eur.maintenance} €</li>}
-                                    {result.ai.annual_cost_wp_eur.licenses !== undefined && <li>Licences : {result.ai.annual_cost_wp_eur.licenses} €</li>}
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-4">
+                                <h4 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Coût WP / an</h4>
+                                <div className="text-2xl font-semibold text-[#b05070] tabular-nums mt-1">{result.ai.annual_cost_wp_eur.total?.toLocaleString('fr-FR')} €</div>
+                                <ul className="text-[11px] text-slate-500 mt-2 space-y-0.5">
+                                    {result.ai.annual_cost_wp_eur.hosting !== undefined && <li>Hébergement · {result.ai.annual_cost_wp_eur.hosting} €</li>}
+                                    {result.ai.annual_cost_wp_eur.maintenance !== undefined && <li>Maintenance · {result.ai.annual_cost_wp_eur.maintenance} €</li>}
+                                    {result.ai.annual_cost_wp_eur.licenses !== undefined && <li>Licences · {result.ai.annual_cost_wp_eur.licenses} €</li>}
                                 </ul>
                             </div>
-                            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/10 p-4">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Coût sur-mesure / an</h4>
-                                <div className="text-3xl font-bold text-slate-800 dark:text-white mt-1">{result.ai.annual_cost_custom_eur.total?.toLocaleString('fr-FR')} €</div>
-                                <ul className="text-[11px] text-slate-600 dark:text-slate-300 mt-2 space-y-0.5">
-                                    {result.ai.annual_cost_custom_eur.hosting !== undefined && <li>Hébergement : {result.ai.annual_cost_custom_eur.hosting} €</li>}
-                                    {result.ai.annual_cost_custom_eur.maintenance !== undefined && <li>Maintenance : {result.ai.annual_cost_custom_eur.maintenance} €</li>}
-                                    {result.ai.annual_cost_custom_eur.licenses !== undefined && <li>Licences : {result.ai.annual_cost_custom_eur.licenses} €</li>}
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-4">
+                                <h4 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Coût sur-mesure / an</h4>
+                                <div className="text-2xl font-semibold text-[#2aada0] tabular-nums mt-1">{result.ai.annual_cost_custom_eur.total?.toLocaleString('fr-FR')} €</div>
+                                <ul className="text-[11px] text-slate-500 mt-2 space-y-0.5">
+                                    {result.ai.annual_cost_custom_eur.hosting !== undefined && <li>Hébergement · {result.ai.annual_cost_custom_eur.hosting} €</li>}
+                                    {result.ai.annual_cost_custom_eur.maintenance !== undefined && <li>Maintenance · {result.ai.annual_cost_custom_eur.maintenance} €</li>}
+                                    {result.ai.annual_cost_custom_eur.licenses !== undefined && <li>Licences · {result.ai.annual_cost_custom_eur.licenses} €</li>}
                                 </ul>
                             </div>
-                            <div className="rounded-2xl border border-[#b05070]/40 dark:border-[#b05070]/60 bg-eonora-gradient text-white p-4">
-                                <h4 className="text-xs font-bold uppercase tracking-wider opacity-80 flex items-center gap-1.5"><TrendingUp size={11} /> Économie</h4>
-                                <div className="text-3xl font-bold mt-1">{result.ai.savings_per_year_eur?.toLocaleString('fr-FR')} €</div>
-                                <p className="text-[11px] opacity-85 mt-2">Économies par an pour le client</p>
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 p-4">
+                                <h4 className="text-[10px] font-semibold uppercase tracking-widest opacity-70 flex items-center gap-1.5"><TrendingUp size={11} /> Économie</h4>
+                                <div className="text-2xl font-semibold tabular-nums mt-1">{result.ai.savings_per_year_eur?.toLocaleString('fr-FR')} €</div>
+                                <p className="text-[11px] opacity-70 mt-2">Économies / an pour le client</p>
                             </div>
                         </div>
                     )}
 
                     {/* Risks */}
                     {result.ai?.risks && result.ai.risks.length > 0 && (
-                        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-5">
-                            <h3 className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2 mb-3"><AlertTriangle size={14} className="text-amber-500" /> Risques identifiés</h3>
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-5">
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-3">
+                                <AlertTriangle size={14} className="text-amber-500" /> Risques identifiés
+                            </h3>
                             <ul className="space-y-2">
                                 {result.ai.risks.map((r, i) => (
-                                    <li key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                    <li key={i} className="p-3 rounded-md border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                         <div className="flex items-center gap-2">
-                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${severityClass(r.severity)}`}>{r.severity}</span>
-                                            <h5 className="text-sm font-bold text-slate-800 dark:text-white">{r.title}</h5>
+                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${severityClass(r.severity)}`}>{r.severity}</span>
+                                            <h5 className="text-sm font-semibold text-slate-800 dark:text-white">{r.title}</h5>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">{r.detail}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{r.detail}</p>
                                     </li>
                                 ))}
                             </ul>
@@ -282,12 +438,14 @@ const AuditWpPage: React.FC = () => {
 
                     {/* Opportunities */}
                     {result.ai?.opportunities && result.ai.opportunities.length > 0 && (
-                        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/10 p-5">
-                            <h3 className="font-bold text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2 mb-3"><Target size={14} /> Opportunités à pitcher</h3>
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-5">
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-3">
+                                <Target size={14} className="text-[#2aada0]" /> Opportunités à pitcher
+                            </h3>
                             <ul className="space-y-1.5 text-sm text-slate-700 dark:text-slate-200">
                                 {result.ai.opportunities.map((o, i) => (
                                     <li key={i} className="flex items-start gap-2">
-                                        <CheckCircle2 size={13} className="flex-shrink-0 mt-0.5 text-emerald-500" /> {o}
+                                        <CheckCircle2 size={13} className="flex-shrink-0 mt-0.5 text-[#2aada0]" /> {o}
                                     </li>
                                 ))}
                             </ul>
@@ -296,36 +454,38 @@ const AuditWpPage: React.FC = () => {
 
                     {/* Sales pitch */}
                     {result.ai?.sales_pitch_markdown && (
-                        <div className="rounded-2xl border border-fuchsia-300 dark:border-fuchsia-700 bg-white dark:bg-slate-900/60 p-5">
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-5">
                             <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                                <h3 className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2"><FileText size={14} className="text-fuchsia-500" /> Argumentaire de vente</h3>
+                                <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                    <FileText size={14} /> Argumentaire de vente
+                                </h3>
                                 <div className="flex gap-1.5">
                                     <button
                                         onClick={copyPitch}
-                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200"
+                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200"
                                     >
-                                        {copiedPitch ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
-                                        {copiedPitch ? 'Copié !' : 'Copier le pitch'}
+                                        {copiedPitch ? <Check size={11} className="text-[#2aada0]" /> : <Copy size={11} />}
+                                        {copiedPitch ? 'Copié' : 'Copier le pitch'}
                                     </button>
                                     <a
                                         href={`mailto:?subject=${encodeURIComponent('Refonte de votre site')}&body=${encodeURIComponent(result.ai.sales_pitch_markdown)}`}
-                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-fuchsia-500 hover:bg-fuchsia-600 text-white text-xs font-semibold"
+                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-medium"
                                     >
                                         <Mail size={11} /> Envoyer par email
                                     </a>
                                 </div>
                             </div>
-                            <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 leading-relaxed font-sans">
+                            <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/50 rounded-md p-4 border border-slate-100 dark:border-slate-800 leading-relaxed font-sans">
                                 {result.ai.sales_pitch_markdown}
                             </pre>
                         </div>
                     )}
 
                     {/* Footer actions */}
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                         <button
                             onClick={downloadReport}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             <Download size={12} /> Télécharger l'audit (JSON)
                         </button>
@@ -333,7 +493,7 @@ const AuditWpPage: React.FC = () => {
                             href={result.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
                             <ExternalLink size={12} /> Ouvrir le site
                         </a>
