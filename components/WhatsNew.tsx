@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, FolderTree, Award, Sparkles } from 'lucide-react';
+import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.12.1";
+const CURRENT_VERSION = "2.13.0";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,43 +37,43 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Fiche client Linear — workflow sobre, plus de glow « Magie Visuelle »
+                            Mission Control — KPIs, to-do partagée, vues cartes & roadmap
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <FolderTree size={24} />
+                                <LayoutGrid size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Fiche client simplifiée</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Bandeau KPIs</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Les onglets Finances et E-mails ont quitté la fiche client : ils restent dans Facturation et Emails du header. La fiche se concentre sur Tâches, Temps, Fichiers, Portail…
+                                    Clients actifs, CA en attente, deadlines urgentes et tâches ouvertes — capsules cliquables en haut du dashboard.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-800/20 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-[#23262B] text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <Sparkles size={24} />
+                                <ListTodo size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Portail client — style Linear</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">To-do du jour</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Admin + page publique : onglets discrets, boutons sobres, timeline sans glow. Le lien client reste le même.
+                                    Widget compact + panneau complet (catégories, micro, rappels). Bouton ListTodo dans le header.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#F2F5F0] to-[#E3EBDF] dark:from-emerald-900/10 dark:to-emerald-900/5 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-sage text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <Award size={24} />
+                                <CalendarDays size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Mise à jour plus fiable</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Vues cartes & roadmap</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    METTRE_A_JOUR force maintenant le nouveau .dist depuis GitHub et repose l’app Bureau sur le bon dossier — pour ne plus rester coincée sur une ancienne interface.
+                                    Alterne tableau, cartes compactes ou timeline 3 mois Linear — préférence mémorisée.
                                 </p>
                             </div>
                         </div>

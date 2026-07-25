@@ -15,7 +15,7 @@ import {
     X, LayoutGrid, StickyNote, Wand2, Tent, Target,
     Mail, Sparkles, Settings, Calendar, Wallet,
     HelpCircle, Sun, Moon, Sunrise, ChevronDown,
-    Hammer, BookOpen, Palette, Shield, Telescope, Code2, Newspaper,
+    Hammer, BookOpen, Palette, Shield, Telescope, Code2, Newspaper, ListTodo,
 } from 'lucide-react';
 
 interface DrawerItem {
@@ -34,6 +34,7 @@ export const MobileDrawer: React.FC = () => {
         setIsFocusMode, setShowGoalsKPIs,
         setShowGuide, setShowAgendaModal, setShowChat,
         setDroppedFiles, setShowFileDispatcher,
+        setShowTodoPanel,
     } = useUIStore();
 
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -64,6 +65,7 @@ export const MobileDrawer: React.FC = () => {
         { icon: Calendar, label: 'Agenda', color: 'text-eo-blue', action: () => menuAction(() => setShowAgendaModal(true)) },
         { icon: Mail, label: 'Emails', color: 'text-blue-500', action: () => { close(); navigate('/emails'); } },
         { icon: StickyNote, label: 'Notes rapides', color: 'text-amber-500', action: () => menuAction(() => setShowNotes(true)) },
+        { icon: ListTodo, label: 'To-do du jour', color: 'text-[#7C9A7E]', action: () => menuAction(() => setShowTodoPanel(true)) },
         { icon: Sparkles, label: 'Franck', color: 'text-emerald-500', action: () => menuAction(() => setShowChat(true)) },
         { icon: Settings, label: 'Paramètres', color: 'text-slate-400', action: () => { close(); navigate('/settings'); } },
     ];
