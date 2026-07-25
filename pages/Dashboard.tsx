@@ -387,20 +387,20 @@ export const Dashboard: React.FC = () => {
 
             {projects.length > 0 && <TodoWidget />}
 
-            {/* TOP BAR: search + view toggle + actions */}
-            <div id="dashboard-search" className="bg-white/40 dark:bg-slate-800/30 p-2 md:p-3 rounded-2xl md:rounded-3xl backdrop-blur-sm flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-                <div className="relative flex items-center gap-2 flex-1 min-w-0 md:flex-none md:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            {/* TOP BAR: search + view toggle + actions — Linear */}
+            <div id="dashboard-search" className="flex flex-wrap items-center gap-2 mb-4 md:mb-5">
+                <div className="relative flex items-center flex-1 min-w-[180px] md:flex-none md:w-72">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                     <input
                         id="dashboard-search-input"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Rechercher un client..."
-                        className="pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-800/80 border border-transparent dark:border-slate-700/50 focus:border-[#7C9A7E] shadow-sm focus:ring-2 focus:ring-[#7C9A7E]/20 w-full transition-all outline-none text-sm dark:text-slate-100 dark:placeholder-slate-400"
+                        placeholder="Rechercher un client…"
+                        className="pl-8 pr-3 py-1.5 rounded-md bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-slate-400 dark:focus:border-slate-500 w-full outline-none text-sm dark:text-slate-100 dark:placeholder-slate-500"
                     />
                 </div>
 
-                <div className="flex items-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 p-0.5 shrink-0">
+                <div className="flex items-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-0.5 shrink-0">
                     {viewButtons.map(({ mode, icon: Icon, label }) => (
                         <button
                             key={mode}
@@ -409,7 +409,7 @@ export const Dashboard: React.FC = () => {
                             title={label}
                             className={`p-1.5 rounded-md transition-colors ${
                                 viewMode === mode
-                                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
+                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
                                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
                         >
@@ -422,16 +422,16 @@ export const Dashboard: React.FC = () => {
                 <button
                     id="new-client-filter-button"
                     onClick={() => projects.length === 0 ? handleCreateDatabase() : setShowImporter(true)}
-                    className={`px-3 md:px-5 py-1.5 md:py-2 rounded-full text-white transition-all duration-300 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase whitespace-nowrap group flex-shrink-0 ${
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors ${
                         projects.length === 0
-                        ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse shadow-lg'
-                        : 'bg-gradient-to-r from-[#7C9A7E] to-[#647D66] hover:scale-105 shadow-md'
+                        ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900'
+                        : 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-slate-200'
                     }`}
                 >
                     {projects.length === 0 ? (
-                        <><Database size={12} /> <span className="hidden sm:inline">Database</span></>
+                        <><Database size={14} /> <span className="hidden sm:inline">Database</span></>
                     ) : (
-                        <><Plus size={12} className="group-hover:rotate-90 transition-transform duration-300" /> <span>Nouveau</span></>
+                        <><Plus size={14} /> Nouveau</>
                     )}
                 </button>
                 <button
@@ -450,18 +450,18 @@ export const Dashboard: React.FC = () => {
                         const clientData = projects.map(p => ({ ...p }));
                         exportCSV(clientData, clientColumns, `Export_Clients_${new Date().getFullYear()}.csv`);
                     }}
-                    className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-emerald-500 hover:shadow-md transition-all flex-shrink-0 dark:border dark:border-slate-700/50"
+                    className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shrink-0"
                     title="Exporter la liste clients (CSV)"
                 >
-                    <Download size={16} />
+                    <Download size={15} />
                 </button>
                 <button
                     onClick={() => refetchProjects()}
                     disabled={isRefreshing}
-                    className="p-2 bg-white dark:bg-slate-800/60 rounded-xl text-slate-400 hover:text-[#7C9A7E] hover:shadow-md transition-all disabled:opacity-50 flex-shrink-0 dark:border dark:border-slate-700/50"
+                    className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 shrink-0"
                     title="Actualiser les dossiers"
                 >
-                    <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                    <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
                 </button>
             </div>
 

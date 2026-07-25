@@ -1,8 +1,5 @@
 /**
- * ClientsTable — vue tableau de la page Clients (explorateur)
- *
- * Remplace la grille de cartes par une liste dense, triable et filtrable,
- * pensée pour naviguer vite entre les dossiers clients.
+ * ClientsTable — Linear dense table of clients on the Dashboard
  */
 
 import React, { useMemo, useState } from 'react';
@@ -29,8 +26,8 @@ const STATUS_PRIORITY: Record<ProjectStatus, number> = {
 };
 
 const HEALTH_DOT_CLASSES: Record<'good' | 'warning' | 'danger', string> = {
-    good: 'bg-emerald-500',
-    warning: 'bg-amber-500',
+    good: 'bg-[#2aada0]',
+    warning: 'bg-amber-400',
     danger: 'bg-[#b05070]',
 };
 
@@ -119,92 +116,96 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({ projects, onOpenProj
 
     if (rows.length === 0) {
         return (
-            <div className="w-full bg-[#FAF7F2] dark:bg-[#23262B] rounded-2xl border border-[#e7e0d4] dark:border-slate-700/50 flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-inner">
-                    <FolderOpen size={28} className="text-slate-400" />
+            <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-10 h-10 rounded-md border border-slate-200 dark:border-slate-700 flex items-center justify-center mb-3">
+                    <FolderOpen size={18} className="text-slate-400" />
                 </div>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Aucun client dans ce dossier</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Aucun client dans ce dossier</p>
             </div>
         );
     }
 
     return (
-        <div className="w-full bg-[#FAF7F2] dark:bg-[#23262B] rounded-2xl border border-[#e7e0d4] dark:border-slate-700/50 overflow-hidden">
+        <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="bg-[#EFE9DE] dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">
-                            <SortableHeader label="Client" sortKey="nom" activeKey={sortKey} dir={sortDir} onSort={handleSort} className="text-left px-4 py-3" />
-                            <th className="text-left px-4 py-3 font-semibold">Phase</th>
-                            <SortableHeader label="Progression" sortKey="progression" activeKey={sortKey} dir={sortDir} onSort={handleSort} className="text-left px-4 py-3" />
-                            <th className="text-left px-4 py-3 font-semibold">Tâches</th>
-                            <SortableHeader label="Deadline" sortKey="deadline" activeKey={sortKey} dir={sortDir} onSort={handleSort} className="text-left px-4 py-3" />
-                            <th className="text-left px-4 py-3 font-semibold">Santé</th>
-                            <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Prochaine action</th>
-                            <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Montant dû</th>
+                        <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400">
+                            <SortableHeader label="Client" sortKey="nom" activeKey={sortKey} dir={sortDir} onSort={handleSort} className="text-left px-4 py-2.5" />
+                            <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Phase</th>
+                            <SortableHeader label="Progression" sortKey="progression" activeKey={sortKey} dir={sortDir} onSort={handleSort} className="text-left px-4 py-2.5" />
+                            <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Tâches</th>
+                            <SortableHeader label="Deadline" sortKey="deadline" activeKey={sortKey} dir={sortDir} onSort={handleSort} className="text-left px-4 py-2.5" />
+                            <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest">Santé</th>
+                            <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell">Prochaine action</th>
+                            <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell">Montant dû</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {rows.map(({ project, health, nextDeadline }, idx) => {
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {rows.map(({ project, health, nextDeadline }) => {
                             const pendingAmount = getPendingAmount(project);
                             const withinWeek = !!nextDeadline && daysUntil(nextDeadline.date) <= 7;
                             const isDangerRow = health === 'danger' || withinWeek;
                             const isWarningRow = !isDangerRow && health === 'warning';
                             const borderClass = isDangerRow
-                                ? 'border-l-[3px] border-l-[#b05070]'
+                                ? 'border-l-[2px] border-l-[#b05070]'
                                 : isWarningRow
-                                ? 'border-l-[3px] border-l-amber-400'
-                                : 'border-l-[3px] border-l-transparent';
-                            const zebraClass = idx % 2 === 1 ? 'bg-white/40 dark:bg-white/[0.02]' : '';
+                                ? 'border-l-[2px] border-l-amber-400'
+                                : 'border-l-[2px] border-l-transparent';
 
                             return (
                                 <tr
                                     key={project.id}
                                     onClick={() => onOpenProject(project.id)}
-                                    className={`cursor-pointer transition-colors hover:bg-[#7C9A7E]/10 dark:hover:bg-[#7C9A7E]/10 ${borderClass} ${zebraClass}`}
+                                    className={`cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${borderClass}`}
                                 >
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${initialsColorClasses(project)} flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden`}>
+                                    <td className="px-4 py-2.5">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className={`w-7 h-7 rounded-md bg-gradient-to-br ${initialsColorClasses(project)} flex items-center justify-center text-white text-[10px] font-semibold shrink-0 overflow-hidden`}>
                                                 {project.avatarImage ? (
                                                     <img src={project.avatarImage} alt="" className="w-full h-full object-cover" />
                                                 ) : (
                                                     project.avatarInitials
                                                 )}
                                             </div>
-                                            <span className="font-medium text-slate-800 dark:text-slate-100 truncate">{project.clientName}</span>
+                                            <div className="min-w-0">
+                                                <span className="block font-medium text-slate-900 dark:text-slate-100 truncate">{project.clientName}</span>
+                                                <span className="block text-[10px] text-slate-400 truncate md:hidden">{project.status}</span>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">{project.phase}</td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap text-[13px]">{project.phase}</td>
+                                    <td className="px-4 py-2.5">
                                         <div className="flex items-center gap-2 min-w-[100px]">
-                                            <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                            <div className="flex-1 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full bg-[#7C9A7E]"
+                                                    className="h-full rounded-full bg-[#2aada0]"
                                                     style={{ width: `${project.progress}%` }}
                                                 />
                                             </div>
-                                            <span className="text-xs text-slate-500 dark:text-slate-400 w-9 text-right">{project.progress}%</span>
+                                            <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400 w-8 text-right">{project.progress}%</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{openTasksCount(project)}</td>
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDeadline(nextDeadline?.date ?? null)}</td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-2.5 tabular-nums text-slate-600 dark:text-slate-300">{openTasksCount(project)}</td>
+                                    <td className={`px-4 py-2.5 whitespace-nowrap tabular-nums text-[13px] ${withinWeek ? 'text-[#b05070] font-medium' : 'text-slate-600 dark:text-slate-300'}`}>
+                                        {formatDeadline(nextDeadline?.date ?? null)}
+                                    </td>
+                                    <td className="px-4 py-2.5">
                                         <span
-                                            className={`inline-block w-2.5 h-2.5 rounded-full ${HEALTH_DOT_CLASSES[health]}`}
+                                            className={`inline-block w-1.5 h-1.5 rounded-full ${HEALTH_DOT_CLASSES[health]}`}
                                             title={health === 'good' ? 'Sain' : health === 'warning' ? 'À surveiller' : 'Urgent'}
                                         />
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 truncate max-w-[180px] hidden md:table-cell">
+                                    <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 truncate max-w-[180px] hidden md:table-cell text-[13px]">
                                         {nextActionLabel(project) || '—'}
                                     </td>
-                                    <td className="px-4 py-3 hidden md:table-cell">
+                                    <td className="px-4 py-2.5 text-right hidden md:table-cell">
                                         {pendingAmount > 0 ? (
-                                            <span className="text-slate-700 dark:text-slate-200 font-medium whitespace-nowrap">
+                                            <span className="text-[#2aada0] font-medium whitespace-nowrap tabular-nums text-[13px]">
                                                 {formatCurrencyWithSymbol(pendingAmount, 'CHF', 0)}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 text-xs">—</span>
+                                            <span className="text-slate-300 text-xs">—</span>
                                         )}
                                     </td>
                                 </tr>
@@ -235,12 +236,12 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ label, sortKey, activeK
             <button
                 type="button"
                 onClick={() => onSort(sortKey)}
-                className={`flex items-center gap-1 font-semibold uppercase tracking-wide transition-colors ${
-                    isActive ? 'text-[#7C9A7E]' : 'hover:text-slate-700 dark:hover:text-slate-200'
+                className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest transition-colors ${
+                    isActive ? 'text-slate-800 dark:text-slate-100' : 'hover:text-slate-600 dark:hover:text-slate-300'
                 }`}
             >
                 {label}
-                <Icon size={12} />
+                <Icon size={11} />
             </button>
         </th>
     );

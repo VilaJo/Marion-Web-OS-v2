@@ -1,8 +1,5 @@
 /**
- * ClientsFolderTree — arborescence de dossiers clients (vue "explorateur")
- *
- * Colonne de gauche de la page Clients : "Tous" + un noeud par statut,
- * avec badge de comptage. Remplace les anciennes pastilles de filtre.
+ * ClientsFolderTree — Linear folder sidebar for the Dashboard clients explorer
  */
 
 import React from 'react';
@@ -32,7 +29,7 @@ export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, 
     return (
         <>
             {/* Mobile: horizontal chip strip */}
-            <nav aria-label="Dossiers clients" className="flex md:hidden items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            <nav aria-label="Dossiers clients" className="flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
                 <FolderChip
                     label="Tous"
                     count={countFor('Tous')}
@@ -54,8 +51,11 @@ export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, 
             {/* Desktop: vertical folder tree */}
             <nav
                 aria-label="Dossiers clients"
-                className="hidden md:block w-full bg-[#FAF7F2] dark:bg-[#23262B] rounded-2xl border border-[#e7e0d4] dark:border-slate-700/50 p-2 md:p-3"
+                className="hidden md:block w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 p-2"
             >
+                <p className="px-2.5 pt-1 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    Dossiers
+                </p>
                 <FolderNode
                     label="Tous"
                     count={countFor('Tous')}
@@ -63,9 +63,9 @@ export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, 
                     onClick={() => onSelect('Tous')}
                 />
 
-                <div className="my-2 border-t border-[#e7e0d4] dark:border-slate-700/50" />
+                <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
 
-                <ul className="space-y-1">
+                <ul className="space-y-0.5">
                     {FOLDER_ORDER.map(status => (
                         <li key={status}>
                             <FolderNode
@@ -96,16 +96,16 @@ const FolderChip: React.FC<FolderChipProps> = ({ label, count, isSelected, empha
         type="button"
         onClick={onClick}
         aria-current={isSelected ? 'true' : undefined}
-        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors ${
-            emphasized ? 'font-bold' : 'font-medium'
+        className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs whitespace-nowrap transition-colors border ${
+            emphasized ? 'font-semibold' : 'font-medium'
         } ${
             isSelected
-                ? 'bg-[#7C9A7E] text-white shadow-sm'
-                : 'bg-[#FAF7F2] dark:bg-slate-800/60 text-slate-500 dark:text-slate-300 border border-[#e7e0d4] dark:border-slate-700/50'
+                ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100'
+                : 'bg-white dark:bg-slate-900/40 text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-700'
         }`}
     >
         {label}
-        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isSelected ? 'bg-white/25' : 'bg-slate-200/70 dark:bg-slate-700/70'}`}>
+        <span className={`text-[10px] tabular-nums ${isSelected ? 'opacity-70' : 'text-slate-400'}`}>
             {count}
         </span>
     </button>
@@ -127,24 +127,24 @@ const FolderNode: React.FC<FolderNodeProps> = ({ label, count, isSelected, empha
             type="button"
             onClick={onClick}
             aria-current={isSelected ? 'true' : undefined}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors border-l-[3px] ${
+            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-colors ${
                 isSelected
-                    ? 'bg-[#7C9A7E]/12 dark:bg-[#7C9A7E]/20 border-l-[#7C9A7E] text-[#23262B] dark:text-white'
-                    : 'border-l-transparent text-slate-600 dark:text-slate-300 hover:bg-[#7C9A7E]/8 dark:hover:bg-slate-800/60'
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
             }`}
         >
             <Icon
-                size={16}
-                className={isSelected ? 'text-[#7C9A7E] dark:text-[#A7C1A3] flex-shrink-0' : 'text-slate-400 flex-shrink-0'}
+                size={14}
+                className={isSelected ? 'text-slate-700 dark:text-slate-200 flex-shrink-0' : 'text-slate-400 flex-shrink-0'}
             />
-            <span className={`flex-1 truncate text-sm ${emphasized ? 'font-bold' : 'font-medium'}`}>
+            <span className={`flex-1 truncate text-[13px] ${emphasized || isSelected ? 'font-medium' : 'font-normal'}`}>
                 {label}
             </span>
             <span
-                className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full min-w-[24px] text-center ${
+                className={`text-[10px] tabular-nums font-medium min-w-[20px] text-right ${
                     isSelected
-                        ? 'bg-[#7C9A7E] text-white'
-                        : 'bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-300'
+                        ? 'text-slate-500 dark:text-slate-400'
+                        : 'text-slate-400'
                 }`}
             >
                 {count}

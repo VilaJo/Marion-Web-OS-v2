@@ -59,9 +59,9 @@ export const WhatsNew: React.FC = () => {
                                 <Ship size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Yacht Bar — dashboard</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Yacht Bar + fiches clients</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Bandeau long au-dessus de la to-do du jour : progression vers l’objectif 300k CHF (bénéfice net année en cours). Clic → Santé financière.
+                                    Yacht Bar longue au-dessus de la to-do. Cartes / tableau clients au style Linear — plus de fond crème, progression claire, dossiers sobres.
                                 </p>
                             </div>
                         </div>
