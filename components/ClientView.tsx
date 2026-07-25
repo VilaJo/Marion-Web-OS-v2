@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, CheckCircle, Circle, FileText, Folder, MoreHorizontal, Plus, Clock, AlertCircle, RefreshCw, Upload, Image as ImageIcon, Link2, Figma, Github, Globe, Trash2, Wand2, Download, Send, Sparkles, Edit2, Save, X, File, ChevronRight, ChevronLeft, HardDrive, Rocket, Archive, Play, Copy, Palette, Type, Lock, Eye, EyeOff, ExternalLink, ArrowRight, Mail, Pizza, Droplet, Text, DollarSign, Mic, Square, History, Timer, Pause, Repeat, BarChart, Cloud, CloudUpload, Pencil, FolderOpen, ZoomIn, ZoomOut, Move, RotateCcw } from 'lucide-react';
 import {
     DndContext, DragOverlay, PointerSensor, TouchSensor,
@@ -50,12 +51,10 @@ const BrandCenter = React.lazy(() => import('./BrandCenter').then(m => ({ defaul
 const MeetingMode = React.lazy(() => import('./MeetingMode').then(m => ({ default: m.MeetingMode })));
 const FileExplorer = React.lazy(() => import('./FileExplorer').then(m => ({ default: m.FileExplorer })));
 const LogoLab = React.lazy(() => import('./LogoLab').then(m => ({ default: m.LogoLab })));
-const EmailClient = React.lazy(() => import('./email/EmailWidget').then(m => ({ default: m.EmailWidget })));
 const ClientPortal = React.lazy(() => import('./ClientPortal').then(m => ({ default: m.ClientPortal })));
 const CompetitorAnalysis = React.lazy(() => import('./CompetitorAnalysis').then(m => ({ default: m.CompetitorAnalysis })));
 const BeforeAfterCompare = React.lazy(() => import('./BeforeAfterCompare').then(m => ({ default: m.BeforeAfterCompare })));
 const DeployChecklist = React.lazy(() => import('./DeployChecklist').then(m => ({ default: m.DeployChecklist })));
-const PricingIntelligence = React.lazy(() => import('./PricingIntelligence').then(m => ({ default: m.PricingIntelligence })));
 const ProjectProgressReport = React.lazy(() => import('./ProjectProgressReport').then(m => ({ default: m.ProjectProgressReport })));
 const CaseStudyGenerator = React.lazy(() => import('./CaseStudyGenerator').then(m => ({ default: m.CaseStudyGenerator })));
 
@@ -291,14 +290,16 @@ interface ClientViewProps {
 }
 
 const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateProject, onNotify, onDelete, currentTheme }) => {
+    const navigate = useNavigate();
     const projectCredentials = useMemo(() => normalizeCredentials(project.credentials), [project.credentials]);
     const credentialsLocked = project.credentialsLocked === true;
 
     // Undo support
     const pushUndo = useUndoStore((s) => s.pushUndo);
 
-    // Tabs: Tasks, Time, Finance, Files, Emails, Portal, Concurrents, Rapport IA, Case Study
-    const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'finance' | 'files' | 'emails' | 'portal' | 'competitors' | 'compare' | 'predeploy' | 'progress' | 'casestudy'>('tasks');
+    // Tabs: Tasks, Time, Files, Portal, Concurrents, Rapport IA, Case Study
+    // (Finances & E-mails live in their dedicated app pages — not duplicated here)
+    const [activeTab, setActiveTab] = useState<'tasks' | 'time' | 'files' | 'portal' | 'competitors' | 'compare' | 'predeploy' | 'progress' | 'casestudy'>('tasks');
     
     // --- Google OAuth status (for Drive section) ---
     const { data: oauthStatus } = useOAuthStatus();
@@ -310,7 +311,6 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showBrandCenter, setShowBrandCenter] = useState(false);
     const [showMeetingMode, setShowMeetingMode] = useState(false);
-    const [meetingFollowUpDraft, setMeetingFollowUpDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
     const [showLogoLab, setShowLogoLab] = useState(false);
     const [showLogoEditor, setShowLogoEditor] = useState(false);
     const [logoEditorTransform, setLogoEditorTransform] = useState(project.logoTransform || { x: 0, y: 0, scale: 1 });
@@ -1055,9 +1055,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
     };
 
     const handleOpenMeetingEmail = (draft: { to: string; subject: string; body: string }) => {
-        setMeetingFollowUpDraft(draft);
         setShowMeetingMode(false);
-        setActiveTab('emails');
+        navigate('/emails', { state: { compose: draft } });
     };
 
     const handleExportMeetingReport = async (report: MeetingReport, variant: 'internal' | 'client' = 'internal') => {
@@ -1880,9 +1879,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 const tabs = [
                                     { id: 'tasks', label: 'Tâches' },
                                     { id: 'time', label: 'Temps' },
-                                    { id: 'finance', label: 'Finances' },
                                     { id: 'files', label: 'Fichiers' },
-                                    { id: 'emails', label: 'E-mails' },
                                     { id: 'portal', label: 'Portail' },
                                     { id: 'competitors', label: '🔍 Concurrents' },
                                     { id: 'compare', label: '🪞 Avant/Après' },
@@ -1894,7 +1891,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                             })().map(tab => (
                                 <button 
                                     key={tab.id}
-                                    onClick={() => { setActiveTab(tab.id as any); if (tab.id !== 'emails') setMeetingFollowUpDraft(null); }}
+                                    onClick={() => setActiveTab(tab.id as any)}
                                     className={`text-sm md:text-lg font-serif transition-colors relative whitespace-nowrap px-2 py-1 ${activeTab === tab.id ? 'text-brand-orange' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                                 >
                                     {tab.label}
@@ -2101,78 +2098,6 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                             </div>
                         )}
 
-                        {activeTab === 'finance' && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30">
-                                        <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Total Encaissé</div>
-                                        <div className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-300">
-                                            {formatCurrency(project.invoices.filter(i => i.status === 'Paid' && i.type === 'Invoice').reduce((sum, i) => sum + invoiceEffectiveAmount(i), 0), 2)} CHF
-                                        </div>
-                                    </div>
-                                    <div className="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30">
-                                        <div className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">En Attente</div>
-                                        <div className="text-2xl font-serif font-bold text-orange-700 dark:text-orange-300">
-                                            {formatCurrency(project.invoices.filter(i => i.status !== 'Paid' && i.type === 'Invoice').reduce((sum, i) => sum + invoiceEffectiveAmount(i), 0), 2)} CHF
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="flex justify-between items-center mb-3">
-                                        <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Factures</h4>
-                                        <button onClick={() => handleOpenInvoiceModal()} className="px-4 py-2 bg-brand-orange text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2">
-                                            <Plus size={16} /> Facture +
-                                        </button>
-                                    </div>
-                                    {project.invoices.length === 0 ? (
-                                        <div className="text-center py-10 text-slate-400 italic">Aucun document financier.</div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {project.invoices
-                                                .filter(inv => inv.status !== 'Voided' && inv.status !== 'Archived')
-                                                .map(inv => (
-                                                <div key={inv.id} onClick={() => handleOpenInvoiceModal(inv)} className="group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors border border-slate-100 dark:border-slate-700">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`p-2 rounded-lg ${inv.type === 'Invoice' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                            {inv.type === 'Invoice' ? <DollarSign size={16} /> : <FileText size={16} />}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-sm text-slate-700 dark:text-slate-200">{inv.number}</div>
-                                                            <div className="text-xs text-slate-400">{inv.date}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="text-right">
-                                                            <div className="tabular-nums font-bold text-slate-700 dark:text-slate-200">{formatCurrency(invoiceEffectiveAmount(inv), 2)} CHF</div>
-                                                            <Badge color={inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'blue' : 'yellow'}>{inv.status === 'Partial' ? 'Acompte' : inv.status}</Badge>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => handleDeleteInvoice(inv.id, e)}
-                                                            className="opacity-0 group-hover:opacity-100 p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                                                            title={canHardDelete(inv) ? 'Supprimer le brouillon' : 'Annuler la facture (conservée 10 ans)'}
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* AI Pricing Intelligence — at the bottom of Finance */}
-                                <div className="border-t border-slate-100 dark:border-slate-700 pt-6">
-                                    <React.Suspense fallback={<LazyFallback />}>
-                                        <PricingIntelligence
-                                            defaultCountry="France"
-                                            defaultIndustry={project.profile?.customFields?.find(f => f.key === 'Secteur')?.value}
-                                        />
-                                    </React.Suspense>
-                                </div>
-                            </div>
-                        )}
-                        
                         {activeTab === 'files' && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
 
@@ -2368,18 +2293,6 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                     </div>
                                 </div>
 
-                            </div>
-                        )}
-
-                        {activeTab === 'emails' && (
-                            <div className="h-full min-h-[500px] animate-in fade-in slide-in-from-bottom-2">
-                                <React.Suspense fallback={<LazyFallback />}>
-                                    <EmailClient
-                                        clientEmail={project.profile.email}
-                                        initialCompose={meetingFollowUpDraft ?? undefined}
-                                        key={meetingFollowUpDraft ? `compose-${meetingFollowUpDraft.subject}` : 'email'}
-                                    />
-                                </React.Suspense>
                             </div>
                         )}
 
