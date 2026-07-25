@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.2] - 2026-07-25
+### Fiche client allégée + sync Mac
+- **Fiche client** : onglets Finances et E-mails retirés (déjà absents du code ; version forcée pour les installs Mac encore sur l’ancienne UI). Facturation et mails restent accessibles via le header.
+- **Header** : bouton « Replier / Déplier la barre » retiré définitivement — menu Avancé toujours visible.
+- **Version** : WhatsNew / BUILD_STAMP / `METTRE_A_JOUR` alignés sur **v2.13.2**.
+
 ## [2.11.0] - 2026-07-22
 ### Clients explorateur & navigation allégée
 - **Clients** : la page d'accueil devient un explorateur façon dossiers — arborescence à gauche (Tous, En cours, Maintenance, Association, Prospect, Archivé) avec compteur par dossier, et tableau triable à droite (client, phase, progression, tâches, deadline, santé, prochaine action, montant dû). Clic sur un dossier = filtre, clic sur une colonne = tri, clic sur une ligne = ouvre le client. Les anciennes cartes/pastilles de filtre disparaissent au profit de ce nouvel explorateur.

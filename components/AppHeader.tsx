@@ -23,7 +23,7 @@ import {
     Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X, Telescope,
     Code2, Newspaper, Sunrise,
     Hammer, ChevronDown, BookOpen, Palette, Shield,
-    ChevronsLeft, ChevronsRight, Calendar, Wallet, ListTodo,
+    Calendar, Wallet, ListTodo,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
 
@@ -51,7 +51,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
         setIsFocusMode,
         setDroppedFiles, setShowImporter,
         isMobileMenuOpen, setIsMobileMenuOpen,
-        isToolbarCollapsed, toggleToolbarCollapsed,
         setAiMode, setAiFallbackEnabled,
         setShowAgendaModal,
         setShowTodoPanel,
@@ -332,16 +331,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
 
             {/* Desktop: full toolbar */}
             <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white/70 dark:bg-slate-800/40 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-md md:-mt-2 transition-all duration-300">
-                <Tooltip content={isToolbarCollapsed ? 'Déplier la barre' : 'Replier la barre'}>
-                    <button
-                        onClick={toggleToolbarCollapsed}
-                        aria-label={isToolbarCollapsed ? 'Déplier la barre' : 'Replier la barre'}
-                        aria-pressed={isToolbarCollapsed}
-                        className="p-2 rounded-full text-slate-400 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                    >
-                        {isToolbarCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-                    </button>
-                </Tooltip>
                 {/* PRIMARY — toujours visible, quotidien de Marion (v2.11.0 nav allégée) */}
                 <Tooltip content="Ma journée — priorités et échéances">
                     <button
@@ -404,9 +393,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                     </button>
                 </Tooltip>
 
-                {/* Secondaire — masqué quand la barre est repliée (chevron) */}
-                {!isToolbarCollapsed && (
-                <>
                 <Tooltip content="Notes rapides">
                     <button onClick={() => setShowNotes(true)} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
                         <StickyNote size={18} className="text-amber-500" />
@@ -476,8 +462,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         </div>
                     )}
                 </div>
-                </>
-                )}
                 {/* Notifications */}
                 <div className="relative">
                     <Tooltip content="Notifications">

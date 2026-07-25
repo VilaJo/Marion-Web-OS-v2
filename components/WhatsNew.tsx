@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PanelLeftClose } from 'lucide-react';
+import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, FolderOpen, Award } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.1";
+const CURRENT_VERSION = "2.13.2";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,19 +37,19 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Récupération Mission Control — header, to-do, kanban Linear
+                            Fiche client allégée — Mission Control, to-do, kanban Linear
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <LayoutGrid size={24} />
+                                <FolderOpen size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Bandeau KPIs + vues</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Fiche client sans doublons</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Capsules cliquables, bascule tableau / cartes / roadmap 3 mois.
+                                    Onglets Finances et E-mails retirés de la fiche client — ils restent dans le header (pages dédiées).
                                 </p>
                             </div>
                         </div>
@@ -68,12 +68,12 @@ export const WhatsNew: React.FC = () => {
 
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#F2F5F0] to-[#E3EBDF] dark:from-emerald-900/10 dark:to-emerald-900/5 border border-slate-200/60 dark:border-slate-700/40">
                             <div className="w-12 h-12 rounded-full bg-sage text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <PanelLeftClose size={24} />
+                                <LayoutGrid size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Header qui se replie</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Bandeau KPIs + vues</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Chevron « Replier / Déplier » : garde le quotidien (Journée, Agenda, Mails, To-do, Finances) et range le reste.
+                                    Capsules cliquables, bascule tableau / cartes / roadmap 3 mois.
                                 </p>
                             </div>
                         </div>

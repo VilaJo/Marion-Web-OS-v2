@@ -52,9 +52,6 @@ interface UIState {
     // Mobile
     isMobileMenuOpen: boolean;
 
-    // Toolbar collapse (header)
-    isToolbarCollapsed: boolean;
-
     // Misc UI
     showScrollTop: boolean;
     isDraggingOver: boolean;
@@ -125,8 +122,6 @@ interface UIState {
     setShowAgendaModal: (v: boolean) => void;
     setShowTodoPanel: (v: boolean) => void;
     setIsMobileMenuOpen: (v: boolean) => void;
-    setIsToolbarCollapsed: (v: boolean) => void;
-    toggleToolbarCollapsed: () => void;
     setShowScrollTop: (v: boolean) => void;
     setIsDraggingOver: (v: boolean) => void;
     setIsTorchActive: (v: boolean) => void;
@@ -209,9 +204,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     
     // Mobile
     isMobileMenuOpen: false,
-
-    // Toolbar collapse — persisted
-    isToolbarCollapsed: localStorage.getItem('marion_toolbar_collapsed') === 'true',
 
     // Misc
     showScrollTop: false,
@@ -357,15 +349,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     setShowAgendaModal: (v) => set({ showAgendaModal: v }),
     setShowTodoPanel: (v) => set({ showTodoPanel: v }),
     setIsMobileMenuOpen: (v) => set({ isMobileMenuOpen: v }),
-    setIsToolbarCollapsed: (v) => {
-        localStorage.setItem('marion_toolbar_collapsed', String(v));
-        set({ isToolbarCollapsed: v });
-    },
-    toggleToolbarCollapsed: () => {
-        const next = !get().isToolbarCollapsed;
-        localStorage.setItem('marion_toolbar_collapsed', String(next));
-        set({ isToolbarCollapsed: next });
-    },
     setShowScrollTop: (v) => set({ showScrollTop: v }),
     setIsDraggingOver: (v) => set({ isDraggingOver: v }),
     setIsTorchActive: (v) => set({ isTorchActive: v }),
