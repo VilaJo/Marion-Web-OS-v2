@@ -68,7 +68,7 @@ export const FinancesPage: React.FC = () => {
     };
 
     return (
-        <div className="animate-in fade-in slide-in-from-left-8 duration-500">
+        <div className="animate-in fade-in duration-200">
             <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement des finances..." />}>
                 <FinanceDashboard
                     projects={projects}

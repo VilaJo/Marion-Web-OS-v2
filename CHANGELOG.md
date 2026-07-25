@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.5] - 2026-07-25
+### Santé financière — une seule page
+- Vue densifiée : header + KPIs + flux + DSO/TVA/conformité en **une seule bande**
+- Retards en une ligne compacte ; onglets + tableau dans le reste de l’écran (scroll interne)
+- Lignes factures/dépenses plus serrées — tout tient au-dessus / dans un viewport
+
 ## [2.13.4] - 2026-07-25
 ### Santé financière — style Linear + Yacht Bar dashboard
 - **FinanceDashboard** : header, KPIs en bandeau, onglets underline, actions sobres (`rounded-md`).

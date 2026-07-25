@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Project, Invoice, Expense } from '../types';
-import { Card, Badge, Modal } from './Shared';
+import { Badge, Modal } from './Shared';
 import { EmailWidget as EmailClient } from './email/EmailWidget';
 import { formatCurrency, invoiceEffectiveAmount } from '../utils';
 import { 
@@ -500,241 +500,198 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
     }
 
     const tabCls = (id: typeof activeTab) =>
-        `pb-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+        `pb-2 text-[13px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap flex items-center gap-1 ${
             activeTab === id
                 ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white'
                 : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
         }`;
 
+    const marginPct = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
+    const chargesPct = Math.min((totalExpenses / (totalRevenue || 1)) * 100, 100);
+    const profitPct = Math.max(0, (netProfit / (totalRevenue || 1)) * 100);
+
     return (
-        <div className="space-y-5 animate-in fade-in duration-200 min-h-[500px]" onClick={() => { setShowPeriodMenu(false); setShowStatusMenu(false); }}>
-            {/* Header — Linear */}
-            <div className="flex flex-col gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                    <div>
-                        <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                            {currentTheme === 'unicorn' && <span>🍕</span>} Santé financière
-                        </h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Trésorerie, bénéfice et exports comptables</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
+        <div
+            className="flex flex-col gap-2.5 animate-in fade-in duration-200 h-[calc(100vh-6.5rem)] min-h-[480px]"
+            onClick={() => { setShowPeriodMenu(false); setShowStatusMenu(false); }}
+        >
+            {/* Header + actions — one row */}
+            <div className="flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                    {currentTheme === 'unicorn' && <span>🍕</span>} Santé financière
+                </h2>
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                        onClick={() => onCreateInvoice && onCreateInvoice()}
+                        className="px-2.5 py-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-xs font-medium flex items-center gap-1 hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors"
+                    >
+                        <Plus size={13} /> Facture
+                    </button>
+                    {currentTheme === 'unicorn' && (
                         <button
-                            onClick={() => onCreateInvoice && onCreateInvoice()}
-                            className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-md text-sm font-medium flex items-center gap-1.5 hover:bg-slate-700 dark:hover:bg-slate-200 transition-colors"
+                            onClick={() => setShowPizzaModal(true)}
+                            className="px-2.5 py-1 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium flex items-center gap-1 text-slate-600 dark:text-slate-300"
                         >
-                            <Plus size={14} /> Facture
+                            <Pizza size={13} /> Pizza
                         </button>
-                        {currentTheme === 'unicorn' && (
-                            <button
-                                onClick={() => setShowPizzaModal(true)}
-                                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium flex items-center gap-1.5 text-slate-600 dark:text-slate-300"
-                            >
-                                <Pizza size={14} /> Pizza
-                            </button>
-                        )}
+                    )}
+                    <button
+                        onClick={() => setShowAccountingModal(true)}
+                        className="px-2.5 py-1 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium flex items-center gap-1 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        title="Exports Comptables & Fiscaux"
+                    >
+                        <FileDown size={13} /> <span className="hidden sm:inline">Compta</span>
+                    </button>
+                    <div className="relative">
                         <button
-                            onClick={() => setShowAccountingModal(true)}
-                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md text-sm font-medium flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                            title="Exports Comptables & Fiscaux"
+                            onClick={(e) => { e.stopPropagation(); setShowPeriodMenu(!showPeriodMenu); setShowStatusMenu(false); }}
+                            className={`px-2.5 py-1 border rounded-md text-xs font-medium flex items-center gap-1 transition-colors ${showPeriodMenu ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                         >
-                            <FileDown size={14} /> <span className="hidden sm:inline">Compta</span>
+                            <Calendar size={13} /> {getPeriodLabel()} <ChevronDown size={11} />
                         </button>
-                        <div className="relative">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setShowPeriodMenu(!showPeriodMenu); setShowStatusMenu(false); }}
-                                className={`px-3 py-1.5 border rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors ${showPeriodMenu ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                            >
-                                <Calendar size={14} /> {getPeriodLabel()} <ChevronDown size={12} />
-                            </button>
-                            {showPeriodMenu && (
-                                <div className="absolute top-full right-0 mt-1.5 w-40 bg-white dark:bg-slate-900 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 p-1 z-50">
-                                    {['month', 'year', 'all'].map((p) => (
-                                        <button
-                                            key={p}
-                                            onClick={() => setPeriod(p as any)}
-                                            className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm flex justify-between items-center ${period === p ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                                        >
-                                            {p === 'month' ? 'Ce Mois' : p === 'year' ? 'Cette Année' : 'Tout'}
-                                            {period === p && <Check size={14} />}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <button onClick={onClose} className="p-1.5 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" aria-label="Fermer">
-                            <X className="w-4 h-4 text-slate-400" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* KPI strip — inline Linear */}
-                <div className="flex flex-wrap items-stretch border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-slate-200 dark:divide-slate-700">
-                    <div className="flex-1 min-w-[120px] px-4 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Encaissé</p>
-                        <p className="text-lg font-semibold tabular-nums text-[#2aada0]">{formatCurrency(snapEncaisse)} <span className="text-xs text-slate-400 font-medium">{currency}</span></p>
-                    </div>
-                    <div className="flex-1 min-w-[120px] px-4 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">En attente</p>
-                        <p className="text-lg font-semibold tabular-nums text-slate-800 dark:text-slate-100">{formatCurrency(snapAttente)} <span className="text-xs text-slate-400 font-medium">{currency}</span></p>
-                    </div>
-                    <div className="flex-1 min-w-[120px] px-4 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">En retard</p>
-                        <p className={`text-lg font-semibold tabular-nums ${snapRetard > 0 ? 'text-[#b05070]' : 'text-slate-800 dark:text-slate-100'}`}>{formatCurrency(snapRetard)} <span className="text-xs text-slate-400 font-medium">{currency}</span></p>
-                    </div>
-                    <div className="flex-1 min-w-[140px] px-4 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Bénéfice net</p>
-                        <p className={`text-lg font-semibold tabular-nums ${netProfit >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
-                            {formatCurrency(netProfit)} <span className="text-xs text-slate-400 font-medium">{currency}</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                            Marge {totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0}%
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Flux + KPIs secondaires — dense Linear */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                <div className="lg:col-span-1 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Flux</p>
-                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mb-3">
-                        <div
-                            className="h-full bg-[#b05070] transition-all"
-                            style={{ width: `${Math.min((totalExpenses / (totalRevenue || 1)) * 100, 100)}%` }}
-                            title="Dépenses"
-                        />
-                        <div
-                            className="h-full bg-[#2aada0] transition-all"
-                            style={{ width: `${Math.max(0, (netProfit / (totalRevenue || 1)) * 100)}%` }}
-                            title="Bénéfice"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                            <span className="text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-0.5">
-                                <ArrowUpRight size={10} className="text-[#2aada0]" /> CA
-                            </span>
-                            <span className="tabular-nums font-semibold text-slate-800 dark:text-white">
-                                {formatCurrency(totalRevenue)} {currency}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-0.5">
-                                <ArrowDownRight size={10} className="text-[#b05070]" /> Charges
-                            </span>
-                            <span className="tabular-nums font-semibold text-slate-800 dark:text-white">
-                                {formatCurrency(totalExpenses)} {currency}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-0 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-slate-700">
-                    <div className="px-3 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">DSO</p>
-                        <p className="text-xl font-semibold text-slate-800 dark:text-white tabular-nums">
-                            {dso.days !== null ? dso.days : '—'}
-                            {dso.days !== null && <span className="text-xs text-slate-400 ml-0.5">j</span>}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">délai paiement</p>
-                    </div>
-                    <div className="px-3 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Impayés</p>
-                        <p className={`text-xl font-semibold tabular-nums ${overdueRatio.ratio > 0.2 ? 'text-[#b05070]' : 'text-slate-800 dark:text-white'}`}>
-                            {(overdueRatio.ratio * 100).toFixed(0)}<span className="text-xs text-slate-400">%</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">{formatCurrency(overdueRatio.overdue)} / {formatCurrency(overdueRatio.issued)}</p>
-                    </div>
-                    <div className="px-3 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">TVA ({vatPayable.quarter})</p>
-                        <p className="text-xl font-semibold text-slate-800 dark:text-white tabular-nums">
-                            {formatCurrency(vatPayable.total)} <span className="text-xs text-slate-400">CHF</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                            {vatPayable.breakdown.length === 0 ? 'aucune' : vatPayable.breakdown.map(b => `${b.rate}%`).join(' · ')}
-                        </p>
-                    </div>
-                    <div className="px-3 py-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1">
-                            {compliance.every(c => c.ok) ? <Shield size={10} /> : <ShieldAlert size={10} />} Conformité
-                        </p>
-                        <ul className="space-y-0.5">
-                            {compliance.map(c => (
-                                <li key={c.id} className="flex items-center gap-1.5 text-[10px]">
-                                    <span className={`inline-block w-1 h-1 rounded-full ${c.ok ? 'bg-[#2aada0]' : 'bg-[#b05070]'}`} />
-                                    <span className={c.ok ? 'text-slate-600 dark:text-slate-300' : 'text-[#b05070]'}>{c.label}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            {/* Alertes overdue — ligne compacte */}
-            {overdueAlerts.length > 0 && (
-                <div className="border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-2 mb-2">
-                        <AlertTriangle className="text-[#b05070]" size={14} />
-                        <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                            {overdueAlerts.length} facture{overdueAlerts.length > 1 ? 's' : ''} en retard
-                        </h3>
-                    </div>
-                    <div className="space-y-1">
-                        {overdueAlerts.slice(0, 5).map(a => (
-                            <div key={a.id} className="flex items-center justify-between text-sm">
-                                <span className="text-slate-600 dark:text-slate-300">
-                                    <span className="font-medium text-slate-800 dark:text-white">{a.number}</span> — {a.clientName}
-                                </span>
-                                <span className="tabular-nums text-[#b05070] font-medium text-xs">
-                                    {formatCurrency(a.amountDue)} {a.currency} · {a.daysLate}j
-                                </span>
+                        {showPeriodMenu && (
+                            <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-slate-900 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 p-1 z-50">
+                                {['month', 'year', 'all'].map((p) => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPeriod(p as any)}
+                                        className={`w-full text-left px-2 py-1.5 rounded-md text-xs flex justify-between items-center ${period === p ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                                    >
+                                        {p === 'month' ? 'Ce Mois' : p === 'year' ? 'Cette Année' : 'Tout'}
+                                        {period === p && <Check size={12} />}
+                                    </button>
+                                ))}
                             </div>
-                        ))}
-                        {overdueAlerts.length > 5 && (
-                            <p className="text-[11px] text-slate-400 mt-1">… et {overdueAlerts.length - 5} autres</p>
                         )}
                     </div>
+                    <button onClick={onClose} className="p-1 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" aria-label="Fermer">
+                        <X className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Single KPI strip — everything above the fold */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0">
+                <div className="flex flex-wrap divide-x divide-slate-200 dark:divide-slate-700">
+                    <div className="flex-1 min-w-[100px] px-3 py-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Encaissé</p>
+                        <p className="text-sm font-semibold tabular-nums text-[#2aada0] leading-tight">{formatCurrency(snapEncaisse)} <span className="text-[10px] text-slate-400 font-medium">{currency}</span></p>
+                    </div>
+                    <div className="flex-1 min-w-[100px] px-3 py-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">En attente</p>
+                        <p className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100 leading-tight">{formatCurrency(snapAttente)} <span className="text-[10px] text-slate-400 font-medium">{currency}</span></p>
+                    </div>
+                    <div className="flex-1 min-w-[100px] px-3 py-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">En retard</p>
+                        <p className={`text-sm font-semibold tabular-nums leading-tight ${snapRetard > 0 ? 'text-[#b05070]' : 'text-slate-800 dark:text-slate-100'}`}>{formatCurrency(snapRetard)} <span className="text-[10px] text-slate-400 font-medium">{currency}</span></p>
+                    </div>
+                    <div className="flex-1 min-w-[110px] px-3 py-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Bénéfice</p>
+                        <p className={`text-sm font-semibold tabular-nums leading-tight ${netProfit >= 0 ? 'text-[#2aada0]' : 'text-[#b05070]'}`}>
+                            {formatCurrency(netProfit)} <span className="text-[10px] text-slate-400 font-medium">{currency}</span>
+                        </p>
+                        <p className="text-[9px] text-slate-400">marge {marginPct}%</p>
+                    </div>
+                    <div className="flex-1 min-w-[140px] px-3 py-2 hidden sm:block">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Flux</p>
+                        <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mb-1">
+                            <div className="h-full bg-[#b05070]" style={{ width: `${chargesPct}%` }} title="Charges" />
+                            <div className="h-full bg-[#2aada0]" style={{ width: `${profitPct}%` }} title="Bénéfice" />
+                        </div>
+                        <p className="text-[10px] tabular-nums text-slate-500 flex justify-between gap-2">
+                            <span className="flex items-center gap-0.5"><ArrowUpRight size={9} className="text-[#2aada0]" />{formatCurrency(totalRevenue)}</span>
+                            <span className="flex items-center gap-0.5"><ArrowDownRight size={9} className="text-[#b05070]" />{formatCurrency(totalExpenses)}</span>
+                        </p>
+                    </div>
+                    <div className="flex-1 min-w-[72px] px-3 py-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">DSO</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white tabular-nums leading-tight">
+                            {dso.days !== null ? dso.days : '—'}
+                            {dso.days !== null && <span className="text-[10px] text-slate-400 ml-0.5">j</span>}
+                        </p>
+                    </div>
+                    <div className="flex-1 min-w-[72px] px-3 py-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Impayés</p>
+                        <p className={`text-sm font-semibold tabular-nums leading-tight ${overdueRatio.ratio > 0.2 ? 'text-[#b05070]' : 'text-slate-800 dark:text-white'}`}>
+                            {(overdueRatio.ratio * 100).toFixed(0)}%
+                        </p>
+                    </div>
+                    <div className="flex-1 min-w-[90px] px-3 py-2 hidden md:block">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">TVA {vatPayable.quarter}</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white tabular-nums leading-tight">
+                            {formatCurrency(vatPayable.total)}
+                        </p>
+                    </div>
+                    <div className="flex-1 min-w-[100px] px-3 py-2 hidden lg:block">
+                        <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5 flex items-center gap-1">
+                            {compliance.every(c => c.ok) ? <Shield size={9} /> : <ShieldAlert size={9} />} Conformité
+                        </p>
+                        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                            {compliance.map(c => (
+                                <span key={c.id} className="inline-flex items-center gap-1 text-[9px]">
+                                    <span className={`w-1 h-1 rounded-full ${c.ok ? 'bg-[#2aada0]' : 'bg-[#b05070]'}`} />
+                                    <span className={c.ok ? 'text-slate-500' : 'text-[#b05070]'}>{c.label}</span>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Overdue — single compact line */}
+            {overdueAlerts.length > 0 && (
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 shrink-0 text-[11px] overflow-hidden">
+                    <AlertTriangle className="text-[#b05070] shrink-0" size={12} />
+                    <span className="font-medium text-slate-600 dark:text-slate-300 shrink-0">
+                        {overdueAlerts.length} retard{overdueAlerts.length > 1 ? 's' : ''}
+                    </span>
+                    <span className="text-slate-400 truncate">
+                        {overdueAlerts.slice(0, 3).map(a => `${a.number} (${a.daysLate}j)`).join(' · ')}
+                        {overdueAlerts.length > 3 ? ` · +${overdueAlerts.length - 3}` : ''}
+                    </span>
+                    <span className="ml-auto tabular-nums text-[#b05070] font-medium shrink-0">
+                        {formatCurrency(overdueAlerts.reduce((s, a) => s + a.amountDue, 0))} {currency}
+                    </span>
                 </div>
             )}
 
-            {/* Tab Switcher — Linear underline */}
-            <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
-                <button onClick={() => setActiveTab('revenus')} className={tabCls('revenus')}>Revenus</button>
-                <button onClick={() => setActiveTab('depenses')} className={tabCls('depenses')}>Dépenses</button>
-                <button onClick={() => setActiveTab('analytics')} className={tabCls('analytics')}><BarChart3 size={14} /> Analytics</button>
-                <button onClick={() => setActiveTab('temps')} className={tabCls('temps')}><Clock size={14} /> Temps</button>
-                <button onClick={() => setActiveTab('tresorerie')} className={tabCls('tresorerie')}><PiggyBank size={14} /> Trésorerie</button>
-                <button onClick={() => setActiveTab('export')} className={tabCls('export')}><FileSpreadsheet size={14} /> Export</button>
-                <button
-                    onClick={() => setActiveTab('archives')}
-                    className={tabCls('archives')}
-                    title="Factures annulées / archivées (conservées 10 ans, exclues des KPIs)"
-                >
-                    <Archive size={14} /> Archives
-                    {archivedInvoices.length > 0 && (
-                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
-                            {archivedInvoices.length}
-                        </span>
-                    )}
-                </button>
-            </div>
+            {/* Tabs + content fill remaining height */}
+            <div className="flex flex-col flex-1 min-h-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 overflow-hidden">
+                <div className="flex gap-3 px-3 border-b border-slate-200 dark:border-slate-800 overflow-x-auto shrink-0">
+                    <button onClick={() => setActiveTab('revenus')} className={tabCls('revenus')}>Revenus</button>
+                    <button onClick={() => setActiveTab('depenses')} className={tabCls('depenses')}>Dépenses</button>
+                    <button onClick={() => setActiveTab('analytics')} className={tabCls('analytics')}><BarChart3 size={13} /> Analytics</button>
+                    <button onClick={() => setActiveTab('temps')} className={tabCls('temps')}><Clock size={13} /> Temps</button>
+                    <button onClick={() => setActiveTab('tresorerie')} className={tabCls('tresorerie')}><PiggyBank size={13} /> Trésorerie</button>
+                    <button onClick={() => setActiveTab('export')} className={tabCls('export')}><FileSpreadsheet size={13} /> Export</button>
+                    <button
+                        onClick={() => setActiveTab('archives')}
+                        className={tabCls('archives')}
+                        title="Factures annulées / archivées (conservées 10 ans, exclues des KPIs)"
+                    >
+                        <Archive size={13} /> Archives
+                        {archivedInvoices.length > 0 && (
+                            <span className="text-[10px] text-slate-400">{archivedInvoices.length}</span>
+                        )}
+                    </button>
+                </div>
 
-            {/* Tables Content */}
-            <Card className="p-0 overflow-hidden min-h-[400px]">
+                {/* Tables Content — scrolls inside the page */}
+                <div className="flex-1 min-h-0 overflow-auto">
                 
                 {/* REVENUS TABLE */}
                 {activeTab === 'revenus' && (
                     <>
                         {/* Modèles de relance — collapsible (used when sending reminder emails below) */}
-                        <div className="border-b border-slate-100 dark:border-slate-700">
+                        <div className="border-b border-slate-100 dark:border-slate-800">
                             <button
                                 onClick={() => setShowRelanceTemplates(s => !s)}
-                                className="w-full px-6 py-3 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                             >
                                 <div className="flex items-center gap-2">
-                                    <Send size={14} className="text-slate-400" />
-                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Modèles de relance</span>
-                                    <span className="text-[10px] text-slate-400">utilisés quand tu cliques sur "Relancer" ci-dessous</span>
+                                    <Send size={13} className="text-slate-400" />
+                                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Modèles de relance</span>
+                                    <span className="text-[10px] text-slate-400 hidden sm:inline">pour le bouton Relancer</span>
                                 </div>
                                 <ChevronDown
                                     size={16}
@@ -751,23 +708,23 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                             )}
                         </div>
 
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                <FileText className="text-slate-400" size={20} />
-                                Factures Clients
+                        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                <FileText className="text-slate-400" size={13} />
+                                Factures · {filteredInvoices.length}
                             </h3>
-                            {filteredInvoices.length === 0 && <span className="text-xs text-slate-400 italic">Aucun document pour cette période.</span>}
+                            {filteredInvoices.length === 0 && <span className="text-[11px] text-slate-400 italic">Aucun document pour cette période.</span>}
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-semibold tracking-widest text-[10px]">
+                                <thead className="sticky top-0 bg-white dark:bg-slate-900 text-slate-400 uppercase font-semibold tracking-widest text-[10px] border-b border-slate-100 dark:border-slate-800">
                                     <tr>
-                                        <th className="px-6 py-4">Numéro</th>
-                                        <th className="px-6 py-4">Client</th>
-                                        <th className="px-6 py-4">Date</th>
-                                        <th className="px-6 py-4 text-right">Montant TTC</th>
-                                        <th className="px-6 py-4 text-center">Statut</th>
-                                        <th className="px-6 py-4 text-right">Action</th>
+                                        <th className="px-3 py-2">Numéro</th>
+                                        <th className="px-3 py-2">Client</th>
+                                        <th className="px-3 py-2">Date</th>
+                                        <th className="px-3 py-2 text-right">Montant TTC</th>
+                                        <th className="px-3 py-2 text-center">Statut</th>
+                                        <th className="px-3 py-2 text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -780,28 +737,28 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                                 onOpenInvoice(invClean as Invoice, openProj);
                                             }}
                                         >
-                                            <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
+                                            <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">
                                                 {inv.number}
-                                                {inv.type === 'Estimate' && <span className="ml-2 text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500">DEVIS</span>}
+                                                {inv.type === 'Estimate' && <span className="ml-1.5 text-[9px] bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-slate-500">DEVIS</span>}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 py-2">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold">
+                                                    <div className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-semibold text-slate-600 dark:text-slate-300">
                                                         {invoiceRowInitials(inv)}
                                                     </div>
-                                                    <span className="text-slate-900 dark:text-white font-bold">{invoiceRowClientLabel(inv)}</span>
+                                                    <span className="text-slate-800 dark:text-white font-medium truncate max-w-[160px]">{invoiceRowClientLabel(inv)}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-slate-900 dark:text-slate-200">{new Date(inv.date).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-right tabular-nums font-bold text-slate-900 dark:text-white">
+                                            <td className="px-3 py-2 text-slate-500 dark:text-slate-300 text-[13px] tabular-nums">{new Date(inv.date).toLocaleDateString()}</td>
+                                            <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-900 dark:text-white">
                                                 {formatCurrency(invoiceEffectiveAmount(inv))} {currency}
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-3 py-2 text-center">
                                                 <Badge color={inv.status === 'Paid' ? 'green' : inv.status === 'Partial' ? 'blue' : inv.status === 'Pending' ? 'yellow' : 'gray'}>
                                                     {inv.status}
                                                 </Badge>
                                             </td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                            <td className="px-3 py-2 text-right flex justify-end gap-1">
                                                 {/* Mark Paid */}
                                                 {inv.status !== 'Paid' && (
                                                     <button 
@@ -860,54 +817,54 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                 {/* DEPENSES TABLE */}
                 {activeTab === 'depenses' && (
                     <>
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                            <div className="flex items-center gap-4">
-                                <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                    <ShoppingBag className="text-slate-400" size={20} />
-                                    Achats & Charges
+                        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center gap-2">
+                            <div className="flex items-center gap-3">
+                                <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                    <ShoppingBag className="text-slate-400" size={13} />
+                                    Achats · {filteredExpenses.length}
                                 </h3>
                                 <button 
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isScanning}
-                                    className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition-colors"
+                                    className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md text-[11px] font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1 transition-colors"
                                 >
-                                    {isScanning ? <ScanLine className="animate-spin" size={16}/> : <UploadCloud size={16}/>}
-                                    {isScanning ? "Analyse..." : "Scanner une facture"}
+                                    {isScanning ? <ScanLine className="animate-spin" size={13}/> : <UploadCloud size={13}/>}
+                                    {isScanning ? "Analyse…" : "Scanner"}
                                 </button>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*,application/pdf" onChange={handleExpenseUpload} />
                             </div>
-                            {filteredExpenses.length === 0 && <span className="text-xs text-slate-400 italic">Aucune dépense enregistrée.</span>}
+                            {filteredExpenses.length === 0 && <span className="text-[11px] text-slate-400 italic">Aucune dépense.</span>}
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-semibold tracking-widest text-[10px]">
+                                <thead className="sticky top-0 bg-white dark:bg-slate-900 text-slate-400 uppercase font-semibold tracking-widest text-[10px] border-b border-slate-100 dark:border-slate-800">
                                     <tr>
-                                        <th className="px-6 py-4">Date</th>
-                                        <th className="px-6 py-4">Fournisseur</th>
-                                        <th className="px-6 py-4">Catégorie</th>
-                                        <th className="px-6 py-4">Description</th>
-                                        <th className="px-6 py-4 text-right">Montant</th>
-                                        <th className="px-6 py-4 text-right">Action</th>
+                                        <th className="px-3 py-2">Date</th>
+                                        <th className="px-3 py-2">Fournisseur</th>
+                                        <th className="px-3 py-2">Catégorie</th>
+                                        <th className="px-3 py-2">Description</th>
+                                        <th className="px-3 py-2 text-right">Montant</th>
+                                        <th className="px-3 py-2 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {filteredExpenses.map((exp) => (
                                         <tr 
                                             key={exp.id} 
                                             className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
                                         >
-                                            <td className="px-6 py-4 text-slate-900 dark:text-white font-medium">{new Date(exp.date).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">{exp.supplier}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs font-bold text-slate-900 dark:text-white">
+                                            <td className="px-3 py-2 text-slate-500 dark:text-slate-300 text-[13px] tabular-nums">{new Date(exp.date).toLocaleDateString()}</td>
+                                            <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">{exp.supplier}</td>
+                                            <td className="px-3 py-2">
+                                                <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-medium text-slate-600 dark:text-slate-300">
                                                     {exp.category}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-slate-900 dark:text-slate-300 text-xs max-w-[200px] truncate" title={exp.description}>{exp.description}</td>
-                                            <td className="px-6 py-4 text-right tabular-nums font-medium text-[#b05070]">
+                                            <td className="px-3 py-2 text-slate-500 dark:text-slate-400 text-xs max-w-[200px] truncate" title={exp.description}>{exp.description}</td>
+                                            <td className="px-3 py-2 text-right tabular-nums font-medium text-[#b05070]">
                                                 -{formatCurrency(exp.amount)} {currency}
                                             </td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                            <td className="px-3 py-2 text-right flex justify-end gap-1">
                                                 {exp.fileUrl && (
                                                     <button 
                                                         onClick={() => fetch('/api/v1/files/open', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: `Dépenses/${exp.id}${exp.fileUrl.substring(exp.fileUrl.lastIndexOf('.'))}` }) }) } 
@@ -934,7 +891,7 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
 
                 {/* ANALYTICS TAB */}
                 {activeTab === 'analytics' && (
-                    <div className="p-4 md:p-5 space-y-6">
+                    <div className="p-3 md:p-4 space-y-4">
                         {/* Conversion KPIs — Linear strip */}
                         {analyticsData && (
                             <div className="flex flex-wrap border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden divide-x divide-slate-200 dark:divide-slate-700">
@@ -1701,29 +1658,29 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                 {/* ARCHIVES TAB - Factures annulées / archivées (CO art. 958f) */}
                 {activeTab === 'archives' && (
                     <>
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-                            <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                <Archive className="text-slate-400" size={20} />
-                                Archives & Annulations
+                        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                <Archive className="text-slate-400" size={13} />
+                                Archives · {archivedInvoices.length}
                             </h3>
-                            <p className="text-xs text-slate-500 mt-1">
-                                Factures conservées 10 ans conformément au CO art. 958f. Exclues des KPIs et de la trésorerie.
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                                Conservées 10 ans (CO art. 958f) — exclues des KPIs.
                             </p>
                         </div>
                         {archivedInvoices.length === 0 ? (
-                            <div className="p-16 text-center text-slate-400 italic">Aucune facture annulée ou archivée.</div>
+                            <div className="p-10 text-center text-slate-400 text-sm italic">Aucune facture annulée ou archivée.</div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-semibold tracking-widest text-[10px]">
+                                    <thead className="sticky top-0 bg-white dark:bg-slate-900 text-slate-400 uppercase font-semibold tracking-widest text-[10px] border-b border-slate-100 dark:border-slate-800">
                                         <tr>
-                                            <th className="px-6 py-4">Numéro</th>
-                                            <th className="px-6 py-4">Client</th>
-                                            <th className="px-6 py-4">Date émission</th>
-                                            <th className="px-6 py-4">Annulée le</th>
-                                            <th className="px-6 py-4 text-right">Montant TTC</th>
-                                            <th className="px-6 py-4">Motif</th>
-                                            <th className="px-6 py-4 text-right">Action</th>
+                                            <th className="px-3 py-2">Numéro</th>
+                                            <th className="px-3 py-2">Client</th>
+                                            <th className="px-3 py-2">Date émission</th>
+                                            <th className="px-3 py-2">Annulée le</th>
+                                            <th className="px-3 py-2 text-right">Montant TTC</th>
+                                            <th className="px-3 py-2">Motif</th>
+                                            <th className="px-3 py-2 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -1731,23 +1688,23 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                                             .sort((a, b) => (b.voidedAt || b.date).localeCompare(a.voidedAt || a.date))
                                             .map(inv => (
                                             <tr key={inv.id} className="opacity-70 hover:opacity-100 transition-opacity">
-                                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-300 line-through">
+                                                <td className="px-3 py-2 font-medium text-slate-600 dark:text-slate-300 line-through">
                                                     {inv.number}
                                                 </td>
-                                                <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
+                                                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
                                                     {invoiceRowClientLabel(inv)}
                                                 </td>
-                                                <td className="px-6 py-4 text-slate-500">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
-                                                <td className="px-6 py-4 text-slate-500">
+                                                <td className="px-3 py-2 text-slate-500 text-[13px] tabular-nums">{new Date(inv.date).toLocaleDateString('fr-CH')}</td>
+                                                <td className="px-3 py-2 text-slate-500 text-[13px] tabular-nums">
                                                     {inv.voidedAt ? new Date(inv.voidedAt).toLocaleDateString('fr-CH') : '—'}
                                                 </td>
-                                                <td className="px-6 py-4 text-right tabular-nums text-slate-500">
+                                                <td className="px-3 py-2 text-right tabular-nums text-slate-500">
                                                     {formatCurrency(invoiceEffectiveAmount(inv))} {inv.currency || currency}
                                                 </td>
-                                                <td className="px-6 py-4 text-xs text-slate-500 max-w-[220px] truncate" title={inv.voidReason || ''}>
+                                                <td className="px-3 py-2 text-xs text-slate-500 max-w-[220px] truncate" title={inv.voidReason || ''}>
                                                     {inv.voidReason || <span className="italic">—</span>}
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
+                                                <td className="px-3 py-2 text-right">
                                                     <button
                                                         onClick={(e) => handleRestore(e, inv, inv.project)}
                                                         className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-[#2aada0] rounded-md transition-colors"
@@ -1764,7 +1721,8 @@ const FinanceDashboardInner: React.FC<FinanceDashboardProps> = ({
                         )}
                     </>
                 )}
-            </Card>
+                </div>
+            </div>
 
             {/* --- ACCOUNTING MODAL --- */}
             <Modal isOpen={showAccountingModal} onClose={() => setShowAccountingModal(false)} title="Clôture Comptable" width="max-w-[95vw] w-full h-[95vh]" noContentPadding={true}>

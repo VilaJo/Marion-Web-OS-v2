@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank, Ship } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.4";
+const CURRENT_VERSION = "2.13.5";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +37,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Finances Linear, Yacht Bar, fiches clients, Audit WP utile
+                            Santé financière densifiée — tout sur une page
                         </p>
                     </div>
 
@@ -47,9 +47,9 @@ export const WhatsNew: React.FC = () => {
                                 <PiggyBank size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Santé financière — Linear</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Santé financière — une page</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    KPIs en bandeau, onglets soulignés, Compta / Export / Trésorerie / Analytics épurés. Accents Eonora sur les montants seulement.
+                                    KPIs + flux + DSO/TVA en une bande. Onglets et factures dans le reste de l’écran — plus besoin de scroller tout le dashboard.
                                 </p>
                             </div>
                         </div>
