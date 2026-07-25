@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank } from 'lucide-react';
+import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank, Ship } from 'lucide-react';
 import { Modal } from './Shared';
 
 const CURRENT_VERSION = "2.13.4";
@@ -37,7 +37,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Santé financière au style Linear
+                            Santé financière Linear + Yacht Bar sur le dashboard
                         </p>
                     </div>
 
@@ -50,6 +50,18 @@ export const WhatsNew: React.FC = () => {
                                 <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Santé financière — Linear</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                     KPIs en bandeau, onglets soulignés, Compta / Export / Trésorerie / Analytics épurés. Accents Eonora sur les montants seulement.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-800/20 border border-slate-200/60 dark:border-slate-700/40">
+                            <div className="w-12 h-12 rounded-full bg-[#23262B] text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                                <Ship size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Yacht Bar — dashboard</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Bandeau long au-dessus de la to-do du jour : progression vers l’objectif 300k CHF (bénéfice net année en cours). Clic → Santé financière.
                                 </p>
                             </div>
                         </div>

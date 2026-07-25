@@ -16,7 +16,7 @@ Double-clic **`STOPPER_EONORA.command`**
 3. Relancer **Eonora Tech OS**
 4. Navigateur : **Cmd + Shift + R**
 
-Tu dois voir le bandeau WhatsNew **2.13.4**. Santé financière : style Linear (Compta, Export, Trésorerie…).
+Tu dois voir le bandeau WhatsNew **2.13.4**. Santé financière Linear + Yacht Bar longue sur le dashboard.
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**
@@ -41,6 +41,7 @@ Envoyer à Johan : **capture d’écran** + fichier **`.marion.log`**
 
 ### Nouveautés v2.13.4
 - Santé financière : style Linear partout (KPIs, Compta, Export, Trésorerie, Analytics, Temps, Archives)
+- Dashboard : Yacht Bar Linear (bandeau long) au-dessus de la to-do du jour
 - Agenda : reconnexion Google Calendar + style Linear (v2.13.3)
 - Fiche client : plus d’onglets Finances / E-mails
 - Header sans bouton « Replier »

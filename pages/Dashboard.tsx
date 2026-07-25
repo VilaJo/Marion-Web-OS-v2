@@ -1,7 +1,7 @@
 /**
  * Dashboard Page — Clients explorer + Mission Control (v2.13.0)
  *
- * MetricsStrip, TodoWidget, view toggle (cards | table | roadmap).
+ * MetricsStrip, YachtBar, TodoWidget, view toggle (cards | table | roadmap).
  * Agenda / Santé Financière restent hors de cette page (header).
  */
 
@@ -18,6 +18,7 @@ import { ClientsTable } from '../components/ClientsTable';
 import { ClientsGrid } from '../components/ClientsGrid';
 import { ClientsRoadmap } from '../components/ClientsRoadmap';
 import { MetricsStrip } from '../components/MetricsStrip';
+import { YachtBar } from '../components/YachtBar';
 import { TodoWidget } from '../components/TodoWidget';
 
 import {
@@ -374,6 +375,13 @@ export const Dashboard: React.FC = () => {
                     onFilterActive={() => setSelectedFolder(ProjectStatus.EN_COURS)}
                     onOpenFinances={() => navigate('/finances')}
                     onFilterUrgent={() => setSelectedFolder(ProjectStatus.EN_COURS)}
+                />
+            )}
+
+            {projects.length > 0 && (
+                <YachtBar
+                    projects={projects}
+                    onOpenFinances={() => navigate('/finances')}
                 />
             )}
 

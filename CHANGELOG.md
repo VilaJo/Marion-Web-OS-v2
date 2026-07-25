@@ -3,10 +3,11 @@
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
 ## [2.13.4] - 2026-07-25
-### Santé financière — style Linear
+### Santé financière — style Linear + Yacht Bar dashboard
 - **FinanceDashboard** : header, KPIs en bandeau, onglets underline, actions sobres (`rounded-md`).
 - **Compta** : compte de résultat / journaux / charges / résultat net épurés (plus de cartes colorées ni gradients).
 - **Onglets** : Analytics, Temps, Trésorerie, Export, Archives — chrome Linear, accents Eonora (`#2aada0`, `#b05070`, `#4a72c4`) sur les montants.
+- **Yacht Bar** : bandeau Linear pleine largeur sur le dashboard, au-dessus de la to-do du jour (progression vers 300k CHF bénéfice net). Clic → Santé financière.
 - **Version** : WhatsNew / BUILD_STAMP / `METTRE_A_JOUR` → **v2.13.4**.
 
 ## [2.13.3] - 2026-07-25
