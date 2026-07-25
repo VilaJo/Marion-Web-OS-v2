@@ -1,5 +1,5 @@
 // Eonora Tech OS - Service Worker
-const CACHE_NAME = 'eonora-tech-os-v8';
+const CACHE_NAME = 'eonora-tech-os-v9';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_RESOURCES = [

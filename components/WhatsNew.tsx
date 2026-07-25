@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, FolderTree, Award, Sparkles } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.11.0";
+const CURRENT_VERSION = "2.12.0";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +37,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Nouvelle vue Clients — arborescence + tableau, navigation allégée
+                            Portail épuré, fiche client allégée — style Linear Eonora
                         </p>
                     </div>
 
@@ -47,9 +47,9 @@ export const WhatsNew: React.FC = () => {
                                 <FolderTree size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Clients : arborescence + tableau</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Fiche client simplifiée</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    La page Clients devient un vrai explorateur : dossiers à gauche (Tous, En cours, Maintenance, Association, Prospect, Archivé) et un tableau triable à droite (phase, progression, deadline, santé, montant dû). Clique un dossier pour filtrer, une colonne pour trier, une ligne pour ouvrir le client.
+                                    Les onglets Finances et E-mails ont quitté la fiche client : ils restent dans Facturation et Emails du header. La fiche se concentre sur Tâches, Temps, Fichiers, Portail…
                                 </p>
                             </div>
                         </div>
@@ -59,9 +59,9 @@ export const WhatsNew: React.FC = () => {
                                 <Sparkles size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Menu « Avancé » dans le header</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Portail client — style Linear</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Le header ne garde que ton quotidien (Ma journée, Agenda, Emails, Franck, Facturation, Recherche, Paramètres). Tous les outils ponctuels (Atelier, Veille Marché, Prospection, Prompts, Notes rapides, Atelier Média, Mode Focus, Objectifs & KPIs…) sont regroupés dans un seul menu « Avancé ».
+                                    Admin + page publique : onglets discrets, boutons sobres, timeline sans glow. Le lien client reste le même.
                                 </p>
                             </div>
                         </div>
@@ -71,9 +71,9 @@ export const WhatsNew: React.FC = () => {
                                 <Award size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Rien n'a disparu</h3>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Mise à jour plus fiable</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Aucun outil n'a été supprimé, seulement rangé. La facturation, l'agenda et tes factures restent exactement où tu les connais.
+                                    METTRE_A_JOUR force maintenant le nouveau .dist depuis GitHub et repose l’app Bureau sur le bon dossier — pour ne plus rester coincée sur une ancienne interface.
                                 </p>
                             </div>
                         </div>

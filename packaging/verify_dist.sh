@@ -36,7 +36,9 @@ download_dist_from_github() {
     zip="$tmp/update.zip"
 
     echo "⬇️  Téléchargement .dist depuis GitHub (main)…"
-    if ! curl -fsSL -o "$zip" "https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip"; then
+    # Cache-bust: GitHub/CDN sometimes serves a stale archive after a fresh push.
+    local zip_url="https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip?nocache=$(date +%s)"
+    if ! curl -fsSL -H 'Cache-Control: no-cache' -o "$zip" "$zip_url"; then
         echo "❌ Téléchargement impossible"
         rm -rf "$tmp"
         return 1
