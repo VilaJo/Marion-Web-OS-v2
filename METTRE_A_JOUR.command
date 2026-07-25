@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🦄 MARION WEB OS — Mise à jour (GitHub main)
+# 🦄 MARION WEB OS — Mise à jour (GitHub main) — force toujours le .dist neuf
 # ═══════════════════════════════════════════════════════════════════════════════
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
@@ -19,15 +19,14 @@ source "$APP_DIR/packaging/verify_dist.sh"
 command -v clear >/dev/null 2>&1 && clear || true
 echo "🦄 Mise à jour Eonora Tech OS"
 echo "────────────────────────────────────────────────────────────────────"
-echo "📁 $APP_DIR"
+echo "📁 Dossier mis à jour : $APP_DIR"
 echo ""
-
-UPDATED_VIA_GIT=0
 
 write_installed_stamp() {
     if [ -f BUILD_STAMP.json ]; then
         cp BUILD_STAMP.json .marion_installed.json
-        echo "✅ Empreinte install : $(grep -o '"commit": *"[^"]*"' BUILD_STAMP.json | head -1)"
+        echo "✅ Empreinte install :"
+        cat BUILD_STAMP.json
         return
     fi
     if command -v git >/dev/null 2>&1 && [ -d .git ]; then
@@ -35,6 +34,36 @@ write_installed_stamp() {
         if [ -n "$COMMIT" ]; then
             printf '{\n  "commit": "%s",\n  "updatedAt": "%s"\n}\n' "$COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .marion_installed.json
             echo "✅ Empreinte install : ${COMMIT:0:7}"
+        fi
+    fi
+}
+
+stop_running_server() {
+    local pid_file="$APP_DIR/.marion.pid"
+    local port="${MARION_PORT:-5003}"
+    echo ""
+    echo "🛑 Arrêt du serveur en cours (pour charger le nouveau .dist)…"
+    if [ -f "$pid_file" ]; then
+        local pid
+        pid="$(tr -d '[:space:]' < "$pid_file" 2>/dev/null || true)"
+        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+            sleep 1
+            kill -9 "$pid" 2>/dev/null || true
+            echo "   Processus $pid arrêté."
+        fi
+        rm -f "$pid_file"
+    fi
+    if command -v lsof >/dev/null 2>&1; then
+        local pids
+        pids="$(lsof -ti ":$port" 2>/dev/null || true)"
+        if [ -n "$pids" ]; then
+            # shellcheck disable=SC2086
+            kill $pids 2>/dev/null || true
+            sleep 1
+            # shellcheck disable=SC2086
+            kill -9 $pids 2>/dev/null || true
+            echo "   Port $port libéré."
         fi
     fi
 }
@@ -48,24 +77,40 @@ select_python() {
     return 1
 }
 
+show_desktop_app_target() {
+    local path_file="$HOME/Desktop/Eonora Tech OS.app/Contents/Resources/project_path"
+    if [ -f "$path_file" ]; then
+        local target
+        target="$(tr -d '\r' < "$path_file" | head -1)"
+        echo ""
+        echo "🖥️  L'app Bureau pointe vers :"
+        echo "   $target"
+        if [ "$target" != "$APP_DIR" ]; then
+            echo "⚠️  ATTENTION : ce n'est PAS le dossier que tu viens de mettre à jour."
+            echo "   Je vais repointer l'app Bureau vers : $APP_DIR"
+        fi
+    fi
+}
+
 # ── 0. Git pull si dépôt présent ─────────────────────────────────────────────
 if [ -d .git ] && command -v git >/dev/null 2>&1; then
     echo "📂 Clone Git — synchronisation origin/main…"
     git fetch origin 2>/dev/null || true
-    if git pull --ff-only origin main 2>/dev/null || git pull --ff-only 2>/dev/null || git pull 2>/dev/null; then
-        echo "✅ git pull terminé."
-        UPDATED_VIA_GIT=1
-    else
-        echo "⚠️  git pull échoué → téléchargement ZIP GitHub."
+    # Prefer hard reset to origin/main so local stale .dist cannot stick around
+    if git rev-parse --verify origin/main >/dev/null 2>&1; then
+        git checkout main 2>/dev/null || git checkout -B main origin/main 2>/dev/null || true
+        if git reset --hard origin/main 2>/dev/null; then
+            echo "✅ Dépôt aligné sur origin/main."
+        elif git pull --ff-only origin main 2>/dev/null || git pull --ff-only 2>/dev/null || git pull 2>/dev/null; then
+            echo "✅ git pull terminé."
+        else
+            echo "⚠️  git sync partiel — on force quand même le .dist depuis GitHub."
+        fi
     fi
 fi
 
-# ── 1. ZIP GitHub main (installs sans .git, ex. Marion) ───────────────────
-if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
-    if [ ! -d .git ]; then
-        echo "💡 Pas de .git — mise à jour via ZIP GitHub (branche main)."
-    fi
-
+# ── 1. ZIP GitHub (code) si pas de .git ──────────────────────────────────────
+if [ ! -d .git ]; then
     if [ -f .env.local ]; then
         echo "🔒 Sauvegarde .env.local…"
         cp .env.local .env.local.bak
@@ -74,8 +119,8 @@ if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
     echo ""
     echo "⬇️  Téléchargement GitHub (main)…"
     URLS=(
-        "https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip"
-        "https://github.com/VilaJo/Marion-Web-OS-v2/archive/main.zip"
+        "https://github.com/VilaJo/Marion-Web-OS-v2/archive/refs/heads/main.zip?nocache=$(date +%s)"
+        "https://github.com/VilaJo/Marion-Web-OS-v2/archive/main.zip?nocache=$(date +%s)"
     )
     SUCCESS=0
     for URL in "${URLS[@]}"; do
@@ -107,7 +152,7 @@ if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
     rsync -a --delete \
         --exclude '.env.local' --exclude '.venv' --exclude '.marion.log' --exclude '.marion.pid' \
         --exclude 'Eonora Tech OS Database' --exclude '.marion_installed.json' \
-        --exclude 'node_modules' \
+        --exclude 'node_modules' --exclude '.git' \
         "$EXTRACTED_DIR"/ ./
     rm -rf "$EXTRACTED_DIR" update.zip
 
@@ -117,19 +162,28 @@ if [ "$UPDATED_VIA_GIT" -eq 0 ]; then
     fi
 fi
 
-# ── 2. Vérifier / réparer l'interface (.dist) ───────────────────────────────
+# ── 2. TOUJOURS forcer le .dist depuis GitHub (évite ancienne UI) ─────────────
 echo ""
-echo "🎨 Vérification interface…"
-if ! verify_dist_integrity "$APP_DIR"; then
-    echo "⚠️  Interface incohérente — restauration .dist depuis GitHub…"
-    if ! download_dist_from_github "$APP_DIR"; then
-        echo "❌ Impossible de réparer .dist"
-        read -r -p "Appuie sur Entrée…"
-        exit 1
+echo "🎨 Forçage interface (.dist) depuis GitHub main…"
+if ! download_dist_from_github "$APP_DIR"; then
+    echo "❌ Impossible de télécharger le nouveau .dist"
+    read -r -p "Appuie sur Entrée…"
+    exit 1
+fi
+
+# Preuve rapide que le bon ClientView est bien là (sans Finances/E-mails dans les onglets)
+CLIENTVIEW_JS="$(ls -1 "$APP_DIR"/.dist/assets/ClientView-*.js 2>/dev/null | head -1 || true)"
+if [ -n "$CLIENTVIEW_JS" ]; then
+    if grep -q "label:\"Finances\"" "$CLIENTVIEW_JS" 2>/dev/null || grep -q "label:'Finances'" "$CLIENTVIEW_JS" 2>/dev/null; then
+        echo "⚠️  Ancien ClientView encore détecté — réessaie dans 30 s (cache GitHub)."
+    else
+        echo "✅ Nouveau ClientView détecté : $(basename "$CLIENTVIEW_JS")"
     fi
 fi
 
-# ── 3. Dépendances Python ───────────────────────────────────────────────────
+# ── 3. Stop serveur + dépendances ────────────────────────────────────────────
+stop_running_server
+
 chmod +x "$APP_DIR"/*.command 2>/dev/null || true
 
 echo ""
@@ -143,11 +197,8 @@ else
     echo "⚠️  Python introuvable."
 fi
 
-# ── 4. Ne jamais rebuild npm si .dist est valide (évite écran blanc) ────────
-echo ""
-echo "🎨 Interface : .dist prêt (pas de npm build — utilise GitHub)"
-
-# ── 5. Icône + app Bureau sans Terminal ─────────────────────────────────────
+# ── 4. Repoint + refresh app Bureau vers CE dossier ──────────────────────────
+show_desktop_app_target
 if [ -f packaging/install_desktop_app.sh ]; then
     echo ""
     bash packaging/install_desktop_app.sh "$APP_DIR" 2>/dev/null || true
@@ -159,17 +210,12 @@ fi
 write_installed_stamp
 
 echo ""
-echo "📋 Scripts dans ce dossier :"
-for f in "$APP_DIR"/*.command; do
-    [ -f "$f" ] && basename "$f"
-done
-
-echo ""
 echo "────────────────────────────────────────────────────────────────────"
-echo "✨ Mise à jour terminée."
+echo "✨ Mise à jour terminée — interface forcée depuis GitHub."
 echo ""
-echo "👉 Double-clique sur « Eonora Tech OS » sur le Bureau (pas LANCER_EONORA.command)"
-echo "👉 Navigateur : Cmd + Shift + R (obligatoire)"
-echo "   Si écran blanc : REPARER_INTERFACE.command"
+echo "👉 STOPPER si besoin, puis double-clique « Eonora Tech OS » sur le Bureau"
+echo "👉 Navigateur : Cmd + Shift + R"
+echo "👉 Tu dois voir WhatsNew v2.12.0 et plus d'onglets Finances/E-mails"
+echo "   dans la fiche client. Portail = style Linear."
 echo "────────────────────────────────────────────────────────────────────"
 read -r -p "Appuie sur Entrée pour fermer…"
