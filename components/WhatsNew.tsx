@@ -59,7 +59,7 @@ export const WhatsNew: React.FC = () => {
                                 <FolderOpen size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-white mb-1">Fix Roadmap après création client</h3>
+                                <h3 className="font-bold text-white mb-1">Roadmap — dossiers clients</h3>
                                 <p className="text-sm text-[#8A8A8E] leading-relaxed">
                                     Rail gauche : dossiers (En cours, Maintenance…) + clients avec santé, prochaine échéance et tâches ouvertes.
                                 </p>
