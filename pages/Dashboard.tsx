@@ -276,7 +276,8 @@ export const Dashboard: React.FC = () => {
                             title: t.title,
                             completed: false,
                             priority: t.priority,
-                            column: 'todo' as const,
+                            // Première tâche = en cours (jauge suit « aujourd’hui ») ; le reste reste planifié (pointillé)
+                            column: (idx === 0 ? 'doing' : 'todo') as 'todo' | 'doing',
                             phase: t.phase,
                             dueDate: t.dueDate,
                             createdAt: new Date().toISOString(),

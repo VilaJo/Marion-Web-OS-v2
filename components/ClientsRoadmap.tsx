@@ -571,7 +571,7 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                                                 </div>
                                             )}
 
-                                            {/* Task bars */}
+                                            {/* Task bars — schedule track; solid fill = done / en cours jusqu'à aujourd'hui */}
                                             {tasks.map((task, i) => {
                                                 const endOff = dayOffset(task.dueDate);
                                                 const startOff = Math.max(0, endOff - DEFAULT_BAR_DAYS);
@@ -580,14 +580,36 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                                                 const top = 12 + i * 36;
                                                 const done = task.completed || task.column === 'done';
                                                 const doing = task.column === 'doing';
-                                                const fillPct = done ? 100 : doing ? 78 : 42;
+                                                const overdue = !done && todayOffsetDays > endOff;
+                                                const span = Math.max(1, endOff - startOff);
+
+                                                // Planned = dashed only (no fake %). Doing = calendar progress. Done = full.
+                                                let fillPct = 0;
+                                                if (done) {
+                                                    fillPct = 100;
+                                                } else if (overdue) {
+                                                    fillPct = 100;
+                                                } else if (doing) {
+                                                    if (todayOffsetDays <= startOff) fillPct = 10;
+                                                    else if (todayOffsetDays >= endOff) fillPct = 100;
+                                                    else fillPct = ((todayOffsetDays - startOff) / span) * 100;
+                                                }
+
+                                                const barColor = overdue ? '#b05070' : color;
+                                                const statusLabel = done
+                                                    ? 'Terminé'
+                                                    : overdue
+                                                        ? 'En retard'
+                                                        : doing
+                                                            ? 'En cours'
+                                                            : 'Planifié';
 
                                                 return (
                                                     <div
                                                         key={task.id}
                                                         className="absolute z-10"
                                                         style={{ left: `${left}%`, width: `${width}%`, top }}
-                                                        title={`${task.title} · ${task.dueDate}`}
+                                                        title={`${task.title} · échéance ${task.dueDate} · ${statusLabel}`}
                                                     >
                                                         <div className="flex items-center gap-1 mb-0.5 -ml-0.5 min-w-0">
                                                             <StatusIcon task={task} />
@@ -596,28 +618,31 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                                                             </span>
                                                         </div>
                                                         <div className="relative h-[7px]">
-                                                            {/* Ghost / future track (dashed feel) */}
+                                                            {/* Schedule track (always dashed) */}
                                                             <div
                                                                 className="absolute inset-0 rounded-full"
                                                                 style={{
-                                                                    backgroundImage: `repeating-linear-gradient(90deg, ${color}33 0 4px, transparent 4px 8px)`,
-                                                                    backgroundColor: 'rgba(148,163,184,0.12)',
+                                                                    backgroundImage: `repeating-linear-gradient(90deg, ${barColor}55 0 3px, transparent 3px 7px)`,
+                                                                    backgroundColor: 'rgba(148,163,184,0.08)',
                                                                 }}
                                                             />
-                                                            {/* Active fill */}
-                                                            <div
-                                                                className={`absolute inset-y-0 left-0 rounded-full transition-opacity ${done ? 'opacity-55' : 'opacity-100'}`}
-                                                                style={{
-                                                                    width: `${fillPct}%`,
-                                                                    backgroundColor: color,
-                                                                }}
-                                                            />
-                                                            {/* Milestone diamond at end */}
+                                                            {/* Progress fill — only done / doing / overdue */}
+                                                            {fillPct > 0 && (
+                                                                <div
+                                                                    className={`absolute inset-y-0 left-0 rounded-full ${done ? 'opacity-50' : 'opacity-100'}`}
+                                                                    style={{
+                                                                        width: `${fillPct}%`,
+                                                                        backgroundColor: barColor,
+                                                                    }}
+                                                                />
+                                                            )}
+                                                            {/* Milestone diamond at due date */}
                                                             <div
                                                                 className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 border border-white dark:border-[#151516]"
                                                                 style={{
                                                                     right: -2,
-                                                                    backgroundColor: color,
+                                                                    backgroundColor: barColor,
+                                                                    opacity: done ? 0.55 : 1,
                                                                 }}
                                                             />
                                                         </div>
