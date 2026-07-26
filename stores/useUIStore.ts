@@ -141,20 +141,25 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-    // Default Linear noir; one-shot migrate cream/light installs → dark
+    // Default Professionnel studio (Stability); one-shot migrate → light
     theme: (() => {
-        const migrated = localStorage.getItem('marion_theme_linear_v1');
-        if (!migrated) {
-            localStorage.setItem('marion_theme_linear_v1', '1');
-            localStorage.setItem('marion_theme', 'dark');
-            return 'dark' as Theme;
+        const studio = localStorage.getItem('marion_theme_studio_v1');
+        if (!studio) {
+            localStorage.setItem('marion_theme_studio_v1', '1');
+            localStorage.setItem('marion_theme', 'light');
+            return 'light' as Theme;
         }
-        return (localStorage.getItem('marion_theme') as Theme) || 'dark';
+        return (localStorage.getItem('marion_theme') as Theme) || 'light';
     })(),
     accentColor: (() => {
-        // Eonora rebrand (v2.10.0): the legacy orange accent is retired → sage brand.
+        // Studio v1: accent CTA principal = rose Eonora (Stability discipline).
         const stored = localStorage.getItem('marion_accent');
-        return (!stored || stored === 'orange' || stored === '#FF7E5F') ? '#7C9A7E' : stored;
+        if (!stored || stored === 'orange' || stored === '#FF7E5F') return '#b05070';
+        const studio = localStorage.getItem('marion_theme_studio_v1');
+        if (studio === '1' && stored === '#7C9A7E' && !localStorage.getItem('marion_accent_user_set')) {
+            return '#b05070';
+        }
+        return stored;
     })(),
     currency: localStorage.getItem('marion_currency') || 'CHF',
     agencyName: localStorage.getItem('marion_agency_name') || 'Eonora Tech',
@@ -276,6 +281,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     },
     setAccentColor: (color) => {
         localStorage.setItem('marion_accent', color);
+        localStorage.setItem('marion_accent_user_set', '1');
         set({ accentColor: color });
     },
     setCurrency: (currency) => {

@@ -265,25 +265,26 @@ const App: React.FC = () => {
     }, [theme]);
 
     useEffect(() => {
-        // Migrate the retired orange accent to the Eonora sage brand.
+        // Professionnel studio: accent CTA rose. Legacy orange → rose.
         const brand = (!accentColor || accentColor === 'orange' || accentColor === '#FF7E5F')
-            ? '#7C9A7E'
+            ? '#b05070'
             : accentColor;
         document.documentElement.style.setProperty('--brand-color', brand);
         const meta = document.querySelector('meta[name="theme-color"]');
         if (theme === 'light') {
+            // Professionnel = Stability studio charcoal
             document.body.style.backgroundImage = '';
-            document.body.style.backgroundColor = '#FAF7F2';
-            meta?.setAttribute('content', '#FAF7F2');
+            document.body.style.backgroundColor = '#1e1e1e';
+            meta?.setAttribute('content', '#1e1e1e');
         } else if (theme === 'dark') {
-            // Linear noir — flat canvas (no space grid / cream flash)
+            // Nuit — fond encre (inchangé)
             document.body.style.backgroundImage = '';
             document.body.style.backgroundColor = '#0d1329';
             meta?.setAttribute('content', '#0d1329');
         } else {
             document.body.style.backgroundImage = '';
             document.body.style.backgroundColor = '';
-            meta?.setAttribute('content', '#FAF7F2');
+            meta?.setAttribute('content', '#fdf4ff');
         }
     }, [accentColor, theme]);
 

@@ -37,24 +37,33 @@
     <link rel="apple-touch-startup-image" href="/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" />
 
-    <!-- FOUC: apply Linear dark before paint (default) -->
+    <!-- FOUC: Professionnel studio (Stability) = thème principal -->
     <script>
       (function () {
         try {
-          var migrated = localStorage.getItem('marion_theme_linear_v1');
-          if (!migrated) {
-            localStorage.setItem('marion_theme_linear_v1', '1');
-            localStorage.setItem('marion_theme', 'dark');
+          var studio = localStorage.getItem('marion_theme_studio_v1');
+          if (!studio) {
+            localStorage.setItem('marion_theme_studio_v1', '1');
+            localStorage.setItem('marion_theme', 'light');
+            var acc = localStorage.getItem('marion_accent');
+            if (!acc || acc === 'orange' || acc === '#FF7E5F' || acc === '#7C9A7E') {
+              localStorage.setItem('marion_accent', '#b05070');
+            }
           }
-          var t = localStorage.getItem('marion_theme') || 'dark';
+          var t = localStorage.getItem('marion_theme') || 'light';
           var root = document.documentElement;
           root.classList.remove('dark', 'unicorn');
           if (t === 'dark') root.classList.add('dark');
           else if (t === 'unicorn') root.classList.add('unicorn');
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', t === 'dark' ? '#0d1329' : '#FAF7F2');
+          if (meta) {
+            meta.setAttribute(
+              'content',
+              t === 'dark' ? '#0d1329' : t === 'unicorn' ? '#fdf4ff' : '#1e1e1e'
+            );
+          }
         } catch (e) {
-          document.documentElement.classList.add('dark');
+          /* keep default Professionnel studio tokens from :root */
         }
       })();
     </script>
@@ -63,29 +72,29 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              serif: ['"Montserrat"', 'sans-serif'],
-              sans: ['"Raleway"', 'sans-serif'],
-              heading: ['"Montserrat"', 'sans-serif'],
-              calligraphy: ['"Montserrat"', 'sans-serif'],
+              serif: ['"Archivo"', 'system-ui', 'sans-serif'],
+              sans: ['"Archivo"', 'system-ui', 'sans-serif'],
+              heading: ['"Archivo"', 'system-ui', 'sans-serif'],
+              calligraphy: ['"Archivo"', 'system-ui', 'sans-serif'],
             },
             colors: {
-              // === Eonora Tech brand ===
-              cream: '#FAF7F2',
-              'cream-dark': '#F2EDE4',
-              'eonora-bg': '#FAF7F2',
+              // === Eonora Tech brand — Professionnel = studio Stability ===
+              cream: '#1e1e1e',
+              'cream-dark': '#191919',
+              'eonora-bg': '#1e1e1e',
               sage: '#7C9A7E',
               'sage-dark': '#647D66',
               'sage-light': '#A7C1A3',
-              charcoal: '#151516',
-              'charcoal-deep': '#0d1329',
-              'charcoal-card': '#1c1c1e',
+              charcoal: '#252525',
+              'charcoal-deep': '#1e1e1e',
+              'charcoal-card': '#2c2c2c',
               'eo-rose': '#b05070',
               'eo-blue': '#4a72c4',
               'eo-teal': '#2aada0',
@@ -94,14 +103,14 @@
               'pastel-purple': '#E9D5FF',
               'pastel-orange': '#FFEDD5',
               'deep-space': '#0d1329', 
-              'glass-white': 'rgba(255, 255, 255, 0.65)',
+              'glass-white': 'rgba(37, 37, 37, 0.85)',
               'glass-dark': 'rgba(21, 21, 22, 0.85)',
-              // Brand accent → sage (was orange). Ripples to bg-brand-orange / text-brand-orange etc.
+              // Brand accent → rose CTA (Stability discipline). Ripples to bg-brand-orange etc.
               'brand-orange': 'var(--brand-color)',
               'brand-pink': 'var(--brand-secondary-color)',
               'brand-primary': 'var(--brand-color)',
               'brand-secondary': 'var(--brand-secondary-color)',
-              // Linear-aligned slate (dark surfaces → #151516 / #0d1329)
+              // Slate neutre (Nuit inchangé). Professionnel remap via index.css :not(.dark).
               slate: {
                 50: '#f8fafc',
                 100: '#f1f5f9',
@@ -115,7 +124,7 @@
                 900: '#151516',
                 950: '#0d1329',
               },
-              // Remap the whole "orange" scale to sage tints so legacy orange-* utilities are on-brand
+              // Orange legacy → sage (Nuit). Professionnel CTA = --brand-color rose.
               orange: {
                 50: '#F2F5F0',
                 100: '#E3EBDF',
@@ -216,12 +225,12 @@
     </script>
     <style>
       body {
-        font-family: 'Raleway', sans-serif;
+        font-family: 'Archivo', system-ui, sans-serif;
         font-weight: 400;
         overflow-x: hidden;
       }
       h1, h2, h3, h4, h5, h6 {
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Archivo', system-ui, sans-serif;
         font-weight: 600;
       }
       /* Custom Scrollbar */
@@ -511,12 +520,12 @@
 
       /* --- Briefing Content Styles --- */
       .briefing-content {
-        font-family: 'Raleway', sans-serif;
+        font-family: 'Archivo', system-ui, sans-serif;
         font-weight: 400;
       }
       
       .briefing-content h3 {
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Archivo', system-ui, sans-serif;
         font-weight: 600;
         background: linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%);
         -webkit-background-clip: text;
@@ -652,11 +661,11 @@
       }
 
     </style>
-  <script type="module" crossorigin src="/assets/index-DO9u2ZlK.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/vendor-react-CNLiLWR2.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-DjfImFle.css">
+  <script type="module" crossorigin src="/assets/index-DtMTSO9q.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-react-l9wVyTgH.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-DDkKkUc6.css">
 </head>
-  <body class="bg-[#FAF7F2] text-slate-800 transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+  <body class="bg-[#1e1e1e] text-[#e5e7e6] transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
     
     <!-- Linear dark canvas (no decorative space scene) -->
     <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-[#0d1329]">
@@ -709,8 +718,9 @@
     </div>
 
     <!-- UNICORN WORLD (Unicorn Mode Only) -->
-    <div class="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-brand-pink/20 dark:hidden unicorn:hidden rounded-full blur-[120px] -z-10 animate-pulse transition-colors duration-1000"></div>
-    <div class="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:hidden unicorn:hidden rounded-full blur-[100px] -z-10 transition-colors duration-1000"></div>
+    <!-- Blobs pastel retirés du thème Professionnel (studio Stability) -->
+    <div class="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-brand-pink/20 hidden rounded-full blur-[120px] -z-10 animate-pulse transition-colors duration-1000"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 hidden rounded-full blur-[100px] -z-10 transition-colors duration-1000"></div>
     
     <div id="root"></div>
   

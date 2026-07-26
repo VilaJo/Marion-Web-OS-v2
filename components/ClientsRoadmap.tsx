@@ -280,9 +280,9 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
     };
 
     return (
-        <div className="rounded-lg border border-slate-200 dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden flex flex-col md:flex-row min-h-[460px] shadow-sm dark:shadow-none">
-            {/* Left rail — dossiers + clients (Linear) */}
-            <aside className="md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#262626] flex flex-col bg-slate-50/50 dark:bg-[#111318] max-h-[70vh] md:max-h-none">
+        <div className="rounded-lg border border-[#2a2a2a] dark:border-[#262626] bg-[#252525] dark:bg-[#151516] overflow-hidden flex flex-col md:flex-row min-h-[460px] shadow-none">
+            {/* Left rail — dossiers + clients */}
+            <aside className="md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-[#2a2a2a] dark:border-[#262626] flex flex-col bg-[#1e1e1e] dark:bg-[#111318] max-h-[70vh] md:max-h-none">
                 {/* Dossiers */}
                 <div className="border-b border-slate-100 dark:border-[#262626]">
                     <div className="px-3 py-2.5 flex items-center justify-between gap-2">

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank, Ship, Moon, FolderOpen } from 'lucide-react';
+import { Gift, Palette, Type, Moon, LayoutGrid } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.13";
+const CURRENT_VERSION = "2.13.14";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -10,9 +10,7 @@ export const WhatsNew: React.FC = () => {
     useEffect(() => {
         const lastSeenVersion = localStorage.getItem('marion_crm_version');
         
-        // If version changed or never set, show modal
         if (lastSeenVersion !== CURRENT_VERSION) {
-            // Small delay for effect after app load
             setTimeout(() => setIsOpen(true), 1500);
         }
     }, []);
@@ -25,176 +23,78 @@ export const WhatsNew: React.FC = () => {
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="" width="max-w-2xl">
             <div className="relative overflow-hidden">
-                {/* Decorative Background — dégradé signature Eonora */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-eonora-gradient opacity-15 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#b05070]/15 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
                 
                 <div className="p-8 pt-2">
                     <div className="flex flex-col items-center text-center mb-10">
-                        <div className="w-16 h-16 bg-eonora-gradient rounded-2xl flex items-center justify-center text-white shadow-lg shadow-slate-200 dark:shadow-none mb-6">
+                        <div className="w-16 h-16 bg-[#252525] border border-[#2a2a2a] rounded-2xl flex items-center justify-center text-[#b05070] mb-6">
                             <Gift size={32} />
                         </div>
-                        <h2 className="font-serif text-3xl font-bold text-slate-800 dark:text-white mb-2">
+                        <h2 className="font-serif text-3xl font-medium tracking-tight text-white mb-2">
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
-                        <p className="text-slate-500 dark:text-slate-400">
-                            Couleurs par étape kanban
+                        <p className="text-[#b2b2b2]">
+                            Thème Professionnel — style Stability
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#0d1329] border border-[#262626]">
-                            <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
-                                <LayoutGrid size={24} />
+                        <div className="flex gap-4 p-4 rounded-2xl bg-[#252525] border border-[#2a2a2a]">
+                            <div className="w-12 h-12 rounded-md bg-[#1e1e1e] border border-[#2a2a2a] text-[#b05070] flex items-center justify-center flex-shrink-0">
+                                <Palette size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-white mb-1">Couleurs par étape</h3>
-                                <p className="text-sm text-[#8A8A8E] leading-relaxed">
-                                    À faire = gris · En cours = bleu · Terminé = teal · Retard = rose — sur Roadmap et kanban fiche client.
+                                <h3 className="font-medium text-white mb-1">Studio charcoal</h3>
+                                <p className="text-sm text-[#b2b2b2] leading-relaxed">
+                                    Le thème Professionnel passe en fond `#1e1e1e`, surfaces plates, une seule couleur d’action (rose).
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#0d1329] border border-[#262626]">
-                            <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
-                                <CalendarDays size={24} />
+                        <div className="flex gap-4 p-4 rounded-2xl bg-[#252525] border border-[#2a2a2a]">
+                            <div className="w-12 h-12 rounded-md bg-[#1e1e1e] border border-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0">
+                                <Type size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-white mb-1">Jauges Roadmap</h3>
-                                <p className="text-sm text-[#8A8A8E] leading-relaxed">
-                                    Planifié = pointillé · En cours = rempli jusqu’à aujourd’hui · Terminé = plein. Plus de faux pourcentage.
+                                <h3 className="font-medium text-white mb-1">Typo Archivo</h3>
+                                <p className="text-sm text-[#b2b2b2] leading-relaxed">
+                                    Titres légers façon Stability — moins de gras marketing, plus de calme éditorial.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#0d1329] border border-[#262626]">
-                            <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
-                                <CalendarDays size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-white mb-1">Fix Roadmap — nouveau client</h3>
-                                <p className="text-sm text-[#8A8A8E] leading-relaxed">
-                                    Les tâches + échéances d’un template (ex. Portfolio) sont bien enregistrées et apparaissent sur la Roadmap.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#0d1329] border border-[#262626]">
-                            <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
-                                <FolderOpen size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-white mb-1">Roadmap — dossiers clients</h3>
-                                <p className="text-sm text-[#8A8A8E] leading-relaxed">
-                                    Rail gauche : dossiers (En cours, Maintenance…) + clients avec santé, prochaine échéance et tâches ouvertes.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#0d1329] border border-[#262626] opacity-80">
-                            <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-[#252525] border border-[#2a2a2a]">
+                            <div className="w-12 h-12 rounded-md bg-[#1e1e1e] border border-[#2a2a2a] text-[#8A8A8E] flex items-center justify-center flex-shrink-0">
                                 <Moon size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-white mb-1">Fond nuit #0d1329</h3>
-                                <p className="text-sm text-[#8A8A8E] leading-relaxed">
-                                    Canvas bleu encre (v2.13.9).
+                                <h3 className="font-medium text-white mb-1">Nuit intacte</h3>
+                                <p className="text-sm text-[#b2b2b2] leading-relaxed">
+                                    Le thème Nuit (`#0d1329`) n’a pas été modifié. Switch Settings → Nuit pour y revenir.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40 opacity-80">
-                            <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <CalendarDays size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Roadmap Linear</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Vue Roadmap timeline (v2.13.6).
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40 opacity-80">
-                            <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <PiggyBank size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Santé financière — une page</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    KPIs + flux + DSO/TVA en une bande (v2.13.5).
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-800/20 border border-slate-200/60 dark:border-slate-700/40">
-                            <div className="w-12 h-12 rounded-full bg-[#23262B] text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <Ship size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Yacht Bar + fiches clients</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Yacht Bar longue au-dessus de la to-do. Cartes / tableau clients au style Linear — plus de fond crème, progression claire, dossiers sobres.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-800/20 border border-slate-200/60 dark:border-slate-700/40">
-                            <div className="w-12 h-12 rounded-full bg-[#23262B] text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                                <CalendarDays size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Agenda Google</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Reconnexion OAuth fiable + interface Agenda déjà au style Linear (v2.13.3).
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#F2F5F0] to-[#E3EBDF] dark:from-emerald-900/10 dark:to-emerald-900/5 border border-slate-200/60 dark:border-slate-700/40">
-                            <div className="w-12 h-12 rounded-full bg-sage text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-[#252525] border border-[#2a2a2a] opacity-80">
+                            <div className="w-12 h-12 rounded-md bg-[#1e1e1e] border border-[#2a2a2a] text-white flex items-center justify-center flex-shrink-0">
                                 <LayoutGrid size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Bandeau KPIs + vues</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Capsules cliquables, bascule tableau / cartes / roadmap 3 mois.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center flex-shrink-0">
-                                <ListTodo size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">To-do du jour</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Petite liste sur le dashboard + panneau complet (bouton ListTodo dans le header).
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center flex-shrink-0">
-                                <Bot size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Aide Marion</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Fiche <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-mono">LIRE_EN_PREMIER_MARION.md</code> — lance <strong>METTRE_A_JOUR</strong> puis Cmd+Shift+R.
+                                <h3 className="font-medium text-white mb-1">Kanban coloré</h3>
+                                <p className="text-sm text-[#b2b2b2] leading-relaxed">
+                                    Les couleurs d’étapes (gris / bleu / teal / rose) restent pour le statut des tâches.
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-10 flex flex-col items-center gap-2">
-                        <button 
+                    <div className="mt-10 flex justify-center">
+                        <button
                             onClick={handleClose}
-                            className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full font-bold hover:scale-105 transition-transform flex items-center gap-2 shadow-xl"
+                            className="px-8 py-3 bg-[#b05070] text-white rounded-full font-medium hover:opacity-90 transition-opacity"
                         >
-                            <Award size={18} /> C’est noté <ArrowRight size={18} />
+                            Découvrir
                         </button>
-                        <p className="text-[11px] text-slate-400">En cas de souci : capture + .marion.log à Johan (jamais le .env).</p>
                     </div>
                 </div>
             </div>

@@ -2,6 +2,13 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.14] - 2026-07-26
+### Thème Professionnel — style Stability
+- Canvas studio `#1e1e1e`, surfaces `#252525` / `#2c2c2c`, bordures hairline
+- Typo **Archivo** (titres légers), accent CTA unique rose `#b05070`
+- Moins d’ombres / glass / dégradés décoratifs sur le thème principal
+- Thème **Nuit** (`#0d1329`) non modifié
+
 ## [2.13.13] - 2026-07-26
 ### Couleurs par étape kanban
 - Roadmap : barre / icône teintées par statut (gris / bleu / teal / rose)

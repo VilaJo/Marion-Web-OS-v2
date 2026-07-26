@@ -1229,26 +1229,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Sélectionnez votre univers</label>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     
-                                    {/* Professional Theme */}
+                                    {/* Professionnel = Stability studio (thème principal) */}
                                     <button 
                                         onClick={() => onThemeChange('light')}
                                         className={`p-4 rounded-2xl border-2 flex flex-col gap-3 transition-all h-32 relative overflow-hidden group ${
                                             currentTheme === 'light' 
-                                            ? 'border-brand-orange bg-orange-50' 
-                                            : 'border-slate-200 bg-white hover:border-orange-200'
+                                            ? 'border-[#b05070] bg-[#252525]' 
+                                            : 'border-[#2a2a2a] bg-[#1e1e1e] hover:border-[#3a3a3a]'
                                         }`}
                                     >
-                                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-gradient-to-br from-[#b05070]/25 to-[#4a72c4]/25 rounded-full opacity-50"></div>
+                                        <div className="absolute inset-0 bg-[#1e1e1e]" />
+                                        <div className="absolute inset-x-8 top-12 h-px bg-[#2a2a2a]" />
+                                        <div className="absolute bottom-4 right-4 w-10 h-3 rounded-full bg-[#b05070]/90" />
                                         <div className="flex items-center gap-3 z-10">
-                                            <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-brand-orange shadow-sm">
+                                            <div className="w-8 h-8 rounded-full bg-[#252525] border border-[#3a3a3a] flex items-center justify-center text-[#b05070]">
                                                 <Sun size={16} />
                                             </div>
-                                            <span className="font-bold text-slate-800">Professionnel</span>
+                                            <span className="font-medium text-white tracking-tight">Professionnel</span>
                                         </div>
-                                        <p className="text-xs text-slate-500 z-10 text-left">
-                                            Interface claire, sobre et élégante. Idéal pour les présentations client.
+                                        <p className="text-xs text-[#b2b2b2] z-10 text-left">
+                                            Studio Stability — fond `#1e1e1e`, typo Archivo, accent rose unique.
                                         </p>
-                                        {currentTheme === 'light' && <div className="absolute top-2 right-2 text-brand-orange"><Check size={16} /></div>}
+                                        {currentTheme === 'light' && <div className="absolute top-2 right-2 text-[#b05070]"><Check size={16} /></div>}
                                     </button>
 
                                     {/* Dark Theme — Linear noir (default) */}
