@@ -267,7 +267,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
 
     return (
         <>
-        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-white/70 dark:bg-slate-900/40 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/50 dark:border-slate-700/30 md:border-0">
+        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-white/70 dark:bg-[#0f0f10]/90 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/50 dark:border-[#262626] md:border-0">
             {/* Logo + text (text slides behind logo on scroll) */}
             <div onClick={() => navigate('/')} className="group flex items-center cursor-pointer relative overflow-hidden">
                 <div className="relative z-10 flex-shrink-0">
@@ -330,7 +330,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             </div>
 
             {/* Desktop: full toolbar */}
-            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white/70 dark:bg-slate-800/40 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-md md:-mt-2 transition-all duration-300">
+            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white/70 dark:bg-[#151516]/90 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-slate-200/50 dark:border-[#262626] shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:shadow-none backdrop-blur-md md:-mt-2 transition-all duration-300">
                 {/* PRIMARY — toujours visible, quotidien de Marion (v2.11.0 nav allégée) */}
                 <Tooltip content="Ma journée — priorités et échéances">
                     <button

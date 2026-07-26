@@ -141,8 +141,16 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-    // Initialize from localStorage
-    theme: (localStorage.getItem('marion_theme') as Theme) || 'light',
+    // Default Linear noir; one-shot migrate cream/light installs → dark
+    theme: (() => {
+        const migrated = localStorage.getItem('marion_theme_linear_v1');
+        if (!migrated) {
+            localStorage.setItem('marion_theme_linear_v1', '1');
+            localStorage.setItem('marion_theme', 'dark');
+            return 'dark' as Theme;
+        }
+        return (localStorage.getItem('marion_theme') as Theme) || 'dark';
+    })(),
     accentColor: (() => {
         // Eonora rebrand (v2.10.0): the legacy orange accent is retired → sage brand.
         const stored = localStorage.getItem('marion_accent');

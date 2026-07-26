@@ -109,7 +109,7 @@ export const MobileDrawer: React.FC = () => {
             />
 
             {/* Drawer */}
-            <div className="fixed top-0 right-0 bottom-0 z-[91] w-72 bg-white dark:bg-slate-900 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+            <div className="fixed top-0 right-0 bottom-0 z-[91] w-72 bg-white dark:bg-[#151516] border-l border-transparent dark:border-[#262626] shadow-2xl dark:shadow-none animate-in slide-in-from-right duration-300 flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
                     <h2 className="font-semibold text-slate-800 dark:text-white text-lg">Menu</h2>

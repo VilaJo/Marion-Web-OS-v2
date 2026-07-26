@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank, Ship } from 'lucide-react';
+import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank, Ship, Moon } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.6";
+const CURRENT_VERSION = "2.13.7";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,19 +37,31 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Roadmap dashboard — style Linear
+                            Thème Linear noir partout
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-black dark:from-[#151516] dark:to-[#0f0f10] border border-[#262626]">
+                            <div className="w-12 h-12 rounded-md bg-[#1c1c1e] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
+                                <Moon size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-white mb-1">Thème Linear noir</h3>
+                                <p className="text-sm text-[#8A8A8E] leading-relaxed">
+                                    Toute l’app passe en noir plat Linear (#0f0f10 / #151516). Clair et Magique restent disponibles dans Paramètres.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#f6e7ec] via-[#e7edf8] to-[#e2f2f0] dark:from-[#b05070]/10 dark:via-[#4a72c4]/10 dark:to-[#2aada0]/10 border border-slate-200/60 dark:border-slate-700/40 opacity-80">
                             <div className="w-12 h-12 rounded-full bg-eonora-gradient text-white flex items-center justify-center flex-shrink-0 shadow-md">
                                 <CalendarDays size={24} />
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Roadmap Linear</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                    Vue Roadmap du dashboard : liste projets à gauche, grille mois/semaines, barres d’échéances, jalons losange et ligne « aujourd’hui ».
+                                    Vue Roadmap timeline (v2.13.6).
                                 </p>
                             </div>
                         </div>

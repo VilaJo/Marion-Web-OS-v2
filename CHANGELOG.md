@@ -2,6 +2,13 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.7] - 2026-07-26
+### Thème Linear noir (global)
+- Dark par défaut (migration one-shot des installs crème)
+- Canvas `#0f0f10`, surfaces `#151516`, bordures `#262626` — plus de décor spatial / glow
+- Header, drawer, cartes glass, tokens slate / charcoal alignés Linear
+- Clair & Magique restent sélectionnables dans Paramètres → Apparence
+
 ## [2.13.6] - 2026-07-26
 ### Roadmap dashboard — style Linear
 - Vue **Roadmap** : rail projets + compteurs, grille mois/semaines, barres d’échéances, jalons losange, ligne aujourd’hui

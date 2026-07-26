@@ -7,13 +7,13 @@
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="Eonora Tech OS - Votre espace de travail personnel pour la gestion clients, facturation et agenda" />
-    <meta name="theme-color" content="#FAF7F2" />
+    <meta name="theme-color" content="#0f0f10" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Eonora" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Eonora Tech OS" />
-    <meta name="msapplication-TileColor" content="#23262B" />
+    <meta name="msapplication-TileColor" content="#0f0f10" />
     <meta name="msapplication-tap-highlight" content="no" />
     <meta name="format-detection" content="telephone=no" />
     
@@ -36,6 +36,28 @@
     <link rel="apple-touch-startup-image" href="/splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" />
+
+    <!-- FOUC: apply Linear dark before paint (default) -->
+    <script>
+      (function () {
+        try {
+          var migrated = localStorage.getItem('marion_theme_linear_v1');
+          if (!migrated) {
+            localStorage.setItem('marion_theme_linear_v1', '1');
+            localStorage.setItem('marion_theme', 'dark');
+          }
+          var t = localStorage.getItem('marion_theme') || 'dark';
+          var root = document.documentElement;
+          root.classList.remove('dark', 'unicorn');
+          if (t === 'dark') root.classList.add('dark');
+          else if (t === 'unicorn') root.classList.add('unicorn');
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', t === 'dark' ? '#0f0f10' : '#FAF7F2');
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -61,9 +83,9 @@
               sage: '#7C9A7E',
               'sage-dark': '#647D66',
               'sage-light': '#A7C1A3',
-              charcoal: '#23262B',
-              'charcoal-deep': '#1A1C20',
-              'charcoal-card': '#26292F',
+              charcoal: '#151516',
+              'charcoal-deep': '#0f0f10',
+              'charcoal-card': '#1c1c1e',
               'eo-rose': '#b05070',
               'eo-blue': '#4a72c4',
               'eo-teal': '#2aada0',
@@ -71,14 +93,28 @@
               'pastel-pink': '#FCE7F3',
               'pastel-purple': '#E9D5FF',
               'pastel-orange': '#FFEDD5',
-              'deep-space': '#1E1B4B', 
+              'deep-space': '#0f0f10', 
               'glass-white': 'rgba(255, 255, 255, 0.65)',
-              'glass-dark': 'rgba(26, 28, 32, 0.65)',
+              'glass-dark': 'rgba(21, 21, 22, 0.85)',
               // Brand accent → sage (was orange). Ripples to bg-brand-orange / text-brand-orange etc.
               'brand-orange': 'var(--brand-color)',
               'brand-pink': 'var(--brand-secondary-color)',
               'brand-primary': 'var(--brand-color)',
               'brand-secondary': 'var(--brand-secondary-color)',
+              // Linear-aligned slate (dark surfaces → #151516 / #0f0f10)
+              slate: {
+                50: '#f8fafc',
+                100: '#f1f5f9',
+                200: '#e2e8f0',
+                300: '#cbd5e1',
+                400: '#94a3b8',
+                500: '#64748b',
+                600: '#52525b',
+                700: '#3f3f46',
+                800: '#1c1c1e',
+                900: '#151516',
+                950: '#0f0f10',
+              },
               // Remap the whole "orange" scale to sage tints so legacy orange-* utilities are on-brand
               orange: {
                 50: '#F2F5F0',
@@ -153,7 +189,7 @@
               'eonora-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
               'marion-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
               'sunset-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
-              'space-gradient': 'linear-gradient(to bottom, #23262B, #1A1C20)', 
+              'space-gradient': 'linear-gradient(to bottom, #151516, #0f0f10)', 
               'unicorn-gradient': 'linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 50%, #F3E5F5 100%)',
             },
             animation: {
@@ -211,9 +247,9 @@
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
       }
       .dark .glass {
-        background: rgba(38, 41, 47, 0.72); /* Charcoal card surface */
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        background: rgba(21, 21, 22, 0.92); /* Linear surface */
+        border: 1px solid #262626;
+        box-shadow: none;
       }
 
       /* Unicorn Mode specific glass override */
@@ -577,72 +613,51 @@
 
       /* Secondary / Glass Buttons (The "UI" Buttons) */
       /* We target generic buttons that might be white or transparent in dark mode */
+      /* Linear: quiet borders, no sage glow / scale on generic buttons */
       .dark button.bg-white,
-      .dark button.bg-slate-900,
-      .dark button:not([class*="bg-gradient"]):not([class*="bg-brand-orange"]):not([class*="bg-transparent"]):not([class*="bg-red"]):not([class*="text-red"]) {
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 0 5px rgba(124, 154, 126, 0.08); /* Faint sage glow */
-        backdrop-filter: blur(5px);
+      .dark button.bg-slate-900 {
+        border: 1px solid #262626;
+        box-shadow: none;
       }
 
       .dark button.bg-white:hover,
-      .dark button.bg-slate-900:hover,
-      .dark button:not([class*="bg-gradient"]):not([class*="bg-brand-orange"]):not([class*="bg-transparent"]):not([class*="bg-red"]):not([class*="text-red"]):hover {
-        border-color: rgba(124, 154, 126, 0.5); /* Sage border on hover */
-        box-shadow: 0 0 12px rgba(124, 154, 126, 0.3), inset 0 0 10px rgba(124, 154, 126, 0.08);
+      .dark button.bg-slate-900:hover {
+        border-color: #3f3f46;
+        box-shadow: none;
         color: #fff;
-        transform: scale(1.03);
       }
 
-      /* Specific override for Red/Danger buttons in dark mode */
-      .dark button[class*="text-red"], .dark button[class*="bg-red"] {
-         text-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
-      }
-      .dark button[class*="text-red"]:hover, .dark button[class*="bg-red"]:hover {
-         box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-      }
-
-      /* Charcoal base for dark mode (Eonora brand) with subtle grid */
+      /* Linear noir canvas — flat, no grid / space decor */
       .dark body {
-        background-color: #1A1C20;
-        background-image: 
-            linear-gradient(rgba(26, 28, 32, 0.96), rgba(26, 28, 32, 0.96)),
-            linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
-        background-size: 100% 100%, 50px 50px, 50px 50px;
+        background-color: #0f0f10 !important;
+        background-image: none !important;
       }
 
-      /* Eonora dark mode: keep it clean/minimal — hide decorative planets, keep faint stars */
       .dark #space-scene {
-        background: #1A1C20 !important;
+        background: #0f0f10 !important;
       }
       .dark #space-scene .planet-lollipop,
       .dark #space-scene .planet-peach,
       .dark #space-scene .planet-blue,
-      .dark #space-scene .shooting-star {
+      .dark #space-scene .shooting-star,
+      .dark #space-scene .star-bg {
         display: none !important;
       }
-      .dark #space-scene .star-bg { opacity: 0.35 !important; }
 
-      /* --- Firefly Glow Animation --- */
-      @keyframes firefly-glow {
-        0%, 100% { box-shadow: 0 0 8px rgba(124, 154, 126, 0.5), 0 0 20px rgba(124, 154, 126, 0.25); } /* Subtle sage glow */
-        50% { box-shadow: 0 0 15px rgba(124, 154, 126, 0.75), 0 0 35px rgba(124, 154, 126, 0.4); } /* Brighter pulse */
-      }
-      
+      /* Linear: no glow pulse on primary CTAs */
       .dark #briefing-button,
       .dark #new-client-filter-button,
       .dark #new-project-card {
-        animation: firefly-glow 3s ease-in-out infinite alternate;
+        animation: none !important;
       }
 
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-[#FAF7F2] text-slate-800 transition-colors duration-700 dark:bg-none dark:bg-transparent dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+  <body class="bg-[#FAF7F2] text-slate-800 transition-colors duration-300 dark:bg-[#0f0f10] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
     
-    <!-- CUTE SPACE BACKGROUND (Dark Mode Only) -->
-    <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-space-gradient">
+    <!-- Linear dark canvas (no decorative space scene) -->
+    <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-[#0f0f10]">
         
         <!-- Static Star Fields -->
         <div class="star-bg stars-sm"></div>

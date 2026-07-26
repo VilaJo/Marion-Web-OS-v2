@@ -270,13 +270,20 @@ const App: React.FC = () => {
             ? '#7C9A7E'
             : accentColor;
         document.documentElement.style.setProperty('--brand-color', brand);
+        const meta = document.querySelector('meta[name="theme-color"]');
         if (theme === 'light') {
-            // Eonora "fond clair ultra-épuration" — clean cream, no busy gradient.
             document.body.style.backgroundImage = '';
             document.body.style.backgroundColor = '#FAF7F2';
+            meta?.setAttribute('content', '#FAF7F2');
+        } else if (theme === 'dark') {
+            // Linear noir — flat canvas (no space grid / cream flash)
+            document.body.style.backgroundImage = '';
+            document.body.style.backgroundColor = '#0f0f10';
+            meta?.setAttribute('content', '#0f0f10');
         } else {
             document.body.style.backgroundImage = '';
             document.body.style.backgroundColor = '';
+            meta?.setAttribute('content', '#FAF7F2');
         }
     }, [accentColor, theme]);
 

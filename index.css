@@ -6,12 +6,14 @@
 
 :root {
   /* === Eonora Tech brand tokens === */
-  --eonora-bg: #FAF7F2;          /* Fond clair ultra-épuration */
+  --eonora-bg: #FAF7F2;          /* Fond clair (thème Professionnel) */
   --eonora-sage: #7C9A7E;        /* CTA sage */
   --eonora-sage-dark: #647D66;   /* Sage hover / pressed */
   --eonora-sage-light: #A7C1A3;  /* Sage secondaire / dégradé doux */
-  --eonora-charcoal: #23262B;    /* Cartes dark mode */
-  --eonora-charcoal-deep: #1A1C20;
+  --eonora-charcoal: #151516;    /* Surfaces Linear (dark) */
+  --eonora-charcoal-deep: #0f0f10;
+  --eonora-border: #262626;
+  --eonora-muted: #8A8A8E;
   --eonora-rose: #b05070;        /* Dégradé — rose/plum */
   --eonora-blue: #4a72c4;        /* Dégradé — bleu */
   --eonora-teal: #2aada0;        /* Dégradé — teal */
@@ -23,6 +25,16 @@
   --brand-orange: #7C9A7E; /* legacy alias */
   --pastel-pink: #FFF0F5;
   --pastel-purple: #F3E8FF;
+}
+
+/* Dark = Linear noir (default app chrome) */
+.dark {
+  --eonora-bg: #0f0f10;
+  --eonora-charcoal: #151516;
+  --eonora-charcoal-deep: #0f0f10;
+  --eonora-border: #262626;
+  --eonora-muted: #8A8A8E;
+  color-scheme: dark;
 }
 
 body {
@@ -76,11 +88,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #2a2a2c;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #3f3f46;
 }
 
 /* Animations */
