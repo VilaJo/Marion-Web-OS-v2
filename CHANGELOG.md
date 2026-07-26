@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.16] - 2026-07-26
+### Kanban — cartes lisibles
+- Cartes tâches : surface `#2c2c2c`, texte clair, méta contrastée
+- Accent colonne (gris / bleu / teal) + chip priorité sobre (FR)
+- Colonnes plus foncées pour séparer les cartes ; flèches au survol uniquement
+
 ## [2.13.15] - 2026-07-26
 ### Dashboard — couleurs fiches = dossiers
 - Cartes / tableau clients : accent, avatar et progression alignés sur le dossier (En cours teal, Maintenance bleu, Association sage, Prospect rose, Archivé gris)

@@ -141,11 +141,14 @@ html:not(.dark):not(.unicorn) .text-slate-700 {
 }
 html:not(.dark):not(.unicorn) .text-slate-600,
 html:not(.dark):not(.unicorn) .text-slate-500 {
+  color: #c4c4c4 !important;
+}
+html:not(.dark):not(.unicorn) .text-slate-400 {
   color: #b2b2b2 !important;
 }
-html:not(.dark):not(.unicorn) .text-slate-400,
+/* Éviter gris-sur-gris illisible (ex. méta cartes) */
 html:not(.dark):not(.unicorn) .text-slate-300 {
-  color: #8a8a8e !important;
+  color: #a8a8ae !important;
 }
 
 /* Bordures hairline */

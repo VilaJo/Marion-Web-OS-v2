@@ -109,6 +109,19 @@ function getEffectivePriority(task: Task): 'Low' | 'Medium' | 'High' {
     return rank[computed] >= rank[task.priority] ? computed : task.priority;
 }
 
+/** Accent kanban (aligné Roadmap) */
+const KANBAN_STAGE_ACCENT: Record<'todo' | 'doing' | 'done', string> = {
+    todo: '#8B92A5',
+    doing: '#4a72c4',
+    done: '#2aada0',
+};
+
+const PRIORITY_CHIP: Record<'High' | 'Medium' | 'Low', { bg: string; text: string; border: string; label: string }> = {
+    High: { bg: 'rgba(176,80,112,0.22)', text: '#f3c0cf', border: 'rgba(176,80,112,0.45)', label: 'Haute' },
+    Medium: { bg: 'rgba(212,160,23,0.20)', text: '#f0d78c', border: 'rgba(212,160,23,0.40)', label: 'Moyenne' },
+    Low: { bg: 'rgba(74,114,196,0.20)', text: '#b8c9ec', border: 'rgba(74,114,196,0.40)', label: 'Basse' },
+};
+
 // --- SORTABLE TASK CARD COMPONENT ---
 interface SortableTaskCardProps {
     task: Task;
@@ -131,12 +144,21 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
         attributes, listeners, setNodeRef, transform, transition, isDragging: isSortableDragging,
     } = useSortable({ id: task.id });
 
+    const stageAccent = KANBAN_STAGE_ACCENT[columnId];
+    const ep = getEffectivePriority(task);
+    const chip = PRIORITY_CHIP[ep];
+    const escalated = ep !== task.priority;
+    const overdue = !!(task.dueDate && !task.completed && new Date(task.dueDate) < new Date());
+
     const style: React.CSSProperties = {
         transform: transform ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` : undefined,
         transition,
-        // When actively dragging, hide this card — the DragOverlay shows the visual clone
-        opacity: isSortableDragging ? 0.25 : 1,
+        opacity: isSortableDragging ? 0.2 : 1,
         zIndex: isSortableDragging ? 0 : undefined,
+        // Surface relevée + accent colonne (lisible sur studio #1e1e1e)
+        backgroundColor: '#2c2c2c',
+        borderColor: `${stageAccent}55`,
+        boxShadow: `inset 3px 0 0 0 ${overdue ? '#b05070' : stageAccent}`,
     };
 
     return (
@@ -145,48 +167,43 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
             style={style}
             {...attributes}
             {...listeners}
-            className={`bg-white dark:bg-slate-900 p-3 rounded-md border border-slate-200 dark:border-slate-700 group hover:border-slate-300 dark:hover:border-slate-600 transition-colors relative cursor-grab active:cursor-grabbing touch-none ${isSortableDragging ? 'shadow-md' : ''}`}
+            className="p-3 rounded-lg border group hover:brightness-110 transition-[filter,border-color] relative cursor-grab active:cursor-grabbing touch-none"
             onClick={() => !isSortableDragging && onEdit(task)}
             tabIndex={0}
             role="listitem"
             onKeyDown={(e) => onKeyDown(e, task, columnId)}
         >
-            {/* Priority (auto-escalates based on due date) */}
-            <div className="flex justify-between items-start mb-1.5">
-                <div className="flex items-center gap-1.5">
-                    {(() => {
-                        const ep = getEffectivePriority(task);
-                        const escalated = ep !== task.priority;
-                        return (
-                            <Badge color={ep === 'High' ? 'red' : ep === 'Medium' ? 'yellow' : 'blue'}>
-                                {ep}{escalated ? ' ⚡' : ''}
-                            </Badge>
-                        );
-                    })()}
-                </div>
-                <button 
-                    onClick={(e) => onDelete(task.id, e)} 
-                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded"
+            <div className="flex justify-between items-start gap-2 mb-2">
+                <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide border"
+                    style={{ backgroundColor: chip.bg, color: chip.text, borderColor: chip.border }}
+                >
+                    {chip.label}{escalated ? ' · auto' : ''}
+                </span>
+                <button
+                    onClick={(e) => onDelete(task.id, e)}
+                    className="text-[#8a8a8e] hover:text-[#f87171] opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/5"
                     aria-label="Supprimer la tâche"
                 >
                     <Trash2 size={12} />
                 </button>
             </div>
 
-            {/* Title */}
-            <div className={`text-sm font-medium mb-1 leading-snug ${task.completed ? 'line-through opacity-50 text-slate-400' : 'text-slate-800 dark:text-white'}`}>
+            <div
+                className={`text-[13px] font-medium mb-1 leading-snug ${task.completed ? 'line-through' : ''}`}
+                style={{ color: task.completed ? '#8a8a8e' : '#f5f5f5' }}
+            >
                 {task.title}
             </div>
 
-            {/* Description snippet */}
             {task.description && (
-                <div className="text-xs text-slate-500 line-clamp-2 mb-2 leading-relaxed">
+                <div className="text-[11px] line-clamp-2 mb-2 leading-relaxed" style={{ color: '#c4c4c4' }}>
                     {task.description}
                 </div>
             )}
 
-            {/* Inline move arrows */}
-            <div className="flex justify-between items-center mb-2">
+            {/* Flèches uniquement au survol — moins de bruit */}
+            <div className="flex justify-between items-center mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     type="button"
                     disabled={!prevColumn}
@@ -194,8 +211,8 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                         e.stopPropagation();
                         if (prevColumn) onMove(task.id, prevColumn);
                     }}
-                    className={`p-1 rounded-full border text-slate-300 hover:text-slate-600 hover:border-slate-300 bg-white/60 dark:bg-slate-800/60 transition-all ${
-                        !prevColumn ? 'opacity-20 cursor-default pointer-events-none' : 'opacity-70'
+                    className={`p-1 rounded-md border border-[#3a3a3a] text-[#c4c4c4] hover:text-white hover:border-[#5a5a5a] bg-[#252525] transition-colors ${
+                        !prevColumn ? 'opacity-20 cursor-default pointer-events-none' : ''
                     }`}
                     aria-label={prevColumn ? `Déplacer la tâche vers ${getColumnLabel(prevColumn)}` : undefined}
                 >
@@ -208,8 +225,8 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                         e.stopPropagation();
                         if (nextColumn) onMove(task.id, nextColumn);
                     }}
-                    className={`p-1 rounded-full border text-slate-300 hover:text-slate-600 hover:border-slate-300 bg-white/60 dark:bg-slate-800/60 transition-all ${
-                        !nextColumn ? 'opacity-20 cursor-default pointer-events-none' : 'opacity-70'
+                    className={`p-1 rounded-md border border-[#3a3a3a] text-[#c4c4c4] hover:text-white hover:border-[#5a5a5a] bg-[#252525] transition-colors ${
+                        !nextColumn ? 'opacity-20 cursor-default pointer-events-none' : ''
                     }`}
                     aria-label={nextColumn ? `Déplacer la tâche vers ${getColumnLabel(nextColumn)}` : undefined}
                 >
@@ -217,18 +234,22 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                 </button>
             </div>
 
-            {/* Footer (Date, Avatar placeholder) */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-700/50">
+            <div className="flex items-center justify-between pt-2 border-t border-[#3a3a3a]">
                 {task.dueDate ? (
-                    <div className={`text-[10px] font-medium flex items-center gap-1 ${new Date(task.dueDate) < new Date() && !task.completed ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
-                        <Clock size={10} /> {new Date(task.dueDate).toLocaleDateString()}
+                    <div
+                        className="text-[11px] font-medium flex items-center gap-1"
+                        style={{ color: overdue ? '#f3c0cf' : '#c4c4c4' }}
+                    >
+                        <Clock size={11} /> {new Date(task.dueDate).toLocaleDateString('fr-CH')}
                     </div>
                 ) : (
-                    <div className="text-[10px] text-slate-300 italic">Pas de date</div>
+                    <div className="text-[11px]" style={{ color: '#9a9a9e' }}>Sans date</div>
                 )}
-                <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-500">
-                    F
-                </div>
+                <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: overdue ? '#b05070' : stageAccent }}
+                    title={columnId}
+                />
             </div>
         </div>
     );
@@ -1303,28 +1324,34 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         const prevColumn = currentIndex > 0 ? kanbanOrder[currentIndex - 1] : null;
         const nextColumn = currentIndex < kanbanOrder.length - 1 ? kanbanOrder[currentIndex + 1] : null;
 
-        // Aligné Roadmap : À faire gris · En cours bleu · Terminé teal
-        const stageAccent =
-            columnId === 'todo' ? '#8B92A5'
-            : columnId === 'doing' ? '#4a72c4'
-            : '#2aada0';
+        const stageAccent = KANBAN_STAGE_ACCENT[columnId];
 
         return (
             <DroppableColumn id={columnId}>
                 <div 
-                    className={`flex-1 rounded-md bg-slate-50/80 dark:bg-[#151516]/60 p-2.5 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed border-slate-300 dark:border-slate-600' : 'border-slate-200/80 dark:border-[#262626]'}`}
-                    style={{ boxShadow: `inset 3px 0 0 0 ${stageAccent}` }}
+                    className={`flex-1 rounded-lg p-2.5 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed' : ''}`}
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        borderColor: draggedTaskId ? `${stageAccent}66` : '#2a2a2a',
+                        boxShadow: `inset 3px 0 0 0 ${stageAccent}`,
+                    }}
                     role="list"
                     aria-label={title}
                 >
                     <div className="flex justify-between items-center mb-2.5 px-0.5">
                         <h4 className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-2" style={{ color: stageAccent }}>
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: stageAccent }} />
-                            {title} <span className="px-1.5 py-0.5 rounded text-[10px] tabular-nums font-medium opacity-70">{columnTasks.length}</span>
+                            {title}{' '}
+                            <span
+                                className="px-1.5 py-0.5 rounded text-[10px] tabular-nums font-medium"
+                                style={{ backgroundColor: `${stageAccent}22`, color: stageAccent }}
+                            >
+                                {columnTasks.length}
+                            </span>
                         </h4>
                         <button 
                             onClick={() => handleOpenTaskModal(undefined, columnId)} 
-                            className="p-1 rounded hover:bg-white dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors"
+                            className="p-1 rounded hover:bg-white/5 text-[#8a8a8e] hover:text-[#e5e7e6] transition-colors"
                             aria-label={`Ajouter une tâche dans la colonne ${getColumnLabel(columnId)}`}
                         >
                             <Plus size={14} />
@@ -1332,7 +1359,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                     </div>
 
                     <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-                        <div className="flex-1 space-y-1.5 overflow-y-auto pr-0.5 custom-scrollbar pb-10">
+                        <div className="flex-1 space-y-2 overflow-y-auto pr-0.5 custom-scrollbar pb-10">
                             {columnTasks.map(task => (
                                 <SortableTaskCard
                                     key={task.id}
@@ -1349,8 +1376,11 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                 />
                             ))}
                             {columnTasks.length === 0 && (
-                                <div className="flex flex-col items-center justify-center h-28 border border-dashed border-slate-200 dark:border-slate-700/50 rounded-md text-slate-300 text-xs">
-                                    <Archive size={18} className="mb-2 opacity-40" />
+                                <div
+                                    className="flex flex-col items-center justify-center h-28 border border-dashed rounded-lg text-xs"
+                                    style={{ borderColor: '#3a3a3a', color: '#8a8a8e' }}
+                                >
+                                    <Archive size={18} className="mb-2 opacity-50" />
                                     <span>Vide</span>
                                 </div>
                             )}
@@ -1932,16 +1962,39 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                         </div>
                                         <DragOverlay dropAnimation={null} modifiers={[snapOverlayToCursor]}>
                                             {draggedTaskId ? (() => {
-                                                const t = project.tasks.find(t => t.id === draggedTaskId);
+                                                const t = project.tasks.find(task => task.id === draggedTaskId);
                                                 if (!t) return null;
-                                                const ep = getEffectivePriority(t);
+                                                const overlayEp = getEffectivePriority(t);
+                                                const overlayChip = PRIORITY_CHIP[overlayEp];
+                                                const overlayCol = getTaskColumn(t);
+                                                const overlayAccent = KANBAN_STAGE_ACCENT[overlayCol];
                                                 return (
-                                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-2xl border-2 border-brand-orange/40 rotate-[2deg] w-[220px] pointer-events-none">
-                                                        <div className="flex items-center gap-1.5 mb-2">
-                                                            <Badge color={ep === 'High' ? 'red' : ep === 'Medium' ? 'yellow' : 'blue'}>{ep}</Badge>
+                                                    <div
+                                                        className="p-3 rounded-lg w-[220px] pointer-events-none rotate-[1deg]"
+                                                        style={{
+                                                            backgroundColor: '#2c2c2c',
+                                                            border: `1px solid ${overlayAccent}88`,
+                                                            boxShadow: `inset 3px 0 0 0 ${overlayAccent}, 0 12px 32px rgba(0,0,0,0.45)`,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border mb-2"
+                                                            style={{
+                                                                backgroundColor: overlayChip.bg,
+                                                                color: overlayChip.text,
+                                                                borderColor: overlayChip.border,
+                                                            }}
+                                                        >
+                                                            {overlayChip.label}
+                                                        </span>
+                                                        <div className="text-[13px] font-medium leading-snug" style={{ color: '#f5f5f5' }}>
+                                                            {t.title}
                                                         </div>
-                                                        <div className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{t.title}</div>
-                                                        {t.description && <div className="text-xs text-slate-500 line-clamp-1 mt-1">{t.description}</div>}
+                                                        {t.description && (
+                                                            <div className="text-[11px] line-clamp-1 mt-1" style={{ color: '#c4c4c4' }}>
+                                                                {t.description}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             })() : null}
