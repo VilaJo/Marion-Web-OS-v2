@@ -7,9 +7,10 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-    ChevronLeft, ChevronRight, Sparkles, Circle, CheckCircle2, CircleDot,
+    ChevronLeft, ChevronRight, Sparkles, Circle, CheckCircle2, CircleDot, Folder, FolderOpen,
 } from 'lucide-react';
 import { Project, ProjectStatus, WorkflowPhase } from '../types';
+import { getNextDeadline, getProjectHealth } from '../utils/projectHealth';
 
 export interface ClientsRoadmapProps {
     projects: Project[];
@@ -27,6 +28,28 @@ type TimelineTask = {
 
 const BAR_COLORS = ['#4a72c4', '#2aada0', '#b05070', '#7C9A7E'];
 const DEFAULT_BAR_DAYS = 14;
+
+const FOLDER_ORDER: ProjectStatus[] = [
+    ProjectStatus.EN_COURS,
+    ProjectStatus.MAINTENANCE,
+    ProjectStatus.ASSOCIATION,
+    ProjectStatus.PROSPECT,
+    ProjectStatus.ARCHIVED,
+];
+
+const STATUS_DOT: Record<ProjectStatus, string> = {
+    [ProjectStatus.EN_COURS]: '#2aada0',
+    [ProjectStatus.MAINTENANCE]: '#4a72c4',
+    [ProjectStatus.ASSOCIATION]: '#7C9A7E',
+    [ProjectStatus.PROSPECT]: '#b05070',
+    [ProjectStatus.ARCHIVED]: '#8A8A8E',
+};
+
+const HEALTH_DOT: Record<'good' | 'warning' | 'danger', string> = {
+    good: '#2aada0',
+    warning: '#d4a017',
+    danger: '#b05070',
+};
 
 function startOfMonth(d: Date): Date {
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -121,6 +144,7 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
     const [anchor, setAnchor] = useState(() => startOfMonth(new Date()));
     const [useDemo, setUseDemo] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [folder, setFolder] = useState<string>('Tous');
 
     const months = useMemo(
         () => [anchor, addMonths(anchor, 1), addMonths(anchor, 2)],
@@ -129,11 +153,23 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
 
     const sourceProjects = useDemo ? buildDemoProjects() : projects;
 
+    const folderCounts = useMemo(() => {
+        const counts: Record<string, number> = { Tous: sourceProjects.length };
+        for (const status of FOLDER_ORDER) {
+            counts[status] = sourceProjects.filter((p) => p.status === status).length;
+        }
+        return counts;
+    }, [sourceProjects]);
+
     const { rows, hasDatedTasks } = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
-        const filtered = query
-            ? sourceProjects.filter((p) => p.clientName.toLowerCase().includes(query))
-            : sourceProjects;
+        let filtered = sourceProjects;
+        if (folder !== 'Tous') {
+            filtered = filtered.filter((p) => p.status === folder);
+        }
+        if (query) {
+            filtered = filtered.filter((p) => p.clientName.toLowerCase().includes(query));
+        }
 
         const rangeStart = months[0];
         const rangeEnd = addMonths(months[2], 1);
@@ -143,6 +179,8 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
         let dated = 0;
         const mapped = filtered.map((project) => {
             const openCount = project.tasks.filter((t) => !t.completed && t.column !== 'done').length;
+            const next = getNextDeadline(project);
+            const health = getProjectHealth(project);
             const tasks: TimelineTask[] = project.tasks
                 .filter((t) => t.dueDate)
                 .map((t) => {
@@ -160,7 +198,16 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                     return ms >= rangeStartMs && ms < rangeEndMs;
                 })
                 .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-            return { project, tasks, openCount };
+            return { project, tasks, openCount, next, health };
+        });
+
+        mapped.sort((a, b) => {
+            // Active work first, then soonest deadline, then name
+            if (b.openCount !== a.openCount) return b.openCount - a.openCount;
+            const ad = a.next?.date || '9999';
+            const bd = b.next?.date || '9999';
+            if (ad !== bd) return ad.localeCompare(bd);
+            return a.project.clientName.localeCompare(b.project.clientName, 'fr');
         });
 
         const rowsOut = useDemo
@@ -168,7 +215,7 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
             : mapped;
 
         return { rows: rowsOut, hasDatedTasks: dated > 0 };
-    }, [sourceProjects, searchQuery, months, useDemo]);
+    }, [sourceProjects, searchQuery, months, useDemo, folder]);
 
     const totalDays = months.reduce((sum, m) => sum + daysInMonth(m), 0);
     const rangeStart = months[0];
@@ -211,17 +258,82 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
 
     const totalOpen = rows.reduce((n, r) => n + r.openCount, 0);
 
+    const formatDue = (iso: string) => {
+        const d = new Date(iso);
+        return d.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' }).replace('.', '');
+    };
+
     return (
         <div className="rounded-lg border border-slate-200 dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden flex flex-col md:flex-row min-h-[460px] shadow-sm dark:shadow-none">
-            {/* Left rail — Linear project list */}
-            <aside className="md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#262626] flex flex-col bg-slate-50/40 dark:bg-[#111112]">
-                <div className="px-3 py-2.5 border-b border-slate-100 dark:border-[#262626] flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">
-                        Projets
-                    </span>
-                    <span className="text-[10px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">{totalOpen}</span>
+            {/* Left rail — dossiers + clients (Linear) */}
+            <aside className="md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#262626] flex flex-col bg-slate-50/50 dark:bg-[#111318] max-h-[70vh] md:max-h-none">
+                {/* Dossiers */}
+                <div className="border-b border-slate-100 dark:border-[#262626]">
+                    <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">
+                            Dossiers
+                        </span>
+                        <span className="text-[10px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">
+                            {folderCounts.Tous}
+                        </span>
+                    </div>
+                    <div className="px-1.5 pb-2 space-y-0.5 max-h-40 overflow-y-auto md:max-h-none">
+                        <button
+                            type="button"
+                            onClick={() => { setFolder('Tous'); setSelectedId(null); }}
+                            className={`relative w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-[13px] transition-colors ${
+                                folder === 'Tous'
+                                    ? 'bg-slate-200/70 dark:bg-white/[0.06] text-slate-900 dark:text-white font-medium'
+                                    : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-100/80 dark:hover:bg-white/[0.03]'
+                            }`}
+                        >
+                            {folder === 'Tous' && (
+                                <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-[#4a72c4]" />
+                            )}
+                            {folder === 'Tous' ? <FolderOpen size={13} className="shrink-0" /> : <Folder size={13} className="shrink-0 opacity-70" />}
+                            <span className="flex-1 truncate">Tous</span>
+                            <span className="text-[11px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">{folderCounts.Tous}</span>
+                        </button>
+                        {FOLDER_ORDER.map((status) => {
+                            const active = folder === status;
+                            return (
+                                <button
+                                    key={status}
+                                    type="button"
+                                    onClick={() => { setFolder(status); setSelectedId(null); }}
+                                    className={`relative w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-[13px] transition-colors ${
+                                        active
+                                            ? 'bg-slate-200/70 dark:bg-white/[0.06] text-slate-900 dark:text-white font-medium'
+                                            : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-100/80 dark:hover:bg-white/[0.03]'
+                                    }`}
+                                >
+                                    {active && (
+                                        <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-[#4a72c4]" />
+                                    )}
+                                    <span
+                                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                                        style={{ backgroundColor: STATUS_DOT[status] }}
+                                    />
+                                    <span className="flex-1 truncate">{status}</span>
+                                    <span className="text-[11px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">
+                                        {folderCounts[status] || 0}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-                <div className="flex-1 overflow-y-auto py-1.5 max-h-44 md:max-h-none">
+
+                {/* Clients */}
+                <div className="px-3 py-2 border-b border-slate-100 dark:border-[#262626] flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">
+                        Clients
+                    </span>
+                    <span className="text-[10px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">
+                        {rows.length} · {totalOpen} ouvertes
+                    </span>
+                </div>
+                <div className="flex-1 overflow-y-auto py-1 min-h-0">
                     <button
                         type="button"
                         onClick={() => setSelectedId(null)}
@@ -231,37 +343,76 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                                 : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-100/80 dark:hover:bg-white/[0.03]'
                         }`}
                     >
-                        <span>Tous</span>
-                        <span className="text-[11px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">{totalOpen}</span>
+                        <span>Tous les clients</span>
+                        <span className="text-[11px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">{rows.length}</span>
                     </button>
-                    {rows.map(({ project, openCount }) => (
-                        <button
-                            key={project.id}
-                            type="button"
-                            onClick={() => setSelectedId(project.id === selectedId ? null : project.id)}
-                            onDoubleClick={() => !useDemo && onOpenProject(project.id)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-                                selectedId === project.id
-                                    ? 'bg-slate-200/60 dark:bg-white/[0.06] text-slate-900 dark:text-white'
-                                    : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-100/80 dark:hover:bg-white/[0.03]'
-                            }`}
-                            title="Double-clic pour ouvrir"
-                        >
-                            <span
-                                className={`w-5 h-5 rounded-[5px] bg-gradient-to-br ${project.avatarColor || 'from-[#4a72c4] to-[#2aada0]'} flex items-center justify-center text-white text-[8px] font-semibold shrink-0 overflow-hidden`}
+                    {rows.length === 0 && (
+                        <p className="px-3 py-4 text-[12px] text-slate-400 dark:text-[#8A8A8E]">
+                            Aucun client dans ce dossier.
+                        </p>
+                    )}
+                    {rows.map(({ project, openCount, next, health }) => {
+                        const active = selectedId === project.id;
+                        return (
+                            <button
+                                key={project.id}
+                                type="button"
+                                onClick={() => setSelectedId(project.id === selectedId ? null : project.id)}
+                                onDoubleClick={() => !useDemo && onOpenProject(project.id)}
+                                className={`relative w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors ${
+                                    active
+                                        ? 'bg-slate-200/60 dark:bg-white/[0.06] text-slate-900 dark:text-white'
+                                        : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-100/80 dark:hover:bg-white/[0.03]'
+                                }`}
+                                title="Clic = filtrer · Double-clic = ouvrir"
                             >
-                                {project.avatarImage ? (
-                                    <img src={project.avatarImage} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    project.avatarInitials
+                                {active && (
+                                    <span className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-[#4a72c4]" />
                                 )}
-                            </span>
-                            <span className={`flex-1 truncate text-[13px] ${selectedId === project.id ? 'font-medium' : ''}`}>
-                                {project.clientName}
-                            </span>
-                            <span className="text-[11px] tabular-nums text-slate-400 dark:text-[#8A8A8E] shrink-0">{openCount}</span>
-                        </button>
-                    ))}
+                                <span
+                                    className={`mt-0.5 w-6 h-6 rounded-[6px] bg-gradient-to-br ${project.avatarColor || 'from-[#4a72c4] to-[#2aada0]'} flex items-center justify-center text-white text-[9px] font-semibold shrink-0 overflow-hidden`}
+                                >
+                                    {project.avatarImage ? (
+                                        <img src={project.avatarImage} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        project.avatarInitials
+                                    )}
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className={`truncate text-[13px] ${active ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200'}`}>
+                                            {project.clientName}
+                                        </span>
+                                        <span
+                                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                                            style={{ backgroundColor: HEALTH_DOT[health] }}
+                                            title={health}
+                                        />
+                                    </span>
+                                    <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-[#8A8A8E]">
+                                        <span
+                                            className="w-1 h-1 rounded-full shrink-0"
+                                            style={{ backgroundColor: STATUS_DOT[project.status] || '#8A8A8E' }}
+                                        />
+                                        <span className="truncate">{project.status}</span>
+                                        {next && (
+                                            <>
+                                                <span className="opacity-40">·</span>
+                                                <span className="truncate tabular-nums">{formatDue(next.date)}</span>
+                                            </>
+                                        )}
+                                    </span>
+                                </span>
+                                <span className={`text-[11px] tabular-nums shrink-0 mt-0.5 ${
+                                    openCount > 0
+                                        ? 'text-slate-600 dark:text-slate-300 font-medium'
+                                        : 'text-slate-400 dark:text-[#8A8A8E]'
+                                }`}>
+                                    {openCount}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </aside>
 

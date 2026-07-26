@@ -501,7 +501,7 @@ export const Dashboard: React.FC = () => {
                         )}
                         {viewMode === 'roadmap' && (
                             <ClientsRoadmap
-                                projects={folderFilteredProjects}
+                                projects={projects}
                                 onOpenProject={handleOpenProject}
                                 searchQuery={searchQuery}
                             />

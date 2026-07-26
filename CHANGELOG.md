@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.10] - 2026-07-26
+### Roadmap — rail dossiers / clients
+- Rail gauche Roadmap : filtre **dossiers** + liste **clients** (santé, prochaine échéance, tâches ouvertes)
+- `ClientsFolderTree` aligné Linear (cartes/tableau)
+- Tri clients par charge / échéance
+
 ## [2.13.9] - 2026-07-26
 ### Fond nuit `#0d1329`
 - Canvas dark remplacé par bleu encre `#0d1329`

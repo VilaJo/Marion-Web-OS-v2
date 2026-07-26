@@ -20,10 +20,18 @@ const FOLDER_ORDER: ProjectStatus[] = [
     ProjectStatus.ARCHIVED,
 ];
 
+const STATUS_DOT: Record<ProjectStatus, string> = {
+    [ProjectStatus.EN_COURS]: '#2aada0',
+    [ProjectStatus.MAINTENANCE]: '#4a72c4',
+    [ProjectStatus.ASSOCIATION]: '#7C9A7E',
+    [ProjectStatus.PROSPECT]: '#b05070',
+    [ProjectStatus.ARCHIVED]: '#8A8A8E',
+};
+
 export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, selected, onSelect }) => {
     const countFor = (status: ProjectStatus | 'Tous'): number => {
         if (status === 'Tous') return projects.length;
-        return projects.filter(p => p.status === status).length;
+        return projects.filter((p) => p.status === status).length;
     };
 
     return (
@@ -36,48 +44,55 @@ export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, 
                     isSelected={selected === 'Tous'}
                     onClick={() => onSelect('Tous')}
                 />
-                {FOLDER_ORDER.map(status => (
+                {FOLDER_ORDER.map((status) => (
                     <FolderChip
                         key={status}
                         label={status}
                         count={countFor(status)}
                         isSelected={selected === status}
                         emphasized={status === ProjectStatus.EN_COURS}
+                        dot={STATUS_DOT[status]}
                         onClick={() => onSelect(status)}
                     />
                 ))}
             </nav>
 
-            {/* Desktop: vertical folder tree */}
+            {/* Desktop: vertical folder list — Linear */}
             <nav
                 aria-label="Dossiers clients"
-                className="hidden md:block w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 p-2"
+                className="hidden md:flex md:flex-col w-full rounded-lg border border-slate-200 dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden"
             >
-                <p className="px-2.5 pt-1 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                    Dossiers
-                </p>
-                <FolderNode
-                    label="Tous"
-                    count={countFor('Tous')}
-                    isSelected={selected === 'Tous'}
-                    onClick={() => onSelect('Tous')}
-                />
+                <div className="px-3 py-2.5 border-b border-slate-100 dark:border-[#262626] flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">
+                        Dossiers
+                    </p>
+                    <span className="text-[10px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">
+                        {countFor('Tous')}
+                    </span>
+                </div>
 
-                <div className="my-1.5 border-t border-slate-100 dark:border-slate-800" />
+                <div className="p-1.5 space-y-0.5">
+                    <FolderNode
+                        label="Tous"
+                        count={countFor('Tous')}
+                        isSelected={selected === 'Tous'}
+                        onClick={() => onSelect('Tous')}
+                    />
 
-                <ul className="space-y-0.5">
-                    {FOLDER_ORDER.map(status => (
-                        <li key={status}>
-                            <FolderNode
-                                label={status}
-                                count={countFor(status)}
-                                isSelected={selected === status}
-                                emphasized={status === ProjectStatus.EN_COURS}
-                                onClick={() => onSelect(status)}
-                            />
-                        </li>
+                    <div className="my-1.5 mx-1.5 border-t border-slate-100 dark:border-[#262626]" />
+
+                    {FOLDER_ORDER.map((status) => (
+                        <FolderNode
+                            key={status}
+                            label={status}
+                            count={countFor(status)}
+                            isSelected={selected === status}
+                            emphasized={status === ProjectStatus.EN_COURS}
+                            dot={STATUS_DOT[status]}
+                            onClick={() => onSelect(status)}
+                        />
                     ))}
-                </ul>
+                </div>
             </nav>
         </>
     );
@@ -88,10 +103,11 @@ interface FolderChipProps {
     count: number;
     isSelected: boolean;
     emphasized?: boolean;
+    dot?: string;
     onClick: () => void;
 }
 
-const FolderChip: React.FC<FolderChipProps> = ({ label, count, isSelected, emphasized, onClick }) => (
+const FolderChip: React.FC<FolderChipProps> = ({ label, count, isSelected, emphasized, dot, onClick }) => (
     <button
         type="button"
         onClick={onClick}
@@ -100,12 +116,15 @@ const FolderChip: React.FC<FolderChipProps> = ({ label, count, isSelected, empha
             emphasized ? 'font-semibold' : 'font-medium'
         } ${
             isSelected
-                ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100'
-                : 'bg-white dark:bg-slate-900/40 text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                ? 'bg-slate-900 dark:bg-white/[0.08] text-white border-slate-900 dark:border-[#3f3f46]'
+                : 'bg-white dark:bg-[#151516] text-slate-500 dark:text-[#8A8A8E] border-slate-200 dark:border-[#262626]'
         }`}
     >
+        {dot && (
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: dot }} />
+        )}
         {label}
-        <span className={`text-[10px] tabular-nums ${isSelected ? 'opacity-70' : 'text-slate-400'}`}>
+        <span className={`text-[10px] tabular-nums ${isSelected ? 'opacity-70' : 'text-slate-400 dark:text-[#8A8A8E]'}`}>
             {count}
         </span>
     </button>
@@ -116,10 +135,11 @@ interface FolderNodeProps {
     count: number;
     isSelected: boolean;
     emphasized?: boolean;
+    dot?: string;
     onClick: () => void;
 }
 
-const FolderNode: React.FC<FolderNodeProps> = ({ label, count, isSelected, emphasized, onClick }) => {
+const FolderNode: React.FC<FolderNodeProps> = ({ label, count, isSelected, emphasized, dot, onClick }) => {
     const Icon = isSelected ? FolderOpen : Folder;
 
     return (
@@ -127,24 +147,31 @@ const FolderNode: React.FC<FolderNodeProps> = ({ label, count, isSelected, empha
             type="button"
             onClick={onClick}
             aria-current={isSelected ? 'true' : undefined}
-            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-colors ${
+            className={`relative w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-left transition-colors ${
                 isSelected
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    ? 'bg-slate-100 dark:bg-white/[0.06] text-slate-900 dark:text-white'
+                    : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-50 dark:hover:bg-white/[0.03]'
             }`}
         >
-            <Icon
-                size={14}
-                className={isSelected ? 'text-slate-700 dark:text-slate-200 flex-shrink-0' : 'text-slate-400 flex-shrink-0'}
-            />
+            {isSelected && (
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-[#4a72c4]" />
+            )}
+            {dot ? (
+                <span className="w-1.5 h-1.5 rounded-full shrink-0 ml-0.5" style={{ backgroundColor: dot }} />
+            ) : (
+                <Icon
+                    size={14}
+                    className={isSelected ? 'text-slate-700 dark:text-slate-200 shrink-0' : 'text-slate-400 dark:text-[#8A8A8E] shrink-0'}
+                />
+            )}
             <span className={`flex-1 truncate text-[13px] ${emphasized || isSelected ? 'font-medium' : 'font-normal'}`}>
                 {label}
             </span>
             <span
-                className={`text-[10px] tabular-nums font-medium min-w-[20px] text-right ${
+                className={`text-[11px] tabular-nums min-w-[20px] text-right ${
                     isSelected
-                        ? 'text-slate-500 dark:text-slate-400'
-                        : 'text-slate-400'
+                        ? 'text-slate-500 dark:text-[#8A8A8E]'
+                        : 'text-slate-400 dark:text-[#8A8A8E]'
                 }`}
             >
                 {count}
