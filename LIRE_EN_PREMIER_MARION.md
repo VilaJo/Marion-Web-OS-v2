@@ -1,4 +1,4 @@
-# LIRE EN PREMIER — Eonora Tech OS v2.13.5
+# LIRE EN PREMIER — Eonora Tech OS v2.13.6
 
 Fiche courte pour Marion. Version détaillée : `docs/INSTRUCTIONS_MARION.md`
 
@@ -12,11 +12,11 @@ Double-clic **`STOPPER_EONORA.command`**
 
 ### Mettre à jour (important)
 1. Double-clic **`METTRE_A_JOUR.command`** dans le dossier que l’app utilise vraiment
-2. Vérifier que le script annonce **v2.13.5**
+2. Vérifier que le script annonce **v2.13.6**
 3. Relancer **Eonora Tech OS**
 4. Navigateur : **Cmd + Shift + R**
 
-Tu dois voir le bandeau WhatsNew **2.13.5**. Santé financière : tout tient sur une page.
+Tu dois voir le bandeau WhatsNew **2.13.6**. Roadmap dashboard au style Linear.
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**
@@ -39,6 +39,6 @@ Envoyer à Johan : **capture d’écran** + fichier **`.marion.log`**
 
 ---
 
-### Nouveautés v2.13.5
-- Santé financière densifiée : KPIs + flux en une bande, tableau dans le reste de l’écran
-- (v2.13.4) Yacht Bar, fiches clients Linear, Audit WP synthèse utile
+### Nouveautés v2.13.6
+- Roadmap dashboard style Linear (grille temps, barres, jalons)
+- (v2.13.5) Santé financière densifiée sur une page

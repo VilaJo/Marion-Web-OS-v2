@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.6] - 2026-07-26
+### Roadmap dashboard — style Linear
+- Vue **Roadmap** : rail projets + compteurs, grille mois/semaines, barres d’échéances, jalons losange, ligne aujourd’hui
+- Chrome sombre façon Linear (`#151516` / `#262626`), statut tâche (todo / doing / done)
+- Mode Démo enrichi pour prévisualiser sans échéances réelles
+
 ## [2.13.5] - 2026-07-25
 ### Santé financière — une seule page
 - Vue densifiée : header + KPIs + flux + DSO/TVA/conformité en **une seule bande**

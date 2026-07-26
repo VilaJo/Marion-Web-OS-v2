@@ -1,9 +1,14 @@
 /**
- * ClientsRoadmap — Linear-style 3-month horizontal timeline of dated tasks
+ * ClientsRoadmap — Linear-style project timeline (3 months)
+ *
+ * Left: client list with open-task counts.
+ * Right: month/week grid, task bars ending on due dates, diamond milestones, today line.
  */
 
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import {
+    ChevronLeft, ChevronRight, Sparkles, Circle, CheckCircle2, CircleDot,
+} from 'lucide-react';
 import { Project, ProjectStatus, WorkflowPhase } from '../types';
 
 export interface ClientsRoadmapProps {
@@ -17,14 +22,11 @@ type TimelineTask = {
     title: string;
     dueDate: string;
     completed: boolean;
-    projectId: string;
-    clientName: string;
-    avatarInitials: string;
-    avatarColor?: string;
-    avatarImage?: string;
+    column?: string;
 };
 
-const PRIORITY_COLORS = ['#b05070', '#4a72c4', '#2aada0', '#7C9A7E'];
+const BAR_COLORS = ['#4a72c4', '#2aada0', '#b05070', '#7C9A7E'];
+const DEFAULT_BAR_DAYS = 14;
 
 function startOfMonth(d: Date): Date {
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -38,8 +40,8 @@ function daysInMonth(d: Date): number {
     return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 }
 
-function monthLabel(d: Date): string {
-    return d.toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
+function monthShort(d: Date): string {
+    return d.toLocaleDateString('fr-CH', { month: 'short' }).replace('.', '').toUpperCase();
 }
 
 function buildDemoProjects(): Project[] {
@@ -49,7 +51,11 @@ function buildDemoProjects(): Project[] {
         d.setDate(d.getDate() + offsetDays);
         return d.toISOString().slice(0, 10);
     };
-    const mk = (name: string, color: string, tasks: { title: string; offset: number }[]): Project => ({
+    const mk = (
+        name: string,
+        color: string,
+        tasks: { title: string; offset: number; completed?: boolean; column?: 'todo' | 'doing' | 'done' }[],
+    ): Project => ({
         id: `demo/${name.toLowerCase().replace(/\s+/g, '-')}`,
         clientName: name,
         avatarInitials: name.slice(0, 2).toUpperCase(),
@@ -62,9 +68,9 @@ function buildDemoProjects(): Project[] {
         tasks: tasks.map((t, i) => ({
             id: `demo-task-${name}-${i}`,
             title: t.title,
-            completed: false,
+            completed: Boolean(t.completed),
             priority: 'Medium' as const,
-            column: 'todo' as const,
+            column: t.column || (t.completed ? 'done' : 'todo'),
             phase: WorkflowPhase.DESIGN,
             dueDate: iso(t.offset),
         })),
@@ -75,20 +81,36 @@ function buildDemoProjects(): Project[] {
 
     return [
         mk('Atelier Nord', 'from-[#4a72c4] to-[#2aada0]', [
-            { title: 'Wireframes homepage', offset: 3 },
-            { title: 'Revue design', offset: 18 },
-            { title: 'Livraison v1', offset: 45 },
+            { title: 'UI Refresh', offset: 8, column: 'doing' },
+            { title: 'Core screens', offset: 22 },
+            { title: 'Polish', offset: 40 },
+            { title: 'Public Beta', offset: 62 },
         ]),
         mk('Clinique Léman', 'from-[#b05070] to-[#4a72c4]', [
-            { title: 'Formulaire RDV', offset: 7 },
+            { title: 'Formulaire RDV', offset: 5, completed: true, column: 'done' },
             { title: 'SEO local', offset: 28 },
+            { title: 'Go-live', offset: 55 },
         ]),
         mk('Maison Verte', 'from-[#7C9A7E] to-[#2aada0]', [
             { title: 'Photos produits', offset: 12 },
             { title: 'Checkout Stripe', offset: 35 },
-            { title: 'Go-live', offset: 60 },
+            { title: 'Livraison v1', offset: 68 },
+        ]),
+        mk('Bureau Alpin', 'from-[#4a72c4] to-[#b05070]', [
+            { title: 'Infra stability', offset: 15, column: 'doing' },
+            { title: 'Mobile apps', offset: 48 },
         ]),
     ];
+}
+
+function StatusIcon({ task }: { task: TimelineTask }) {
+    if (task.completed || task.column === 'done') {
+        return <CheckCircle2 size={12} className="text-[#2aada0] shrink-0" />;
+    }
+    if (task.column === 'doing') {
+        return <CircleDot size={12} className="text-[#4a72c4] shrink-0" />;
+    }
+    return <Circle size={12} className="text-slate-400 dark:text-slate-500 shrink-0" />;
 }
 
 export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
@@ -98,6 +120,7 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
 }) => {
     const [anchor, setAnchor] = useState(() => startOfMonth(new Date()));
     const [useDemo, setUseDemo] = useState(false);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
 
     const months = useMemo(
         () => [anchor, addMonths(anchor, 1), addMonths(anchor, 2)],
@@ -119,6 +142,7 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
 
         let dated = 0;
         const mapped = filtered.map((project) => {
+            const openCount = project.tasks.filter((t) => !t.completed && t.column !== 'done').length;
             const tasks: TimelineTask[] = project.tasks
                 .filter((t) => t.dueDate)
                 .map((t) => {
@@ -128,35 +152,27 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                         title: t.title,
                         dueDate: t.dueDate!,
                         completed: t.completed,
-                        projectId: project.id,
-                        clientName: project.clientName,
-                        avatarInitials: project.avatarInitials,
-                        avatarColor: project.avatarColor,
-                        avatarImage: project.avatarImage,
+                        column: t.column,
                     };
                 })
                 .filter((t) => {
                     const ms = new Date(t.dueDate).getTime();
                     return ms >= rangeStartMs && ms < rangeEndMs;
-                });
-            return { project, tasks };
-        }).filter((row) => row.tasks.length > 0 || !useDemo);
+                })
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+            return { project, tasks, openCount };
+        });
 
-        // In real mode, still show clients even without dated tasks in range (empty row)
         const rowsOut = useDemo
             ? mapped.filter((r) => r.tasks.length > 0)
-            : mapped.length > 0
-                ? filtered.map((project) => ({
-                    project,
-                    tasks: mapped.find((m) => m.project.id === project.id)?.tasks ?? [],
-                }))
-                : [];
+            : mapped;
 
         return { rows: rowsOut, hasDatedTasks: dated > 0 };
     }, [sourceProjects, searchQuery, months, useDemo]);
 
     const totalDays = months.reduce((sum, m) => sum + daysInMonth(m), 0);
     const rangeStart = months[0];
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayOffsetDays = Math.floor((today.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
@@ -164,169 +180,313 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
         ? (todayOffsetDays / totalDays) * 100
         : null;
 
-    const positionForDate = (dateStr: string): number => {
+    const dayOffset = (dateStr: string): number => {
         const d = new Date(dateStr);
         d.setHours(0, 0, 0, 0);
-        const offset = Math.floor((d.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
-        return Math.min(100, Math.max(0, (offset / totalDays) * 100));
+        return Math.floor((d.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
     };
 
+    const pct = (days: number) => Math.min(100, Math.max(0, (days / totalDays) * 100));
+
+    /** Week tick marks under each month (approx every 7 days) */
+    const weekTicks = useMemo(() => {
+        const ticks: { label: string; pct: number }[] = [];
+        let offset = 0;
+        for (const m of months) {
+            const dim = daysInMonth(m);
+            for (let day = 1; day <= dim; day += 7) {
+                ticks.push({
+                    label: String(day),
+                    pct: ((offset + day - 1) / totalDays) * 100,
+                });
+            }
+            offset += dim;
+        }
+        return ticks;
+    }, [months, totalDays]);
+
+    const visibleRows = selectedId
+        ? rows.filter((r) => r.project.id === selectedId)
+        : rows;
+
+    const totalOpen = rows.reduce((n, r) => n + r.openCount, 0);
+
     return (
-        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 overflow-hidden">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-1.5">
-                    <button
-                        type="button"
-                        onClick={() => setAnchor((a) => addMonths(a, -1))}
-                        className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
-                        title="Mois précédent"
-                    >
-                        <ChevronLeft size={16} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setAnchor(startOfMonth(new Date()))}
-                        className="px-2.5 py-1 rounded-md text-[11px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                        Aujourd&apos;hui
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setAnchor((a) => addMonths(a, 1))}
-                        className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
-                        title="Mois suivant"
-                    >
-                        <ChevronRight size={16} />
-                    </button>
-                    <span className="ml-2 text-xs font-medium text-slate-500 capitalize">
-                        {monthLabel(months[0])} → {monthLabel(months[2])}
+        <div className="rounded-lg border border-slate-200 dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden flex flex-col md:flex-row min-h-[460px] shadow-sm dark:shadow-none">
+            {/* Left rail — Linear project list */}
+            <aside className="md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#262626] flex flex-col bg-slate-50/40 dark:bg-[#111112]">
+                <div className="px-3 py-2.5 border-b border-slate-100 dark:border-[#262626] flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">
+                        Projets
                     </span>
+                    <span className="text-[10px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">{totalOpen}</span>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => setUseDemo((v) => !v)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
-                        useDemo
-                            ? 'border-[#4a72c4]/40 bg-[#4a72c4]/10 text-[#4a72c4]'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-                    }`}
-                >
-                    <Sparkles size={12} />
-                    {useDemo ? 'Données réelles' : 'Démo'}
-                </button>
-            </div>
-
-            {!hasDatedTasks && !useDemo && rows.length > 0 && (
-                <div className="px-3 py-2 text-[11px] text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                    Aucune tâche datée sur ces 3 mois — ajoute des dueDate ou active la Démo.
+                <div className="flex-1 overflow-y-auto py-1.5 max-h-44 md:max-h-none">
+                    <button
+                        type="button"
+                        onClick={() => setSelectedId(null)}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-left text-[13px] transition-colors ${
+                            selectedId === null
+                                ? 'bg-slate-200/60 dark:bg-white/[0.06] text-slate-900 dark:text-white font-medium'
+                                : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-100/80 dark:hover:bg-white/[0.03]'
+                        }`}
+                    >
+                        <span>Tous</span>
+                        <span className="text-[11px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">{totalOpen}</span>
+                    </button>
+                    {rows.map(({ project, openCount }) => (
+                        <button
+                            key={project.id}
+                            type="button"
+                            onClick={() => setSelectedId(project.id === selectedId ? null : project.id)}
+                            onDoubleClick={() => !useDemo && onOpenProject(project.id)}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                                selectedId === project.id
+                                    ? 'bg-slate-200/60 dark:bg-white/[0.06] text-slate-900 dark:text-white'
+                                    : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-100/80 dark:hover:bg-white/[0.03]'
+                            }`}
+                            title="Double-clic pour ouvrir"
+                        >
+                            <span
+                                className={`w-5 h-5 rounded-[5px] bg-gradient-to-br ${project.avatarColor || 'from-[#4a72c4] to-[#2aada0]'} flex items-center justify-center text-white text-[8px] font-semibold shrink-0 overflow-hidden`}
+                            >
+                                {project.avatarImage ? (
+                                    <img src={project.avatarImage} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    project.avatarInitials
+                                )}
+                            </span>
+                            <span className={`flex-1 truncate text-[13px] ${selectedId === project.id ? 'font-medium' : ''}`}>
+                                {project.clientName}
+                            </span>
+                            <span className="text-[11px] tabular-nums text-slate-400 dark:text-[#8A8A8E] shrink-0">{openCount}</span>
+                        </button>
+                    ))}
                 </div>
-            )}
+            </aside>
 
-            {rows.length === 0 ? (
-                <div className="py-16 text-center text-sm text-slate-500">
-                    Aucun client à afficher.
-                    {!useDemo && (
+            {/* Timeline */}
+            <div className="flex-1 min-w-0 flex flex-col">
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-slate-100 dark:border-[#262626]">
+                    <div className="flex items-center gap-0.5">
                         <button
                             type="button"
-                            onClick={() => setUseDemo(true)}
-                            className="block mx-auto mt-2 text-[11px] font-medium text-[#4a72c4] hover:underline"
+                            onClick={() => setAnchor((a) => addMonths(a, -1))}
+                            className="p-1 rounded text-slate-500 dark:text-[#8A8A8E] hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                            title="Mois précédent"
                         >
-                            Charger une démo
+                            <ChevronLeft size={15} />
                         </button>
-                    )}
+                        <button
+                            type="button"
+                            onClick={() => setAnchor(startOfMonth(new Date()))}
+                            className="px-2 py-0.5 rounded text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                        >
+                            Aujourd&apos;hui
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setAnchor((a) => addMonths(a, 1))}
+                            className="p-1 rounded text-slate-500 dark:text-[#8A8A8E] hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                            title="Mois suivant"
+                        >
+                            <ChevronRight size={15} />
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setUseDemo((v) => !v)}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                            useDemo
+                                ? 'text-[#4a72c4] bg-[#4a72c4]/10'
+                                : 'text-slate-500 dark:text-[#8A8A8E] hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+                        }`}
+                    >
+                        <Sparkles size={11} />
+                        {useDemo ? 'Données réelles' : 'Démo'}
+                    </button>
                 </div>
-            ) : (
-                <div className="overflow-x-auto">
-                    <div className="min-w-[720px]">
-                        {/* Month headers */}
-                        <div className="flex border-b border-slate-100 dark:border-slate-800">
-                            <div className="w-44 shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 border-r border-slate-100 dark:border-slate-800">
-                                Client
-                            </div>
-                            <div className="flex-1 flex relative">
-                                {months.map((m) => (
-                                    <div
-                                        key={m.toISOString()}
-                                        className="flex-1 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 border-r border-slate-100 dark:border-slate-800 last:border-r-0 capitalize"
-                                        style={{ flexGrow: daysInMonth(m), flexBasis: 0 }}
-                                    >
-                                        {monthLabel(m)}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
 
-                        {/* Rows */}
-                        {rows.map(({ project, tasks }, rowIdx) => (
-                            <div
-                                key={project.id}
-                                className="flex border-b border-slate-50 dark:border-slate-800/80 last:border-b-0 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                {!hasDatedTasks && !useDemo && rows.length > 0 && (
+                    <div className="px-3 py-2 text-[11px] text-slate-400 dark:text-[#8A8A8E] border-b border-slate-100 dark:border-[#262626]">
+                        Aucune tâche datée sur ces 3 mois — ajoute des échéances ou active la Démo.
+                    </div>
+                )}
+
+                {visibleRows.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-16 text-sm text-slate-500">
+                        Aucun client à afficher.
+                        {!useDemo && (
+                            <button
+                                type="button"
+                                onClick={() => setUseDemo(true)}
+                                className="mt-2 text-[11px] font-medium text-[#4a72c4] hover:underline"
                             >
-                                <button
-                                    type="button"
-                                    onClick={() => !useDemo && onOpenProject(project.id)}
-                                    className="w-44 shrink-0 px-3 py-3 flex items-center gap-2 border-r border-slate-100 dark:border-slate-800 text-left"
-                                >
-                                    <div
-                                        className={`w-7 h-7 rounded-md bg-gradient-to-br ${project.avatarColor || 'from-[#4a72c4] to-[#2aada0]'} flex items-center justify-center text-white text-[10px] font-bold shrink-0 overflow-hidden`}
-                                    >
-                                        {project.avatarImage ? (
-                                            <img src={project.avatarImage} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            project.avatarInitials
-                                        )}
-                                    </div>
-                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">
-                                        {project.clientName}
-                                    </span>
-                                </button>
-                                <div className="flex-1 relative py-3 min-h-[48px]">
-                                    {/* Today marker */}
-                                    {todayPct !== null && (
-                                        <div
-                                            className="absolute top-0 bottom-0 w-px bg-[#b05070]/70 z-10 pointer-events-none"
-                                            style={{ left: `${todayPct}%` }}
-                                            title="Aujourd'hui"
-                                        />
-                                    )}
-                                    {/* Month grid lines */}
-                                    <div className="absolute inset-0 flex pointer-events-none">
+                                Charger une démo
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex-1 overflow-auto">
+                        <div className="min-w-[680px]">
+                            {/* Month + week header */}
+                            <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#151516]/95 backdrop-blur-sm border-b border-slate-100 dark:border-[#262626]">
+                                <div className="flex">
+                                    <div className="w-40 shrink-0" />
+                                    <div className="flex-1 flex relative h-7">
                                         {months.map((m) => (
                                             <div
-                                                key={`grid-${m.toISOString()}`}
-                                                className="border-r border-slate-50 dark:border-slate-800/60 last:border-r-0"
+                                                key={m.toISOString()}
+                                                className="flex items-end px-2 pb-0.5 text-[10px] font-semibold tracking-[0.16em] text-slate-400 dark:text-[#8A8A8E] border-r border-slate-100 dark:border-[#262626]/80 last:border-r-0"
                                                 style={{ flexGrow: daysInMonth(m), flexBasis: 0 }}
-                                            />
+                                            >
+                                                {monthShort(m)}
+                                            </div>
                                         ))}
                                     </div>
-                                    {tasks.map((task, i) => {
-                                        const left = positionForDate(task.dueDate);
-                                        const color = PRIORITY_COLORS[(rowIdx + i) % PRIORITY_COLORS.length];
-                                        return (
-                                            <div
-                                                key={task.id}
-                                                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 max-w-[140px]"
-                                                style={{ left: `${left}%` }}
-                                                title={`${task.title} · ${task.dueDate}`}
+                                </div>
+                                <div className="flex h-5">
+                                    <div className="w-40 shrink-0" />
+                                    <div className="flex-1 relative">
+                                        {weekTicks.map((t) => (
+                                            <span
+                                                key={`${t.pct}-${t.label}`}
+                                                className="absolute top-0 text-[9px] tabular-nums text-slate-400/80 dark:text-[#8A8A8E]/80 -translate-x-1/2"
+                                                style={{ left: `${t.pct}%` }}
                                             >
-                                                <div
-                                                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium truncate border bg-white dark:bg-slate-900 shadow-sm ${
-                                                        task.completed ? 'opacity-50 line-through' : ''
-                                                    }`}
-                                                    style={{ borderColor: `${color}55`, color }}
-                                                >
-                                                    {task.title}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                                {t.label}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        ))}
+
+                            {/* Rows */}
+                            {visibleRows.map(({ project, tasks }, rowIdx) => {
+                                const color = BAR_COLORS[rowIdx % BAR_COLORS.length];
+                                return (
+                                    <div
+                                        key={project.id}
+                                        className="flex border-b border-slate-50 dark:border-white/[0.04] last:border-b-0 group/row"
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => !useDemo && onOpenProject(project.id)}
+                                            className="w-40 shrink-0 px-3 py-3.5 flex items-center gap-2 text-left hover:bg-slate-50/80 dark:hover:bg-white/[0.03] border-r border-transparent group-hover/row:border-slate-100 dark:group-hover/row:border-white/[0.04]"
+                                        >
+                                            <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate">
+                                                {project.clientName}
+                                            </span>
+                                        </button>
+
+                                        <div
+                                            className="flex-1 relative"
+                                            style={{ minHeight: Math.max(64, 36 + tasks.length * 36) }}
+                                        >
+                                            {/* Vertical week grid (dashed) */}
+                                            <div className="absolute inset-0 pointer-events-none">
+                                                {weekTicks.map((t) => (
+                                                    <div
+                                                        key={`grid-${t.pct}`}
+                                                        className="absolute top-0 bottom-0 border-l border-dashed border-slate-200/70 dark:border-white/[0.055]"
+                                                        style={{ left: `${t.pct}%` }}
+                                                    />
+                                                ))}
+                                                {months.slice(1).map((m) => {
+                                                    let off = 0;
+                                                    for (const mm of months) {
+                                                        if (mm.getTime() === m.getTime()) break;
+                                                        off += daysInMonth(mm);
+                                                    }
+                                                    return (
+                                                        <div
+                                                            key={`month-${m.toISOString()}`}
+                                                            className="absolute top-0 bottom-0 border-l border-slate-200 dark:border-white/[0.1]"
+                                                            style={{ left: `${pct(off)}%` }}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Today */}
+                                            {todayPct !== null && (
+                                                <div
+                                                    className="absolute top-0 bottom-0 w-px bg-[#b05070] z-20 pointer-events-none"
+                                                    style={{ left: `${todayPct}%` }}
+                                                    title="Aujourd'hui"
+                                                >
+                                                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#b05070]" />
+                                                </div>
+                                            )}
+
+                                            {/* Task bars */}
+                                            {tasks.map((task, i) => {
+                                                const endOff = dayOffset(task.dueDate);
+                                                const startOff = Math.max(0, endOff - DEFAULT_BAR_DAYS);
+                                                const left = pct(startOff);
+                                                const width = Math.max(2.8, pct(endOff) - left);
+                                                const top = 12 + i * 36;
+                                                const done = task.completed || task.column === 'done';
+                                                const doing = task.column === 'doing';
+                                                const fillPct = done ? 100 : doing ? 78 : 42;
+
+                                                return (
+                                                    <div
+                                                        key={task.id}
+                                                        className="absolute z-10"
+                                                        style={{ left: `${left}%`, width: `${width}%`, top }}
+                                                        title={`${task.title} · ${task.dueDate}`}
+                                                    >
+                                                        <div className="flex items-center gap-1 mb-0.5 -ml-0.5 min-w-0">
+                                                            <StatusIcon task={task} />
+                                                            <span className={`text-[11px] font-medium truncate ${done ? 'text-slate-400 dark:text-[#8A8A8E] line-through' : 'text-slate-700 dark:text-slate-100'}`}>
+                                                                {task.title}
+                                                            </span>
+                                                        </div>
+                                                        <div className="relative h-[7px]">
+                                                            {/* Ghost / future track (dashed feel) */}
+                                                            <div
+                                                                className="absolute inset-0 rounded-full"
+                                                                style={{
+                                                                    backgroundImage: `repeating-linear-gradient(90deg, ${color}33 0 4px, transparent 4px 8px)`,
+                                                                    backgroundColor: 'rgba(148,163,184,0.12)',
+                                                                }}
+                                                            />
+                                                            {/* Active fill */}
+                                                            <div
+                                                                className={`absolute inset-y-0 left-0 rounded-full transition-opacity ${done ? 'opacity-55' : 'opacity-100'}`}
+                                                                style={{
+                                                                    width: `${fillPct}%`,
+                                                                    backgroundColor: color,
+                                                                }}
+                                                            />
+                                                            {/* Milestone diamond at end */}
+                                                            <div
+                                                                className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 border border-white dark:border-[#151516]"
+                                                                style={{
+                                                                    right: -2,
+                                                                    backgroundColor: color,
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {tasks.length === 0 && (
+                                                <div className="absolute inset-0 flex items-center px-3">
+                                                    <span className="text-[11px] text-slate-400 dark:text-[#8A8A8E] italic">Pas d’échéance</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
