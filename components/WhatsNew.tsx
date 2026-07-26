@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank, Ship, Moon } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.7";
+const CURRENT_VERSION = "2.13.8";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,19 +37,19 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Thème Linear noir partout
+                            Fond Charcoal Eonora
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-black dark:from-[#151516] dark:to-[#0f0f10] border border-[#262626]">
-                            <div className="w-12 h-12 rounded-md bg-[#1c1c1e] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#141618] border border-[#262626]">
+                            <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
                                 <Moon size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-white mb-1">Thème Linear noir</h3>
+                                <h3 className="font-bold text-white mb-1">Fond Charcoal Eonora</h3>
                                 <p className="text-sm text-[#8A8A8E] leading-relaxed">
-                                    Toute l’app passe en noir plat Linear (#0f0f10 / #151516). Clair et Magique restent disponibles dans Paramètres.
+                                    Arrière-plan `#141618` — charcoal chaleureux, surfaces `#151516`. Clair et Magique restent en Paramètres.
                                 </p>
                             </div>
                         </div>

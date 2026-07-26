@@ -7,13 +7,13 @@
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="Eonora Tech OS - Votre espace de travail personnel pour la gestion clients, facturation et agenda" />
-    <meta name="theme-color" content="#0f0f10" />
+    <meta name="theme-color" content="#141618" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Eonora" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Eonora Tech OS" />
-    <meta name="msapplication-TileColor" content="#0f0f10" />
+    <meta name="msapplication-TileColor" content="#141618" />
     <meta name="msapplication-tap-highlight" content="no" />
     <meta name="format-detection" content="telephone=no" />
     
@@ -52,7 +52,7 @@
           if (t === 'dark') root.classList.add('dark');
           else if (t === 'unicorn') root.classList.add('unicorn');
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', t === 'dark' ? '#0f0f10' : '#FAF7F2');
+          if (meta) meta.setAttribute('content', t === 'dark' ? '#141618' : '#FAF7F2');
         } catch (e) {
           document.documentElement.classList.add('dark');
         }
@@ -84,7 +84,7 @@
               'sage-dark': '#647D66',
               'sage-light': '#A7C1A3',
               charcoal: '#151516',
-              'charcoal-deep': '#0f0f10',
+              'charcoal-deep': '#141618',
               'charcoal-card': '#1c1c1e',
               'eo-rose': '#b05070',
               'eo-blue': '#4a72c4',
@@ -93,7 +93,7 @@
               'pastel-pink': '#FCE7F3',
               'pastel-purple': '#E9D5FF',
               'pastel-orange': '#FFEDD5',
-              'deep-space': '#0f0f10', 
+              'deep-space': '#141618', 
               'glass-white': 'rgba(255, 255, 255, 0.65)',
               'glass-dark': 'rgba(21, 21, 22, 0.85)',
               // Brand accent → sage (was orange). Ripples to bg-brand-orange / text-brand-orange etc.
@@ -101,7 +101,7 @@
               'brand-pink': 'var(--brand-secondary-color)',
               'brand-primary': 'var(--brand-color)',
               'brand-secondary': 'var(--brand-secondary-color)',
-              // Linear-aligned slate (dark surfaces → #151516 / #0f0f10)
+              // Linear-aligned slate (dark surfaces → #151516 / #141618)
               slate: {
                 50: '#f8fafc',
                 100: '#f1f5f9',
@@ -113,7 +113,7 @@
                 700: '#3f3f46',
                 800: '#1c1c1e',
                 900: '#151516',
-                950: '#0f0f10',
+                950: '#141618',
               },
               // Remap the whole "orange" scale to sage tints so legacy orange-* utilities are on-brand
               orange: {
@@ -189,7 +189,7 @@
               'eonora-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
               'marion-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
               'sunset-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
-              'space-gradient': 'linear-gradient(to bottom, #151516, #0f0f10)', 
+              'space-gradient': 'linear-gradient(to bottom, #151516, #141618)', 
               'unicorn-gradient': 'linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 50%, #F3E5F5 100%)',
             },
             animation: {
@@ -629,12 +629,12 @@
 
       /* Linear noir canvas — flat, no grid / space decor */
       .dark body {
-        background-color: #0f0f10 !important;
+        background-color: #141618 !important;
         background-image: none !important;
       }
 
       .dark #space-scene {
-        background: #0f0f10 !important;
+        background: #141618 !important;
       }
       .dark #space-scene .planet-lollipop,
       .dark #space-scene .planet-peach,
@@ -652,14 +652,14 @@
       }
 
     </style>
-  <script type="module" crossorigin src="/assets/index-mIl5mLFV.js"></script>
+  <script type="module" crossorigin src="/assets/index-BQxudqhR.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-react-CNLiLWR2.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-B-yBrCsq.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-DC__g3U1.css">
 </head>
-  <body class="bg-[#FAF7F2] text-slate-800 transition-colors duration-300 dark:bg-[#0f0f10] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+  <body class="bg-[#FAF7F2] text-slate-800 transition-colors duration-300 dark:bg-[#141618] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
     
     <!-- Linear dark canvas (no decorative space scene) -->
-    <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-[#0f0f10]">
+    <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-[#141618]">
         
         <!-- Static Star Fields -->
         <div class="star-bg stars-sm"></div>

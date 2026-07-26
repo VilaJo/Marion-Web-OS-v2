@@ -1257,20 +1257,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         className={`p-4 rounded-2xl border-2 flex flex-col gap-3 transition-all h-32 relative overflow-hidden ${
                                             currentTheme === 'dark' 
                                             ? 'border-[#4a72c4] bg-[#151516]' 
-                                            : 'border-[#262626] bg-[#0f0f10] opacity-70 hover:opacity-100 hover:border-[#3f3f46]'
+                                            : 'border-[#262626] bg-[#141618] opacity-70 hover:opacity-100 hover:border-[#3f3f46]'
                                         }`}
                                     >
-                                        <div className="absolute inset-0 bg-[#0f0f10]" />
+                                        <div className="absolute inset-0 bg-[#141618]" />
                                         <div className="absolute inset-x-6 top-10 h-px bg-[#262626]" />
                                         <div className="absolute inset-x-10 top-14 h-px bg-[#262626]/70" />
                                         <div className="flex items-center gap-3 z-10">
                                             <div className="w-8 h-8 rounded-md bg-[#1c1c1e] border border-[#262626] flex items-center justify-center text-[#8A8A8E]">
                                                 <Moon size={16} />
                                             </div>
-                                            <span className="font-bold text-white">Linear</span>
+                                            <span className="font-bold text-white">Charcoal</span>
                                         </div>
                                         <p className="text-xs text-[#8A8A8E] z-10 text-left">
-                                            Noir plat façon Linear — chrome sobre, surfaces #151516.
+                                            Charcoal Eonora #141618 — plus chaleureux que le noir plat, surfaces #151516.
                                         </p>
                                         {currentTheme === 'dark' && <div className="absolute top-2 right-2 text-[#4a72c4]"><Check size={16} /></div>}
                                     </button>
