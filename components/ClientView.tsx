@@ -1303,16 +1303,24 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
         const prevColumn = currentIndex > 0 ? kanbanOrder[currentIndex - 1] : null;
         const nextColumn = currentIndex < kanbanOrder.length - 1 ? kanbanOrder[currentIndex + 1] : null;
 
+        // Aligné Roadmap : À faire gris · En cours bleu · Terminé teal
+        const stageAccent =
+            columnId === 'todo' ? '#8B92A5'
+            : columnId === 'doing' ? '#4a72c4'
+            : '#2aada0';
+
         return (
             <DroppableColumn id={columnId}>
                 <div 
-                    className={`flex-1 rounded-md bg-slate-50/80 dark:bg-slate-900/40 p-2.5 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed border-slate-300 dark:border-slate-600' : 'border-slate-200/80 dark:border-slate-800'}`}
+                    className={`flex-1 rounded-md bg-slate-50/80 dark:bg-[#151516]/60 p-2.5 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed border-slate-300 dark:border-slate-600' : 'border-slate-200/80 dark:border-[#262626]'}`}
+                    style={{ boxShadow: `inset 3px 0 0 0 ${stageAccent}` }}
                     role="list"
                     aria-label={title}
                 >
                     <div className="flex justify-between items-center mb-2.5 px-0.5">
-                        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                            {title} <span className="px-1.5 py-0.5 rounded text-slate-400 text-[10px] tabular-nums font-medium">{columnTasks.length}</span>
+                        <h4 className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-2" style={{ color: stageAccent }}>
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: stageAccent }} />
+                            {title} <span className="px-1.5 py-0.5 rounded text-[10px] tabular-nums font-medium opacity-70">{columnTasks.length}</span>
                         </h4>
                         <button 
                             onClick={() => handleOpenTaskModal(undefined, columnId)} 

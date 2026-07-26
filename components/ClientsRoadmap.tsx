@@ -26,8 +26,24 @@ type TimelineTask = {
     column?: string;
 };
 
-const BAR_COLORS = ['#4a72c4', '#2aada0', '#b05070', '#7C9A7E'];
 const DEFAULT_BAR_DAYS = 14;
+
+/** Couleurs par étape kanban (todo / doing / done) + retard */
+const STAGE_COLOR = {
+    todo: '#8B92A5',
+    doing: '#4a72c4',
+    done: '#2aada0',
+    overdue: '#b05070',
+} as const;
+
+type StageKey = keyof typeof STAGE_COLOR;
+
+function stageOf(task: TimelineTask, overdue: boolean): StageKey {
+    if (task.completed || task.column === 'done') return 'done';
+    if (overdue) return 'overdue';
+    if (task.column === 'doing') return 'doing';
+    return 'todo';
+}
 
 const FOLDER_ORDER: ProjectStatus[] = [
     ProjectStatus.EN_COURS,
@@ -126,14 +142,14 @@ function buildDemoProjects(): Project[] {
     ];
 }
 
-function StatusIcon({ task }: { task: TimelineTask }) {
+function StatusIcon({ task, color }: { task: TimelineTask; color: string }) {
     if (task.completed || task.column === 'done') {
-        return <CheckCircle2 size={12} className="text-[#2aada0] shrink-0" />;
+        return <CheckCircle2 size={12} className="shrink-0" style={{ color }} />;
     }
     if (task.column === 'doing') {
-        return <CircleDot size={12} className="text-[#4a72c4] shrink-0" />;
+        return <CircleDot size={12} className="shrink-0" style={{ color }} />;
     }
-    return <Circle size={12} className="text-slate-400 dark:text-slate-500 shrink-0" />;
+    return <Circle size={12} className="shrink-0" style={{ color }} />;
 }
 
 export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
@@ -445,18 +461,36 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                             <ChevronRight size={15} />
                         </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setUseDemo((v) => !v)}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                            useDemo
-                                ? 'text-[#4a72c4] bg-[#4a72c4]/10'
-                                : 'text-slate-500 dark:text-[#8A8A8E] hover:bg-slate-100 dark:hover:bg-white/[0.06]'
-                        }`}
-                    >
-                        <Sparkles size={11} />
-                        {useDemo ? 'Données réelles' : 'Démo'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="hidden sm:flex items-center gap-2.5 text-[10px] text-slate-400 dark:text-[#8A8A8E]">
+                            {([
+                                ['todo', 'À faire'],
+                                ['doing', 'En cours'],
+                                ['done', 'Terminé'],
+                                ['overdue', 'Retard'],
+                            ] as const).map(([key, label]) => (
+                                <span key={key} className="inline-flex items-center gap-1">
+                                    <span
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: STAGE_COLOR[key] }}
+                                    />
+                                    {label}
+                                </span>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setUseDemo((v) => !v)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                                useDemo
+                                    ? 'text-[#4a72c4] bg-[#4a72c4]/10'
+                                    : 'text-slate-500 dark:text-[#8A8A8E] hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+                            }`}
+                        >
+                            <Sparkles size={11} />
+                            {useDemo ? 'Données réelles' : 'Démo'}
+                        </button>
+                    </div>
                 </div>
 
                 {!hasDatedTasks && !useDemo && rows.length > 0 && (
@@ -514,8 +548,7 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                             </div>
 
                             {/* Rows */}
-                            {visibleRows.map(({ project, tasks }, rowIdx) => {
-                                const color = BAR_COLORS[rowIdx % BAR_COLORS.length];
+                            {visibleRows.map(({ project, tasks }) => {
                                 return (
                                     <div
                                         key={project.id}
@@ -582,12 +615,12 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                                                 const doing = task.column === 'doing';
                                                 const overdue = !done && todayOffsetDays > endOff;
                                                 const span = Math.max(1, endOff - startOff);
+                                                const stage = stageOf(task, overdue);
+                                                const barColor = STAGE_COLOR[stage];
 
-                                                // Planned = dashed only (no fake %). Doing = calendar progress. Done = full.
+                                                // Planned = dashed only. Doing = calendar progress. Done/overdue = full.
                                                 let fillPct = 0;
-                                                if (done) {
-                                                    fillPct = 100;
-                                                } else if (overdue) {
+                                                if (done || overdue) {
                                                     fillPct = 100;
                                                 } else if (doing) {
                                                     if (todayOffsetDays <= startOff) fillPct = 10;
@@ -595,14 +628,25 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                                                     else fillPct = ((todayOffsetDays - startOff) / span) * 100;
                                                 }
 
-                                                const barColor = overdue ? '#b05070' : color;
-                                                const statusLabel = done
-                                                    ? 'Terminé'
-                                                    : overdue
-                                                        ? 'En retard'
-                                                        : doing
-                                                            ? 'En cours'
-                                                            : 'Planifié';
+                                                let statusLabel: string;
+                                                switch (stage) {
+                                                    case 'done':
+                                                        statusLabel = 'Terminé';
+                                                        break;
+                                                    case 'overdue':
+                                                        statusLabel = 'En retard';
+                                                        break;
+                                                    case 'doing':
+                                                        statusLabel = 'En cours';
+                                                        break;
+                                                    case 'todo':
+                                                        statusLabel = 'À faire';
+                                                        break;
+                                                    default: {
+                                                        const _exhaustive: never = stage;
+                                                        statusLabel = _exhaustive;
+                                                    }
+                                                }
 
                                                 return (
                                                     <div
@@ -612,24 +656,24 @@ export const ClientsRoadmap: React.FC<ClientsRoadmapProps> = ({
                                                         title={`${task.title} · échéance ${task.dueDate} · ${statusLabel}`}
                                                     >
                                                         <div className="flex items-center gap-1 mb-0.5 -ml-0.5 min-w-0">
-                                                            <StatusIcon task={task} />
+                                                            <StatusIcon task={task} color={barColor} />
                                                             <span className={`text-[11px] font-medium truncate ${done ? 'text-slate-400 dark:text-[#8A8A8E] line-through' : 'text-slate-700 dark:text-slate-100'}`}>
                                                                 {task.title}
                                                             </span>
                                                         </div>
                                                         <div className="relative h-[7px]">
-                                                            {/* Schedule track (always dashed) */}
+                                                            {/* Schedule track (dashed, stage-tinted) */}
                                                             <div
                                                                 className="absolute inset-0 rounded-full"
                                                                 style={{
-                                                                    backgroundImage: `repeating-linear-gradient(90deg, ${barColor}55 0 3px, transparent 3px 7px)`,
-                                                                    backgroundColor: 'rgba(148,163,184,0.08)',
+                                                                    backgroundImage: `repeating-linear-gradient(90deg, ${barColor}66 0 3px, transparent 3px 7px)`,
+                                                                    backgroundColor: `${barColor}14`,
                                                                 }}
                                                             />
                                                             {/* Progress fill — only done / doing / overdue */}
                                                             {fillPct > 0 && (
                                                                 <div
-                                                                    className={`absolute inset-y-0 left-0 rounded-full ${done ? 'opacity-50' : 'opacity-100'}`}
+                                                                    className={`absolute inset-y-0 left-0 rounded-full ${done ? 'opacity-55' : 'opacity-100'}`}
                                                                     style={{
                                                                         width: `${fillPct}%`,
                                                                         backgroundColor: barColor,

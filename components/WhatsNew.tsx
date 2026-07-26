@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, ArrowRight, Gift, LayoutGrid, ListTodo, CalendarDays, Award, PiggyBank, Ship, Moon, FolderOpen } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.12";
+const CURRENT_VERSION = "2.13.13";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -37,11 +37,23 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            Jauges Roadmap corrigées
+                            Couleurs par étape kanban
                         </p>
                     </div>
 
                     <div className="space-y-4">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#0d1329] border border-[#262626]">
+                            <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
+                                <LayoutGrid size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-white mb-1">Couleurs par étape</h3>
+                                <p className="text-sm text-[#8A8A8E] leading-relaxed">
+                                    À faire = gris · En cours = bleu · Terminé = teal · Retard = rose — sur Roadmap et kanban fiche client.
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="flex gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#1a1c1e] to-[#0d1329] border border-[#262626]">
                             <div className="w-12 h-12 rounded-md bg-[#151516] border border-[#262626] text-white flex items-center justify-center flex-shrink-0">
                                 <CalendarDays size={24} />

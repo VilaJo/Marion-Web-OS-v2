@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.13] - 2026-07-26
+### Couleurs par étape kanban
+- Roadmap : barre / icône teintées par statut (gris / bleu / teal / rose)
+- Légende dans la toolbar Roadmap
+- Fiche client : colonnes kanban avec accent couleur assorti
+
 ## [2.13.12] - 2026-07-26
 ### Roadmap — jauges lisibles
 - Planifié : barre pointillée uniquement (plus de faux remplissage ~42 %)
