@@ -11,7 +11,7 @@
   --eonora-sage-dark: #647D66;   /* Sage hover / pressed */
   --eonora-sage-light: #A7C1A3;  /* Sage secondaire / dégradé doux */
   --eonora-charcoal: #151516;    /* Surfaces Linear (dark) */
-  --eonora-charcoal-deep: #141618;
+  --eonora-charcoal-deep: #0d1329;
   --eonora-border: #262626;
   --eonora-muted: #8A8A8E;
   --eonora-rose: #b05070;        /* Dégradé — rose/plum */
@@ -27,11 +27,11 @@
   --pastel-purple: #F3E8FF;
 }
 
-/* Dark = Charcoal Eonora canvas (default) */
+/* Dark = fond nuit #0d1329 (default) */
 .dark {
-  --eonora-bg: #141618;
+  --eonora-bg: #0d1329;
   --eonora-charcoal: #151516;
-  --eonora-charcoal-deep: #141618;
+  --eonora-charcoal-deep: #0d1329;
   --eonora-border: #262626;
   --eonora-muted: #8A8A8E;
   color-scheme: dark;

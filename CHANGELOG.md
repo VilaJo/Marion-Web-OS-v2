@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.9] - 2026-07-26
+### Fond nuit `#0d1329`
+- Canvas dark remplacé par bleu encre `#0d1329`
+- Surfaces `#151516` / bordures `#262626` inchangées
+
 ## [2.13.8] - 2026-07-26
 ### Fond Charcoal Eonora
 - Canvas dark `#141618` (plus chaleureux que le noir plat `#0f0f10`)

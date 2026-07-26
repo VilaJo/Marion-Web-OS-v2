@@ -278,8 +278,8 @@ const App: React.FC = () => {
         } else if (theme === 'dark') {
             // Linear noir — flat canvas (no space grid / cream flash)
             document.body.style.backgroundImage = '';
-            document.body.style.backgroundColor = '#141618';
-            meta?.setAttribute('content', '#141618');
+            document.body.style.backgroundColor = '#0d1329';
+            meta?.setAttribute('content', '#0d1329');
         } else {
             document.body.style.backgroundImage = '';
             document.body.style.backgroundColor = '';

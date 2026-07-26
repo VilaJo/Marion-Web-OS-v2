@@ -267,7 +267,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
 
     return (
         <>
-        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-white/70 dark:bg-[#141618]/90 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/50 dark:border-[#262626] md:border-0">
+        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-white/70 dark:bg-[#0d1329]/90 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/50 dark:border-[#262626] md:border-0">
             {/* Logo + text (text slides behind logo on scroll) */}
             <div onClick={() => navigate('/')} className="group flex items-center cursor-pointer relative overflow-hidden">
                 <div className="relative z-10 flex-shrink-0">
