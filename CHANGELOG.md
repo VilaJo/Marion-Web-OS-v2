@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.11] - 2026-07-26
+### Fix — Roadmap après création client
+- Persistance des tâches template + `dueDate` via `/projects/save` (plus seulement le cache React)
+- ID dossier aligné avec le backend (casse) ; retour dashboard en vue Roadmap après création
+
 ## [2.13.10] - 2026-07-26
 ### Roadmap — rail dossiers / clients
 - Rail gauche Roadmap : filtre **dossiers** + liste **clients** (santé, prochaine échéance, tâches ouvertes)

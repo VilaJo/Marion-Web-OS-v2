@@ -96,6 +96,8 @@ def create_project_folder():
         return jsonify({
             "success": True,
             "path": str(project_path),
+            "id": str(project_path.relative_to(DESKTOP_PATH)),
+            "clientName": safe_name,
             "message": f"Dossier '{safe_name}' créé dans {target_folder}."
         })
     except Exception as e:

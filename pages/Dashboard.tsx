@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { Project, ProjectStatus, WorkflowPhase } from '../types';
 import { invoiceEffectiveAmount } from '../utils';
 import { useProjectStore, useUIStore, useNotificationStore } from '../stores';
-import { useProjects, useCreateClientFolder, useInitDatabase, useUpdateProjectCache } from '../services/queries';
+import { useProjects, useCreateClientFolder, useInitDatabase, useUpdateProjectCache, useSaveProject } from '../services/queries';
 import { EmptyState } from '../components/Shared';
 import { NewClientScreen, NewClientData } from '../components/NewClientScreen';
 import { ClientsFolderTree } from '../components/ClientsFolderTree';
@@ -68,6 +68,7 @@ export const Dashboard: React.FC = () => {
 
     const { data: projects = [], isFetching: isRefreshing, refetch: refetchProjects } = useProjects();
     const createClientFolder = useCreateClientFolder();
+    const saveProject = useSaveProject();
     const initDatabase = useInitDatabase();
     const updateProjectCache = useUpdateProjectCache();
 
@@ -220,14 +221,15 @@ export const Dashboard: React.FC = () => {
             return;
         }
 
-        const normalize = (s: string) => s.replace(/[^a-zA-Z0-9 \-_]/g, '').trim().toLowerCase();
-        const safeName = normalize(trimmed);
-        if (!safeName) {
+        // Match backend folder naming (api/files_bp.py) — preserve case, no lowercasing
+        const safeFolderName = trimmed.replace(/[^a-zA-Z0-9 \-_]/g, '').trim();
+        const normalizeKey = (s: string) => s.replace(/[^a-zA-Z0-9 \-_]/g, '').trim().toLowerCase();
+        if (!safeFolderName) {
             addNotification('Nom invalide', 'Le nom du client contient uniquement des caractères spéciaux.', 'error');
             return;
         }
 
-        if (projects.some(p => normalize(p.clientName) === safeName)) {
+        if (projects.some(p => normalizeKey(p.clientName) === normalizeKey(safeFolderName))) {
             addNotification('Client déjà existant', `Un client nommé "${trimmed}" existe déjà.`, 'warning');
             return;
         }
@@ -243,24 +245,29 @@ export const Dashboard: React.FC = () => {
             [ProjectStatus.ARCHIVED]: '5. Archivés',
         };
         const targetFolder = statusFolderMap[data.status] || '4. Prospects';
-        const predictedPath = `${targetFolder}/${safeName}`;
 
         createClientFolder.mutate(
             { clientName: trimmed, status: data.status },
             {
-                onSuccess: () => {
+                onSuccess: (created: { id?: string; clientName?: string }) => {
                     const cleanLinks = Object.fromEntries(
                         Object.entries(data.links).filter(([, v]) => v.trim())
                     );
 
+                    // Prefer server-returned id (correct casing) so scan/save/roadmap stay aligned
+                    const projectId = created?.id || `${targetFolder}/${created?.clientName || safeFolderName}`;
+                    const displayName = created?.clientName || safeFolderName;
+
                     const newProject: Project = {
-                        id: predictedPath,
-                        clientName: trimmed,
-                        avatarInitials: trimmed.substring(0, 2).toUpperCase(),
+                        id: projectId,
+                        clientName: displayName,
+                        avatarInitials: displayName.substring(0, 2).toUpperCase(),
                         avatarColor: data.avatarColor,
                         avatarImage: data.avatarImage,
                         status: data.status,
-                        phase: WorkflowPhase.DISCOVERY,
+                        phase: data.templateTasks?.length
+                            ? (data.templateTasks[0].phase || WorkflowPhase.DISCOVERY)
+                            : WorkflowPhase.DISCOVERY,
                         progress: 0,
                         createdAt: new Date().toISOString(),
                         profile: data.profile,
@@ -280,46 +287,79 @@ export const Dashboard: React.FC = () => {
                         links: Object.keys(cleanLinks).length > 0 ? cleanLinks : undefined,
                     };
 
-                    updateProjectCache(newProject);
-                    addNotification('Client Créé', `Dossier "${trimmed}" prêt dans ${targetFolder}.`, 'success', `/client/${encodeURIComponent(newProject.id)}`);
-                    addActivity('project_created', `Nouveau client: ${trimmed}`, newProject.id, trimmed);
-
-                    if (data.cursorPrompts && data.cursorPrompts.length > 0) {
-                        try {
-                            const STORAGE_KEY = 'cursor_prompt_library_v1';
-                            const INIT_MARKER_KEY = 'cursor_prompt_library_initialized';
-                            const raw = localStorage.getItem(STORAGE_KEY);
-                            const existing = raw ? JSON.parse(raw) : [];
-                            const existingTitles = new Set(existing.map((p: any) => (p.title || '').toLowerCase()));
-                            const toAdd = data.cursorPrompts
-                                .filter(title => !existingTitles.has(title.toLowerCase()))
-                                .map((title, i) => ({
-                                    id: `tpl-${data.templateId}-${Date.now()}-${i}`,
-                                    title,
-                                    content: title,
-                                    category: 'cursor',
-                                    tags: [data.templateId || 'template', trimmed],
-                                    rating: 0,
-                                    createdAt: new Date().toISOString(),
-                                    fromTemplate: data.templateId,
-                                }));
-                            if (toAdd.length > 0) {
-                                const merged = [...toAdd, ...existing];
-                                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-                                localStorage.setItem(INIT_MARKER_KEY, 'true');
+                    // Persist tasks + dueDates to disk — cache-only was wiped by scan invalidate
+                    saveProject.mutate(
+                        { project: newProject },
+                        {
+                            onSuccess: () => {
+                                updateProjectCache(newProject);
                                 addNotification(
-                                    'Prompts suggérés',
-                                    `${toAdd.length} prompt(s) Cursor ajouté(s) à ta bibliothèque pour ce projet.`,
-                                    'info',
-                                    '/prompts',
+                                    'Client Créé',
+                                    data.templateTasks?.length
+                                        ? `« ${displayName} » prêt — ${data.templateTasks.length} tâches sur la Roadmap.`
+                                        : `Dossier « ${displayName} » prêt dans ${targetFolder}.`,
+                                    'success',
+                                    `/client/${encodeURIComponent(newProject.id)}`,
                                 );
-                            }
-                        } catch { /* ignore localStorage errors */ }
-                    }
+                                addActivity('project_created', `Nouveau client: ${displayName}`, newProject.id, displayName);
 
-                    setShowImporter(false);
-                    navigate(`/client/${encodeURIComponent(newProject.id)}`);
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                                if (data.cursorPrompts && data.cursorPrompts.length > 0) {
+                                    try {
+                                        const STORAGE_KEY = 'cursor_prompt_library_v1';
+                                        const INIT_MARKER_KEY = 'cursor_prompt_library_initialized';
+                                        const raw = localStorage.getItem(STORAGE_KEY);
+                                        const existing = raw ? JSON.parse(raw) : [];
+                                        const existingTitles = new Set(existing.map((p: any) => (p.title || '').toLowerCase()));
+                                        const toAdd = data.cursorPrompts
+                                            .filter(title => !existingTitles.has(title.toLowerCase()))
+                                            .map((title, i) => ({
+                                                id: `tpl-${data.templateId}-${Date.now()}-${i}`,
+                                                title,
+                                                content: title,
+                                                category: 'cursor',
+                                                tags: [data.templateId || 'template', displayName],
+                                                rating: 0,
+                                                createdAt: new Date().toISOString(),
+                                                fromTemplate: data.templateId,
+                                            }));
+                                        if (toAdd.length > 0) {
+                                            const merged = [...toAdd, ...existing];
+                                            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                                            localStorage.setItem(INIT_MARKER_KEY, 'true');
+                                            addNotification(
+                                                'Prompts suggérés',
+                                                `${toAdd.length} prompt(s) Cursor ajouté(s) à ta bibliothèque pour ce projet.`,
+                                                'info',
+                                                '/prompts',
+                                            );
+                                        }
+                                    } catch { /* ignore localStorage errors */ }
+                                }
+
+                                setShowImporter(false);
+                                try {
+                                    localStorage.setItem(VIEW_MODE_KEY, 'roadmap');
+                                } catch { /* ignore */ }
+                                setViewMode('roadmap');
+                                navigate('/');
+                                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                            },
+                            onError: () => {
+                                updateProjectCache(newProject);
+                                addNotification(
+                                    'Client créé (partiel)',
+                                    'Dossier OK, mais les tâches n’ont pas pu être enregistrées. Réessaie depuis la fiche client.',
+                                    'warning',
+                                    `/client/${encodeURIComponent(newProject.id)}`,
+                                );
+                                setShowImporter(false);
+                                navigate(`/client/${encodeURIComponent(newProject.id)}`);
+                            },
+                            onSettled: () => {
+                                setIsCreatingClient(false);
+                            },
+                        },
+                    );
                 },
                 onError: (error: any) => {
                     if (error.status === 409 || (error.data?.error && String(error.data.error).includes('already exists'))) {
@@ -327,8 +367,6 @@ export const Dashboard: React.FC = () => {
                     } else {
                         addNotification('Erreur Création', error.message || `Impossible de créer le dossier pour ${trimmed}.`, 'error');
                     }
-                },
-                onSettled: () => {
                     setIsCreatingClient(false);
                 },
             }

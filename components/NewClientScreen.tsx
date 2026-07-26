@@ -265,7 +265,12 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
             profile: { email, phone, website, address, driveLink, serverAccess, customFields },
             links,
             templateId: selectedTemplate?.id,
-            templateTasks: editableTasks.length > 0 ? editableTasks : selectedTemplate?.tasks,
+            // Always include staggered dueDates (raw template.tasks has none)
+            templateTasks: editableTasks.length > 0
+                ? editableTasks
+                : selectedTemplate
+                    ? withStaggeredDueDates(selectedTemplate.tasks)
+                    : undefined,
             cursorPrompts: selectedTemplate?.cursorPrompts,
         });
         resetForm();

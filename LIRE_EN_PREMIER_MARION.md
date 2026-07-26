@@ -1,4 +1,4 @@
-# LIRE EN PREMIER — Eonora Tech OS v2.13.10
+# LIRE EN PREMIER — Eonora Tech OS v2.13.11
 
 Fiche courte pour Marion. Version détaillée : `docs/INSTRUCTIONS_MARION.md`
 
@@ -12,11 +12,11 @@ Double-clic **`STOPPER_EONORA.command`**
 
 ### Mettre à jour (important)
 1. Double-clic **`METTRE_A_JOUR.command`** dans le dossier que l’app utilise vraiment
-2. Vérifier que le script annonce **v2.13.10**
+2. Vérifier que le script annonce **v2.13.11**
 3. Relancer **Eonora Tech OS**
 4. Navigateur : **Cmd + Shift + R**
 
-Tu dois voir le bandeau WhatsNew **2.13.10**. Roadmap dossiers clients.
+Tu dois voir le bandeau WhatsNew **2.13.11**. Fix Roadmap création client.
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**
@@ -39,6 +39,6 @@ Envoyer à Johan : **capture d’écran** + fichier **`.marion.log`**
 
 ---
 
-### Nouveautés v2.13.10
-- Roadmap : dossiers + clients enrichis à gauche
-- (v2.13.9) Fond nuit `#0d1329`
+### Nouveautés v2.13.11
+- Fix : tâches template visibles sur la Roadmap après création client
+- (v2.13.10) Rail dossiers/clients Roadmap
