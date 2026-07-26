@@ -7,6 +7,30 @@
 import { Project, ProjectStatus } from '../types';
 import { invoiceEffectiveAmount } from '../utils';
 
+/** Couleurs dossier = rail sidebar Dashboard / Roadmap */
+export const FOLDER_STATUS_COLOR: Record<ProjectStatus, string> = {
+    [ProjectStatus.EN_COURS]: '#2aada0',
+    [ProjectStatus.MAINTENANCE]: '#4a72c4',
+    [ProjectStatus.ASSOCIATION]: '#7C9A7E',
+    [ProjectStatus.PROSPECT]: '#b05070',
+    [ProjectStatus.ARCHIVED]: '#8A8A8E',
+};
+
+/** Dégradé avatar aligné sur le dossier (fiches / tableau) */
+export const FOLDER_STATUS_AVATAR: Record<ProjectStatus, string> = {
+    [ProjectStatus.EN_COURS]: 'from-[#2aada0] to-[#1e8f85]',
+    [ProjectStatus.MAINTENANCE]: 'from-[#4a72c4] to-[#3a5ba8]',
+    [ProjectStatus.ASSOCIATION]: 'from-[#7C9A7E] to-[#647D66]',
+    [ProjectStatus.PROSPECT]: 'from-[#b05070] to-[#8f3f5a]',
+    [ProjectStatus.ARCHIVED]: 'from-[#8A8A8E] to-[#6b6b70]',
+};
+
+export const getFolderStatusColor = (status: ProjectStatus): string =>
+    FOLDER_STATUS_COLOR[status] ?? FOLDER_STATUS_COLOR[ProjectStatus.PROSPECT];
+
+export const getFolderStatusAvatar = (status: ProjectStatus): string =>
+    FOLDER_STATUS_AVATAR[status] ?? FOLDER_STATUS_AVATAR[ProjectStatus.PROSPECT];
+
 export const getProjectHealth = (project: Project): 'good' | 'warning' | 'danger' => {
     const overdueInvoices = project.invoices.filter(i =>
         i.status === 'Pending' && i.dueDate && new Date(i.dueDate) < new Date()
@@ -82,81 +106,82 @@ interface StatusColorSet {
 }
 
 export const getStatusColors = (status: ProjectStatus): StatusColorSet => {
+    const hex = getFolderStatusColor(status);
     switch (status) {
         case ProjectStatus.EN_COURS:
             return {
-                primary: '#10B981', secondary: '#34D399',
-                cardBg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
-                border: 'border-emerald-100/50 dark:border-emerald-900/30',
-                glow1: 'bg-emerald-500/60', glow2: 'bg-teal-400/50',
-                bar: 'bg-gradient-to-b from-emerald-400 to-teal-500',
-                barHover: 'from-emerald-400 to-teal-500',
-                avatarBg: 'from-emerald-50 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30',
-                avatarText: 'text-emerald-600 dark:text-emerald-400',
-                progress: 'from-emerald-400 via-teal-400 to-cyan-400',
-                hoverBorder: 'hover:border-emerald-400/60 dark:hover:border-emerald-500/60',
-                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(16,185,129,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(16,185,129,0.3)]',
-                hoverText: 'group-hover:text-emerald-600 dark:group-hover:text-emerald-300',
+                primary: hex, secondary: '#1e8f85',
+                cardBg: 'bg-[#2aada0]/5 dark:bg-[#2aada0]/10',
+                border: 'border-[#2aada0]/25 dark:border-[#2aada0]/30',
+                glow1: 'bg-[#2aada0]/40', glow2: 'bg-[#4a72c4]/30',
+                bar: 'bg-[#2aada0]',
+                barHover: 'from-[#2aada0] to-[#1e8f85]',
+                avatarBg: FOLDER_STATUS_AVATAR[status],
+                avatarText: 'text-white',
+                progress: 'from-[#2aada0] to-[#1e8f85]',
+                hoverBorder: 'hover:border-[#2aada0]/50',
+                hoverShadow: 'hover:shadow-none',
+                hoverText: 'group-hover:text-[#2aada0]',
             };
         case ProjectStatus.MAINTENANCE:
             return {
-                primary: '#F97316', secondary: '#FB923C',
-                cardBg: 'bg-orange-50/50 dark:bg-orange-950/20',
-                border: 'border-orange-100/50 dark:border-orange-900/30',
-                glow1: 'bg-orange-500/60', glow2: 'bg-amber-400/50',
-                bar: 'bg-gradient-to-b from-orange-400 to-amber-500',
-                barHover: 'from-orange-400 to-amber-500',
-                avatarBg: 'from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30',
-                avatarText: 'text-orange-600 dark:text-orange-400',
-                progress: 'from-orange-400 via-amber-400 to-yellow-400',
-                hoverBorder: 'hover:border-orange-400/60 dark:hover:border-orange-500/60',
-                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(249,115,22,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(249,115,22,0.3)]',
-                hoverText: 'group-hover:text-orange-600 dark:group-hover:text-orange-300',
+                primary: hex, secondary: '#3a5ba8',
+                cardBg: 'bg-[#4a72c4]/5 dark:bg-[#4a72c4]/10',
+                border: 'border-[#4a72c4]/25 dark:border-[#4a72c4]/30',
+                glow1: 'bg-[#4a72c4]/40', glow2: 'bg-[#2aada0]/25',
+                bar: 'bg-[#4a72c4]',
+                barHover: 'from-[#4a72c4] to-[#3a5ba8]',
+                avatarBg: FOLDER_STATUS_AVATAR[status],
+                avatarText: 'text-white',
+                progress: 'from-[#4a72c4] to-[#3a5ba8]',
+                hoverBorder: 'hover:border-[#4a72c4]/50',
+                hoverShadow: 'hover:shadow-none',
+                hoverText: 'group-hover:text-[#4a72c4]',
             };
         case ProjectStatus.ASSOCIATION:
             return {
-                primary: '#8B5CF6', secondary: '#A78BFA',
-                cardBg: 'bg-violet-50/50 dark:bg-violet-950/20',
-                border: 'border-violet-100/50 dark:border-violet-900/30',
-                glow1: 'bg-violet-500/60', glow2: 'bg-purple-400/50',
-                bar: 'bg-gradient-to-b from-violet-400 to-purple-500',
-                barHover: 'from-violet-400 to-purple-500',
-                avatarBg: 'from-violet-50 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30',
-                avatarText: 'text-violet-600 dark:text-violet-400',
-                progress: 'from-violet-400 via-purple-400 to-fuchsia-400',
-                hoverBorder: 'hover:border-violet-400/60 dark:hover:border-violet-500/60',
-                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(139,92,246,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(139,92,246,0.3)]',
-                hoverText: 'group-hover:text-violet-600 dark:group-hover:text-violet-300',
+                primary: hex, secondary: '#647D66',
+                cardBg: 'bg-[#7C9A7E]/5 dark:bg-[#7C9A7E]/10',
+                border: 'border-[#7C9A7E]/25 dark:border-[#7C9A7E]/30',
+                glow1: 'bg-[#7C9A7E]/40', glow2: 'bg-[#2aada0]/25',
+                bar: 'bg-[#7C9A7E]',
+                barHover: 'from-[#7C9A7E] to-[#647D66]',
+                avatarBg: FOLDER_STATUS_AVATAR[status],
+                avatarText: 'text-white',
+                progress: 'from-[#7C9A7E] to-[#647D66]',
+                hoverBorder: 'hover:border-[#7C9A7E]/50',
+                hoverShadow: 'hover:shadow-none',
+                hoverText: 'group-hover:text-[#7C9A7E]',
             };
         case ProjectStatus.PROSPECT:
             return {
-                primary: '#3B82F6', secondary: '#60A5FA',
-                cardBg: 'bg-blue-50/50 dark:bg-blue-950/20',
-                border: 'border-blue-100/50 dark:border-blue-900/30',
-                glow1: 'bg-blue-500/60', glow2: 'bg-indigo-400/50',
-                bar: 'bg-gradient-to-b from-blue-400 to-indigo-500',
-                barHover: 'from-blue-400 to-indigo-500',
-                avatarBg: 'from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30',
-                avatarText: 'text-blue-600 dark:text-blue-400',
-                progress: 'from-blue-400 via-indigo-400 to-sky-400',
-                hoverBorder: 'hover:border-blue-400/60 dark:hover:border-blue-500/60',
-                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(59,130,246,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(59,130,246,0.3)]',
-                hoverText: 'group-hover:text-blue-600 dark:group-hover:text-blue-300',
+                primary: hex, secondary: '#8f3f5a',
+                cardBg: 'bg-[#b05070]/5 dark:bg-[#b05070]/10',
+                border: 'border-[#b05070]/25 dark:border-[#b05070]/30',
+                glow1: 'bg-[#b05070]/40', glow2: 'bg-[#4a72c4]/25',
+                bar: 'bg-[#b05070]',
+                barHover: 'from-[#b05070] to-[#8f3f5a]',
+                avatarBg: FOLDER_STATUS_AVATAR[status],
+                avatarText: 'text-white',
+                progress: 'from-[#b05070] to-[#8f3f5a]',
+                hoverBorder: 'hover:border-[#b05070]/50',
+                hoverShadow: 'hover:shadow-none',
+                hoverText: 'group-hover:text-[#b05070]',
             };
         case ProjectStatus.ARCHIVED:
             return {
-                primary: '#64748B', secondary: '#94A3B8',
-                cardBg: 'bg-slate-50/50 dark:bg-slate-900/20',
-                border: 'border-slate-100/50 dark:border-slate-800/30',
-                glow1: 'bg-slate-400/60', glow2: 'bg-gray-400/50',
-                bar: 'bg-gradient-to-b from-slate-400 to-gray-500',
-                barHover: 'from-slate-400 to-gray-500',
-                avatarBg: 'from-slate-100 to-gray-200 dark:from-slate-800 dark:to-gray-800',
-                avatarText: 'text-slate-500 dark:text-slate-400',
-                progress: 'from-slate-400 via-gray-400 to-slate-500',
-                hoverBorder: 'hover:border-slate-400/60 dark:hover:border-slate-500/60',
-                hoverShadow: 'hover:shadow-[0_20px_50px_-12px_rgba(100,116,139,0.5)] dark:hover:shadow-[0_20px_50px_-12px_rgba(100,116,139,0.3)]',
-                hoverText: 'group-hover:text-slate-600 dark:group-hover:text-slate-300',
+                primary: hex, secondary: '#6b6b70',
+                cardBg: 'bg-[#8A8A8E]/5 dark:bg-[#8A8A8E]/10',
+                border: 'border-[#8A8A8E]/25 dark:border-[#8A8A8E]/30',
+                glow1: 'bg-[#8A8A8E]/40', glow2: 'bg-slate-400/30',
+                bar: 'bg-[#8A8A8E]',
+                barHover: 'from-[#8A8A8E] to-[#6b6b70]',
+                avatarBg: FOLDER_STATUS_AVATAR[status],
+                avatarText: 'text-white',
+                progress: 'from-[#8A8A8E] to-[#6b6b70]',
+                hoverBorder: 'hover:border-[#8A8A8E]/50',
+                hoverShadow: 'hover:shadow-none',
+                hoverText: 'group-hover:text-[#8A8A8E]',
             };
         default: {
             const _exhaustive: never = status;

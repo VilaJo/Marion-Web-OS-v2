@@ -82,9 +82,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({ project, on
                 <div className="flex-shrink-0 ml-2">
                     <Badge color={
                         project.status === ProjectStatus.EN_COURS ? 'green' :
-                        project.status === ProjectStatus.MAINTENANCE ? 'orange' :
-                        project.status === ProjectStatus.ASSOCIATION ? 'purple' :
-                        project.status === ProjectStatus.PROSPECT ? 'blue' : 'gray'
+                        project.status === ProjectStatus.MAINTENANCE ? 'blue' :
+                        project.status === ProjectStatus.ASSOCIATION ? 'green' :
+                        project.status === ProjectStatus.PROSPECT ? 'pink' : 'gray'
                     }>
                         {project.status === ProjectStatus.ARCHIVED && project.archiveCategory
                             ? `Archivé - ${project.archiveCategory}`

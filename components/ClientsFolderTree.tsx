@@ -5,6 +5,7 @@
 import React from 'react';
 import { Folder, FolderOpen } from 'lucide-react';
 import { Project, ProjectStatus } from '../types';
+import { FOLDER_STATUS_COLOR } from '../utils/projectHealth';
 
 export interface ClientsFolderTreeProps {
     projects: Project[];
@@ -20,13 +21,7 @@ const FOLDER_ORDER: ProjectStatus[] = [
     ProjectStatus.ARCHIVED,
 ];
 
-const STATUS_DOT: Record<ProjectStatus, string> = {
-    [ProjectStatus.EN_COURS]: '#2aada0',
-    [ProjectStatus.MAINTENANCE]: '#4a72c4',
-    [ProjectStatus.ASSOCIATION]: '#7C9A7E',
-    [ProjectStatus.PROSPECT]: '#b05070',
-    [ProjectStatus.ARCHIVED]: '#8A8A8E',
-};
+const STATUS_DOT = FOLDER_STATUS_COLOR;
 
 export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, selected, onSelect }) => {
     const countFor = (status: ProjectStatus | 'Tous'): number => {

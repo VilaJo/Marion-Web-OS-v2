@@ -1,5 +1,6 @@
 /**
  * ClientsGrid — Linear card view of clients on the Dashboard
+ * Accent / avatar / progress follow dossier (folder status) colors.
  */
 
 import React, { useMemo } from 'react';
@@ -8,6 +9,7 @@ import { Project } from '../types';
 import { formatCurrencyWithSymbol } from '../utils';
 import {
     getProjectHealth, getPendingAmount, getNextDeadline, formatRelativeDate,
+    getFolderStatusColor, getFolderStatusAvatar,
 } from '../utils/projectHealth';
 
 export interface ClientsGridProps {
@@ -16,10 +18,10 @@ export interface ClientsGridProps {
     searchQuery: string;
 }
 
-const HEALTH_META: Record<'good' | 'warning' | 'danger', { dot: string; bar: string; label: string }> = {
-    good: { dot: 'bg-[#2aada0]', bar: 'bg-[#2aada0]', label: 'Sain' },
-    warning: { dot: 'bg-amber-400', bar: 'bg-amber-400', label: 'À surveiller' },
-    danger: { dot: 'bg-[#b05070]', bar: 'bg-[#b05070]', label: 'Urgent' },
+const HEALTH_META: Record<'good' | 'warning' | 'danger', { dot: string; label: string }> = {
+    good: { dot: 'bg-[#2aada0]', label: 'Sain' },
+    warning: { dot: 'bg-amber-400', label: 'À surveiller' },
+    danger: { dot: 'bg-[#b05070]', label: 'Urgent' },
 };
 
 function openTasksCount(project: Project): number {
@@ -50,6 +52,8 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
             pending: getPendingAmount(project),
             openTasks: openTasksCount(project),
             nextAction: nextActionLabel(project),
+            folderColor: getFolderStatusColor(project.status),
+            avatarGrad: getFolderStatusAvatar(project.status),
         }));
     }, [projects, searchQuery]);
 
@@ -66,21 +70,26 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {rows.map(({ project, health, nextDeadline, pending, openTasks, nextAction }) => {
+            {rows.map(({ project, health, nextDeadline, pending, openTasks, nextAction, folderColor, avatarGrad }) => {
                 const meta = HEALTH_META[health];
                 return (
                     <button
                         key={project.id}
                         type="button"
                         onClick={() => onOpenProject(project.id)}
-                        className="group relative text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors overflow-hidden flex flex-col"
+                        className="group relative text-left rounded-xl border bg-white dark:bg-slate-900/50 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors overflow-hidden flex flex-col"
+                        style={{ borderColor: `${folderColor}40` }}
                     >
-                        <span className={`absolute left-0 top-0 bottom-0 w-0.5 ${meta.bar}`} />
+                        {/* Accent dossier (pas santé) */}
+                        <span
+                            className="absolute left-0 top-0 bottom-0 w-1"
+                            style={{ backgroundColor: folderColor }}
+                        />
 
                         <div className="p-4 flex flex-col gap-3.5 flex-1">
                             <div className="flex items-start gap-3">
                                 <div
-                                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${project.avatarColor || 'from-[#4a72c4] to-[#2aada0]'} flex items-center justify-center text-white text-xs font-semibold shrink-0 overflow-hidden`}
+                                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${avatarGrad} flex items-center justify-center text-white text-xs font-semibold shrink-0 overflow-hidden`}
                                 >
                                     {project.avatarImage ? (
                                         <img src={project.avatarImage} alt="" className="w-full h-full object-cover" />
@@ -99,12 +108,19 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                                         />
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 truncate">
-                                            {project.phase}
+                                        <span
+                                            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                                            style={{ backgroundColor: folderColor }}
+                                        />
+                                        <span
+                                            className="text-[11px] font-medium truncate"
+                                            style={{ color: folderColor }}
+                                        >
+                                            {project.status}
                                         </span>
                                         <span className="text-slate-300 dark:text-slate-600">·</span>
-                                        <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                            {project.status}
+                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 truncate">
+                                            {project.phase}
                                         </span>
                                     </div>
                                 </div>
@@ -113,8 +129,11 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                             <div className="flex items-center gap-2.5">
                                 <div className="flex-1 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                                     <div
-                                        className="h-full rounded-full bg-[#2aada0] transition-all"
-                                        style={{ width: `${Math.min(100, Math.max(0, project.progress))}%` }}
+                                        className="h-full rounded-full transition-all"
+                                        style={{
+                                            width: `${Math.min(100, Math.max(0, project.progress))}%`,
+                                            backgroundColor: folderColor,
+                                        }}
                                     />
                                 </div>
                                 <span className="text-[11px] tabular-nums font-medium text-slate-500 dark:text-slate-400 w-8 text-right">
@@ -146,7 +165,10 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                                     <span className="text-[10px] font-medium text-slate-400">{meta.label}</span>
                                 </span>
                                 {pending > 0 && (
-                                    <span className="font-semibold text-[#2aada0] tabular-nums shrink-0">
+                                    <span
+                                        className="font-semibold tabular-nums shrink-0"
+                                        style={{ color: folderColor }}
+                                    >
                                         {formatCurrencyWithSymbol(pending, 'CHF', 0)}
                                     </span>
                                 )}
@@ -158,5 +180,3 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
         </div>
     );
 };
-
-export default ClientsGrid;

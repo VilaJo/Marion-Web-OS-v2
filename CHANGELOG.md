@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.15] - 2026-07-26
+### Dashboard — couleurs fiches = dossiers
+- Cartes / tableau clients : accent, avatar et progression alignés sur le dossier (En cours teal, Maintenance bleu, Association sage, Prospect rose, Archivé gris)
+- Palette centralisée (`FOLDER_STATUS_COLOR`) partagée avec le rail dossiers
+
 ## [2.13.14] - 2026-07-26
 ### Thème Professionnel — style Stability
 - Canvas studio `#1e1e1e`, surfaces `#252525` / `#2c2c2c`, bordures hairline

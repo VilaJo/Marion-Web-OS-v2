@@ -6,7 +6,10 @@ import React, { useMemo, useState } from 'react';
 import { ArrowUp, ArrowDown, ArrowUpDown, FolderOpen } from 'lucide-react';
 import { Project, ProjectStatus } from '../types';
 import { formatCurrencyWithSymbol } from '../utils';
-import { getProjectHealth, getNextDeadline, getPendingAmount } from '../utils/projectHealth';
+import {
+    getProjectHealth, getNextDeadline, getPendingAmount,
+    getFolderStatusColor, getFolderStatusAvatar,
+} from '../utils/projectHealth';
 
 export interface ClientsTableProps {
     projects: Project[];
@@ -56,7 +59,7 @@ function daysUntil(dateString: string): number {
 }
 
 function initialsColorClasses(project: Project): string {
-    return project.avatarColor || 'from-[#4a72c4] to-[#2aada0]';
+    return getFolderStatusAvatar(project.status);
 }
 
 export const ClientsTable: React.FC<ClientsTableProps> = ({ projects, onOpenProject, searchQuery }) => {
@@ -145,19 +148,14 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({ projects, onOpenProj
                         {rows.map(({ project, health, nextDeadline }) => {
                             const pendingAmount = getPendingAmount(project);
                             const withinWeek = !!nextDeadline && daysUntil(nextDeadline.date) <= 7;
-                            const isDangerRow = health === 'danger' || withinWeek;
-                            const isWarningRow = !isDangerRow && health === 'warning';
-                            const borderClass = isDangerRow
-                                ? 'border-l-[2px] border-l-[#b05070]'
-                                : isWarningRow
-                                ? 'border-l-[2px] border-l-amber-400'
-                                : 'border-l-[2px] border-l-transparent';
+                            const folderColor = getFolderStatusColor(project.status);
 
                             return (
                                 <tr
                                     key={project.id}
                                     onClick={() => onOpenProject(project.id)}
-                                    className={`cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${borderClass}`}
+                                    className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 border-l-[3px]"
+                                    style={{ borderLeftColor: folderColor }}
                                 >
                                     <td className="px-4 py-2.5">
                                         <div className="flex items-center gap-2.5 min-w-0">
@@ -170,7 +168,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({ projects, onOpenProj
                                             </div>
                                             <div className="min-w-0">
                                                 <span className="block font-medium text-slate-900 dark:text-slate-100 truncate">{project.clientName}</span>
-                                                <span className="block text-[10px] text-slate-400 truncate md:hidden">{project.status}</span>
+                                                <span className="block text-[10px] truncate md:hidden" style={{ color: folderColor }}>{project.status}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -179,8 +177,8 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({ projects, onOpenProj
                                         <div className="flex items-center gap-2 min-w-[100px]">
                                             <div className="flex-1 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full bg-[#2aada0]"
-                                                    style={{ width: `${project.progress}%` }}
+                                                    className="h-full rounded-full"
+                                                    style={{ width: `${project.progress}%`, backgroundColor: folderColor }}
                                                 />
                                             </div>
                                             <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400 w-8 text-right">{project.progress}%</span>
