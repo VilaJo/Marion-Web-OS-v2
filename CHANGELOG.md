@@ -6,8 +6,8 @@ Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront docu
 ### Roadmap — jauges lisibles
 - Planifié : barre pointillée uniquement (plus de faux remplissage ~42 %)
 - En cours : rempli jusqu’à la ligne « aujourd’hui » ; terminé = plein ; retard = rose
-- Nouvelle création template : 1� aujourd’hui » ; terminé = plein ; retard = rose
-- Nouvelle création template : 1ʳᵉ tâche en **doing**
+- Nouvelle création template : 1ère tâche en **doing**
+
 
 ## [2.13.11] - 2026-07-26
 ### Fix — Roadmap après création client
