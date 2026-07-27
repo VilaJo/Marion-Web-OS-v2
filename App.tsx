@@ -272,10 +272,10 @@ const App: React.FC = () => {
         document.documentElement.style.setProperty('--brand-color', brand);
         const meta = document.querySelector('meta[name="theme-color"]');
         if (theme === 'light') {
-            // Professionnel = sombre profond
+            // Professionnel = clair Eonora
             document.body.style.backgroundImage = '';
-            document.body.style.backgroundColor = '#0f0f10';
-            meta?.setAttribute('content', '#0f0f10');
+            document.body.style.backgroundColor = '#F4F5F7';
+            meta?.setAttribute('content', '#F4F5F7');
         } else if (theme === 'dark') {
             // Nuit — fond encre (inchangé)
             document.body.style.backgroundImage = '';

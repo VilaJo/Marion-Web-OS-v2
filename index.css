@@ -5,33 +5,42 @@
 @tailwind utilities;
 
 :root {
-  /* === Professionnel = sombre profond (Stability darkroom) === */
-  --eonora-bg: #0f0f10;
-  --eonora-surface: #161616;
-  --eonora-surface-raised: #1c1c1c;
+  /* === Professionnel = thème clair Eonora (propre, lisible) === */
+  --eonora-bg: #F4F5F7;
+  --eonora-surface: #FFFFFF;
+  --eonora-surface-raised: #FFFFFF;
   --eonora-sage: #7C9A7E;
   --eonora-sage-dark: #647D66;
   --eonora-sage-light: #A7C1A3;
-  --eonora-charcoal: #161616;
-  --eonora-charcoal-deep: #0f0f10;
-  --eonora-border: #242424;
-  --eonora-border-strong: #333333;
-  --eonora-muted: #a0a0a4;
-  --eonora-text: #e8e8e8;
-  --eonora-text-strong: #ffffff;
+  --eonora-charcoal: #1C1D21;
+  --eonora-charcoal-deep: #0F1014;
+  --eonora-border: #E4E6EA;
+  --eonora-border-strong: #D0D3D9;
+  --eonora-muted: #6B6F78;
+  --eonora-text: #2A2C33;
+  --eonora-text-strong: #0F1014;
   --eonora-rose: #b05070;
   --eonora-blue: #4a72c4;
   --eonora-teal: #2aada0;
   --eonora-gradient: linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%);
 
-  /* Accent CTA unique — rose Eonora */
   --brand-color: #b05070;
   --brand-secondary-color: #c96a8b;
   --brand-orange: #b05070;
   --pastel-pink: #FFF0F5;
   --pastel-purple: #F3E8FF;
 
-  color-scheme: dark;
+  /* Kanban / surfaces métier */
+  --kanban-column: #ECEEF2;
+  --kanban-card: #FFFFFF;
+  --kanban-card-hover: #F8F9FB;
+  --kanban-text: #1C1D21;
+  --kanban-muted: #6B6F78;
+  --kanban-border: #E4E6EA;
+  --kanban-divider: #ECEEF2;
+  --kanban-empty: #9AA0AA;
+
+  color-scheme: light;
 }
 
 /* Nuit = Linear encre (inchangé) */
@@ -49,6 +58,16 @@
   --brand-color: #7C9A7E;
   --brand-secondary-color: #A7C1A3;
   --brand-orange: #7C9A7E;
+
+  --kanban-column: #0c0c0c;
+  --kanban-card: #1a1a1a;
+  --kanban-card-hover: #1f1f1f;
+  --kanban-text: #f5f5f5;
+  --kanban-muted: #a8a8ae;
+  --kanban-border: #2a2a2a;
+  --kanban-divider: #2a2a2a;
+  --kanban-empty: #8a8a8e;
+
   color-scheme: dark;
 }
 
@@ -60,10 +79,9 @@ body {
   color: var(--eonora-text);
 }
 
-/* Titres Stability-style : Archivo light/regular, pas marketing-bold */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Archivo', system-ui, sans-serif;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.015em;
   color: var(--eonora-text-strong);
 }
@@ -85,133 +103,26 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
 }
 
-/* ---------- Professionnel sombre profond (pas .dark, pas unicorn) ---------- */
-html:not(.dark):not(.unicorn) body {
-  background-color: #0f0f10 !important;
-  color: #e8e8e8;
-}
-
+/* Professionnel clair — glass léger, pas de remap sombre */
 html:not(.dark):not(.unicorn) .glass {
-  background: rgba(22, 22, 22, 0.96) !important;
-  border: 1px solid #242424 !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(228, 230, 234, 0.95) !important;
+  box-shadow: 0 1px 2px rgba(15, 16, 20, 0.04) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
 }
 
-/* Surfaces blanches → noir profond */
-html:not(.dark):not(.unicorn) .bg-white {
-  background-color: #161616 !important;
-}
-html:not(.dark):not(.unicorn) .bg-white\/80 {
-  background-color: rgba(22, 22, 22, 0.92) !important;
-}
-html:not(.dark):not(.unicorn) .bg-white\/70 {
-  background-color: rgba(22, 22, 22, 0.88) !important;
-}
-html:not(.dark):not(.unicorn) .bg-white\/60 {
-  background-color: rgba(22, 22, 22, 0.8) !important;
-}
-html:not(.dark):not(.unicorn) .bg-white\/50 {
-  background-color: rgba(22, 22, 22, 0.7) !important;
-}
-html:not(.dark):not(.unicorn) .bg-white\/40 {
-  background-color: rgba(22, 22, 22, 0.55) !important;
-}
-html:not(.dark):not(.unicorn) .bg-white\/35 {
-  background-color: rgba(22, 22, 22, 0.45) !important;
-}
-
-html:not(.dark):not(.unicorn) .bg-slate-50,
-html:not(.dark):not(.unicorn) .bg-slate-50\/80 {
-  background-color: #161616 !important;
-}
-html:not(.dark):not(.unicorn) .bg-slate-100,
-html:not(.dark):not(.unicorn) .bg-slate-100\/80 {
-  background-color: #1c1c1c !important;
-}
-html:not(.dark):not(.unicorn) .bg-slate-200\/70,
-html:not(.dark):not(.unicorn) .bg-slate-200\/60 {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-html:not(.dark):not(.unicorn) .hover\:bg-slate-50:hover,
-html:not(.dark):not(.unicorn) .hover\:bg-slate-50\/80:hover,
-html:not(.dark):not(.unicorn) .hover\:bg-slate-100:hover,
-html:not(.dark):not(.unicorn) .hover\:bg-slate-100\/80:hover {
-  background-color: rgba(255, 255, 255, 0.04) !important;
-}
-
-html:not(.dark):not(.unicorn) .text-slate-800,
-html:not(.dark):not(.unicorn) .text-slate-900,
-html:not(.dark):not(.unicorn) .text-slate-700 {
-  color: #f0f0f0 !important;
-}
-html:not(.dark):not(.unicorn) .text-slate-600,
-html:not(.dark):not(.unicorn) .text-slate-500 {
-  color: #c8c8c8 !important;
-}
-html:not(.dark):not(.unicorn) .text-slate-400 {
-  color: #a8a8ae !important;
-}
-html:not(.dark):not(.unicorn) .text-slate-300 {
-  color: #9a9aa0 !important;
-}
-
-html:not(.dark):not(.unicorn) .border-slate-200,
-html:not(.dark):not(.unicorn) .border-slate-200\/50,
-html:not(.dark):not(.unicorn) .border-slate-200\/60,
-html:not(.dark):not(.unicorn) .border-slate-200\/80,
-html:not(.dark):not(.unicorn) .border-slate-100,
-html:not(.dark):not(.unicorn) .border-slate-100\/80 {
-  border-color: #242424 !important;
-}
-html:not(.dark):not(.unicorn) .border-white\/60,
-html:not(.dark):not(.unicorn) .border-white\/70,
-html:not(.dark):not(.unicorn) .border-white\/80,
-html:not(.dark):not(.unicorn) .border-white\/50 {
-  border-color: #242424 !important;
-}
-
-/* Moins d’ombre décorative, profondeur par ton */
-html:not(.dark):not(.unicorn) .shadow-sm,
-html:not(.dark):not(.unicorn) .shadow,
-html:not(.dark):not(.unicorn) .shadow-md,
-html:not(.dark):not(.unicorn) .shadow-lg,
-html:not(.dark):not(.unicorn) .shadow-xl,
-html:not(.dark):not(.unicorn) .shadow-2xl {
-  --tw-shadow: 0 0 #0000 !important;
-  --tw-shadow-colored: 0 0 #0000 !important;
-  box-shadow: none !important;
-}
-
-/* CTA pills Stability-ish (coins généreux, pas full 999 partout sur chrome) */
-html:not(.dark):not(.unicorn) button.rounded-full,
-html:not(.dark):not(.unicorn) a.rounded-full {
-  border-radius: 9999px;
-}
-
-html:not(.dark):not(.unicorn) .rounded-2xl {
-  border-radius: 1rem;
-}
-
-/* Fond cream legacy → studio */
 html:not(.dark):not(.unicorn) .bg-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .from-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .via-\[\#FAF7F2\],
-html:not(.dark):not(.unicorn) .to-\[\#FAF7F2\] {
-  --tw-gradient-from: #0f0f10 !important;
-  --tw-gradient-via: #0f0f10 !important;
-  --tw-gradient-to: #0f0f10 !important;
-  background-color: #0f0f10 !important;
+html:not(.dark):not(.unicorn) .to-\[\#FAF7F2\],
+html:not(.dark):not(.unicorn) .bg-\[\#0f0f10\],
+html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
+  background-color: #F4F5F7 !important;
 }
 
-/* Masquer les blobs décoratifs pastel du thème clair SaaS */
-html:not(.dark):not(.unicorn) .bg-brand-pink\/20,
-html:not(.dark):not(.unicorn) .bg-purple-300\/20 {
-  display: none !important;
-}
-
-/* Custom Scrollbar */
+/* Scrollbar clair par défaut */
+/* Scrollbar — clair par défaut, sombre en Nuit */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -222,12 +133,12 @@ html:not(.dark):not(.unicorn) .bg-purple-300\/20 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3a3a3a;
+  background: #c8ccd4;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a4a4a;
+  background: #a8adb8;
 }
 
 .dark ::-webkit-scrollbar-thumb {

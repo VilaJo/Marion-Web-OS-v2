@@ -117,9 +117,9 @@ const KANBAN_STAGE_ACCENT: Record<'todo' | 'doing' | 'done', string> = {
 };
 
 const PRIORITY_CHIP: Record<'High' | 'Medium' | 'Low', { bg: string; text: string; border: string; label: string }> = {
-    High: { bg: 'rgba(176,80,112,0.18)', text: '#e8a0b4', border: 'rgba(176,80,112,0.35)', label: 'Haute' },
-    Medium: { bg: 'rgba(180,140,40,0.16)', text: '#dcc07a', border: 'rgba(180,140,40,0.32)', label: 'Moyenne' },
-    Low: { bg: 'rgba(74,114,196,0.16)', text: '#9eb4dc', border: 'rgba(74,114,196,0.32)', label: 'Basse' },
+    High: { bg: 'rgba(176,80,112,0.14)', text: '#b05070', border: 'rgba(176,80,112,0.38)', label: 'Haute' },
+    Medium: { bg: 'rgba(184,134,11,0.14)', text: '#9a7010', border: 'rgba(184,134,11,0.38)', label: 'Moyenne' },
+    Low: { bg: 'rgba(74,114,196,0.14)', text: '#4a72c4', border: 'rgba(74,114,196,0.38)', label: 'Basse' },
 };
 
 // --- SORTABLE TASK CARD COMPONENT ---
@@ -155,9 +155,9 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
         transition,
         opacity: isSortableDragging ? 0.2 : 1,
         zIndex: isSortableDragging ? 0 : undefined,
-        // Carte sombre + accent colonne
-        backgroundColor: '#1a1a1a',
-        borderColor: '#2a2a2a',
+        // Surfaces via tokens clair / Nuit
+        backgroundColor: 'var(--kanban-card)',
+        borderColor: 'var(--kanban-border)',
         boxShadow: `inset 3px 0 0 0 ${overdue ? '#b05070' : stageAccent}`,
     };
 
@@ -167,7 +167,7 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
             style={style}
             {...attributes}
             {...listeners}
-            className="p-3 rounded-lg border group hover:bg-[#1f1f1f] transition-colors relative cursor-grab active:cursor-grabbing touch-none"
+            className="p-3 rounded-lg border group hover:brightness-[0.98] dark:hover:brightness-110 transition-[filter,background-color] relative cursor-grab active:cursor-grabbing touch-none"
             onClick={() => !isSortableDragging && onEdit(task)}
             tabIndex={0}
             role="listitem"
@@ -182,7 +182,8 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                 </span>
                 <button
                     onClick={(e) => onDelete(task.id, e)}
-                    className="text-[#8a8a8e] hover:text-[#f87171] opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/5"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/5 dark:hover:bg-white/5"
+                    style={{ color: 'var(--kanban-muted)' }}
                     aria-label="Supprimer la tâche"
                 >
                     <Trash2 size={12} />
@@ -191,18 +192,17 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
 
             <div
                 className={`text-[13px] font-medium mb-1 leading-snug ${task.completed ? 'line-through' : ''}`}
-                style={{ color: task.completed ? '#8a8a8e' : '#f5f5f5' }}
+                style={{ color: task.completed ? 'var(--kanban-muted)' : 'var(--kanban-text)' }}
             >
                 {task.title}
             </div>
 
             {task.description && (
-                <div className="text-[11px] line-clamp-2 mb-2 leading-relaxed" style={{ color: '#c4c4c4' }}>
+                <div className="text-[11px] line-clamp-2 mb-2 leading-relaxed" style={{ color: 'var(--kanban-muted)' }}>
                     {task.description}
                 </div>
             )}
 
-            {/* Flèches uniquement au survol — moins de bruit */}
             <div className="flex justify-between items-center mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     type="button"
@@ -211,9 +211,14 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                         e.stopPropagation();
                         if (prevColumn) onMove(task.id, prevColumn);
                     }}
-                    className={`p-1 rounded-md border border-[#2a2a2a] text-[#a8a8ae] hover:text-white hover:border-[#3a3a3a] bg-[#121212] transition-colors ${
+                    className={`p-1 rounded-md border transition-colors ${
                         !prevColumn ? 'opacity-20 cursor-default pointer-events-none' : ''
                     }`}
+                    style={{
+                        borderColor: 'var(--kanban-border)',
+                        color: 'var(--kanban-muted)',
+                        backgroundColor: 'var(--kanban-column)',
+                    }}
                     aria-label={prevColumn ? `Déplacer la tâche vers ${getColumnLabel(prevColumn)}` : undefined}
                 >
                     <ChevronLeft size={12} />
@@ -225,25 +230,30 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                         e.stopPropagation();
                         if (nextColumn) onMove(task.id, nextColumn);
                     }}
-                    className={`p-1 rounded-md border border-[#2a2a2a] text-[#a8a8ae] hover:text-white hover:border-[#3a3a3a] bg-[#121212] transition-colors ${
+                    className={`p-1 rounded-md border transition-colors ${
                         !nextColumn ? 'opacity-20 cursor-default pointer-events-none' : ''
                     }`}
+                    style={{
+                        borderColor: 'var(--kanban-border)',
+                        color: 'var(--kanban-muted)',
+                        backgroundColor: 'var(--kanban-column)',
+                    }}
                     aria-label={nextColumn ? `Déplacer la tâche vers ${getColumnLabel(nextColumn)}` : undefined}
                 >
                     <ChevronRight size={12} />
                 </button>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-[#2a2a2a]">
+            <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid var(--kanban-divider)' }}>
                 {task.dueDate ? (
                     <div
                         className="text-[11px] font-medium flex items-center gap-1"
-                        style={{ color: overdue ? '#f3c0cf' : '#c4c4c4' }}
+                        style={{ color: overdue ? '#b05070' : 'var(--kanban-muted)' }}
                     >
                         <Clock size={11} /> {new Date(task.dueDate).toLocaleDateString('fr-CH')}
                     </div>
                 ) : (
-                    <div className="text-[11px]" style={{ color: '#9a9a9e' }}>Sans date</div>
+                    <div className="text-[11px]" style={{ color: 'var(--kanban-empty)' }}>Sans date</div>
                 )}
                 <span
                     className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -1331,8 +1341,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 <div 
                     className={`flex-1 rounded-lg p-2.5 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed' : ''}`}
                     style={{
-                        backgroundColor: '#0c0c0c',
-                        borderColor: draggedTaskId ? `${stageAccent}66` : '#1e1e1e',
+                        backgroundColor: 'var(--kanban-column)',
+                        borderColor: draggedTaskId ? `${stageAccent}66` : 'var(--kanban-border)',
                         boxShadow: `inset 3px 0 0 0 ${stageAccent}`,
                     }}
                     role="list"
@@ -1351,7 +1361,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                         </h4>
                         <button 
                             onClick={() => handleOpenTaskModal(undefined, columnId)} 
-                            className="p-1 rounded hover:bg-white/5 text-[#8a8a8e] hover:text-[#e5e7e6] transition-colors"
+                            className="p-1 rounded transition-colors"
+                            style={{ color: 'var(--kanban-muted)' }}
                             aria-label={`Ajouter une tâche dans la colonne ${getColumnLabel(columnId)}`}
                         >
                             <Plus size={14} />
@@ -1378,7 +1389,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                             {columnTasks.length === 0 && (
                                 <div
                                     className="flex flex-col items-center justify-center h-28 border border-dashed rounded-lg text-xs"
-                                    style={{ borderColor: '#3a3a3a', color: '#8a8a8e' }}
+                                    style={{ borderColor: 'var(--kanban-border)', color: 'var(--kanban-empty)' }}
                                 >
                                     <Archive size={18} className="mb-2 opacity-50" />
                                     <span>Vide</span>
@@ -1476,7 +1487,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 const currentIdx = WORKFLOW_STEPS.indexOf(project.phase);
                 const progressPct = Math.round(((currentIdx + 1) / WORKFLOW_STEPS.length) * 100);
                 return (
-                <div className="mb-6 rounded-xl border border-[#242424] bg-[#161616] dark:border-slate-800 dark:bg-slate-900">
+                <div className="mb-6 rounded-xl border border-[#E4E6EA] bg-white dark:border-slate-800 dark:bg-slate-900">
                     <div className="px-4 py-4 md:px-5 md:py-5">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -1580,7 +1591,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 {/* Left Col: Info - collapsed on mobile */}
                 <div className="space-y-4 md:space-y-6">
                     {/* Visual Identity */}
-                    <Card className="bg-[#161616] border-[#242424] dark:from-slate-800 dark:to-slate-900 relative overflow-hidden group">
+                    <Card className="bg-white border-[#E4E6EA] dark:bg-slate-900 dark:border-white/5 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
                              {project.avatarImage && (
                                 <button onClick={handleLogoEditorOpen} className="p-2 bg-white/50 rounded-full hover:bg-white transition-colors" title="Ajuster le logo">
@@ -1972,9 +1983,9 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                                     <div
                                                         className="p-3 rounded-lg w-[220px] pointer-events-none rotate-[1deg]"
                                                         style={{
-                                                            backgroundColor: '#1a1a1a',
-                                                            border: `1px solid #2a2a2a`,
-                                                            boxShadow: `inset 3px 0 0 0 ${overlayAccent}, 0 16px 40px rgba(0,0,0,0.55)`,
+                                                            backgroundColor: 'var(--kanban-card)',
+                                                            border: '1px solid var(--kanban-border)',
+                                                            boxShadow: `inset 3px 0 0 0 ${overlayAccent}, 0 16px 40px rgba(0,0,0,0.18)`,
                                                         }}
                                                     >
                                                         <span
@@ -1987,11 +1998,11 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                                         >
                                                             {overlayChip.label}
                                                         </span>
-                                                        <div className="text-[13px] font-medium leading-snug" style={{ color: '#f5f5f5' }}>
+                                                        <div className="text-[13px] font-medium leading-snug" style={{ color: 'var(--kanban-text)' }}>
                                                             {t.title}
                                                         </div>
                                                         {t.description && (
-                                                            <div className="text-[11px] line-clamp-1 mt-1" style={{ color: '#c4c4c4' }}>
+                                                            <div className="text-[11px] line-clamp-1 mt-1" style={{ color: 'var(--kanban-muted)' }}>
                                                                 {t.description}
                                                             </div>
                                                         )}

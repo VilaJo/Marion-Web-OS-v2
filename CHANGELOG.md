@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.18] - 2026-07-27
+### Thème Professionnel — vrai clair
+- Canvas `#F4F5F7`, cartes blanches, texte charcoal, accent rose
+- Kanban adapté clair/nuit via tokens CSS (`--kanban-*`)
+- Thème **Nuit** inchangé
+
 ## [2.13.17] - 2026-07-27
 ### Professionnel — sombre profond
 - Canvas `#0f0f10`, surfaces `#161616` / `#1a1a1a` (plus de gris moyen)

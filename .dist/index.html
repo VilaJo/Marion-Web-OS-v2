@@ -59,7 +59,7 @@
           if (meta) {
             meta.setAttribute(
               'content',
-              t === 'dark' ? '#0d1329' : t === 'unicorn' ? '#fdf4ff' : '#0f0f10'
+              t === 'dark' ? '#0d1329' : t === 'unicorn' ? '#fdf4ff' : '#F4F5F7'
             );
           }
         } catch (e) {
@@ -85,16 +85,16 @@
               calligraphy: ['"Archivo"', 'system-ui', 'sans-serif'],
             },
             colors: {
-              // === Eonora Tech brand — Professionnel = studio Stability ===
-              cream: '#0f0f10',
-              'cream-dark': '#0a0a0b',
-              'eonora-bg': '#0f0f10',
+              // === Eonora Tech brand — Professionnel = clair ===
+              cream: '#F4F5F7',
+              'cream-dark': '#ECEEF2',
+              'eonora-bg': '#F4F5F7',
               sage: '#7C9A7E',
               'sage-dark': '#647D66',
               'sage-light': '#A7C1A3',
-              charcoal: '#161616',
-              'charcoal-deep': '#0f0f10',
-              'charcoal-card': '#1c1c1c',
+              charcoal: '#1C1D21',
+              'charcoal-deep': '#0F1014',
+              'charcoal-card': '#FFFFFF',
               'eo-rose': '#b05070',
               'eo-blue': '#4a72c4',
               'eo-teal': '#2aada0',
@@ -249,11 +249,11 @@
         background: #94a3b8; 
       }
       .glass {
-        background: rgba(22, 22, 22, 0.96);
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
-        border: 1px solid #242424;
-        box-shadow: none;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(228, 230, 234, 0.95);
+        box-shadow: 0 1px 2px rgba(15, 16, 20, 0.04);
       }
       .dark .glass {
         background: rgba(21, 21, 22, 0.92); /* Linear surface */
@@ -661,11 +661,11 @@
       }
 
     </style>
-  <script type="module" crossorigin src="/assets/index-DgTlcjoR.js"></script>
+  <script type="module" crossorigin src="/assets/index-Dp_mKQFs.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-react-l9wVyTgH.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-QAswjiHh.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-Bh1Wd0XR.css">
 </head>
-  <body class="bg-[#0f0f10] text-[#e8e8e8] transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+  <body class="bg-[#F4F5F7] text-[#2A2C33] transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
     
     <!-- Linear dark canvas (no decorative space scene) -->
     <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-[#0d1329]">

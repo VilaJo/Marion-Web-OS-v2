@@ -1234,21 +1234,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         onClick={() => onThemeChange('light')}
                                         className={`p-4 rounded-2xl border-2 flex flex-col gap-3 transition-all h-32 relative overflow-hidden group ${
                                             currentTheme === 'light' 
-                                            ? 'border-[#b05070] bg-[#161616]' 
-                                            : 'border-[#242424] bg-[#0f0f10] hover:border-[#333]'
+                                            ? 'border-[#b05070] bg-[#F4F5F7]' 
+                                            : 'border-[#E4E6EA] bg-white hover:border-[#D0D3D9]'
                                         }`}
                                     >
-                                        <div className="absolute inset-0 bg-[#0f0f10]" />
-                                        <div className="absolute inset-x-8 top-12 h-px bg-[#242424]" />
+                                        <div className="absolute inset-0 bg-gradient-to-br from-white to-[#F4F5F7]" />
                                         <div className="absolute bottom-4 right-4 w-10 h-3 rounded-full bg-[#b05070]/90" />
                                         <div className="flex items-center gap-3 z-10">
-                                            <div className="w-8 h-8 rounded-full bg-[#161616] border border-[#333] flex items-center justify-center text-[#b05070]">
+                                            <div className="w-8 h-8 rounded-full bg-white border border-[#E4E6EA] flex items-center justify-center text-[#b05070]">
                                                 <Sun size={16} />
                                             </div>
-                                            <span className="font-medium text-white tracking-tight">Professionnel</span>
+                                            <span className="font-medium text-[#0F1014] tracking-tight">Professionnel</span>
                                         </div>
-                                        <p className="text-xs text-[#a8a8ae] z-10 text-left">
-                                            Sombre profond `#0f0f10` — typo Archivo, accent rose.
+                                        <p className="text-xs text-[#6B6F78] z-10 text-left">
+                                            Clair Eonora — fond `#F4F5F7`, cartes blanches, accent rose.
                                         </p>
                                         {currentTheme === 'light' && <div className="absolute top-2 right-2 text-[#b05070]"><Check size={16} /></div>}
                                     </button>
