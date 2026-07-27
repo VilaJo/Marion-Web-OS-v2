@@ -27,7 +27,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ visible, loadingText
                     {/* 4. Logo */}
                     <div className="w-24 h-24 relative z-10 animate-pulse">
                         <img 
-                            src="/logo-eonora.png" 
+                            src="/logo-eonora-mark.png" 
                             alt="Loading..." 
                             className="w-full h-full object-contain drop-shadow-xl" 
                         />

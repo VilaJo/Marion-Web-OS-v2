@@ -473,7 +473,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                             {/* Logo */}
                             <div className="w-14 h-14 relative z-10 animate-pulse">
                                 <img 
-                                    src="/logo-eonora.png" 
+                                    src="/logo-eonora-mark.png" 
                                     alt="Eonora" 
                                     className="w-full h-full object-contain drop-shadow-lg" 
                                 />

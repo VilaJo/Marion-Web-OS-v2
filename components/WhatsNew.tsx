@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Gift, Image } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.19";
+const CURRENT_VERSION = "2.13.20";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -31,7 +31,7 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-[#6B6F78] dark:text-slate-400">
-                            Logo sans cadre carré
+                            Logo sans coins (cache vidé)
                         </p>
                     </div>
 
@@ -41,9 +41,9 @@ export const WhatsNew: React.FC = () => {
                                 <Image size={24} />
                             </div>
                             <div>
-                                <h3 className="font-medium text-[#0F1014] dark:text-white mb-1">Logo flottant</h3>
+                                <h3 className="font-medium text-[#0F1014] dark:text-white mb-1">Marque circulaire</h3>
                                 <p className="text-sm text-[#6B6F78] dark:text-slate-400 leading-relaxed">
-                                    Le logo en haut à gauche n’affiche plus le fond blanc carré — uniquement la marque circulaire, sur fond clair ou nuit.
+                                    Nouveau fichier logo (fond vraiment transparent) + service worker rafraîchi pour ne plus garder l’ancien carré aux coins noirs.
                                 </p>
                             </div>
                         </div>

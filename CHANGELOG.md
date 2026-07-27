@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.20] - 2026-07-27
+### Logo — coins disparus (cache)
+- Nouveau fichier `logo-eonora-mark.png` (marque seule, alpha propre)
+- Service worker `v12` : invalide l’ancien cache qui gardait le carré aux coins noirs
+- Header / login / splash pointent vers la marque
+
 ## [2.13.19] - 2026-07-27
 ### Logo sans effet carré
 - `logo-eonora.png` / `logo-marion.png` : fond transparent (plus de plaque blanche carrée dans le header)

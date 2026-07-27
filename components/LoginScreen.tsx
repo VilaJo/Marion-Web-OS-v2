@@ -208,7 +208,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     const MarionLogo = ({ size = 80 }: { size?: number }) => (
         <div className="relative">
             <img 
-                src="/logo-eonora.png" 
+                src="/logo-eonora-mark.png" 
                 alt="Eonora Tech OS" 
                 className="drop-shadow-xl"
                 style={{ width: size, height: size, objectFit: 'contain' }}

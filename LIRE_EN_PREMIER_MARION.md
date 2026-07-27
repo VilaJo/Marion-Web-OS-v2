@@ -1,4 +1,4 @@
-# LIRE EN PREMIER — Eonora Tech OS v2.13.19
+# LIRE EN PREMIER — Eonora Tech OS v2.13.20
 
 Fiche courte pour Marion. Version détaillée : `docs/INSTRUCTIONS_MARION.md`
 
@@ -12,11 +12,11 @@ Double-clic **`STOPPER_EONORA.command`**
 
 ### Mettre à jour (important)
 1. Double-clic **`METTRE_A_JOUR.command`** dans le dossier que l’app utilise vraiment
-2. Vérifier que le script annonce **v2.13.19**
+2. Vérifier que le script annonce **v2.13.20**
 3. Relancer **Eonora Tech OS**
-4. Navigateur : **Cmd + Shift + R**
+4. Navigateur : **Cmd + Shift + R** (obligatoire — purge le vieux logo en cache)
 
-Tu dois voir le bandeau WhatsNew **2.13.19**. Logo sans cadre carré en haut à gauche.
+Tu dois voir le bandeau WhatsNew **2.13.20**. Logo circulaire sans coins noirs.
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**

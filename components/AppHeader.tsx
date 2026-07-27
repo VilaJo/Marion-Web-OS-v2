@@ -272,7 +272,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             <div onClick={() => navigate('/')} className="group flex items-center cursor-pointer relative overflow-hidden">
                 <div className="relative z-10 flex-shrink-0">
                     <img 
-                        src="/logo-eonora.png" 
+                        src="/logo-eonora-mark.png" 
                         alt="Home" 
                         className={`w-9 h-9 sm:w-10 sm:h-10 md:w-14 md:h-14 object-contain transition-all duration-300 group-hover:scale-110 ${
                             theme === 'dark' 

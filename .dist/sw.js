@@ -1,11 +1,11 @@
 // Eonora Tech OS - Service Worker
-const CACHE_NAME = 'eonora-tech-os-v11';
+const CACHE_NAME = 'eonora-tech-os-v12';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_RESOURCES = [
   '/offline.html',
   '/manifest.json',
-  '/logo-eonora.png',
+  '/logo-eonora-mark.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
 ];
@@ -41,14 +41,15 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== location.origin) return;
   if (url.pathname.startsWith('/api/')) return;
 
-  // Hashed build output: network only — never serve stale JS/CSS from cache
-  if (isHashedAsset(url.pathname) || request.mode === 'navigate') {
+  // Hashed build output + logos: network only — never serve stale JS/CSS/logo from cache
+  const isLogoAsset = /logo-eonora|logo-marion/.test(url.pathname);
+  if (isHashedAsset(url.pathname) || isLogoAsset || request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() => {
         if (request.mode === 'navigate') {
           return caches.match(OFFLINE_URL);
         }
-        return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+        return caches.match(request).then((cached) => cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' }));
       })
     );
     return;
