@@ -1,4 +1,4 @@
-# LIRE EN PREMIER — Eonora Tech OS v2.13.18
+# LIRE EN PREMIER — Eonora Tech OS v2.13.19
 
 Fiche courte pour Marion. Version détaillée : `docs/INSTRUCTIONS_MARION.md`
 
@@ -12,11 +12,11 @@ Double-clic **`STOPPER_EONORA.command`**
 
 ### Mettre à jour (important)
 1. Double-clic **`METTRE_A_JOUR.command`** dans le dossier que l’app utilise vraiment
-2. Vérifier que le script annonce **v2.13.18**
+2. Vérifier que le script annonce **v2.13.19**
 3. Relancer **Eonora Tech OS**
 4. Navigateur : **Cmd + Shift + R**
 
-Tu dois voir le bandeau WhatsNew **2.13.18**. Thème Professionnel clair.
+Tu dois voir le bandeau WhatsNew **2.13.19**. Logo sans cadre carré en haut à gauche.
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**
@@ -38,7 +38,3 @@ Envoyer à Johan : **capture d’écran** + fichier **`.marion.log`**
 (ne jamais envoyer `.env` / `MARION-env.local`)
 
 ---
-
-### Nouveautés v2.13.18
-- Thème Professionnel = vrai clair (`#F4F5F7`)
-- Thème Nuit inchangé

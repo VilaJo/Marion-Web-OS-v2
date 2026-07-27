@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, Sun, Moon } from 'lucide-react';
+import { Gift, Image } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.18";
+const CURRENT_VERSION = "2.13.19";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -31,31 +31,19 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-[#6B6F78] dark:text-slate-400">
-                            Thème Professionnel vraiment clair
+                            Logo sans cadre carré
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex gap-4 p-4 rounded-2xl bg-[#F4F5F7] dark:bg-slate-800 border border-[#E4E6EA] dark:border-slate-700">
                             <div className="w-12 h-12 rounded-md bg-white dark:bg-slate-900 border border-[#E4E6EA] dark:border-slate-600 text-[#b05070] flex items-center justify-center flex-shrink-0">
-                                <Sun size={24} />
+                                <Image size={24} />
                             </div>
                             <div>
-                                <h3 className="font-medium text-[#0F1014] dark:text-white mb-1">Clair Eonora</h3>
+                                <h3 className="font-medium text-[#0F1014] dark:text-white mb-1">Logo flottant</h3>
                                 <p className="text-sm text-[#6B6F78] dark:text-slate-400 leading-relaxed">
-                                    Fond `#F4F5F7`, cartes blanches, texte charcoal, accent rose — lisible et propre.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 p-4 rounded-2xl bg-[#F4F5F7] dark:bg-slate-800 border border-[#E4E6EA] dark:border-slate-700">
-                            <div className="w-12 h-12 rounded-md bg-white dark:bg-slate-900 border border-[#E4E6EA] dark:border-slate-600 text-[#4a72c4] flex items-center justify-center flex-shrink-0">
-                                <Moon size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-[#0F1014] dark:text-white mb-1">Nuit intacte</h3>
-                                <p className="text-sm text-[#6B6F78] dark:text-slate-400 leading-relaxed">
-                                    Le thème Nuit (`#0d1329`) n’a pas été modifié. Switch dans Paramètres → Apparence.
+                                    Le logo en haut à gauche n’affiche plus le fond blanc carré — uniquement la marque circulaire, sur fond clair ou nuit.
                                 </p>
                             </div>
                         </div>

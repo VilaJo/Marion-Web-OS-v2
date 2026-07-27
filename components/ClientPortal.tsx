@@ -535,7 +535,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ project, onUpdatePro
                     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                         {/* Simulated header */}
                         <div className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-5 py-3 flex items-center gap-3">
-                            <img src="/logo-eonora.png" alt="Eonora Tech OS" className="w-8 h-8 rounded-lg shadow-sm object-contain" />
+                            <img src="/logo-eonora.png" alt="Eonora Tech OS" className="w-8 h-8 object-contain" />
                             <div>
                                 <h4 className="font-semibold text-slate-800 dark:text-white text-sm leading-tight tracking-tight">
                                     {portalSettings.clientName || project.clientName}

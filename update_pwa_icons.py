@@ -6,7 +6,7 @@ from PIL import Image
 import os
 
 # Paths
-logo_path = "public/logo-eonora.png"
+logo_path = "public/logo-eonora-appicon.png"
 icons_dir = "public/icons"
 
 # Icon sizes needed for PWA

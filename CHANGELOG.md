@@ -2,6 +2,11 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.19] - 2026-07-27
+### Logo sans effet carré
+- `logo-eonora.png` / `logo-marion.png` : fond transparent (plus de plaque blanche carrée dans le header)
+- Source app-icon conservée : `logo-eonora-appicon.png` (PWA / icône macOS)
+
 ## [2.13.18] - 2026-07-27
 ### Thème Professionnel — vrai clair
 - Canvas `#F4F5F7`, cartes blanches, texte charcoal, accent rose

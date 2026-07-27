@@ -322,7 +322,7 @@ const PortalPublicPage: React.FC = () => {
             <header className="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-30">
                 <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                        <img src="/logo-eonora.png" alt="Eonora Tech OS" className="w-8 h-8 rounded-md object-contain" />
+                        <img src="/logo-eonora.png" alt="Eonora Tech OS" className="w-8 h-8 object-contain" />
                         <span className="font-semibold text-slate-800 text-sm tracking-tight">Eonora Tech OS</span>
                     </div>
                     <nav className="hidden sm:flex items-center gap-0 border-b border-transparent text-sm">

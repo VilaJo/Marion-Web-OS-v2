@@ -5,7 +5,7 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 DESKTOP_APP="$HOME/Desktop/Eonora Tech OS.app"
 ICNS_SRC="$APP_DIR/public/icons/AppIcon.icns"
-LOGO_SRC="$APP_DIR/public/logo-eonora.png"
+LOGO_SRC="$APP_DIR/public/logo-eonora-appicon.png"
 
 set_macos_folder_icon() {
     local folder="$1"
