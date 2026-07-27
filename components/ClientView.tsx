@@ -117,9 +117,9 @@ const KANBAN_STAGE_ACCENT: Record<'todo' | 'doing' | 'done', string> = {
 };
 
 const PRIORITY_CHIP: Record<'High' | 'Medium' | 'Low', { bg: string; text: string; border: string; label: string }> = {
-    High: { bg: 'rgba(176,80,112,0.22)', text: '#f3c0cf', border: 'rgba(176,80,112,0.45)', label: 'Haute' },
-    Medium: { bg: 'rgba(212,160,23,0.20)', text: '#f0d78c', border: 'rgba(212,160,23,0.40)', label: 'Moyenne' },
-    Low: { bg: 'rgba(74,114,196,0.20)', text: '#b8c9ec', border: 'rgba(74,114,196,0.40)', label: 'Basse' },
+    High: { bg: 'rgba(176,80,112,0.18)', text: '#e8a0b4', border: 'rgba(176,80,112,0.35)', label: 'Haute' },
+    Medium: { bg: 'rgba(180,140,40,0.16)', text: '#dcc07a', border: 'rgba(180,140,40,0.32)', label: 'Moyenne' },
+    Low: { bg: 'rgba(74,114,196,0.16)', text: '#9eb4dc', border: 'rgba(74,114,196,0.32)', label: 'Basse' },
 };
 
 // --- SORTABLE TASK CARD COMPONENT ---
@@ -155,9 +155,9 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
         transition,
         opacity: isSortableDragging ? 0.2 : 1,
         zIndex: isSortableDragging ? 0 : undefined,
-        // Surface relevée + accent colonne (lisible sur studio #1e1e1e)
-        backgroundColor: '#2c2c2c',
-        borderColor: `${stageAccent}55`,
+        // Carte sombre + accent colonne
+        backgroundColor: '#1a1a1a',
+        borderColor: '#2a2a2a',
         boxShadow: `inset 3px 0 0 0 ${overdue ? '#b05070' : stageAccent}`,
     };
 
@@ -167,7 +167,7 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
             style={style}
             {...attributes}
             {...listeners}
-            className="p-3 rounded-lg border group hover:brightness-110 transition-[filter,border-color] relative cursor-grab active:cursor-grabbing touch-none"
+            className="p-3 rounded-lg border group hover:bg-[#1f1f1f] transition-colors relative cursor-grab active:cursor-grabbing touch-none"
             onClick={() => !isSortableDragging && onEdit(task)}
             tabIndex={0}
             role="listitem"
@@ -211,7 +211,7 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                         e.stopPropagation();
                         if (prevColumn) onMove(task.id, prevColumn);
                     }}
-                    className={`p-1 rounded-md border border-[#3a3a3a] text-[#c4c4c4] hover:text-white hover:border-[#5a5a5a] bg-[#252525] transition-colors ${
+                    className={`p-1 rounded-md border border-[#2a2a2a] text-[#a8a8ae] hover:text-white hover:border-[#3a3a3a] bg-[#121212] transition-colors ${
                         !prevColumn ? 'opacity-20 cursor-default pointer-events-none' : ''
                     }`}
                     aria-label={prevColumn ? `Déplacer la tâche vers ${getColumnLabel(prevColumn)}` : undefined}
@@ -225,7 +225,7 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                         e.stopPropagation();
                         if (nextColumn) onMove(task.id, nextColumn);
                     }}
-                    className={`p-1 rounded-md border border-[#3a3a3a] text-[#c4c4c4] hover:text-white hover:border-[#5a5a5a] bg-[#252525] transition-colors ${
+                    className={`p-1 rounded-md border border-[#2a2a2a] text-[#a8a8ae] hover:text-white hover:border-[#3a3a3a] bg-[#121212] transition-colors ${
                         !nextColumn ? 'opacity-20 cursor-default pointer-events-none' : ''
                     }`}
                     aria-label={nextColumn ? `Déplacer la tâche vers ${getColumnLabel(nextColumn)}` : undefined}
@@ -234,7 +234,7 @@ const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
                 </button>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-[#3a3a3a]">
+            <div className="flex items-center justify-between pt-2 border-t border-[#2a2a2a]">
                 {task.dueDate ? (
                     <div
                         className="text-[11px] font-medium flex items-center gap-1"
@@ -1331,8 +1331,8 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 <div 
                     className={`flex-1 rounded-lg p-2.5 flex flex-col min-h-[150px] md:min-h-[400px] md:h-full transition-colors border ${draggedTaskId ? 'border-dashed' : ''}`}
                     style={{
-                        backgroundColor: '#1a1a1a',
-                        borderColor: draggedTaskId ? `${stageAccent}66` : '#2a2a2a',
+                        backgroundColor: '#0c0c0c',
+                        borderColor: draggedTaskId ? `${stageAccent}66` : '#1e1e1e',
                         boxShadow: `inset 3px 0 0 0 ${stageAccent}`,
                     }}
                     role="list"
@@ -1476,7 +1476,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 const currentIdx = WORKFLOW_STEPS.indexOf(project.phase);
                 const progressPct = Math.round(((currentIdx + 1) / WORKFLOW_STEPS.length) * 100);
                 return (
-                <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <div className="mb-6 rounded-xl border border-[#242424] bg-[#161616] dark:border-slate-800 dark:bg-slate-900">
                     <div className="px-4 py-4 md:px-5 md:py-5">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -1580,7 +1580,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 {/* Left Col: Info - collapsed on mobile */}
                 <div className="space-y-4 md:space-y-6">
                     {/* Visual Identity */}
-                    <Card className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-white/50 dark:border-white/5 relative overflow-hidden group">
+                    <Card className="bg-[#161616] border-[#242424] dark:from-slate-800 dark:to-slate-900 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
                              {project.avatarImage && (
                                 <button onClick={handleLogoEditorOpen} className="p-2 bg-white/50 rounded-full hover:bg-white transition-colors" title="Ajuster le logo">
@@ -1972,9 +1972,9 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                                                     <div
                                                         className="p-3 rounded-lg w-[220px] pointer-events-none rotate-[1deg]"
                                                         style={{
-                                                            backgroundColor: '#2c2c2c',
-                                                            border: `1px solid ${overlayAccent}88`,
-                                                            boxShadow: `inset 3px 0 0 0 ${overlayAccent}, 0 12px 32px rgba(0,0,0,0.45)`,
+                                                            backgroundColor: '#1a1a1a',
+                                                            border: `1px solid #2a2a2a`,
+                                                            boxShadow: `inset 3px 0 0 0 ${overlayAccent}, 0 16px 40px rgba(0,0,0,0.55)`,
                                                         }}
                                                     >
                                                         <span

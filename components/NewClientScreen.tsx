@@ -321,7 +321,7 @@ export const NewClientScreen: React.FC<NewClientScreenProps> = ({ isOpen, onClos
     return createPortal(
         <div className="fixed inset-0 z-[200] animate-in fade-in duration-300">
             {/* Background */}
-            <div className="absolute inset-0 bg-[#1e1e1e] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:bg-gradient-to-br" />
+            <div className="absolute inset-0 bg-[#0f0f10] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:bg-gradient-to-br" />
             <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#A7C1A3]/20 dark:bg-orange-900/10 rounded-full blur-[120px]" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/15 dark:bg-purple-900/10 rounded-full blur-[100px]" />
 

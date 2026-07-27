@@ -272,10 +272,10 @@ const App: React.FC = () => {
         document.documentElement.style.setProperty('--brand-color', brand);
         const meta = document.querySelector('meta[name="theme-color"]');
         if (theme === 'light') {
-            // Professionnel = Stability studio charcoal
+            // Professionnel = sombre profond
             document.body.style.backgroundImage = '';
-            document.body.style.backgroundColor = '#1e1e1e';
-            meta?.setAttribute('content', '#1e1e1e');
+            document.body.style.backgroundColor = '#0f0f10';
+            meta?.setAttribute('content', '#0f0f10');
         } else if (theme === 'dark') {
             // Nuit — fond encre (inchangé)
             document.body.style.backgroundImage = '';

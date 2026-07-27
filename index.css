@@ -5,29 +5,29 @@
 @tailwind utilities;
 
 :root {
-  /* === Professionnel = Stability studio (thème principal) === */
-  --eonora-bg: #1e1e1e;
-  --eonora-surface: #252525;
-  --eonora-surface-raised: #2c2c2c;
+  /* === Professionnel = sombre profond (Stability darkroom) === */
+  --eonora-bg: #0f0f10;
+  --eonora-surface: #161616;
+  --eonora-surface-raised: #1c1c1c;
   --eonora-sage: #7C9A7E;
   --eonora-sage-dark: #647D66;
   --eonora-sage-light: #A7C1A3;
-  --eonora-charcoal: #252525;
-  --eonora-charcoal-deep: #1e1e1e;
-  --eonora-border: #2a2a2a;
-  --eonora-border-strong: #3a3a3a;
-  --eonora-muted: #b2b2b2;
-  --eonora-text: #e5e7e6;
+  --eonora-charcoal: #161616;
+  --eonora-charcoal-deep: #0f0f10;
+  --eonora-border: #242424;
+  --eonora-border-strong: #333333;
+  --eonora-muted: #a0a0a4;
+  --eonora-text: #e8e8e8;
   --eonora-text-strong: #ffffff;
   --eonora-rose: #b05070;
   --eonora-blue: #4a72c4;
   --eonora-teal: #2aada0;
   --eonora-gradient: linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%);
 
-  /* Accent CTA unique — rose Eonora (discipline Stability) */
+  /* Accent CTA unique — rose Eonora */
   --brand-color: #b05070;
   --brand-secondary-color: #c96a8b;
-  --brand-orange: #b05070; /* legacy alias → accent */
+  --brand-orange: #b05070;
   --pastel-pink: #FFF0F5;
   --pastel-purple: #F3E8FF;
 
@@ -85,46 +85,54 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
 }
 
-/* ---------- Professionnel studio remaps (pas .dark, pas unicorn) ---------- */
+/* ---------- Professionnel sombre profond (pas .dark, pas unicorn) ---------- */
 html:not(.dark):not(.unicorn) body {
-  background-color: #1e1e1e !important;
-  color: #e5e7e6;
+  background-color: #0f0f10 !important;
+  color: #e8e8e8;
 }
 
-/* Surfaces blanches “light SaaS” → charcoal studio */
+html:not(.dark):not(.unicorn) .glass {
+  background: rgba(22, 22, 22, 0.96) !important;
+  border: 1px solid #242424 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Surfaces blanches → noir profond */
 html:not(.dark):not(.unicorn) .bg-white {
-  background-color: #252525 !important;
+  background-color: #161616 !important;
 }
 html:not(.dark):not(.unicorn) .bg-white\/80 {
-  background-color: rgba(37, 37, 37, 0.88) !important;
+  background-color: rgba(22, 22, 22, 0.92) !important;
 }
 html:not(.dark):not(.unicorn) .bg-white\/70 {
-  background-color: rgba(37, 37, 37, 0.82) !important;
+  background-color: rgba(22, 22, 22, 0.88) !important;
 }
 html:not(.dark):not(.unicorn) .bg-white\/60 {
-  background-color: rgba(37, 37, 37, 0.72) !important;
+  background-color: rgba(22, 22, 22, 0.8) !important;
 }
 html:not(.dark):not(.unicorn) .bg-white\/50 {
-  background-color: rgba(37, 37, 37, 0.62) !important;
+  background-color: rgba(22, 22, 22, 0.7) !important;
 }
 html:not(.dark):not(.unicorn) .bg-white\/40 {
-  background-color: rgba(37, 37, 37, 0.5) !important;
+  background-color: rgba(22, 22, 22, 0.55) !important;
 }
 html:not(.dark):not(.unicorn) .bg-white\/35 {
-  background-color: rgba(37, 37, 37, 0.42) !important;
+  background-color: rgba(22, 22, 22, 0.45) !important;
 }
 
 html:not(.dark):not(.unicorn) .bg-slate-50,
 html:not(.dark):not(.unicorn) .bg-slate-50\/80 {
-  background-color: #252525 !important;
+  background-color: #161616 !important;
 }
 html:not(.dark):not(.unicorn) .bg-slate-100,
 html:not(.dark):not(.unicorn) .bg-slate-100\/80 {
-  background-color: #2c2c2c !important;
+  background-color: #1c1c1c !important;
 }
 html:not(.dark):not(.unicorn) .bg-slate-200\/70,
 html:not(.dark):not(.unicorn) .bg-slate-200\/60 {
-  background-color: rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 html:not(.dark):not(.unicorn) .hover\:bg-slate-50:hover,
 html:not(.dark):not(.unicorn) .hover\:bg-slate-50\/80:hover,
@@ -133,38 +141,35 @@ html:not(.dark):not(.unicorn) .hover\:bg-slate-100\/80:hover {
   background-color: rgba(255, 255, 255, 0.04) !important;
 }
 
-/* Texte clair sur studio */
 html:not(.dark):not(.unicorn) .text-slate-800,
 html:not(.dark):not(.unicorn) .text-slate-900,
 html:not(.dark):not(.unicorn) .text-slate-700 {
-  color: #e5e7e6 !important;
+  color: #f0f0f0 !important;
 }
 html:not(.dark):not(.unicorn) .text-slate-600,
 html:not(.dark):not(.unicorn) .text-slate-500 {
-  color: #c4c4c4 !important;
+  color: #c8c8c8 !important;
 }
 html:not(.dark):not(.unicorn) .text-slate-400 {
-  color: #b2b2b2 !important;
-}
-/* Éviter gris-sur-gris illisible (ex. méta cartes) */
-html:not(.dark):not(.unicorn) .text-slate-300 {
   color: #a8a8ae !important;
 }
+html:not(.dark):not(.unicorn) .text-slate-300 {
+  color: #9a9aa0 !important;
+}
 
-/* Bordures hairline */
 html:not(.dark):not(.unicorn) .border-slate-200,
 html:not(.dark):not(.unicorn) .border-slate-200\/50,
 html:not(.dark):not(.unicorn) .border-slate-200\/60,
 html:not(.dark):not(.unicorn) .border-slate-200\/80,
 html:not(.dark):not(.unicorn) .border-slate-100,
 html:not(.dark):not(.unicorn) .border-slate-100\/80 {
-  border-color: #2a2a2a !important;
+  border-color: #242424 !important;
 }
 html:not(.dark):not(.unicorn) .border-white\/60,
 html:not(.dark):not(.unicorn) .border-white\/70,
 html:not(.dark):not(.unicorn) .border-white\/80,
 html:not(.dark):not(.unicorn) .border-white\/50 {
-  border-color: #2a2a2a !important;
+  border-color: #242424 !important;
 }
 
 /* Moins d’ombre décorative, profondeur par ton */
@@ -194,10 +199,10 @@ html:not(.dark):not(.unicorn) .bg-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .from-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .via-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .to-\[\#FAF7F2\] {
-  --tw-gradient-from: #1e1e1e !important;
-  --tw-gradient-via: #1e1e1e !important;
-  --tw-gradient-to: #1e1e1e !important;
-  background-color: #1e1e1e !important;
+  --tw-gradient-from: #0f0f10 !important;
+  --tw-gradient-via: #0f0f10 !important;
+  --tw-gradient-to: #0f0f10 !important;
+  background-color: #0f0f10 !important;
 }
 
 /* Masquer les blobs décoratifs pastel du thème clair SaaS */

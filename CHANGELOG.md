@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.17] - 2026-07-27
+### Professionnel — sombre profond
+- Canvas `#0f0f10`, surfaces `#161616` / `#1a1a1a` (plus de gris moyen)
+- Glass / cards plats et noirs ; kanban colonnes `#0c0c0c`, fiches `#1a1a1a`
+- Meilleure séparation et lisibilité sur fiche client
+
 ## [2.13.16] - 2026-07-26
 ### Kanban — cartes lisibles
 - Cartes tâches : surface `#2c2c2c`, texte clair, méta contrastée
