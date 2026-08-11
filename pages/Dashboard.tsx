@@ -20,6 +20,7 @@ import { ClientsRoadmap } from '../components/ClientsRoadmap';
 import { MetricsStrip } from '../components/MetricsStrip';
 import { YachtBar } from '../components/YachtBar';
 import { TodoWidget } from '../components/TodoWidget';
+import { MonthlyMaintenancePanel } from '../components/MonthlyMaintenancePanel';
 
 import {
     Search, Plus, RefreshCw, Database, Briefcase, Download,
@@ -521,6 +522,9 @@ export const Dashboard: React.FC = () => {
                                 selected={selectedFolder}
                                 onSelect={setSelectedFolder}
                             />
+                            {selectedFolder === ProjectStatus.MAINTENANCE && (
+                                <MonthlyMaintenancePanel projects={projects} />
+                            )}
                         </div>
                     )}
                     <div className="flex-1 min-w-0">

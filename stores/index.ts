@@ -14,3 +14,4 @@ export type { Workspace, WorkspaceBranding, WorkspaceMember } from './useWorkspa
 export { useOfflineStore } from './useOfflineStore';
 export { useUndoStore } from './useUndoStore';
 export { useFocusStore } from './useFocusStore';
+export { useMonthlyMaintenanceStore } from './useMonthlyMaintenanceStore';

@@ -26,6 +26,7 @@ import { useFocusStore } from './stores/useFocusStore';
 
 // Extracted components
 import { AppHeader } from './components/AppHeader';
+import { MonthlyMaintenanceBanner } from './components/MonthlyMaintenanceBanner';
 import { GlobalOverlays } from './components/GlobalOverlays';
 import { GlobalDashboardModals } from './components/GlobalDashboardModals';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -449,6 +450,7 @@ const App: React.FC = () => {
 
             {/* Main Content - Route Outlet */}
             <main className="max-w-[1400px] mx-auto px-3 md:px-6 pb-20 relative z-10">
+                <MonthlyMaintenanceBanner projects={projects} />
                 <Outlet />
             </main>
 

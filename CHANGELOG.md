@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.21] - 2026-08-11
+### Rappel maintenance mensuel (le 25)
+- Interrupteur dans le dossier **Maintenance** : rappel le 25 de chaque mois
+- Bandeau clair avec la liste des clients Maintenance + coche « Fait » + **OK, c’est fait**
+- Le bandeau reste du 25 à la fin du mois jusqu’à validation
+
 ## [2.13.20] - 2026-07-27
 ### Logo — coins disparus (cache)
 - Nouveau fichier `logo-eonora-mark.png` (marque seule, alpha propre)
