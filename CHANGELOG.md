@@ -2,6 +2,13 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.22] - 2026-08-17
+### Maintenance, agenda & to-do (feedback Marion)
+- Fiche maintenance : actif/inactif, choix **Offert jusqu’au** *ou* **Facturation le**, champ coût → sync calendrier (catégorie Maintenances)
+- Agenda : filtre catégories + vue **Maintenances** (overview)
+- To-do du jour : préremplie depuis le calendrier, catégories Rendez-vous / Client / Deadlines / Facturation / Perso
+- Étapes projet renommées : Offre → Contrat → Branding → Site → Polissage → Maintenance
+
 ## [2.13.21] - 2026-08-11
 ### Rappel maintenance mensuel (le 25)
 - Interrupteur dans le dossier **Maintenance** : rappel le 25 de chaque mois

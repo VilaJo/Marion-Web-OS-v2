@@ -7,7 +7,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Mic, Pencil, Trash2, Check, X, ListTodo } from 'lucide-react';
-import { useTodoStore, TodoCategory, DailyTodo } from '../stores/useTodoStore';
+import { useTodoStore, TodoCategory, DailyTodo, TODO_CATEGORIES } from '../stores/useTodoStore';
+import { useProjectStore } from '../stores';
+import { TODO_CATEGORY_COLORS } from '../utils/todoCalendarSync';
 
 interface TodoPanelProps {
     onAddReminder?: (todoId: string, text: string, remindAt: Date) => void;
@@ -20,7 +22,7 @@ interface TodoPanelProps {
     }) => void;
 }
 
-const CATEGORIES: TodoCategory[] = ['Client', 'Finance', 'Perso'];
+const CATEGORIES: TodoCategory[] = TODO_CATEGORIES;
 
 function formatTimeLabel(remindAt: string): string | null {
     if (!remindAt) return null;
@@ -129,7 +131,8 @@ function parseReminderText(input: string): {
 }
 
 export const TodoPanel: React.FC<TodoPanelProps> = ({ onAddReminder, onAddCalendarEvent }) => {
-    const { todos, addTodo, updateTodo, removeTodo, toggleTodo, loadFromStorage } = useTodoStore();
+    const { todos, addTodo, updateTodo, removeTodo, toggleTodo, loadFromStorage, syncFromCalendar } = useTodoStore();
+    const events = useProjectStore((s) => s.events);
     const [newTodo, setNewTodo] = useState('');
     const [newTodoCategory, setNewTodoCategory] = useState<TodoCategory>('Perso');
     const [categoryFilter, setCategoryFilter] = useState<TodoCategory | 'all'>('all');
@@ -143,6 +146,10 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({ onAddReminder, onAddCalend
     useEffect(() => {
         loadFromStorage();
     }, [loadFromStorage]);
+
+    useEffect(() => {
+        syncFromCalendar(events);
+    }, [events, syncFromCalendar]);
 
     useEffect(() => {
         if (!editingId) return;
@@ -206,16 +213,8 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({ onAddReminder, onAddCalend
     const filtered = todos.filter((t) => categoryFilter === 'all' || t.category === categoryFilter);
 
     const categoryBadge = (cat?: TodoCategory) => {
-        switch (cat) {
-            case 'Client':
-                return 'text-[#4a72c4] bg-[#4a72c4]/10';
-            case 'Finance':
-                return 'text-[#2aada0] bg-[#2aada0]/10';
-            case 'Perso':
-                return 'text-[#b05070] bg-[#b05070]/10';
-            default:
-                return 'text-slate-500 bg-slate-100 dark:bg-slate-800';
-        }
+        if (!cat) return 'text-slate-500 bg-slate-100 dark:bg-slate-800';
+        return TODO_CATEGORY_COLORS[cat]?.badge || 'text-slate-500 bg-slate-100 dark:bg-slate-800';
     };
 
     return (
@@ -227,7 +226,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({ onAddReminder, onAddCalend
                 <div>
                     <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">To-do du jour</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Dicte ou écris — rappel 30 min avant l&apos;heure.
+                        Le calendrier du jour apparaît ici (Rendez-vous, Client, Deadlines…). Tu complètes au fil de l&apos;eau.
                     </p>
                 </div>
             </div>

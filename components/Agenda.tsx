@@ -233,6 +233,11 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         infomaniak: true,
     });
 
+    const [visibleTypes, setVisibleTypes] = useState<Record<string, boolean>>(() =>
+        Object.fromEntries(EVENT_TYPES.map((t) => [t, true])),
+    );
+    const [maintenancesOverview, setMaintenancesOverview] = useState(false);
+
     // Merge local and external events for display (avoiding duplicates)
     const allMergedEvents = useMemo(() => {
         // Get IDs of local events that are synced to Google (have googleEventId)
@@ -256,14 +261,24 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
         return [...localEvents, ...filteredExternal];
     }, [localEvents, externalEvents]);
 
-    // Apply source visibility filter
+    // Apply source + type visibility filter
     const events = useMemo(() => {
         return allMergedEvents.filter(e => {
+            if (maintenancesOverview) return e.type === 'Maintenances';
+            const typeOk = visibleTypes[e.type] !== false;
+            if (!typeOk) return false;
             if (e.source === 'google') return visibleSources.google;
             if (e.source === 'infomaniak') return visibleSources.infomaniak;
-            return visibleSources.local; // local or undefined source
+            return visibleSources.local;
         });
-    }, [allMergedEvents, visibleSources]);
+    }, [allMergedEvents, visibleSources, visibleTypes, maintenancesOverview]);
+
+    const maintenanceOverviewList = useMemo(() => {
+        return allMergedEvents
+            .filter((e) => e.type === 'Maintenances')
+            .slice()
+            .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime || '').localeCompare(b.startTime || ''));
+    }, [allMergedEvents]);
 
     // Ensure initial dates are valid
     const [currentDate, setCurrentDate] = useState(() => {
@@ -1244,6 +1259,94 @@ const AgendaInner: React.FC<AgendaProps> = ({ events: localEvents, onAddEvent, o
                                 </label>
                             )}
                         </div>
+                    </div>
+
+                    {/* Types / Maintenances overview */}
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Catégories</div>
+                            <button
+                                type="button"
+                                onClick={() => setMaintenancesOverview((v) => !v)}
+                                className={`text-[10px] font-semibold px-2 py-1 rounded-md border transition-colors ${
+                                    maintenancesOverview
+                                        ? 'bg-[#E67C73]/15 text-[#E67C73] border-[#E67C73]/40'
+                                        : 'text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                                Maintenances
+                            </button>
+                        </div>
+                        {!maintenancesOverview && (
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                                {EVENT_TYPES.map((type) => {
+                                    const cat = GCAL_CATEGORIES[type];
+                                    return (
+                                        <label key={type} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={visibleTypes[type] !== false}
+                                                onChange={() =>
+                                                    setVisibleTypes((prev) => ({
+                                                        ...prev,
+                                                        [type]: !(prev[type] !== false),
+                                                    }))
+                                                }
+                                                className="w-3.5 h-3.5 rounded cursor-pointer"
+                                                style={{ accentColor: cat.color }}
+                                            />
+                                            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: cat.color }} />
+                                            <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{cat.label}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        {maintenancesOverview && (
+                            <div className="space-y-2 max-h-56 overflow-y-auto">
+                                <p className="text-[11px] text-slate-500">
+                                    Vue d’ensemble — {maintenanceOverviewList.length} maintenance
+                                    {maintenanceOverviewList.length !== 1 ? 's' : ''}
+                                </p>
+                                {maintenanceOverviewList.length === 0 ? (
+                                    <p className="text-xs text-slate-400 italic">Aucune maintenance au calendrier. Active-les depuis la fiche client.</p>
+                                ) : (
+                                    maintenanceOverviewList.map((ev) => {
+                                        const days = Math.ceil(
+                                            (parseISO(ev.date).getTime() - startOfDay(new Date()).getTime()) /
+                                                (1000 * 60 * 60 * 24),
+                                        );
+                                        let status = 'À venir';
+                                        if (days < 0) status = 'Passée';
+                                        else if (days === 0) status = 'Aujourd’hui';
+                                        else if (days === 1) status = 'Demain';
+                                        else status = `Dans ${days}j`;
+                                        return (
+                                            <button
+                                                key={ev.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setCurrentDate(parseISO(ev.date));
+                                                    setViewMode('day');
+                                                }}
+                                                className="w-full text-left px-2 py-1.5 rounded-md border border-[#E67C73]/25 hover:bg-[#E67C73]/10 transition-colors"
+                                            >
+                                                <div className="text-xs font-medium text-slate-800 dark:text-slate-100 truncate">{ev.title}</div>
+                                                <div className="text-[10px] text-slate-500 flex justify-between gap-2">
+                                                    <span>
+                                                        {ev.date}
+                                                        {ev.startTime ? ` · ${ev.startTime}` : ''}
+                                                    </span>
+                                                    <span className={days < 0 ? 'text-slate-400' : days <= 1 ? 'text-[#E67C73] font-semibold' : ''}>
+                                                        {status}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

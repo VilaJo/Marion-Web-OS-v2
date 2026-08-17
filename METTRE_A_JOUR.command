@@ -215,6 +215,7 @@ echo "✨ Mise à jour terminée — interface forcée depuis GitHub."
 echo ""
 echo "👉 STOPPER si besoin, puis double-clique « Eonora Tech OS » sur le Bureau"
 echo "👉 Navigateur : Cmd + Shift + R"
-echo "👉 Tu dois voir WhatsNew v2.13.21 — rappel maintenance le 25"
+echo "👉 Tu dois voir WhatsNew v2.13.22 — maintenance, agenda Maintenances, to-do du jour"
+
 echo "────────────────────────────────────────────────────────────────────"
 read -r -p "Appuie sur Entrée pour fermer…"

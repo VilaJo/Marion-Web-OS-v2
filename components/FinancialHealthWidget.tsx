@@ -647,7 +647,7 @@ export const FinancialHealthWidget: React.FC<FinancialHealthWidgetProps> = ({
                                                         />
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="text-[10px] font-bold text-slate-500">Catégorie :</span>
-                                                            {(['Client', 'Finance', 'Perso'] as const).map((cat) => (
+                                                            {(['Rendez-vous', 'Client', 'Deadlines', 'Facturation', 'Perso'] as const).map((cat) => (
                                                                 <button key={cat} type="button" onClick={() => setEditingTodoCategory(cat)} className={`px-2 py-0.5 rounded text-[10px] font-bold ${editingTodoCategory === cat ? 'bg-brand-orange text-white' : 'bg-white/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>{cat}</button>
                                                             ))}
                                                         </div>

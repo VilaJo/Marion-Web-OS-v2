@@ -37,7 +37,7 @@ export const MonthlyMaintenanceBanner: React.FC<MonthlyMaintenanceBannerProps> =
     const clients = useMemo(
         () =>
             projects
-                .filter((p) => p.status === ProjectStatus.MAINTENANCE)
+                .filter((p) => p.status === ProjectStatus.MAINTENANCE && p.maintenance?.active !== false)
                 .slice()
                 .sort((a, b) => a.clientName.localeCompare(b.clientName, 'fr')),
         [projects],

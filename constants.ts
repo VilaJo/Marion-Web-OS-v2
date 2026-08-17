@@ -7,8 +7,8 @@ export const SOUNDS = [
 
 export const WORKFLOW_CONFIG = {
     [WorkflowPhase.DISCOVERY]: { 
-        label: 'Exploration', 
-        desc: 'Vision & Besoins', 
+        label: 'Offre', 
+        desc: 'Besoin & proposition', 
         icon: Telescope,
         color: 'text-yellow-600',
         bg: 'bg-yellow-100',
@@ -16,8 +16,8 @@ export const WORKFLOW_CONFIG = {
         gradient: 'from-yellow-400 to-orange-400'
     },
     [WorkflowPhase.STRATEGY]: { 
-        label: 'Cartographie', 
-        desc: 'Structure & UX', 
+        label: 'Contrat', 
+        desc: 'Organisation & accès', 
         icon: Map,
         color: 'text-blue-600',
         bg: 'bg-blue-100',
@@ -25,8 +25,8 @@ export const WORKFLOW_CONFIG = {
         gradient: 'from-cyan-400 to-blue-500'
     },
     [WorkflowPhase.DESIGN]: { 
-        label: 'Magie Visuelle', 
-        desc: 'UI & Émotion', 
+        label: 'Branding', 
+        desc: 'Charte & identité', 
         icon: Palette,
         color: 'text-pink-600',
         bg: 'bg-pink-100',
@@ -34,8 +34,8 @@ export const WORKFLOW_CONFIG = {
         gradient: 'from-pink-400 to-rose-500'
     },
     [WorkflowPhase.DEV]: { 
-        label: 'Construction', 
-        desc: 'Code & Logique', 
+        label: 'Site', 
+        desc: 'Logo & site internet', 
         icon: Code,
         color: 'text-purple-600',
         bg: 'bg-purple-100',
@@ -44,7 +44,7 @@ export const WORKFLOW_CONFIG = {
     },
     [WorkflowPhase.QA]: { 
         label: 'Polissage', 
-        desc: 'Chasse aux bugs', 
+        desc: 'Tests & mise en ligne', 
         icon: Sparkles,
         color: 'text-orange-600',
         bg: 'bg-orange-100',
@@ -52,8 +52,8 @@ export const WORKFLOW_CONFIG = {
         gradient: 'from-orange-400 to-red-400'
     },
     [WorkflowPhase.MAINTENANCE]: { 
-        label: 'Jardinage', 
-        desc: 'Suivi & Soin', 
+        label: 'Maintenance', 
+        desc: 'Suivi mensuel', 
         icon: Sprout,
         color: 'text-emerald-600',
         bg: 'bg-emerald-100',
@@ -89,30 +89,28 @@ export const PROSPECT_PHASE_TEMPLATES: Partial<Record<WorkflowPhase, Omit<Task, 
 
 // Define templates for ACTIVE CLIENTS (Workflow Marion)
 export const ACTIVE_PHASE_TEMPLATES: Partial<Record<WorkflowPhase, Omit<Task, 'id' | 'completed' | 'phase'>[]>> = {
-    // Exploration
+    // Offre
     [WorkflowPhase.DISCOVERY]: [
         { title: "Discovery call - Identification du besoin", description: "", priority: "High" },
         { title: "Préparation de l’offre", description: "", priority: "High" },
         { title: "Envoi de l’offre", description: "", priority: "Medium" },
         { title: "Envoi du contrat pour signature", description: "", priority: "Medium" }
     ],
-    // Cartographie
+    // Contrat
     [WorkflowPhase.STRATEGY]: [
-        { title: "Cartographie", description: "", priority: "High" },
-        { title: "Organisation du projet", description: "", priority: "Medium" },
+        { title: "Organisation du projet", description: "", priority: "High" },
         { title: "Récupération des accès", description: "", priority: "High" },
-        { title: "Récupération des documents existants", description: "", priority: "Medium" }
+        { title: "Récupération des documents existants", description: "", priority: "Medium" },
+        { title: "Contrat signé & classé", description: "", priority: "High" }
     ],
-    // Magie visuelle
+    // Branding
     [WorkflowPhase.DESIGN]: [
-        { title: "Magie visuelle", description: "", priority: "High" },
         { title: "Atelier Branding", description: "", priority: "High" },
         { title: "Création de la charte graphique", description: "", priority: "High" },
         { title: "Validation de la charte graphique", description: "", priority: "Medium" }
     ],
-    // Construction
+    // Site
     [WorkflowPhase.DEV]: [
-        { title: "Construction", description: "", priority: "High" },
         { title: "Création du logo", description: "", priority: "High" },
         { title: "Validation du logo", description: "", priority: "Medium" },
         { title: "Création du site internet", description: "", priority: "High" },
@@ -126,10 +124,9 @@ export const ACTIVE_PHASE_TEMPLATES: Partial<Record<WorkflowPhase, Omit<Task, 'i
         { title: "Corrections et ajustement", description: "", priority: "Medium" },
         { title: "Mise en ligne", description: "", priority: "High" }
     ],
-    // Jardinage
+    // Maintenance
     [WorkflowPhase.MAINTENANCE]: [
-        { title: "Jardinage", description: "", priority: "Medium" },
-        { title: "Maintenance offerte (jusque’à xx)", description: "", priority: "Medium" },
+        { title: "Maintenance offerte (jusqu’à …)", description: "", priority: "Medium" },
         { title: "Signature du contrat de maintenance", description: "", priority: "High" },
         { title: "Maintenance et suivi mensuel", description: "", priority: "Medium" }
     ]

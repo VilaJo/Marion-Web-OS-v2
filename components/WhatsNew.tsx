@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, Wrench } from 'lucide-react';
+import { Gift, CalendarDays, ListTodo, Wrench } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.21";
+const CURRENT_VERSION = "2.13.22";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -31,21 +31,28 @@ export const WhatsNew: React.FC = () => {
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-[#6B6F78] dark:text-slate-400">
-                            Rappel maintenance le 25
+                            Maintenance, agenda & to-do du jour
                         </p>
                     </div>
 
-                    <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-[#F4F5F7] dark:bg-slate-800 border border-[#E4E6EA] dark:border-slate-700">
-                            <div className="w-12 h-12 rounded-md bg-white dark:bg-slate-900 border border-[#E4E6EA] dark:border-slate-600 text-[#4a72c4] flex items-center justify-center flex-shrink-0">
-                                <Wrench size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-[#0F1014] dark:text-white mb-1">Tournée du 25</h3>
-                                <p className="text-sm text-[#6B6F78] dark:text-slate-400 leading-relaxed">
-                                    Dans le dossier Maintenance, active le rappel. À partir du 25, un bandeau liste tous les clients Maintenance à cocher, puis OK.
-                                </p>
-                            </div>
+                    <div className="space-y-3">
+                        <div className="flex gap-3 p-3 rounded-xl bg-[#F4F5F7] dark:bg-slate-800 border border-[#E4E6EA] dark:border-slate-700">
+                            <Wrench className="text-[#4a72c4] shrink-0 mt-0.5" size={20} />
+                            <p className="text-sm text-[#6B6F78] dark:text-slate-400 text-left">
+                                <span className="font-medium text-[#0F1014] dark:text-white">Fiche maintenance</span> — actif/inactif, offert jusqu’au <em>ou</em> facturation le, coût. Ça se calque dans le calendrier.
+                            </p>
+                        </div>
+                        <div className="flex gap-3 p-3 rounded-xl bg-[#F4F5F7] dark:bg-slate-800 border border-[#E4E6EA] dark:border-slate-700">
+                            <CalendarDays className="text-[#E67C73] shrink-0 mt-0.5" size={20} />
+                            <p className="text-sm text-[#6B6F78] dark:text-slate-400 text-left">
+                                <span className="font-medium text-[#0F1014] dark:text-white">Agenda</span> — bouton <strong>Maintenances</strong> pour voir où tu en es sur toutes les maintenances.
+                            </p>
+                        </div>
+                        <div className="flex gap-3 p-3 rounded-xl bg-[#F4F5F7] dark:bg-slate-800 border border-[#E4E6EA] dark:border-slate-700">
+                            <ListTodo className="text-[#039BE5] shrink-0 mt-0.5" size={20} />
+                            <p className="text-sm text-[#6B6F78] dark:text-slate-400 text-left">
+                                <span className="font-medium text-[#0F1014] dark:text-white">To-do</span> — le calendrier du jour arrive déjà rangé : Rendez-vous, Client, Deadlines, Facturation, Perso.
+                            </p>
                         </div>
                     </div>
 

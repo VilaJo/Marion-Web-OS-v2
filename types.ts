@@ -275,11 +275,19 @@ export enum ProjectStatus {
   }
   
   export interface MaintenanceInfo {
+    /** Maintenance active → apparaît dans la checklist / tournée. */
+    active?: boolean;
+    /** Mode exclusif : offerte jusqu’à une date, ou facturation à une date. */
+    mode?: 'offered' | 'billing';
     freeMaintenanceEndDate?: string; // Date de fin de la maintenance offerte
+    /** Prochaine (ou unique) date de facturation — synchro calendrier. */
+    billingDate?: string;
     contractSignDate?: string; // Date de signature du contrat de maintenance
-    billingDates?: string[]; // Dates de facturation récurrentes
+    billingDates?: string[]; // Legacy : dates de facturation multiples
     hasContract: boolean; // Si un contrat de maintenance est signé
-    monthlyPrice?: number; // Tarif mensuel de la maintenance (peut varier par client)
+    monthlyPrice?: number; // Coût / tarif mensuel
+    /** IDs d’événements calendrier générés automatiquement. */
+    calendarEventIds?: string[];
   }
 
 export interface MeetingReportTask {
