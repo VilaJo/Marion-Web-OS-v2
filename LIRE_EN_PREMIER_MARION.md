@@ -1,4 +1,4 @@
-# LIRE EN PREMIER — Eonora Tech OS v2.13.23
+# LIRE EN PREMIER — Eonora Tech OS v2.13.24
 
 Fiche courte pour Marion. Version détaillée : `docs/INSTRUCTIONS_MARION.md`
 
@@ -12,11 +12,11 @@ Double-clic **`STOPPER_EONORA.command`**
 
 ### Mettre à jour (important)
 1. Double-clic **`METTRE_A_JOUR.command`** dans le dossier que l’app utilise vraiment
-2. Vérifier que le script annonce **v2.13.23**
+2. Vérifier que le script annonce **v2.13.24**
 3. Relancer **Eonora Tech OS**
 4. Navigateur : **Cmd + Shift + R**
 
-Tu dois voir WhatsNew **2.13.23**. Thème clair Modulate (papier crème, plus vivant).
+Tu dois voir WhatsNew **2.13.24**. Thème clair plus fun (papier pêche). Nuit inchangé. Bouton Clair | Nuit en haut à droite.
 
 ### Écran blanc
 **`REPARER_INTERFACE.command`** → relancer → **Cmd + Shift + R**
@@ -36,5 +36,3 @@ Bureau → dossier **`Eonora Tech OS Database`** (ne pas supprimer)
 ### Bug
 Envoyer à Johan : **capture d’écran** + fichier **`.marion.log`**  
 (ne jamais envoyer `.env` / `MARION-env.local`)
-
----

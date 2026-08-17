@@ -1,25 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* === Modulate — palette fonctionnelle (Brand Guidelines v1.0) === */
-  --eonora-bg: #F8F7F4;
+  /* Clair fun — papier pêche, coins ronds, marque Eonora */
+  --eonora-bg: #FFF3EA;
   --eonora-surface: #FFFFFF;
   --eonora-surface-raised: #FFFFFF;
-  --eonora-ink: #03031C;
+  --eonora-ink: #2A1840;
   --eonora-sage: #7C9A7E;
   --eonora-sage-dark: #647D66;
   --eonora-sage-light: #A7C1A3;
-  --eonora-charcoal: #27272B;
-  --eonora-charcoal-deep: #03031C;
-  --eonora-border: #E0DFDB;
-  --eonora-border-strong: #D4D3CE;
-  --eonora-muted: #67676C;
-  --eonora-text: #27272B;
-  --eonora-text-strong: #03031C;
+  --eonora-charcoal: #3D2A4A;
+  --eonora-charcoal-deep: #2A1840;
+  --eonora-border: #F0D8CC;
+  --eonora-border-strong: #E8C4B4;
+  --eonora-muted: #8A6E7A;
+  --eonora-text: #3D2A4A;
+  --eonora-text-strong: #2A1840;
   --eonora-rose: #B05070;
   --eonora-blue: #4A72C4;
   --eonora-teal: #2AADA0;
@@ -32,14 +32,14 @@
   --pastel-purple: #EEF2FB;
   --pastel-teal: #E6F6F4;
 
-  --radius-input: 6px;
-  --radius-card: 8px;
-  --radius-panel: 12px;
+  --radius-input: 14px;
+  --radius-card: 20px;
+  --radius-panel: 24px;
   --motion: 200ms;
 
-  --kanban-column: #F1EFEA;
+  --kanban-column: #FFEFE6;
   --kanban-card: #FFFFFF;
-  --kanban-card-hover: #FBFAF7;
+  --kanban-card-hover: #FFF9F5;
   --kanban-text: #03031C;
   --kanban-muted: #67676C;
   --kanban-border: #E0DFDB;
@@ -79,8 +79,8 @@
 }
 
 body {
-  font-family: Inter, system-ui, sans-serif;
-  font-weight: 400;
+  font-family: Nunito, Inter, system-ui, sans-serif;
+  font-weight: 500;
   font-size: 16px;
   line-height: 24px;
   overflow-x: hidden;
@@ -89,16 +89,16 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: Roboto, Inter, system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: -0.015em;
+  font-family: Nunito, Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--eonora-text-strong);
 }
 
 .font-serif {
-  font-family: Roboto, Inter, system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-family: Nunito, Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .font-mono {
@@ -107,18 +107,33 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .font-calligraphy {
-  font-family: Roboto, Inter, system-ui, sans-serif;
+  font-family: Nunito, Inter, system-ui, sans-serif;
   font-style: italic;
-  font-weight: 500;
+  font-weight: 700;
 }
 
-/* Thème clair joyeux — papier crème + halos de marque (amplitude faible) */
+/* Nuit reprend Inter / Roboto — inchangé visuellement */
+.dark body {
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 400;
+}
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
+.dark .font-serif, .dark .font-calligraphy {
+  font-family: Roboto, Inter, system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+/* Thème clair fun — pêche, blobs, points, cartes moelleuses */
 html:not(.dark):not(.unicorn) body {
-  background-color: #F8F7F4;
+  background-color: #FFF3EA;
   background-image:
-    radial-gradient(ellipse 90% 55% at 0% -10%, rgba(176, 80, 112, 0.10), transparent 55%),
-    radial-gradient(ellipse 70% 45% at 100% 0%, rgba(42, 173, 160, 0.09), transparent 50%),
-    radial-gradient(ellipse 55% 40% at 85% 110%, rgba(74, 114, 196, 0.08), transparent 50%);
+    radial-gradient(ellipse 90% 55% at 6% -10%, rgba(176, 80, 112, 0.32), transparent 54%),
+    radial-gradient(ellipse 80% 52% at 100% 0%, rgba(42, 173, 160, 0.26), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 78% 112%, rgba(74, 114, 196, 0.22), transparent 50%),
+    radial-gradient(ellipse 50% 36% at 28% 88%, rgba(255, 176, 80, 0.22), transparent 58%),
+    radial-gradient(rgba(176, 80, 112, 0.14) 1.15px, transparent 1.2px);
+  background-size: auto, auto, auto, auto, 22px 22px;
   background-attachment: fixed;
 }
 
@@ -128,18 +143,59 @@ html:not(.dark):not(.unicorn) body::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 6px;
   z-index: 80;
   background: var(--eonora-gradient);
   pointer-events: none;
 }
 
+html:not(.dark):not(.unicorn) body::after {
+  content: '';
+  position: fixed;
+  width: 280px;
+  height: 280px;
+  right: -60px;
+  top: 18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(42, 173, 160, 0.22), transparent 68%);
+  pointer-events: none;
+  z-index: 0;
+  animation: fun-blob 14s ease-in-out infinite;
+}
+
+@keyframes fun-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 30px) scale(1.12); }
+}
+
+html:not(.dark):not(.unicorn) .font-sans,
+html:not(.dark):not(.unicorn) .font-serif,
+html:not(.dark):not(.unicorn) .font-heading {
+  font-family: Nunito, Inter, system-ui, sans-serif;
+}
+
 html:not(.dark):not(.unicorn) .glass {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border: 1px solid rgba(224, 223, 219, 0.95) !important;
-  box-shadow: 0 1px 2px rgba(3, 3, 28, 0.04) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 14px 36px rgba(176, 80, 112, 0.12), 0 4px 12px rgba(74, 114, 196, 0.08) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border-radius: 22px;
+}
+
+html:not(.dark):not(.unicorn) .rounded-md,
+html:not(.dark):not(.unicorn) .rounded-lg,
+html:not(.dark):not(.unicorn) .rounded-xl {
+  border-radius: 18px;
+}
+
+html:not(.dark):not(.unicorn) header .rounded-full {
+  border-radius: 9999px;
+}
+
+html:not(.dark):not(.unicorn) header.glass,
+html:not(.dark):not(.unicorn) header {
+  box-shadow: 0 10px 30px rgba(176, 80, 112, 0.08);
 }
 
 html:not(.dark):not(.unicorn) .bg-\[\#FAF7F2\],
@@ -149,8 +205,9 @@ html:not(.dark):not(.unicorn) .to-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .bg-\[\#0f0f10\],
 html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\],
 html:not(.dark):not(.unicorn) .bg-\[\#F4F5F7\],
-html:not(.dark):not(.unicorn) .bg-\[\#F8F7F4\] {
-  background-color: #F8F7F4 !important;
+html:not(.dark):not(.unicorn) .bg-\[\#F8F7F4\],
+html:not(.dark):not(.unicorn) .bg-\[\#FFF7F2\] {
+  background-color: #FFF3EA !important;
 }
 
 html:not(.dark):not(.unicorn) button,
@@ -166,6 +223,37 @@ html:not(.dark):not(.unicorn) .bg-eonora-gradient {
 }
 html:not(.dark):not(.unicorn) .bg-eonora-gradient:hover {
   background-position: 100% 50%;
+}
+
+html:not(.dark):not(.unicorn) .fun-folder-card {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--folder, #B05070) 16%, #ffffff) 0%, #ffffff 46%);
+  border-radius: 22px;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--folder, #B05070) 18%, transparent);
+}
+html:not(.dark):not(.unicorn) .fun-folder-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--folder, #B05070) 24%, transparent);
+}
+
+html:not(.dark):not(.unicorn) #new-client-filter-button {
+  background: var(--eonora-gradient) !important;
+  color: #fff !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 8px 18px rgba(176, 80, 112, 0.28);
+}
+html:not(.dark):not(.unicorn) #dashboard-search-input {
+  border-radius: 9999px !important;
+  background: #fff !important;
+  border-color: #F0D8CC !important;
+}
+
+html:not(.dark):not(.unicorn) .fun-metric {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--accent, #B05070) 28%, #F0D8CC);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent, #B05070) 12%, transparent);
+}
+html:not(.dark):not(.unicorn) .fun-metric:hover {
+  transform: translateY(-2px);
 }
 
 /* Scrollbar */
@@ -350,7 +438,12 @@ html:not(.dark):not(.unicorn) .bg-eonora-gradient:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html:not(.dark):not(.unicorn) body::before {
+    html:not(.dark):not(.unicorn) body::before,
+    html:not(.dark):not(.unicorn) body::after {
         display: none;
+    }
+    html:not(.dark):not(.unicorn) .fun-folder-card:hover,
+    html:not(.dark):not(.unicorn) .fun-metric:hover {
+        transform: none;
     }
 }

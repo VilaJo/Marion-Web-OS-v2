@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.24] - 2026-08-17
+### Thème clair plus fun
+- Papier pêche `#FFF3EA`, typo Nunito (ronds), blobs rose / teal / bleu
+- Cartes clients teintées, dossiers en pastilles, bouton Clair | Nuit visible (header + mobile)
+- **Nuit inchangé**
+
 ## [2.13.23] - 2026-08-17
 ### Thème clair Modulate (Brand Guidelines)
 - Palette UI : papier `#F8F7F4`, ink `#03031C`, bordure `#E0DFDB`

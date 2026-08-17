@@ -95,7 +95,8 @@ export const MetricsStrip: React.FC<MetricsStripProps> = ({
                         key={item.key}
                         type="button"
                         onClick={item.onClick}
-                        className="group flex items-center gap-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 px-3.5 py-2.5 text-left hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+                        className="fun-metric group flex items-center gap-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 px-3.5 py-2.5 text-left hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                        style={{ ['--accent']: item.accent } as React.CSSProperties}
                     >
                         <span
                             className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"

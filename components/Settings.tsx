@@ -1229,25 +1229,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Sélectionnez votre univers</label>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     
-                                    {/* Professionnel = Stability studio (thème principal) */}
+                                    {/* Clair = pêche fun */}
                                     <button 
                                         onClick={() => onThemeChange('light')}
                                         className={`p-4 rounded-2xl border-2 flex flex-col gap-3 transition-all h-32 relative overflow-hidden group ${
                                             currentTheme === 'light' 
-                                            ? 'border-[#B05070] bg-[#F8F7F4]' 
-                                            : 'border-[#E0DFDB] bg-white hover:border-[#D4D3CE]'
+                                            ? 'border-[#B05070] bg-[#FFF3EA] shadow-[0_10px_24px_rgba(176,80,112,0.18)]' 
+                                            : 'border-[#F0D8CC] bg-white hover:border-[#E8C4B4]'
                                         }`}
                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-br from-white via-[#F8E9EE]/40 to-[#E6F6F4]/50" />
-                                        <div className="absolute bottom-4 right-4 w-10 h-3 rounded-full bg-eonora-gradient" />
+                                        <div className="absolute inset-0 bg-gradient-to-br from-[#FFF3EA] via-[#F8E9EE]/70 to-[#E6F6F4]/80" />
+                                        <div className="absolute -right-6 -top-8 w-24 h-24 rounded-full bg-[#B05070]/20 blur-2xl" />
+                                        <div className="absolute bottom-4 right-4 w-12 h-3 rounded-full bg-eonora-gradient" />
                                         <div className="flex items-center gap-3 z-10">
-                                            <div className="w-8 h-8 rounded-full bg-white border border-[#E0DFDB] flex items-center justify-center text-[#B05070]">
+                                            <div className="w-8 h-8 rounded-full bg-white border border-[#F0D8CC] flex items-center justify-center text-amber-400 shadow-sm">
                                                 <Sun size={16} />
                                             </div>
-                                            <span className="font-medium text-[#03031C] tracking-tight">Professionnel</span>
+                                            <span className="font-extrabold text-[#B05070] tracking-tight">Clair</span>
                                         </div>
-                                        <p className="text-xs text-[#67676C] z-10 text-left">
-                                            Clair Modulate — papier `#F8F7F4`, gradient en détail, plus vivant.
+                                        <p className="text-xs text-[#8A6E7A] z-10 text-left">
+                                            Papier pêche, Nunito tout rond, blobs rose / teal / bleu. Nuit reste tel quel.
                                         </p>
                                         {currentTheme === 'light' && <div className="absolute top-2 right-2 text-[#b05070]"><Check size={16} /></div>}
                                     </button>

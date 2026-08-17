@@ -59,7 +59,7 @@
           if (meta) {
             meta.setAttribute(
               'content',
-              t === 'dark' ? '#0d1329' : t === 'unicorn' ? '#fdf4ff' : '#F8F7F4'
+              t === 'dark' ? '#0d1329' : t === 'unicorn' ? '#fdf4ff' : '#FFF3EA'
             );
           }
         } catch (e) {
@@ -72,22 +72,22 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              serif: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
-              sans: ['Inter', 'system-ui', 'sans-serif'],
-              heading: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
-              calligraphy: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
+              serif: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
+              sans: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
+              heading: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
+              calligraphy: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
             },
             colors: {
-              cream: '#F8F7F4',
-              'cream-dark': '#EDECE8',
-              'eonora-bg': '#F8F7F4',
+              cream: '#FFF3EA',
+              'cream-dark': '#F0D8CC',
+              'eonora-bg': '#FFF3EA',
               sage: '#7C9A7E',
               'sage-dark': '#647D66',
               'sage-light': '#A7C1A3',
@@ -225,13 +225,21 @@
     </script>
     <style>
       body {
-        font-family: 'Archivo', system-ui, sans-serif;
-        font-weight: 400;
+        font-family: Nunito, Inter, system-ui, sans-serif;
+        font-weight: 500;
         overflow-x: hidden;
       }
       h1, h2, h3, h4, h5, h6 {
-        font-family: 'Archivo', system-ui, sans-serif;
-        font-weight: 600;
+        font-family: Nunito, Inter, system-ui, sans-serif;
+        font-weight: 800;
+      }
+      .dark body {
+        font-family: Inter, system-ui, sans-serif;
+        font-weight: 400;
+      }
+      .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+        font-family: Roboto, Inter, system-ui, sans-serif;
+        font-weight: 500;
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
@@ -520,13 +528,13 @@
 
       /* --- Briefing Content Styles --- */
       .briefing-content {
-        font-family: 'Archivo', system-ui, sans-serif;
-        font-weight: 400;
+        font-family: Nunito, Inter, system-ui, sans-serif;
+        font-weight: 500;
       }
       
       .briefing-content h3 {
-        font-family: 'Archivo', system-ui, sans-serif;
-        font-weight: 600;
+        font-family: Nunito, Inter, system-ui, sans-serif;
+        font-weight: 800;
         background: linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -663,7 +671,7 @@
     </style>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-[#F8F7F4] text-[#27272B] transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+  <body class="bg-[#FFF3EA] text-[#3D2A4A] transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
     
     <!-- Linear dark canvas (no decorative space scene) -->
     <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-[#0d1329]">

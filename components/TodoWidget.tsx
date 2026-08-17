@@ -38,15 +38,15 @@ export const TodoWidget: React.FC = () => {
     }, [openTodos]);
 
     return (
-        <div className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 mb-4 overflow-hidden">
+        <div className="w-full rounded-2xl border border-[#F0D8CC] dark:border-slate-700 bg-white dark:bg-slate-900/50 mb-4 overflow-hidden shadow-[0_8px_20px_rgba(176,80,112,0.08)] dark:shadow-none">
             <button
                 type="button"
                 onClick={() => setShowTodoPanel(true)}
                 className="w-full flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors text-left"
             >
                 <div className="flex items-center gap-2">
-                    <ListTodo size={14} className="text-slate-500" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                    <ListTodo size={14} className="text-[#B05070]" />
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-slate-700 dark:text-slate-300">
                         To-do du jour
                     </span>
                 </div>

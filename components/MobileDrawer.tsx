@@ -11,10 +11,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../stores';
+import { ThemeToggle } from './ThemeToggle';
 import {
     X, LayoutGrid, StickyNote, Wand2, Tent, Target,
     Mail, Sparkles, Settings, Calendar, Wallet,
-    HelpCircle, Sun, Moon, Sunrise, ChevronDown,
+    HelpCircle, Sunrise, ChevronDown,
     Hammer, BookOpen, Palette, Shield, Telescope, Code2, Newspaper, ListTodo,
 } from 'lucide-react';
 
@@ -29,7 +30,6 @@ export const MobileDrawer: React.FC = () => {
     const navigate = useNavigate();
     const {
         isMobileMenuOpen, setIsMobileMenuOpen,
-        theme, cycleTheme,
         setShowMondayBriefing, setShowNotes, setShowMediaWorkshop,
         setIsFocusMode, setShowGoalsKPIs,
         setShowGuide, setShowAgendaModal, setShowChat,
@@ -157,19 +157,8 @@ export const MobileDrawer: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Theme toggle at bottom */}
-                <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-                    <button
-                        onClick={() => { cycleTheme(); }}
-                        className="w-full flex items-center gap-4 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                    >
-                        {theme === 'light' && <Sun size={22} className="text-amber-400" />}
-                        {theme === 'dark' && <Moon size={22} className="text-brand-orange" />}
-                        {theme === 'unicorn' && <Sparkles size={22} className="text-pink-500" />}
-                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                            Thème : {theme === 'light' ? 'Clair' : theme === 'dark' ? 'Sombre' : 'Licorne'}
-                        </span>
-                    </button>
+                <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-center">
+                    <ThemeToggle />
                 </div>
             </div>
         </>

@@ -55,7 +55,7 @@ export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, 
             {/* Desktop: vertical folder list — Linear */}
             <nav
                 aria-label="Dossiers clients"
-                className="hidden md:flex md:flex-col w-full rounded-lg border border-[#E0DFDB] dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden"
+                className="hidden md:flex md:flex-col w-full rounded-2xl border border-[#F0D8CC] dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden shadow-[0_10px_24px_rgba(176,80,112,0.08)] dark:shadow-none"
             >
                 <div className="px-3 py-2.5 border-b border-slate-100 dark:border-[#262626] flex items-center justify-between">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">
@@ -107,12 +107,12 @@ const FolderChip: React.FC<FolderChipProps> = ({ label, count, isSelected, empha
         type="button"
         onClick={onClick}
         aria-current={isSelected ? 'true' : undefined}
-        className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs whitespace-nowrap transition-colors border ${
-            emphasized ? 'font-semibold' : 'font-medium'
+        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${
+            emphasized ? 'font-bold' : 'font-semibold'
         } ${
             isSelected
-                ? 'bg-slate-900 dark:bg-white/[0.08] text-white border-slate-900 dark:border-[#3f3f46]'
-                : 'bg-white dark:bg-[#151516] text-slate-500 dark:text-[#8A8A8E] border-slate-200 dark:border-[#262626]'
+                ? 'bg-[#B05070] text-white border-[#B05070] shadow-[0_6px_14px_rgba(176,80,112,0.28)] dark:bg-white/[0.08] dark:text-white dark:border-[#3f3f46] dark:shadow-none'
+                : 'bg-white dark:bg-[#151516] text-slate-500 dark:text-[#8A8A8E] border-[#F0D8CC] dark:border-[#262626]'
         }`}
     >
         {dot && (
@@ -142,14 +142,14 @@ const FolderNode: React.FC<FolderNodeProps> = ({ label, count, isSelected, empha
             type="button"
             onClick={onClick}
             aria-current={isSelected ? 'true' : undefined}
-            className={`relative w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-left transition-colors ${
+            className={`relative w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-colors ${
                 isSelected
-                    ? 'bg-slate-100 dark:bg-white/[0.06] text-slate-900 dark:text-white'
-                    : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-slate-50 dark:hover:bg-white/[0.03]'
+                    ? 'bg-[#FFF1E8] text-[#B05070] dark:bg-white/[0.06] dark:text-white'
+                    : 'text-slate-600 dark:text-[#8A8A8E] hover:bg-[#FFF8F3] dark:hover:bg-white/[0.03]'
             }`}
         >
             {isSelected && (
-                <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-[#4a72c4]" />
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[#B05070] dark:bg-[#4a72c4]" />
             )}
             {dot ? (
                 <span className="w-1.5 h-1.5 rounded-full shrink-0 ml-0.5" style={{ backgroundColor: dot }} />

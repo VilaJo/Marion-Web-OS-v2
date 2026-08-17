@@ -275,8 +275,8 @@ const App: React.FC = () => {
         if (theme === 'light') {
             // Professionnel = clair Eonora
             document.body.style.backgroundImage = '';
-            document.body.style.backgroundColor = '#F8F7F4';
-            meta?.setAttribute('content', '#F8F7F4');
+            document.body.style.backgroundColor = '#FFF3EA';
+            meta?.setAttribute('content', '#FFF3EA');
         } else if (theme === 'dark') {
             // Nuit — fond encre (inchangé)
             document.body.style.backgroundImage = '';

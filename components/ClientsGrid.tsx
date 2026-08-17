@@ -77,8 +77,8 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                         key={project.id}
                         type="button"
                         onClick={() => onOpenProject(project.id)}
-                        className="group relative text-left rounded-xl border bg-white dark:bg-slate-900/50 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors overflow-hidden flex flex-col"
-                        style={{ borderColor: `${folderColor}40` }}
+                        className="fun-folder-card group relative text-left rounded-2xl border bg-white dark:bg-slate-900/50 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-all overflow-hidden flex flex-col"
+                        style={{ borderColor: `${folderColor}40`, ['--folder']: folderColor } as React.CSSProperties}
                     >
                         {/* Accent dossier (pas santé) */}
                         <span
@@ -89,7 +89,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                         <div className="p-4 flex flex-col gap-3.5 flex-1">
                             <div className="flex items-start gap-3">
                                 <div
-                                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${avatarGrad} flex items-center justify-center text-white text-xs font-semibold shrink-0 overflow-hidden`}
+                                    className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${avatarGrad} flex items-center justify-center text-white text-sm font-extrabold shrink-0 overflow-hidden shadow-md`}
                                 >
                                     {project.avatarImage ? (
                                         <img src={project.avatarImage} alt="" className="w-full h-full object-cover" />
@@ -99,7 +99,7 @@ export const ClientsGrid: React.FC<ClientsGridProps> = ({
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-2">
-                                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate tracking-tight">
+                                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate tracking-tight">
                                             {project.clientName}
                                         </h3>
                                         <ArrowUpRight

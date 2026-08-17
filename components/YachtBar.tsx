@@ -57,7 +57,7 @@ export const YachtBar: React.FC<YachtBarProps> = ({
         <button
             type="button"
             onClick={onOpenFinances}
-            className="w-full mb-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 px-4 py-3 text-left hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+            className="w-full mb-3 rounded-2xl border border-[#F0D8CC] dark:border-slate-700 bg-white dark:bg-slate-900/50 px-4 py-3 text-left hover:bg-[#FFF8F3] dark:hover:bg-slate-800/40 transition-all shadow-[0_8px_20px_rgba(74,114,196,0.08)] dark:shadow-none"
             title="Ouvrir Santé financière"
         >
             <div className="flex items-center justify-between gap-3 mb-2">
@@ -80,7 +80,7 @@ export const YachtBar: React.FC<YachtBarProps> = ({
                 </div>
             </div>
 
-            <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-[#FFF3EA] dark:bg-slate-800 rounded-full overflow-hidden">
                 <div
                     className="h-full rounded-full transition-all duration-700 ease-out"
                     style={{

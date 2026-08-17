@@ -271,12 +271,19 @@ export const useUIStore = create<UIState>((set, get) => ({
     // Theme actions
     setTheme: (theme) => {
         localStorage.setItem('marion_theme', theme);
+        const root = document.documentElement;
+        root.classList.remove('dark', 'unicorn');
+        if (theme === 'dark') root.classList.add('dark');
+        else if (theme === 'unicorn') root.classList.add('unicorn');
         set({ theme });
     },
     cycleTheme: () => {
         const { theme } = get();
-        const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'unicorn' : 'light';
+        const next = theme === 'light' ? 'dark' : 'light';
         localStorage.setItem('marion_theme', next);
+        const root = document.documentElement;
+        root.classList.remove('dark', 'unicorn');
+        if (next === 'dark') root.classList.add('dark');
         set({ theme: next as Theme });
     },
     setAccentColor: (color) => {

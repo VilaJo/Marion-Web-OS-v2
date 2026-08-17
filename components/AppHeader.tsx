@@ -17,7 +17,7 @@ import { apiFetch } from '../services/api';
 import { activateCloudAiMode } from '../services/geminiService';
 
 import {
-    LayoutGrid, Bell, Settings, Sun, Moon,
+    LayoutGrid, Bell, Settings,
     HelpCircle, Sparkles, MessageCircle, Wand2, Tent,
     StickyNote, Target, Mail, Menu, Search,
     Key, RefreshCw, CheckCircle, AlertTriangle, Loader2, X, Telescope,
@@ -26,6 +26,7 @@ import {
     Calendar, Wallet, ListTodo,
 } from 'lucide-react';
 import { MobileDrawer } from './MobileDrawer';
+import { ThemeToggle } from './ThemeToggle';
 
 interface AppHeaderProps {
     isConfigured: boolean | null;
@@ -42,7 +43,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
     const isSyncing = useOfflineStore((s) => s.isSyncing);
 
     const {
-        theme, setTheme,
         showChat, setShowChat,
         showNotifCenter, setShowNotifCenter,
         setShowMediaWorkshop, setShowNotes, setShowFileDispatcher,
@@ -267,7 +267,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
 
     return (
         <>
-        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-white/90 dark:bg-[#0d1329]/90 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-[#E0DFDB] dark:border-[#262626] md:border-0">
+        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-[#FFF3EA]/90 dark:bg-[#0d1329]/90 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-[#F0D8CC] dark:border-[#262626] md:border-0">
             {/* Logo + text (text slides behind logo on scroll) */}
             <div onClick={() => navigate('/')} className="group flex items-center cursor-pointer relative overflow-hidden">
                 <div className="relative z-10 flex-shrink-0">
@@ -284,10 +284,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                         transform: `translateX(${-scrollProgress * 90}px)`,
                     }}
                 >
-                    <h1 className="font-sans text-base sm:text-lg md:text-[26px] font-semibold text-slate-800 dark:text-white leading-tight whitespace-nowrap">
-                        Eonora Tech <span className="text-slate-400 font-normal hidden md:inline">OS</span>
+                    <h1 className="font-sans text-base sm:text-lg md:text-[26px] font-extrabold text-slate-800 dark:text-white leading-tight whitespace-nowrap">
+                        Eonora Tech <span className="text-[#B05070] font-extrabold hidden md:inline dark:text-slate-400 dark:font-normal">OS</span>
                     </h1>
-                    <p className="text-[10px] md:text-xs text-slate-400 hidden md:block">Assistant Intelligent</p>
+                    <p className="text-[10px] md:text-xs text-[#8A6E7A] hidden md:block dark:text-slate-400">Assistant Intelligent</p>
                 </div>
             </div>
 
@@ -317,6 +317,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                     <span className={`w-1.5 h-1.5 rounded-full ${franckIsDown ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
                 </button>
                 {/* Hamburger */}
+                <ThemeToggle compact />
                 <button
                     onClick={() => setIsMobileMenuOpen(true)}
                     className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -326,7 +327,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             </div>
 
             {/* Desktop: full toolbar */}
-            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white dark:bg-[#151516]/90 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-[#E0DFDB] dark:border-[#262626] shadow-sm dark:shadow-none backdrop-blur-md md:-mt-2 transition-all duration-300">
+            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white dark:bg-[#151516]/90 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-[#F0D8CC] dark:border-[#262626] shadow-[0_8px_20px_rgba(176,80,112,0.12)] dark:shadow-none backdrop-blur-md md:-mt-2 transition-all duration-300">
                 {/* PRIMARY — toujours visible, quotidien de Marion (v2.11.0 nav allégée) */}
                 <Tooltip content="Ma journée — priorités et échéances">
                     <button
@@ -400,13 +401,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                     </button>
                 </Tooltip>
                 <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-                <Tooltip content="Changer de thème">
-                    <button onClick={() => { const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'unicorn' : 'light'; setTheme(next as any); }} className="p-2 rounded-full text-slate-500 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors">
-                        {theme === 'light' && <Sun size={18} className="text-amber-400" />}
-                        {theme === 'dark' && <Moon size={18} className="text-brand-orange" />}
-                        {theme === 'unicorn' && <Sparkles size={18} className="text-pink-500" />}
-                    </button>
-                </Tooltip>
+                <ThemeToggle />
 
                 {/* "Avancé" — tous les outils secondaires regroupés en un seul menu (v2.11.0) */}
                 <div ref={advancedMenuRef} className="relative hidden lg:flex">
