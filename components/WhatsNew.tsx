@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Gift, Palette } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.24";
+const CURRENT_VERSION = "2.13.25";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -24,26 +24,26 @@ export const WhatsNew: React.FC = () => {
             <div className="relative overflow-hidden">
                 <div className="p-8 pt-2">
                     <div className="flex flex-col items-center text-center mb-10">
-                        <div className="w-16 h-16 bg-[#FFF3EA] border border-[#F0D8CC] rounded-3xl flex items-center justify-center text-[#B05070] mb-6 shadow-[0_10px_24px_rgba(176,80,112,0.18)]">
+                        <div className="w-16 h-16 bg-[#FFD0E6] border border-[#F0D8CC] rounded-3xl flex items-center justify-center text-[#B05070] mb-6 shadow-[0_10px_24px_rgba(176,80,112,0.18)]">
                             <Gift size={32} />
                         </div>
                         <h2 className="font-serif text-3xl font-extrabold tracking-tight text-[#2A1840] dark:text-white mb-2">
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
                         <p className="text-[#8A6E7A] dark:text-slate-400">
-                            Thème clair plus fun — pêche, ronds, couleurs
+                            Thème clair tout en couleurs — plus de fond blanc
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-[#FFF3EA] dark:bg-slate-800 border border-[#F0D8CC] dark:border-slate-700">
-                            <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 border border-[#F0D8CC] dark:border-slate-600 text-[#B05070] flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-[#FFD0E6]/60 dark:bg-slate-800 border border-[#F0D8CC] dark:border-slate-700">
+                            <div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-slate-900 border border-[#F0D8CC] dark:border-slate-600 text-[#B05070] flex items-center justify-center flex-shrink-0 shadow-sm">
                                 <Palette size={24} />
                             </div>
                             <div>
-                                <h3 className="font-extrabold text-[#2A1840] dark:text-white mb-1">Clair tout doux</h3>
+                                <h3 className="font-extrabold text-[#2A1840] dark:text-white mb-1">Clair joyeux</h3>
                                 <p className="text-sm text-[#8A6E7A] dark:text-slate-400 leading-relaxed">
-                                    Papier pêche, Nunito tout rond, blobs rose / teal / bleu et cartes colorées. Le bouton Clair | Nuit est dans le header (bureau et mobile). Nuit inchangé.
+                                    Dégradé rose / pêche / mint / bleu sur toute l’app. Les cartes sont translucides, le tableau est teinté, le header aussi. Nuit inchangé.
                                 </p>
                             </div>
                         </div>

@@ -41,7 +41,7 @@ interface CardProps {
 export const Card: React.FC<CardProps> = ({ children, className = '', onClick }) => (
     <div 
         onClick={onClick}
-        className={`glass rounded-2xl p-6 shadow-sm dark:shadow-none border border-[#F0D8CC] bg-white dark:border-[#262626] dark:bg-[#151516]/95 ${className}`}
+        className={`glass rounded-2xl p-6 shadow-sm dark:shadow-none border border-[#F0D8CC] bg-white/40 dark:border-[#262626] dark:bg-[#151516]/95 ${className}`}
     >
         {children}
     </div>
@@ -196,7 +196,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         >
                         <div 
                             ref={modalRef}
-                            className={`bg-white dark:bg-slate-900/95 dark:border dark:border-slate-700/50 rounded-t-3xl md:rounded-4xl shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full ${width} flex flex-col animate-in slide-in-from-bottom md:animate-in md:zoom-in-95 duration-500 max-h-[90vh] md:max-h-[95vh] relative outline-none`}
+                            className={`bg-white/80 dark:bg-slate-900/95 dark:border dark:border-slate-700/50 rounded-t-3xl md:rounded-4xl shadow-2xl dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full ${width} flex flex-col animate-in slide-in-from-bottom md:animate-in md:zoom-in-95 duration-500 max-h-[90vh] md:max-h-[95vh] relative outline-none`}
                             onClick={(e) => e.stopPropagation()}
                             tabIndex={-1}
                         >
@@ -205,7 +205,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                                 <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
                             </div>
                             {title ? (
-                                <div className="p-6 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900/95 z-10 rounded-t-4xl shrink-0">
+                                <div className="p-6 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center sticky top-0 bg-white/80 dark:bg-slate-900/95 z-10 rounded-t-4xl shrink-0">
                                     <h2 id="modal-title" className="text-2xl font-serif text-slate-800 dark:text-white">{title}</h2>
                                     {showCloseButton && (
                                         <button onClick={onClose} aria-label="Fermer" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group">

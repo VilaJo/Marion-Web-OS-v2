@@ -9,7 +9,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ visible, loadingText
     // No internal state or effects anymore
     
     return (
-        <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#FAF7F2] dark:bg-[#1A1C20] transition-opacity duration-700 ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-transparent dark:bg-[#1A1C20] transition-opacity duration-700 ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
             
             <div className="relative flex flex-col items-center justify-center p-10">
                 {/* Central Animation Container */}

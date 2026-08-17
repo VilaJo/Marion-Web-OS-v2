@@ -219,7 +219,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     // Loading state while checking auth
     if (isCheckingAuth) {
         return (
-            <div className="min-h-screen bg-[#FAF7F2] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center relative z-10">
+            <div className="min-h-screen bg-transparent dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center relative z-10">
                 <div className="flex flex-col items-center gap-6">
                     <MarionLogo size={100} />
                     <div className="flex items-center gap-3">
@@ -235,7 +235,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
     if (isConfigured === null) {
         return (
-            <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
+            <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
                 <div className="max-w-md w-full bg-white/80 rounded-3xl p-8 text-center shadow-xl">
                     <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                     <h1 className="text-xl font-semibold text-slate-800 mb-2">Marion ne répond pas</h1>
@@ -255,7 +255,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
     // If not configured yet, show setup form
     if (isConfigured === false) {
         return (
-            <div className="min-h-screen bg-[#FAF7F2] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
+            <div className="min-h-screen bg-transparent dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
                 {/* Background decorations (light mode only) */}
                 <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#A7C1A3]/25 dark:bg-transparent rounded-full blur-[120px] -z-10" />
                 <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-transparent rounded-full blur-[100px] -z-10" />
@@ -425,7 +425,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated, onSki
 
     // Login form (auth already configured)
     return (
-        <div className="min-h-screen bg-[#FAF7F2] dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
+        <div className="min-h-screen bg-transparent dark:from-transparent dark:via-transparent dark:to-transparent flex items-center justify-center p-4 relative z-10">
             {/* Background decorations (light mode only) */}
             <div className="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#A7C1A3]/25 dark:bg-transparent rounded-full blur-[120px] -z-10" />
             <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-300/20 dark:bg-transparent rounded-full blur-[100px] -z-10" />

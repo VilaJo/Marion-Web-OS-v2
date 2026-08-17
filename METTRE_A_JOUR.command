@@ -215,7 +215,7 @@ echo "✨ Mise à jour terminée — interface forcée depuis GitHub."
 echo ""
 echo "👉 STOPPER si besoin, puis double-clique « Eonora Tech OS » sur le Bureau"
 echo "👉 Navigateur : Cmd + Shift + R"
-echo "👉 Tu dois voir WhatsNew v2.13.24 — thème clair fun (pêche)"
+echo "👉 Tu dois voir WhatsNew v2.13.25 — thème clair joyeux (plus de fond blanc)"
 
 echo "────────────────────────────────────────────────────────────────────"
 read -r -p "Appuie sur Entrée pour fermer…"

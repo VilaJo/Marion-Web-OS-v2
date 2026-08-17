@@ -38,7 +38,7 @@ function readViewMode(): DashboardViewMode {
         const v = localStorage.getItem(VIEW_MODE_KEY);
         if (v === 'cards' || v === 'table' || v === 'roadmap') return v;
     } catch { /* ignore */ }
-    return 'table';
+    return 'cards';
 }
 
 function persistentSet(key: string): Set<string> {

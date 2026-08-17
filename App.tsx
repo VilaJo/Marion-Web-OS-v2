@@ -45,6 +45,7 @@ import { GlobalSearch } from './components/GlobalSearch';
 import { UndoToastContainer } from './components/UndoToast';
 import { EmptyState } from './components/Shared';
 import { SplashScreen } from './components/SplashScreen';
+import { JoyfulBackdrop } from './components/JoyfulBackdrop';
 import { ToastItem } from './components/NotificationSystem';
 import { LoginScreen } from './components/LoginScreen';
 
@@ -273,10 +274,9 @@ const App: React.FC = () => {
         document.documentElement.style.setProperty('--brand-color', brand);
         const meta = document.querySelector('meta[name="theme-color"]');
         if (theme === 'light') {
-            // Clair = pêche Eonora
             document.body.style.backgroundImage = '';
-            document.body.style.backgroundColor = '#FFF3EA';
-            meta?.setAttribute('content', '#FFF3EA');
+            document.body.style.backgroundColor = '';
+            meta?.setAttribute('content', '#FFD0E6');
         } else if (theme === 'dark') {
             // Nuit — fond encre (inchangé)
             document.body.style.backgroundImage = '';
@@ -357,7 +357,10 @@ const App: React.FC = () => {
     if (authChecked && !isAuthenticated) {
         return (
             <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement..." />}>
-                <LoginScreen onAuthenticated={handleAuthenticated} />
+                <>
+                    {theme === 'light' && <JoyfulBackdrop />}
+                    <LoginScreen onAuthenticated={handleAuthenticated} />
+                </>
             </Suspense>
         );
     }
@@ -365,14 +368,17 @@ const App: React.FC = () => {
     if (isConfigured === false) {
         return (
             <Suspense fallback={<SplashScreen visible={true} loadingText="Chargement de l'interface..." />}>
-                <Onboarding onSetupComplete={() => setIsConfigured(true)} />
+                <>
+                    {theme === 'light' && <JoyfulBackdrop />}
+                    <Onboarding onSetupComplete={() => setIsConfigured(true)} />
+                </>
             </Suspense>
         );
     }
 
     if (isBackendDown) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0B0F19] p-4">
+            <div className="min-h-screen flex items-center justify-center bg-transparent dark:bg-[#0B0F19] p-4">
                 <div className="flex flex-col items-center">
                     <EmptyState
                         title="Marion n'arrive pas à se connecter"
@@ -406,6 +412,7 @@ const App: React.FC = () => {
             onDrop={handleDrop}
         >
             <TourGuide isOpen={showTour} onClose={() => setShowTour(false)} onComplete={handleTourComplete} />
+            {theme === 'light' && <JoyfulBackdrop />}
 
             {isFocusMode && (
                 <FocusMode
