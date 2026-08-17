@@ -273,7 +273,7 @@ const App: React.FC = () => {
         document.documentElement.style.setProperty('--brand-color', brand);
         const meta = document.querySelector('meta[name="theme-color"]');
         if (theme === 'light') {
-            // Professionnel = clair Eonora
+            // Clair = pêche Eonora
             document.body.style.backgroundImage = '';
             document.body.style.backgroundColor = '#FFF3EA';
             meta?.setAttribute('content', '#FFF3EA');

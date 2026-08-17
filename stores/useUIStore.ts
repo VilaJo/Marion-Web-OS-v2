@@ -140,6 +140,15 @@ interface UIState {
     setRelanceTemplateFinal: (v: string) => void;
 }
 
+function applyHtmlThemeClass(theme: Theme) {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (!root?.classList) return;
+    root.classList.remove('dark', 'unicorn');
+    if (theme === 'dark') root.classList.add('dark');
+    else if (theme === 'unicorn') root.classList.add('unicorn');
+}
+
 export const useUIStore = create<UIState>((set, get) => ({
     // Default Professionnel studio (Stability); one-shot migrate → light
     theme: (() => {
@@ -268,22 +277,16 @@ export const useUIStore = create<UIState>((set, get) => ({
         localStorage.getItem('marion_relance_final') ||
         `Bonjour,\n\nMise en demeure de payer — la facture {numero} ({montant} CHF), échue le {echeance}, demeure impayée malgré nos relances précédentes.\n\nÀ défaut de règlement complet dans un délai de 10 jours dès réception de la présente, nous saisirons l'Office des poursuites compétent (art. 102 ss CO).\n\nLes frais de rappel et intérêts moratoires (5% l'an, art. 104 CO) sont applicables.\n\nCordialement`,
 
-    // Theme actions
     setTheme: (theme) => {
         localStorage.setItem('marion_theme', theme);
-        const root = document.documentElement;
-        root.classList.remove('dark', 'unicorn');
-        if (theme === 'dark') root.classList.add('dark');
-        else if (theme === 'unicorn') root.classList.add('unicorn');
+        applyHtmlThemeClass(theme);
         set({ theme });
     },
     cycleTheme: () => {
         const { theme } = get();
         const next = theme === 'light' ? 'dark' : 'light';
         localStorage.setItem('marion_theme', next);
-        const root = document.documentElement;
-        root.classList.remove('dark', 'unicorn');
-        if (next === 'dark') root.classList.add('dark');
+        applyHtmlThemeClass(next as Theme);
         set({ theme: next as Theme });
     },
     setAccentColor: (color) => {

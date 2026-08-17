@@ -167,13 +167,10 @@ describe('useUIStore', () => {
         expect(localStorage.getItem('marion_theme')).toBe('dark');
     });
 
-    it('cycleTheme: light -> dark -> unicorn -> light', () => {
+    it('cycleTheme: light <-> dark', () => {
         useUIStore.getState().setTheme('light');
         useUIStore.getState().cycleTheme();
         expect(useUIStore.getState().theme).toBe('dark');
-
-        useUIStore.getState().cycleTheme();
-        expect(useUIStore.getState().theme).toBe('unicorn');
 
         useUIStore.getState().cycleTheme();
         expect(useUIStore.getState().theme).toBe('light');
