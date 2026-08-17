@@ -46,7 +46,7 @@ export const MonthlyMaintenancePanel: React.FC<MonthlyMaintenancePanelProps> = (
     const doneCount = clients.filter((c) => doneIds.includes(c.id)).length;
 
     return (
-        <div className="mt-3 rounded-lg border border-[#E4E6EA] dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden">
+        <div className="mt-3 rounded-lg border border-[#E0DFDB] dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden">
             <div className="px-3 py-2.5 border-b border-slate-100 dark:border-[#262626] flex items-center gap-2">
                 <Wrench size={14} style={{ color: accent }} />
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">

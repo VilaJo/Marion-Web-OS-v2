@@ -1,7 +1,7 @@
 {
   "name": "Eonora-Tech-OS",
   "private": true,
-  "version": "2.13.22",
+  "version": "2.13.23",
   "type": "module",
   "scripts": {
     "dev": "vite",

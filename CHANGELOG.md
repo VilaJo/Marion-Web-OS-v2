@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.23] - 2026-08-17
+### Thème clair Modulate (Brand Guidelines)
+- Palette UI : papier `#F8F7F4`, ink `#03031C`, bordure `#E0DFDB`
+- Typo Inter (corps) + Roboto (titres) ; gradient rose→bleu→teal en détail
+- Thème clair plus vivant (halos doux, barre signature) — **Nuit inchangé**
+
 ## [2.13.22] - 2026-08-17
 ### Maintenance, agenda & to-do (feedback Marion)
 - Fiche maintenance : actif/inactif, choix **Offert jusqu’au** *ou* **Facturation le**, champ coût → sync calendrier (catégorie Maintenances)
@@ -28,7 +34,7 @@ Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront docu
 
 ## [2.13.18] - 2026-07-27
 ### Thème Professionnel — vrai clair
-- Canvas `#F4F5F7`, cartes blanches, texte charcoal, accent rose
+- Canvas `#F8F7F4`, cartes blanches, texte charcoal, accent rose
 - Kanban adapté clair/nuit via tokens CSS (`--kanban-*`)
 - Thème **Nuit** inchangé
 

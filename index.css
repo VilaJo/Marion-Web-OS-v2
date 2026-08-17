@@ -1,44 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* === Professionnel = thème clair Eonora (propre, lisible) === */
-  --eonora-bg: #F4F5F7;
+  /* === Modulate — palette fonctionnelle (Brand Guidelines v1.0) === */
+  --eonora-bg: #F8F7F4;
   --eonora-surface: #FFFFFF;
   --eonora-surface-raised: #FFFFFF;
+  --eonora-ink: #03031C;
   --eonora-sage: #7C9A7E;
   --eonora-sage-dark: #647D66;
   --eonora-sage-light: #A7C1A3;
-  --eonora-charcoal: #1C1D21;
-  --eonora-charcoal-deep: #0F1014;
-  --eonora-border: #E4E6EA;
-  --eonora-border-strong: #D0D3D9;
-  --eonora-muted: #6B6F78;
-  --eonora-text: #2A2C33;
-  --eonora-text-strong: #0F1014;
-  --eonora-rose: #b05070;
-  --eonora-blue: #4a72c4;
-  --eonora-teal: #2aada0;
-  --eonora-gradient: linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%);
+  --eonora-charcoal: #27272B;
+  --eonora-charcoal-deep: #03031C;
+  --eonora-border: #E0DFDB;
+  --eonora-border-strong: #D4D3CE;
+  --eonora-muted: #67676C;
+  --eonora-text: #27272B;
+  --eonora-text-strong: #03031C;
+  --eonora-rose: #B05070;
+  --eonora-blue: #4A72C4;
+  --eonora-teal: #2AADA0;
+  --eonora-gradient: linear-gradient(120deg, #B05070 0%, #4A72C4 54.33%, #2AADA0 100%);
 
-  --brand-color: #b05070;
-  --brand-secondary-color: #c96a8b;
-  --brand-orange: #b05070;
-  --pastel-pink: #FFF0F5;
-  --pastel-purple: #F3E8FF;
+  --brand-color: #B05070;
+  --brand-secondary-color: #4A72C4;
+  --brand-orange: #B05070;
+  --pastel-pink: #F8E9EE;
+  --pastel-purple: #EEF2FB;
+  --pastel-teal: #E6F6F4;
 
-  /* Kanban / surfaces métier */
-  --kanban-column: #ECEEF2;
+  --radius-input: 6px;
+  --radius-card: 8px;
+  --radius-panel: 12px;
+  --motion: 200ms;
+
+  --kanban-column: #F1EFEA;
   --kanban-card: #FFFFFF;
-  --kanban-card-hover: #F8F9FB;
-  --kanban-text: #1C1D21;
-  --kanban-muted: #6B6F78;
-  --kanban-border: #E4E6EA;
-  --kanban-divider: #ECEEF2;
-  --kanban-empty: #9AA0AA;
+  --kanban-card-hover: #FBFAF7;
+  --kanban-text: #03031C;
+  --kanban-muted: #67676C;
+  --kanban-border: #E0DFDB;
+  --kanban-divider: #EDECE8;
+  --kanban-empty: #9A9A9E;
 
   color-scheme: light;
 }
@@ -48,6 +54,7 @@
   --eonora-bg: #0d1329;
   --eonora-surface: #151516;
   --eonora-surface-raised: #1c1c1e;
+  --eonora-ink: #ffffff;
   --eonora-charcoal: #151516;
   --eonora-charcoal-deep: #0d1329;
   --eonora-border: #262626;
@@ -72,42 +79,65 @@
 }
 
 body {
-  font-family: 'Archivo', system-ui, sans-serif;
+  font-family: Inter, system-ui, sans-serif;
   font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
   overflow-x: hidden;
   background-color: var(--eonora-bg);
   color: var(--eonora-text);
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Archivo', system-ui, sans-serif;
+  font-family: Roboto, Inter, system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: -0.015em;
   color: var(--eonora-text-strong);
 }
 
 .font-serif {
-  font-family: 'Archivo', system-ui, sans-serif;
+  font-family: Roboto, Inter, system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
 
 .font-mono {
-  font-family: 'Archivo', system-ui, sans-serif;
+  font-family: Inter, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
 .font-calligraphy {
-  font-family: 'Archivo', system-ui, sans-serif;
+  font-family: Roboto, Inter, system-ui, sans-serif;
   font-style: italic;
   font-weight: 500;
 }
 
-/* Professionnel clair — glass léger, pas de remap sombre */
+/* Thème clair joyeux — papier crème + halos de marque (amplitude faible) */
+html:not(.dark):not(.unicorn) body {
+  background-color: #F8F7F4;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 0% -10%, rgba(176, 80, 112, 0.10), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 100% 0%, rgba(42, 173, 160, 0.09), transparent 50%),
+    radial-gradient(ellipse 55% 40% at 85% 110%, rgba(74, 114, 196, 0.08), transparent 50%);
+  background-attachment: fixed;
+}
+
+html:not(.dark):not(.unicorn) body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 80;
+  background: var(--eonora-gradient);
+  pointer-events: none;
+}
+
 html:not(.dark):not(.unicorn) .glass {
-  background: rgba(255, 255, 255, 0.88) !important;
-  border: 1px solid rgba(228, 230, 234, 0.95) !important;
-  box-shadow: 0 1px 2px rgba(15, 16, 20, 0.04) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(224, 223, 219, 0.95) !important;
+  box-shadow: 0 1px 2px rgba(3, 3, 28, 0.04) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
 }
@@ -117,12 +147,28 @@ html:not(.dark):not(.unicorn) .from-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .via-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .to-\[\#FAF7F2\],
 html:not(.dark):not(.unicorn) .bg-\[\#0f0f10\],
-html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
-  background-color: #F4F5F7 !important;
+html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\],
+html:not(.dark):not(.unicorn) .bg-\[\#F4F5F7\],
+html:not(.dark):not(.unicorn) .bg-\[\#F8F7F4\] {
+  background-color: #F8F7F4 !important;
 }
 
-/* Scrollbar clair par défaut */
-/* Scrollbar — clair par défaut, sombre en Nuit */
+html:not(.dark):not(.unicorn) button,
+html:not(.dark):not(.unicorn) a,
+html:not(.dark):not(.unicorn) [role="button"] {
+  transition: background-color var(--motion) ease, color var(--motion) ease, border-color var(--motion) ease, transform var(--motion) ease, box-shadow var(--motion) ease;
+}
+
+html:not(.dark):not(.unicorn) .bg-eonora-gradient {
+  background-size: 140% 140%;
+  background-position: 0% 50%;
+  transition: background-position 220ms ease;
+}
+html:not(.dark):not(.unicorn) .bg-eonora-gradient:hover {
+  background-position: 100% 50%;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -133,12 +179,12 @@ html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c8ccd4;
+  background: #D4D3CE;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8adb8;
+  background: #B8B7B2;
 }
 
 .dark ::-webkit-scrollbar-thumb {
@@ -149,7 +195,6 @@ html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
   background: #3f3f46;
 }
 
-/* Animations */
 @keyframes float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
@@ -170,7 +215,6 @@ html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
     animation: loading-bar 2s ease-in-out infinite;
 }
 
-/* Unicorn Theme Specifics */
 .unicorn {
     --brand-color: #d946ef;
     --eonora-bg: #fdf4ff;
@@ -184,7 +228,6 @@ html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
     color: #334155;
 }
 
-/* Sparkle/Glitter Effect for New Emails */
 @keyframes sparkle {
   0% { opacity: 0; transform: scale(0); }
   50% { opacity: 1; transform: scale(1); }
@@ -218,10 +261,6 @@ html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
     background: inherit;
     border-radius: inherit;
 }
-
-/* ==============================
-   MOBILE RESPONSIVE ENHANCEMENTS
-   ============================== */
 
 @supports (padding: env(safe-area-inset-top)) {
     .safe-area-top {
@@ -307,5 +346,11 @@ html:not(.dark):not(.unicorn) .bg-\[\#1e1e1e\] {
     .planet-blue,
     .cloud-3d {
         display: none !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html:not(.dark):not(.unicorn) body::before {
+        display: none;
     }
 }

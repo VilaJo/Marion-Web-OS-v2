@@ -267,18 +267,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
 
     return (
         <>
-        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-white/90 dark:bg-[#0d1329]/90 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-[#E4E6EA] dark:border-[#262626] md:border-0">
+        <header className="sticky top-0 z-50 flex justify-between items-center px-2 sm:px-3 md:px-6 py-2 md:py-4 mb-2 md:mb-0 bg-white/90 dark:bg-[#0d1329]/90 md:bg-transparent md:dark:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-[#E0DFDB] dark:border-[#262626] md:border-0">
             {/* Logo + text (text slides behind logo on scroll) */}
             <div onClick={() => navigate('/')} className="group flex items-center cursor-pointer relative overflow-hidden">
                 <div className="relative z-10 flex-shrink-0">
                     <img 
                         src="/logo-eonora-mark.png" 
                         alt="Home" 
-                        className={`w-9 h-9 sm:w-10 sm:h-10 md:w-14 md:h-14 object-contain transition-all duration-300 group-hover:scale-110 ${
-                            theme === 'dark' 
-                                ? 'group-hover:drop-shadow-[0_0_15px_rgba(255,126,95,0.8)]' 
-                                : 'group-hover:drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]'
-                        }`} 
+                        className={`w-9 h-9 sm:w-10 sm:h-10 md:w-14 md:h-14 object-contain transition-transform duration-200 group-hover:scale-[1.06]`} 
                     />
                 </div>
                 <div 
@@ -330,7 +326,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             </div>
 
             {/* Desktop: full toolbar */}
-            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white dark:bg-[#151516]/90 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-[#E4E6EA] dark:border-[#262626] shadow-sm dark:shadow-none backdrop-blur-md md:-mt-2 transition-all duration-300">
+            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white dark:bg-[#151516]/90 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-[#E0DFDB] dark:border-[#262626] shadow-sm dark:shadow-none backdrop-blur-md md:-mt-2 transition-all duration-300">
                 {/* PRIMARY — toujours visible, quotidien de Marion (v2.11.0 nav allégée) */}
                 <Tooltip content="Ma journée — priorités et échéances">
                     <button

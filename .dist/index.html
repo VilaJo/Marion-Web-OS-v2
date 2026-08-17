@@ -59,7 +59,7 @@
           if (meta) {
             meta.setAttribute(
               'content',
-              t === 'dark' ? '#0d1329' : t === 'unicorn' ? '#fdf4ff' : '#F4F5F7'
+              t === 'dark' ? '#0d1329' : t === 'unicorn' ? '#fdf4ff' : '#F8F7F4'
             );
           }
         } catch (e) {
@@ -72,32 +72,32 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              serif: ['"Archivo"', 'system-ui', 'sans-serif'],
-              sans: ['"Archivo"', 'system-ui', 'sans-serif'],
-              heading: ['"Archivo"', 'system-ui', 'sans-serif'],
-              calligraphy: ['"Archivo"', 'system-ui', 'sans-serif'],
+              serif: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              heading: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
+              calligraphy: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
             },
             colors: {
-              // === Eonora Tech brand — Professionnel = clair ===
-              cream: '#F4F5F7',
-              'cream-dark': '#ECEEF2',
-              'eonora-bg': '#F4F5F7',
+              cream: '#F8F7F4',
+              'cream-dark': '#EDECE8',
+              'eonora-bg': '#F8F7F4',
               sage: '#7C9A7E',
               'sage-dark': '#647D66',
               'sage-light': '#A7C1A3',
-              charcoal: '#1C1D21',
-              'charcoal-deep': '#0F1014',
+              charcoal: '#27272B',
+              'charcoal-deep': '#03031C',
               'charcoal-card': '#FFFFFF',
-              'eo-rose': '#b05070',
-              'eo-blue': '#4a72c4',
-              'eo-teal': '#2aada0',
+              'eo-rose': '#B05070',
+              'eo-blue': '#4A72C4',
+              'eo-teal': '#2AADA0',
+              'eo-ink': '#03031C',
               // Legacy pastel tokens kept for backward-compat (retired from brand use)
               'pastel-pink': '#FCE7F3',
               'pastel-purple': '#E9D5FF',
@@ -195,9 +195,9 @@
             backgroundImage: {
               'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
               // Signature Eonora gradient: rose → blue → teal (120deg)
-              'eonora-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
-              'marion-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
-              'sunset-gradient': 'linear-gradient(120deg, #b05070 0%, #4a72c4 55%, #2aada0 100%)',
+              'eonora-gradient': 'linear-gradient(120deg, #B05070 0%, #4A72C4 54.33%, #2AADA0 100%)',
+              'marion-gradient': 'linear-gradient(120deg, #B05070 0%, #4A72C4 54.33%, #2AADA0 100%)',
+              'sunset-gradient': 'linear-gradient(120deg, #B05070 0%, #4A72C4 54.33%, #2AADA0 100%)',
               'space-gradient': 'linear-gradient(to bottom, #151516, #0d1329)', 
               'unicorn-gradient': 'linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 50%, #F3E5F5 100%)',
             },
@@ -661,11 +661,11 @@
       }
 
     </style>
-  <script type="module" crossorigin src="/assets/index-yHESNFRP.js"></script>
+  <script type="module" crossorigin src="/assets/index-BsmfgFog.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-react-DMwEjmvF.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-Bh1Wd0XR.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-DrScM5lh.css">
 </head>
-  <body class="bg-[#F4F5F7] text-[#2A2C33] transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
+  <body class="bg-[#F8F7F4] text-[#27272B] transition-colors duration-300 dark:bg-[#0d1329] dark:text-slate-100 relative min-h-screen selection:bg-brand-orange selection:text-white overflow-x-hidden unicorn:bg-unicorn-gradient">
     
     <!-- Linear dark canvas (no decorative space scene) -->
     <div id="space-scene" class="fixed inset-0 pointer-events-none z-0 hidden dark:block overflow-hidden bg-[#0d1329]">

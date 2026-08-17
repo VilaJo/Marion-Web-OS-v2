@@ -1487,7 +1487,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 const currentIdx = WORKFLOW_STEPS.indexOf(project.phase);
                 const progressPct = Math.round(((currentIdx + 1) / WORKFLOW_STEPS.length) * 100);
                 return (
-                <div className="mb-6 rounded-xl border border-[#E4E6EA] bg-white dark:border-slate-800 dark:bg-slate-900">
+                <div className="mb-6 rounded-xl border border-[#E0DFDB] bg-white dark:border-slate-800 dark:bg-slate-900">
                     <div className="px-4 py-4 md:px-5 md:py-5">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -1591,7 +1591,7 @@ const ClientViewInner: React.FC<ClientViewProps> = ({ project, onBack, onUpdateP
                 {/* Left Col: Info - collapsed on mobile */}
                 <div className="space-y-4 md:space-y-6">
                     {/* Visual Identity */}
-                    <Card className="bg-white border-[#E4E6EA] dark:bg-slate-900 dark:border-white/5 relative overflow-hidden group">
+                    <Card className="bg-white border-[#E0DFDB] dark:bg-slate-900 dark:border-white/5 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
                              {project.avatarImage && (
                                 <button onClick={handleLogoEditorOpen} className="p-2 bg-white/50 rounded-full hover:bg-white transition-colors" title="Ajuster le logo">
