@@ -55,11 +55,11 @@ export const ClientsFolderTree: React.FC<ClientsFolderTreeProps> = ({ projects, 
             {/* Desktop: vertical folder list — Linear */}
             <nav
                 aria-label="Dossiers clients"
-                className="hidden md:flex md:flex-col w-full rounded-2xl border border-[#F0D8CC] dark:border-[#262626] bg-white dark:bg-[#151516] overflow-hidden shadow-[0_10px_24px_rgba(176,80,112,0.08)] dark:shadow-none"
+                className="hidden md:flex md:flex-col w-full rounded-2xl overflow-hidden fun-sticker fun-sticker-grape dark:border dark:border-[#262626] dark:bg-[#151516] dark:shadow-none"
             >
                 <div className="px-3 py-2.5 border-b border-slate-100 dark:border-[#262626] flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-[#8A8A8E]">
-                        Dossiers
+                    <p className="text-[13px] font-bold text-[#C45B86] dark:text-[#8A8A8E]">
+                        Tes dossiers
                     </p>
                     <span className="text-[10px] tabular-nums text-slate-400 dark:text-[#8A8A8E]">
                         {countFor('Tous')}
@@ -111,8 +111,8 @@ const FolderChip: React.FC<FolderChipProps> = ({ label, count, isSelected, empha
             emphasized ? 'font-bold' : 'font-semibold'
         } ${
             isSelected
-                ? 'bg-[#B05070] text-white border-[#B05070] shadow-[0_6px_14px_rgba(176,80,112,0.28)] dark:bg-white/[0.08] dark:text-white dark:border-[#3f3f46] dark:shadow-none'
-                : 'bg-white dark:bg-[#151516] text-slate-500 dark:text-[#8A8A8E] border-[#F0D8CC] dark:border-[#262626]'
+                ? 'bg-[#FF6B9D] text-white border-[3px] border-[#2A1840] shadow-[3px_3px_0_#2A1840] dark:bg-white/[0.08] dark:text-white dark:border-[#3f3f46] dark:shadow-none'
+                : 'bg-[#FFF8F2] dark:bg-[#151516] text-[#2A1840] dark:text-[#8A8A8E] border-[3px] border-[#2A1840] dark:border-[#262626]'
         }`}
     >
         {dot && (

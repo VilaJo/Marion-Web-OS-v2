@@ -57,14 +57,14 @@ export const YachtBar: React.FC<YachtBarProps> = ({
         <button
             type="button"
             onClick={onOpenFinances}
-            className="w-full mb-3 rounded-2xl border border-[#F0D8CC] dark:border-slate-700 bg-white dark:bg-slate-900/50 px-4 py-3 text-left hover:bg-[#FFF8F3] dark:hover:bg-slate-800/40 transition-all shadow-[0_8px_20px_rgba(74,114,196,0.08)] dark:shadow-none"
+            className="w-full mb-3 rounded-2xl px-4 py-3 text-left hover:bg-[#cfe0ff] dark:hover:bg-slate-800/40 transition-all fun-sticker fun-sticker-blue dark:border dark:border-slate-700 dark:bg-slate-900/50 dark:shadow-none"
             title="Ouvrir Santé financière"
         >
             <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                     <Ship size={14} className="text-[#4a72c4] shrink-0" />
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                        Yacht Bar
+                    <span className="text-[13px] font-bold text-[#5B8DEF] dark:text-slate-400">
+                        Cap sur le yacht
                     </span>
                     <span className="text-[11px] text-slate-400 truncate hidden sm:inline">
                         Objectif {formatCurrency(YACHT_PRICE, 0)} CHF · bénéfice net {new Date().getFullYear()}

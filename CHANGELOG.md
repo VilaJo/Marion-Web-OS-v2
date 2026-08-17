@@ -2,6 +2,12 @@
 
 Toutes les modifications notables de **Marion CRM / Eonora Tech OS** seront documentées dans ce fichier.
 
+## [2.13.26] - 2026-08-17
+### Clair moins corporate
+- Typo Fredoka, bandeau arc-en-ciel, cartes « sticker » (bordure encre + ombre décalée colorée)
+- Plus de CAPITALES grises ; KPIs, dossiers et yacht plus parlants
+- **Nuit inchangé**
+
 ## [2.13.25] - 2026-08-17
 ### Thème clair joyeux (plus de fond blanc)
 - Dégradé plein écran rose / pêche / mint / bleu ; cartes et tableaux translucides

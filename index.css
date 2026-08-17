@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -79,7 +79,7 @@
 }
 
 body {
-  font-family: Nunito, Inter, system-ui, sans-serif;
+  font-family: Fredoka, Nunito, Inter, system-ui, sans-serif;
   font-weight: 500;
   font-size: 16px;
   line-height: 24px;
@@ -89,15 +89,15 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: Nunito, Inter, system-ui, sans-serif;
-  font-weight: 800;
+  font-family: Fredoka, Nunito, Inter, system-ui, sans-serif;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--eonora-text-strong);
 }
 
 .font-serif {
-  font-family: Nunito, Inter, system-ui, sans-serif;
-  font-weight: 800;
+  font-family: Fredoka, Nunito, Inter, system-ui, sans-serif;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -118,7 +118,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 400;
 }
 .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
-.dark .font-serif, .dark .font-calligraphy {
+.dark .font-serif, .dark .font-calligraphy, .dark .font-sans, .dark .font-heading {
   font-family: Roboto, Inter, system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: -0.015em;
@@ -142,9 +142,16 @@ html:not(.dark):not(.unicorn) body::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 8px;
+  height: 10px;
   z-index: 80;
-  background: var(--eonora-gradient);
+  background: repeating-linear-gradient(
+    90deg,
+    #FF6B9D 0 36px,
+    #FFB347 36px 72px,
+    #5EEAD4 72px 108px,
+    #5B8DEF 108px 144px,
+    #C084FC 144px 180px
+  );
   pointer-events: none;
 }
 
@@ -166,18 +173,38 @@ html:not(.dark):not(.unicorn) body::after {
 
 html:not(.dark):not(.unicorn) .font-sans,
 html:not(.dark):not(.unicorn) .font-serif,
-html:not(.dark):not(.unicorn) .font-heading {
-  font-family: Nunito, Inter, system-ui, sans-serif;
+html:not(.dark):not(.unicorn) .font-heading,
+html:not(.dark):not(.unicorn) .font-calligraphy {
+  font-family: Fredoka, Nunito, Inter, system-ui, sans-serif;
 }
 
-html:not(.dark):not(.unicorn) .glass {
-  background: rgba(255, 244, 232, 0.52) !important;
-  border: 1px solid rgba(255, 255, 255, 0.55) !important;
-  box-shadow: 0 14px 36px rgba(176, 80, 112, 0.14), 0 4px 12px rgba(74, 114, 196, 0.10) !important;
-  backdrop-filter: blur(18px) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  border-radius: 22px;
+html:not(.dark):not(.unicorn) .uppercase,
+html:not(.dark):not(.unicorn) .tracking-widest,
+html:not(.dark):not(.unicorn) .tracking-wide,
+html:not(.dark):not(.unicorn) .tracking-\[0\.14em\] {
+  text-transform: none !important;
+  letter-spacing: 0.01em !important;
 }
+
+html:not(.dark):not(.unicorn) .text-slate-400,
+html:not(.dark):not(.unicorn) .text-slate-500 {
+  color: #C45B86 !important;
+}
+
+html:not(.dark):not(.unicorn) .glass,
+html:not(.dark):not(.unicorn) .fun-sticker {
+  background: #FFF8F2 !important;
+  border: 3px solid #2A1840 !important;
+  box-shadow: 5px 5px 0 #FF6B9D !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 24px;
+}
+
+html:not(.dark):not(.unicorn) .fun-sticker-mint { box-shadow: 5px 5px 0 #5EEAD4 !important; }
+html:not(.dark):not(.unicorn) .fun-sticker-blue { box-shadow: 5px 5px 0 #5B8DEF !important; }
+html:not(.dark):not(.unicorn) .fun-sticker-sun { box-shadow: 5px 5px 0 #FFB347 !important; }
+html:not(.dark):not(.unicorn) .fun-sticker-grape { box-shadow: 5px 5px 0 #C084FC !important; }
 
 html:not(.dark):not(.unicorn) .rounded-md,
 html:not(.dark):not(.unicorn) .rounded-lg,
@@ -190,11 +217,11 @@ html:not(.dark):not(.unicorn) header .rounded-full {
 }
 
 html:not(.dark):not(.unicorn) header {
-  background: rgba(255, 196, 214, 0.42) !important;
+  background: rgba(255, 180, 210, 0.55) !important;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  border-bottom-color: rgba(176, 80, 112, 0.18) !important;
-  box-shadow: 0 10px 30px rgba(176, 80, 112, 0.12);
+  border-bottom: 3px solid #2A1840 !important;
+  box-shadow: 0 8px 0 #5EEAD4;
 }
 
 html:not(.dark):not(.unicorn) .bg-white,
@@ -203,13 +230,12 @@ html:not(.dark):not(.unicorn) .bg-white\/70,
 html:not(.dark):not(.unicorn) .bg-white\/80,
 html:not(.dark):not(.unicorn) .bg-white\/90,
 html:not(.dark):not(.unicorn) .bg-white\/95 {
-  background-color: rgba(255, 246, 236, 0.46) !important;
-  backdrop-filter: blur(12px);
+  background-color: #FFF8F2 !important;
 }
 
 html:not(.dark):not(.unicorn) .bg-slate-50,
 html:not(.dark):not(.unicorn) .bg-slate-100 {
-  background-color: rgba(255, 214, 196, 0.45) !important;
+  background-color: #FFE0F0 !important;
 }
 
 html:not(.dark):not(.unicorn) .bg-\[\#FAF7F2\],
@@ -241,58 +267,97 @@ html:not(.dark):not(.unicorn) .bg-eonora-gradient:hover {
 }
 
 html:not(.dark):not(.unicorn) .fun-folder-card {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--folder, #B05070) 28%, transparent) 0%, rgba(255, 246, 236, 0.55) 55%) !important;
-  border-radius: 22px;
-  box-shadow: 0 10px 26px color-mix(in srgb, var(--folder, #B05070) 22%, transparent);
+  background: #FFF8F2 !important;
+  border: 3px solid #2A1840 !important;
+  border-radius: 24px;
+}
+html:not(.dark):not(.unicorn) .fun-folder-card:nth-child(4n+1) {
+  box-shadow: 5px 5px 0 #FF6B9D !important;
+  background: linear-gradient(180deg, #FFE0EF 0%, #FFF8F2 48%) !important;
+}
+html:not(.dark):not(.unicorn) .fun-folder-card:nth-child(4n+2) {
+  box-shadow: 5px 5px 0 #5EEAD4 !important;
+  background: linear-gradient(180deg, #D5FBF3 0%, #FFF8F2 48%) !important;
+}
+html:not(.dark):not(.unicorn) .fun-folder-card:nth-child(4n+3) {
+  box-shadow: 5px 5px 0 #5B8DEF !important;
+  background: linear-gradient(180deg, #DCE8FF 0%, #FFF8F2 48%) !important;
+}
+html:not(.dark):not(.unicorn) .fun-folder-card:nth-child(4n+4) {
+  box-shadow: 5px 5px 0 #FFB347 !important;
+  background: linear-gradient(180deg, #FFE7C2 0%, #FFF8F2 48%) !important;
 }
 html:not(.dark):not(.unicorn) .fun-folder-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 34px color-mix(in srgb, var(--folder, #B05070) 24%, transparent);
+  transform: translate(-2px, -2px) rotate(-0.6deg);
 }
 
 html:not(.dark):not(.unicorn) #new-client-filter-button {
-  background: var(--eonora-gradient) !important;
+  background: #FF6B9D !important;
   color: #fff !important;
+  border: 3px solid #2A1840 !important;
   border-radius: 9999px !important;
-  box-shadow: 0 8px 18px rgba(176, 80, 112, 0.28);
+  box-shadow: 4px 4px 0 #2A1840 !important;
+  font-weight: 700 !important;
+}
+html:not(.dark):not(.unicorn) #new-client-filter-button:hover {
+  transform: translate(-1px, -1px);
 }
 html:not(.dark):not(.unicorn) #dashboard-search-input {
   border-radius: 9999px !important;
-  background: rgba(255, 246, 236, 0.55) !important;
-  border-color: rgba(176, 80, 112, 0.22) !important;
+  background: #FFF8F2 !important;
+  border: 3px solid #2A1840 !important;
+  box-shadow: 3px 3px 0 #5B8DEF !important;
 }
 
 html:not(.dark):not(.unicorn) .fun-metric {
-  background: rgba(255, 246, 236, 0.5) !important;
-  border-color: color-mix(in srgb, var(--accent, #B05070) 35%, transparent);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent, #B05070) 16%, transparent);
+  background: #FFF8F2 !important;
+  border: 3px solid #2A1840 !important;
+  box-shadow: 4px 4px 0 #2A1840 !important;
+}
+html:not(.dark):not(.unicorn) .fun-metric:nth-child(4n+1) {
+  background: #FFE0EF !important;
+  box-shadow: 4px 4px 0 #FF6B9D !important;
+}
+html:not(.dark):not(.unicorn) .fun-metric:nth-child(4n+2) {
+  background: #D5FBF3 !important;
+  box-shadow: 4px 4px 0 #2AADA0 !important;
+}
+html:not(.dark):not(.unicorn) .fun-metric:nth-child(4n+3) {
+  background: #FFE7C2 !important;
+  box-shadow: 4px 4px 0 #FFB347 !important;
+}
+html:not(.dark):not(.unicorn) .fun-metric:nth-child(4n+4) {
+  background: #E4D4FF !important;
+  box-shadow: 4px 4px 0 #C084FC !important;
 }
 html:not(.dark):not(.unicorn) .fun-metric:hover {
-  transform: translateY(-2px);
+  transform: translate(-2px, -2px);
 }
 
 html:not(.dark):not(.unicorn) thead {
-  background: rgba(176, 80, 112, 0.16) !important;
+  background: #FFE0EF !important;
 }
 html:not(.dark):not(.unicorn) tbody tr:nth-child(even) {
-  background: rgba(42, 173, 160, 0.10) !important;
+  background: #D5FBF3 !important;
 }
 html:not(.dark):not(.unicorn) tbody tr:nth-child(odd) {
-  background: rgba(255, 246, 236, 0.28) !important;
+  background: #FFF8F2 !important;
 }
 html:not(.dark):not(.unicorn) tbody tr:hover {
-  background: rgba(74, 114, 196, 0.14) !important;
+  background: #DCE8FF !important;
 }
 
 html:not(.dark):not(.unicorn) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
 html:not(.dark):not(.unicorn) textarea,
 html:not(.dark):not(.unicorn) select {
-  background-color: rgba(255, 246, 236, 0.58) !important;
-  border-color: rgba(176, 80, 112, 0.2) !important;
+  background-color: #FFF8F2 !important;
+  border: 2.5px solid #2A1840 !important;
 }
 
 html:not(.dark):not(.unicorn) [role="dialog"] {
-  background-color: rgba(255, 244, 232, 0.88) !important;
+  background-color: #FFF8F2 !important;
+  border: 3px solid #2A1840 !important;
+  box-shadow: 8px 8px 0 #FF6B9D !important;
 }
 
 /* Scrollbar */
@@ -306,12 +371,12 @@ html:not(.dark):not(.unicorn) [role="dialog"] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D4D3CE;
-  border-radius: 4px;
+  background: #FF6B9D;
+  border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #B8B7B2;
+  background: #E85A8A;
 }
 
 .dark ::-webkit-scrollbar-thumb {

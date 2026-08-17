@@ -287,7 +287,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
                     <h1 className="font-sans text-base sm:text-lg md:text-[26px] font-extrabold text-slate-800 dark:text-white leading-tight whitespace-nowrap">
                         Eonora Tech <span className="text-[#B05070] font-extrabold hidden md:inline dark:text-slate-400 dark:font-normal">OS</span>
                     </h1>
-                    <p className="text-[10px] md:text-xs text-[#8A6E7A] hidden md:block dark:text-slate-400">Assistant Intelligent</p>
+                    <p className="text-[10px] md:text-xs text-[#C45B86] hidden md:block dark:text-slate-400">Ton studio ✨</p>
                 </div>
             </div>
 
@@ -327,16 +327,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ isConfigured, isBackendDow
             </div>
 
             {/* Desktop: full toolbar */}
-            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-white/40 dark:bg-[#151516]/90 px-2 md:px-3 py-1 md:py-1.5 rounded-full border border-[#F0D8CC] dark:border-[#262626] shadow-[0_8px_20px_rgba(176,80,112,0.12)] dark:shadow-none backdrop-blur-md md:-mt-2 transition-all duration-300">
+            <div className="hidden md:flex items-center gap-0.5 md:gap-2 bg-[#FFF8F2] dark:bg-[#151516]/90 px-2 md:px-3 py-1 md:py-1.5 rounded-full border-[3px] border-[#2A1840] dark:border-[#262626] shadow-[4px_4px_0_#5B8DEF] dark:shadow-none backdrop-blur-md md:-mt-2 transition-all duration-300">
                 {/* PRIMARY — toujours visible, quotidien de Marion (v2.11.0 nav allégée) */}
                 <Tooltip content="Ma journée — priorités et échéances">
                     <button
                         type="button"
                         onClick={() => navigate('/today')}
-                        className={`px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide flex items-center gap-1.5 transition-colors ${
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
                             isActiveRoute('/today')
-                                ? 'bg-[#7C9A7E]/15 dark:bg-[#7C9A7E]/25 text-[#647D66] dark:text-[#A7C1A3] ring-1 ring-[#7C9A7E]/40'
-                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                ? 'bg-[#FF6B9D] text-white border-[3px] border-[#2A1840] shadow-[3px_3px_0_#2A1840] dark:bg-[#7C9A7E]/25 dark:text-[#A7C1A3] dark:border-0 dark:shadow-none dark:ring-1 dark:ring-[#7C9A7E]/40'
+                                : 'bg-[#D5FBF3] text-[#2A1840] border-[3px] border-[#2A1840] shadow-[3px_3px_0_#5EEAD4] dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200 dark:shadow-none hover:bg-[#bff7ec] dark:hover:bg-slate-700'
                         }`}
                     >
                         <Sunrise size={14} className="text-[#7C9A7E]" /> Journée

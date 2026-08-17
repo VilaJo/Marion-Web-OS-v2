@@ -1,11 +1,12 @@
 import React from 'react';
 
-/** Halos colorés du thème clair — le fond n’est plus une plaque blanche. */
+/** Halos saturés du thème clair. */
 export const JoyfulBackdrop: React.FC = () => (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden>
-        <div className="absolute -top-28 -left-24 w-[540px] h-[540px] rounded-full bg-[#FF7EB6]/50 blur-3xl" />
-        <div className="absolute -top-10 -right-28 w-[500px] h-[500px] rounded-full bg-[#5EEAD4]/45 blur-3xl" />
-        <div className="absolute bottom-[-160px] left-[18%] w-[580px] h-[580px] rounded-full bg-[#93C5FD]/45 blur-3xl" />
-        <div className="absolute top-[42%] left-[38%] w-[320px] h-[320px] rounded-full bg-[#FBBF24]/35 blur-3xl" />
+        <div className="absolute -top-28 -left-24 w-[560px] h-[560px] rounded-full bg-[#FF6B9D]/70 blur-3xl" />
+        <div className="absolute -top-8 -right-24 w-[520px] h-[520px] rounded-full bg-[#5EEAD4]/65 blur-3xl" />
+        <div className="absolute bottom-[-140px] left-[12%] w-[600px] h-[600px] rounded-full bg-[#5B8DEF]/60 blur-3xl" />
+        <div className="absolute top-[38%] left-[42%] w-[340px] h-[340px] rounded-full bg-[#FFB347]/55 blur-3xl" />
+        <div className="absolute top-[55%] right-[8%] w-[280px] h-[280px] rounded-full bg-[#C084FC]/50 blur-3xl" />
     </div>
 );

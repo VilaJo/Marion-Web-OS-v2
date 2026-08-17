@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Gift, Palette } from 'lucide-react';
 import { Modal } from './Shared';
 
-const CURRENT_VERSION = "2.13.25";
+const CURRENT_VERSION = "2.13.26";
 
 export const WhatsNew: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -24,26 +24,26 @@ export const WhatsNew: React.FC = () => {
             <div className="relative overflow-hidden">
                 <div className="p-8 pt-2">
                     <div className="flex flex-col items-center text-center mb-10">
-                        <div className="w-16 h-16 bg-[#FFD0E6] border border-[#F0D8CC] rounded-3xl flex items-center justify-center text-[#B05070] mb-6 shadow-[0_10px_24px_rgba(176,80,112,0.18)]">
+                        <div className="w-16 h-16 bg-[#FFE0EF] border-[3px] border-[#2A1840] rounded-3xl flex items-center justify-center text-[#FF6B9D] mb-6 shadow-[5px_5px_0_#5EEAD4]">
                             <Gift size={32} />
                         </div>
-                        <h2 className="font-serif text-3xl font-extrabold tracking-tight text-[#2A1840] dark:text-white mb-2">
+                        <h2 className="font-serif text-3xl font-bold tracking-tight text-[#2A1840] dark:text-white mb-2">
                             Eonora Tech OS — v{CURRENT_VERSION}
                         </h2>
-                        <p className="text-[#8A6E7A] dark:text-slate-400">
-                            Thème clair tout en couleurs — plus de fond blanc
+                        <p className="text-[#C45B86] dark:text-slate-400">
+                            Clair moins corporate — stickers, couleurs, Fredoka
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex gap-4 p-4 rounded-2xl bg-[#FFD0E6]/60 dark:bg-slate-800 border border-[#F0D8CC] dark:border-slate-700">
-                            <div className="w-12 h-12 rounded-2xl bg-white/50 dark:bg-slate-900 border border-[#F0D8CC] dark:border-slate-600 text-[#B05070] flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <div className="flex gap-4 p-4 rounded-2xl bg-[#FFE0EF] dark:bg-slate-800 border-[3px] border-[#2A1840] dark:border-slate-700 shadow-[4px_4px_0_#FFB347] dark:shadow-none">
+                            <div className="w-12 h-12 rounded-2xl bg-[#FFF8F2] dark:bg-slate-900 border-[3px] border-[#2A1840] dark:border-slate-600 text-[#FF6B9D] flex items-center justify-center flex-shrink-0">
                                 <Palette size={24} />
                             </div>
                             <div>
-                                <h3 className="font-extrabold text-[#2A1840] dark:text-white mb-1">Clair joyeux</h3>
-                                <p className="text-sm text-[#8A6E7A] dark:text-slate-400 leading-relaxed">
-                                    Dégradé rose / pêche / mint / bleu sur toute l’app. Les cartes sont translucides, le tableau est teinté, le header aussi. Nuit inchangé.
+                                <h3 className="font-bold text-[#2A1840] dark:text-white mb-1">Plus pop, moins bureau</h3>
+                                <p className="text-sm text-[#C45B86] dark:text-slate-400 leading-relaxed">
+                                    Typo Fredoka, cartes sticker rose / mint / bleu / soleil, plus de titres en CAPITALES grises. Nuit inchangé.
                                 </p>
                             </div>
                         </div>
@@ -52,9 +52,9 @@ export const WhatsNew: React.FC = () => {
                     <div className="mt-10 flex justify-center">
                         <button
                             onClick={handleClose}
-                            className="px-8 py-3 bg-eonora-gradient text-white rounded-full font-bold hover:opacity-90 transition-opacity shadow-[0_10px_22px_rgba(176,80,112,0.28)]"
+                            className="px-8 py-3 bg-[#FF6B9D] text-white rounded-full font-bold border-[3px] border-[#2A1840] shadow-[4px_4px_0_#2A1840] hover:-translate-y-0.5 transition-transform"
                         >
-                            C’est parti
+                            Youhou
                         </button>
                     </div>
                 </div>

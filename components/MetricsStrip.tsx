@@ -54,7 +54,7 @@ export const MetricsStrip: React.FC<MetricsStripProps> = ({
     const items: MetricItem[] = [
         {
             key: 'clients',
-            label: 'Clients actifs',
+            label: 'Tes clients',
             value: String(stats.activeClients),
             accent: '#4a72c4',
             icon: Users,
@@ -62,7 +62,7 @@ export const MetricsStrip: React.FC<MetricsStripProps> = ({
         },
         {
             key: 'ca',
-            label: 'CA en attente',
+            label: 'À encaisser',
             value: formatCurrencyWithSymbol(stats.pendingCa, 'CHF', 0),
             accent: '#2aada0',
             icon: Wallet,
@@ -70,7 +70,7 @@ export const MetricsStrip: React.FC<MetricsStripProps> = ({
         },
         {
             key: 'deadlines',
-            label: 'Deadlines urgentes',
+            label: 'Ça urge',
             value: String(stats.urgentDeadlines),
             accent: '#b05070',
             icon: AlertTriangle,
@@ -78,7 +78,7 @@ export const MetricsStrip: React.FC<MetricsStripProps> = ({
         },
         {
             key: 'todos',
-            label: 'Tâches ouvertes',
+            label: 'Ta to-do',
             value: String(openTodos),
             accent: '#7C9A7E',
             icon: ListTodo,
@@ -105,7 +105,7 @@ export const MetricsStrip: React.FC<MetricsStripProps> = ({
                             <Icon size={15} />
                         </span>
                         <span className="min-w-0">
-                            <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400 truncate">
+                            <span className="block text-[12px] font-bold text-slate-400 truncate">
                                 {item.label}
                             </span>
                             <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100 tabular-nums truncate">

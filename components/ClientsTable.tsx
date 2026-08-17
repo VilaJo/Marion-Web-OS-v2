@@ -119,7 +119,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({ projects, onOpenProj
 
     if (rows.length === 0) {
         return (
-            <div className="w-full rounded-2xl border border-[#F0D8CC]/80 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-full rounded-2xl flex flex-col items-center justify-center py-16 text-center fun-sticker dark:border dark:border-slate-700 dark:bg-slate-900/40 dark:shadow-none">
                 <div className="w-10 h-10 rounded-md border border-slate-200 dark:border-slate-700 flex items-center justify-center mb-3">
                     <FolderOpen size={18} className="text-slate-400" />
                 </div>
@@ -129,7 +129,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({ projects, onOpenProj
     }
 
     return (
-        <div className="w-full rounded-2xl border border-[#F0D8CC]/80 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 overflow-hidden shadow-[0_12px_28px_rgba(176,80,112,0.12)] dark:shadow-none">
+        <div className="w-full rounded-2xl overflow-hidden fun-sticker fun-sticker-sun dark:border dark:border-slate-700 dark:bg-slate-900/40 dark:shadow-none">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>

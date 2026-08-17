@@ -72,17 +72,17 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              serif: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
-              sans: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
-              heading: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
-              calligraphy: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
+              serif: ['Fredoka', 'Nunito', 'Inter', 'system-ui', 'sans-serif'],
+              sans: ['Fredoka', 'Nunito', 'Inter', 'system-ui', 'sans-serif'],
+              heading: ['Fredoka', 'Nunito', 'Inter', 'system-ui', 'sans-serif'],
+              calligraphy: ['Fredoka', 'Nunito', 'Inter', 'system-ui', 'sans-serif'],
             },
             colors: {
               cream: '#FFD8C0',
@@ -225,13 +225,13 @@
     </script>
     <style>
       body {
-        font-family: Nunito, Inter, system-ui, sans-serif;
+        font-family: Fredoka, Nunito, Inter, system-ui, sans-serif;
         font-weight: 500;
         overflow-x: hidden;
       }
       h1, h2, h3, h4, h5, h6 {
-        font-family: Nunito, Inter, system-ui, sans-serif;
-        font-weight: 800;
+        font-family: Fredoka, Nunito, Inter, system-ui, sans-serif;
+        font-weight: 600;
       }
       .dark body {
         font-family: Inter, system-ui, sans-serif;
@@ -257,11 +257,9 @@
         background: #94a3b8; 
       }
       .glass {
-        background: rgba(255, 244, 232, 0.52);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.55);
-        box-shadow: 0 14px 36px rgba(176, 80, 112, 0.14);
+        background: #FFF8F2;
+        border: 3px solid #2A1840;
+        box-shadow: 5px 5px 0 #FF6B9D;
       }
       .dark .glass {
         background: rgba(21, 21, 22, 0.92); /* Linear surface */
